@@ -10,7 +10,7 @@ vLLM.
 | --- | --- | --- |
 | Core | discovery, manifest validation, compatibility evidence, saved configuration, enablement intent, state projection, conflict rejection | plugin loading, shared services, drivers, KV data, Kubernetes resources |
 | vLLM Provider | vLLM launch configuration and delegation to vLLM entry points | vLLM process supervision |
-| Mooncake Provider | official connector configuration and service health checks | Mooncake service start/stop/upgrade and internal C++ factories |
+| Mooncake Provider | official connector configuration, transport compatibility, service health, and connector-operation evidence | Mooncake service start/stop/upgrade and internal C++ factories |
 | LMCache Provider | official connector configuration, remote service version/readiness checks, and non-mutating plans | LMCache server lifecycle, storage adapters, eviction, cache clearing, and KV data |
 | Production Stack Provider | Helm values, render plan, server-dry-run inputs and rollout checks | Helm apply/uninstall, CRD mutation, controller deployment and cluster credentials |
 
@@ -30,6 +30,12 @@ These states are not a single linear finite-state machine. For example, an
 enabled Mooncake adapter can remain enabled while its external service is
 unreachable; the projected state is then `enabled + degraded`, preserving the
 operator's intent and the failure evidence.
+
+For an external KV service, a serving-process `/health` result is not sufficient
+for `healthy`. The Mooncake Provider can also consume windowed lookup/save/load
+and failed-key evidence. The validated Ascend path requires the NPU-aware
+`ascend` transport; TCP liveness cannot prove that NPU virtual addresses are
+transferable.
 
 ## Delegation safety
 

@@ -28,6 +28,12 @@ _DISTRIBUTIONS = (
     "mooncake-transfer-engine-efa",
     "mooncake-transfer-engine-efa-non-cuda",
 )
+_REQUIRED_OPERATION_EVIDENCE = (
+    "lookup_exists_ok",
+    "save_put_ok",
+    "load_get_ok",
+    "failed_keys",
+)
 
 
 def _installed_distributions() -> tuple[tuple[str, str], ...]:
@@ -58,6 +64,81 @@ class MooncakeProvider:
         if extra:
             result["kv_connector_extra_config"] = extra
         return result
+
+    def _validate_runtime_configuration(
+        self,
+        configuration: dict[str, Any],
+        installed_distribution: str | None,
+    ) -> tuple[bool, bool, tuple[str, ...]]:
+        evidence: list[str] = []
+        connector = configuration.get("connector", "MooncakeConnector")
+        extra = configuration.get("kv_connector_extra_config", {})
+        if connector == "MooncakeStoreConnector" and extra.get("load_async") is False:
+            evidence.append(
+                "MooncakeStoreConnector requires load_async=true on the validated "
+                "vLLM 0.23 execution path"
+            )
+            return True, False, tuple(evidence)
+
+        device_backend = configuration.get("device_backend")
+        transport = configuration.get("transport_protocol")
+        npu_runtime = installed_distribution == "mooncake-transfer-engine-npu"
+        if device_backend == "ascend" or npu_runtime:
+            if transport != "ascend":
+                evidence.append(
+                    "Ascend NPU KV cache requires Mooncake transport_protocol=ascend; "
+                    "generic tcp transport cannot dereference NPU virtual addresses"
+                )
+                return False, False, tuple(evidence)
+            evidence.append("Ascend NPU runtime uses Mooncake ascend transport")
+        return True, True, tuple(evidence)
+
+    def _operation_evidence(
+        self, configuration: dict[str, Any]
+    ) -> tuple[bool | None, bool, tuple[str, ...]]:
+        raw = configuration.get("connector_operation_evidence")
+        if raw is None:
+            return None, True, ()
+        if not isinstance(raw, dict):
+            return False, False, ("connector_operation_evidence must be an object",)
+        missing = [name for name in _REQUIRED_OPERATION_EVIDENCE if name not in raw]
+        if missing:
+            return (
+                False,
+                False,
+                ("connector_operation_evidence is missing: " + ", ".join(missing),),
+            )
+        values: dict[str, float] = {}
+        for name in _REQUIRED_OPERATION_EVIDENCE:
+            value = raw[name]
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int | float)
+                or value < 0
+            ):
+                return (
+                    False,
+                    False,
+                    (f"connector_operation_evidence.{name} must be non-negative",),
+                )
+            values[name] = float(value)
+        healthy = (
+            values["lookup_exists_ok"] > 0
+            and values["save_put_ok"] > 0
+            and values["load_get_ok"] > 0
+            and values["failed_keys"] == 0
+        )
+        return (
+            healthy,
+            True,
+            (
+                "Mooncake connector operations: "
+                f"lookup={values['lookup_exists_ok']:g}, "
+                f"save={values['save_put_ok']:g}, "
+                f"load={values['load_get_ok']:g}, "
+                f"failed_keys={values['failed_keys']:g}",
+            ),
+        )
 
     def plan(
         self,
@@ -92,6 +173,8 @@ class MooncakeProvider:
             (
                 "Mooncake service lifecycle remains owned by its external operator; "
                 "the manager will not start, stop, upgrade, or delete it.",
+                "For Ascend NPU caches, render the external Mooncake configuration "
+                "with transport_protocol=ascend and keep load_async enabled.",
             ),
         )
 
@@ -119,6 +202,7 @@ class MooncakeProvider:
                     f"installed: {names}",
                 ),
             )
+        installed_name = installed[0][0] if installed else None
         detected_version = installed[0][1] if installed else None
         distribution_evidence = (
             (f"detected {installed[0][0]} {installed[0][1]}",) if installed else ()
@@ -140,6 +224,28 @@ class MooncakeProvider:
                 degraded=True,
                 evidence=compatibility_evidence + (str(error),),
             )
+        runtime_compatible, runtime_configured, runtime_evidence = (
+            self._validate_runtime_configuration(configuration, installed_name)
+        )
+        compatibility_evidence += runtime_evidence
+        if not runtime_compatible or not runtime_configured:
+            return ProviderCheck(
+                False if not runtime_compatible else compatible,
+                runtime_configured,
+                degraded=True,
+                evidence=compatibility_evidence,
+            )
+        operations_healthy, operations_configured, operations_evidence = (
+            self._operation_evidence(configuration)
+        )
+        compatibility_evidence += operations_evidence
+        if not operations_configured:
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence,
+            )
         health_url = configuration.get("health_url")
         if not health_url:
             required = bool(manifest.requires_services)
@@ -158,8 +264,8 @@ class MooncakeProvider:
                     compatible,
                     True,
                     reachable=True,
-                    healthy=healthy,
-                    degraded=not healthy,
+                    healthy=healthy and operations_healthy is not False,
+                    degraded=not healthy or operations_healthy is False,
                     evidence=compatibility_evidence
                     + (f"Mooncake health endpoint returned {response.status}",),
                 )

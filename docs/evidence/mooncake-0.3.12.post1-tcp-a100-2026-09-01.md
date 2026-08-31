@@ -50,8 +50,9 @@ adapter lifecycle operation.
 
 - Mooncake remains owned by `external_operator`; the Manager only renders the
   official vLLM connector configuration and checks operator-supplied health.
-- The validated package range is `>=0.3.12.post1,<0.4` for this experimental
-  profile.
+- The range at the time of this standalone probe was
+  `>=0.3.12.post1,<0.4`; subsequent official NPU `0.3.11.post1` evidence
+  widened the experimental profile to `>=0.3.11.post1,<0.4`.
 - Mooncake Store REST and vLLM's KV transfer configuration do not publish
   independent protocol semantic versions. Their manifest ranges are therefore
   explicitly `null` instead of invented `1.0` values; package/host ranges and
@@ -62,8 +63,7 @@ adapter lifecycle operation.
 
 ## Remaining release gate
 
-The Manager has not yet observed a real vLLM request produce a Mooncake
-connector cache/store hit. That requires an official compatible vLLM runtime,
-connector configuration, model request, and connector-level evidence. Alpha
-publication therefore remains frozen even though both underlying Mooncake data
-paths above pass.
+This standalone probe did not observe a vLLM connector hit. That separate gate
+was subsequently completed on Ascend and is recorded in
+`mooncake-store-vllm-ascend-180-2026-09-01.md`. Alpha remains frozen for the
+other host contracts and cross-version matrix, not for this Mooncake hit.

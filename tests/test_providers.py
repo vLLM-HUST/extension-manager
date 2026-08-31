@@ -123,7 +123,10 @@ def test_mooncake_detects_official_npu_distribution(
         raise PackageNotFoundError(distribution)
 
     monkeypatch.setattr("vllm_hust_ext.providers.mooncake.version", installed_version)
-    check = MooncakeProvider().check(value, {})
+    check = MooncakeProvider().check(
+        value,
+        {"device_backend": "ascend", "transport_protocol": "ascend"},
+    )
 
     assert check.compatible is True
     assert any("mooncake-transfer-engine-npu" in item for item in check.evidence)
@@ -148,6 +151,76 @@ def test_mooncake_rejects_multiple_runtime_variants(
     assert check.compatible is False
     assert check.degraded is True
     assert any("multiple mutually exclusive" in item for item in check.evidence)
+
+
+def test_mooncake_npu_requires_ascend_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("mooncake-v0.2.json")
+
+    def installed_version(distribution: str) -> str:
+        if distribution == "mooncake-transfer-engine-npu":
+            return "0.3.11.post1"
+        raise PackageNotFoundError(distribution)
+
+    monkeypatch.setattr("vllm_hust_ext.providers.mooncake.version", installed_version)
+    check = MooncakeProvider().check(
+        value,
+        {
+            "connector": "MooncakeStoreConnector",
+            "transport_protocol": "tcp",
+            "health_url": "http://127.0.0.1:50055/health",
+        },
+    )
+
+    assert check.compatible is False
+    assert check.configured is False
+    assert check.degraded is True
+    assert any("cannot dereference NPU" in item for item in check.evidence)
+
+
+def test_mooncake_store_rejects_sync_load_on_validated_vllm_path() -> None:
+    value = manifest("mooncake-v0.2.json")
+    check = MooncakeProvider().check(
+        value,
+        {
+            "connector": "MooncakeStoreConnector",
+            "kv_connector_extra_config": {"load_async": False},
+            "health_url": "http://127.0.0.1:50055/health",
+        },
+    )
+
+    assert check.configured is False
+    assert check.degraded is True
+    assert any("requires load_async=true" in item for item in check.evidence)
+
+
+def test_mooncake_operation_failures_degrade_an_otherwise_healthy_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("mooncake-v0.2.json")
+
+    def respond(*args: object, **kwargs: object) -> _HTTPResponse:
+        return _HTTPResponse(b"ok")
+
+    monkeypatch.setattr("vllm_hust_ext.providers.mooncake.urlopen", respond)
+    check = MooncakeProvider().check(
+        value,
+        {
+            "health_url": "http://127.0.0.1:50055/health",
+            "connector_operation_evidence": {
+                "lookup_exists_ok": 22,
+                "save_put_ok": 9,
+                "load_get_ok": 9,
+                "failed_keys": 4,
+            },
+        },
+    )
+
+    assert check.reachable is True
+    assert check.healthy is False
+    assert check.degraded is True
+    assert any("failed_keys=4" in item for item in check.evidence)
 
 
 def test_lmcache_plan_uses_mp_connector_without_owning_cache_data() -> None:

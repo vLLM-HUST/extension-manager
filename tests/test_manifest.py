@@ -53,7 +53,7 @@ def test_experimental_manifest_requires_explicit_host_runtime_and_owner() -> Non
     assert manifest.schema_version == "0.2-experimental"
     assert manifest.kind == "kv_service_adapter"
     assert manifest.host.provider == "mooncake"
-    assert manifest.host.version_range == ">=0.3.12.post1,<0.4"
+    assert manifest.host.version_range == ">=0.3.11.post1,<0.4"
     assert manifest.host.api_range is None
     assert manifest.runtime.type == "composite"
     assert manifest.lifecycle_owner == "external_operator"

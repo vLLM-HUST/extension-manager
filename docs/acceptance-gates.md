@@ -15,9 +15,11 @@ hosts.
    or delete the service implicitly. **The official 0.3.12.post1 non-CUDA wheel
    has passed a two-process 1 MiB TransferEngine TCP write and an isolated Store
    REST put/exist/get/remove round trip on `a100-dev`.** Ordinary remove was
-   correctly lease-gated. A real vLLM request with connector-level hit evidence
-   remains before this gate is complete. See
-   `docs/evidence/mooncake-0.3.12.post1-tcp-a100-2026-09-01.md`.
+   correctly lease-gated. **The Ascend NPU path has also passed a real vLLM
+   MooncakeStoreConnector nine-key save/load hit and master
+   outage/degraded/recovery cycle.** See
+   `docs/evidence/mooncake-0.3.12.post1-tcp-a100-2026-09-01.md` and
+   `docs/evidence/mooncake-store-vllm-ascend-180-2026-09-01.md`.
 3. LMCache: target the official 0.5.x `lmcache server` interface, render MP and
    supported dynamic V1 connector configurations, verify service version via
    `/lmc_version`, verify readiness via `/healthcheck`, and run the official

@@ -1,6 +1,14 @@
 {
   "connector": "MooncakeStoreConnector",
   "kv_role": "kv_both",
+  "device_backend": "ascend",
+  "transport_protocol": "ascend",
   "health_url": "http://mooncake-store.example:9300/health",
-  "kv_connector_extra_config": {}
+  "kv_connector_extra_config": {"load_async": true},
+  "connector_operation_evidence": {
+    "lookup_exists_ok": 18,
+    "save_put_ok": 9,
+    "load_get_ok": 9,
+    "failed_keys": 0
+  }
 }
