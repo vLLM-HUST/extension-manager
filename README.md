@@ -11,6 +11,8 @@ authority:
 - the vLLM Provider renders launch configuration for in-process extensions;
 - the Mooncake Provider reuses official vLLM connectors and checks externally
   operated Mooncake services;
+- the LMCache Provider renders the official MP connector configuration and
+  checks externally operated LMCache services without clearing cache data; and
 - the Production Stack Provider renders Helm/Kubernetes inputs and dry-run
   plans without applying them.
 

@@ -16,6 +16,7 @@ from vllm_hust_ext.core import (
 )
 from vllm_hust_ext.manifest import BundleManifest, parse_manifest
 from vllm_hust_ext.providers.base import ProviderPlan
+from vllm_hust_ext.providers.lmcache import LMCacheProvider
 from vllm_hust_ext.providers.mooncake import MooncakeProvider
 from vllm_hust_ext.providers.production_stack import ProductionStackProvider
 from vllm_hust_ext.providers.vllm import VllmProvider
@@ -84,6 +85,71 @@ def test_mooncake_unreachable_is_degraded_not_disabled(
     assert LifecycleState.REACHABLE not in status.states
 
 
+def test_lmcache_plan_uses_mp_connector_without_owning_cache_data() -> None:
+    value = manifest("lmcache-v0.2.json")
+    plan = LMCacheProvider().plan(
+        value,
+        {
+            "connector": "LMCacheMPConnector",
+            "kv_connector_module_path": (
+                "lmcache.integration.vllm.lmcache_mp_connector"
+            ),
+            "kv_connector_extra_config": {
+                "lmcache.mp.host": "lmcache.example",
+                "lmcache.mp.port": 5555,
+            },
+        },
+        enabled=True,
+    )
+
+    connector = plan.generated_config["kv_transfer_config"]
+    assert connector["kv_connector"] == "LMCacheMPConnector"
+    assert connector["kv_connector_module_path"].startswith(
+        "lmcache.integration.vllm."
+    )
+    assert {action.operation for action in plan.actions} == {
+        "render_connector_config",
+        "check_service",
+    }
+    assert all(not action.mutating for action in plan.actions)
+
+
+def test_lmcache_unreachable_is_degraded_and_keeps_enabled_intent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("lmcache-v0.2.json")
+
+    def unreachable(*args: object, **kwargs: object) -> None:
+        raise URLError("connection refused")
+
+    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.urlopen", unreachable)
+    status = status_for(
+        bundle(value),
+        ExtensionConfig(
+            True, {"health_url": "http://127.0.0.1:1/healthcheck"}
+        ),
+        include_external_providers=False,
+    )
+
+    assert LifecycleState.ENABLED in status.states
+    assert LifecycleState.DEGRADED in status.states
+    assert LifecycleState.REACHABLE not in status.states
+
+
+def test_lmcache_rejects_nonofficial_dynamic_connector_module() -> None:
+    value = manifest("lmcache-v0.2.json")
+
+    with pytest.raises(ValueError, match="official"):
+        LMCacheProvider().plan(
+            value,
+            {
+                "connector": "LMCacheMPConnector",
+                "kv_connector_module_path": "untrusted.connector.module",
+            },
+            enabled=True,
+        )
+
+
 def test_production_stack_renders_but_never_applies() -> None:
     value = manifest("production-stack-v0.2.json")
     provider = ProductionStackProvider()
@@ -146,6 +212,7 @@ def test_conflicting_provider_plans_are_rejected() -> None:
 @pytest.mark.parametrize(
     ("directory", "provider"),
     [
+        ("lmcache-provider", "lmcache"),
         ("mooncake-provider", "mooncake"),
         ("production-stack-provider", "production-stack"),
     ],

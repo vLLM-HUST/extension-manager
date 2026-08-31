@@ -1,0 +1,10 @@
+{
+  "connector": "LMCacheMPConnector",
+  "kv_role": "kv_both",
+  "health_url": "http://lmcache.example:8080/healthcheck",
+  "kv_connector_module_path": "lmcache.integration.vllm.lmcache_mp_connector",
+  "kv_connector_extra_config": {
+    "lmcache.mp.host": "lmcache.example",
+    "lmcache.mp.port": 5555
+  }
+}

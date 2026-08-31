@@ -1,0 +1,1 @@
+"""Static LMCache extension manifests."""
