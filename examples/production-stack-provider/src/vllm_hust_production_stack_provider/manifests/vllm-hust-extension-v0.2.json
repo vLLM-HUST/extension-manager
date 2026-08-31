@@ -37,6 +37,13 @@
       "version_range": ">=1.28,<2",
       "endpoint_config": "kube_context",
       "optional": false
+    },
+    {
+      "service_id": "vllm-openai-backend",
+      "protocol": "openai-v1",
+      "version_range": ">=1,<2",
+      "endpoint_config": "router_backend_endpoint",
+      "optional": false
     }
   ]
 }

@@ -39,8 +39,14 @@ hosts.
    controller business reconciliation, Router-to-external-backend traffic, and
    a metrics-backed Router scale decision now also pass in Kubernetes 1.34.11.
    A negative test proves that an HPA cannot share `Deployment.spec.replicas`
-   ownership with the current `VLLMRouter` controller. A real model backend and
-   a Production Stack release-supported image matrix remain release gates.
+   ownership with the current `VLLMRouter` controller. **Real-model traffic now
+   passes on `180-ascend-bench`:** an absent backend produced HTTP 500, and
+   reconnecting only the isolated Router to the existing GLM-4-32B service
+   produced HTTP 200 and `ROUTER_OK` without restarting vLLM. Mock traffic no
+   longer satisfies Manager health. The official v0.1.12 Router image has no
+   arm64 manifest, so a Production Stack release-supported image matrix remains
+   a release gate. See
+   `docs/evidence/production-stack-real-model-180-2026-09-01.md`.
 5. Cross-cutting: incompatible host/API ranges, missing required services,
    duplicate registrations, configuration conflicts, rollback, partial health,
    and permission denial have explicit expected results.

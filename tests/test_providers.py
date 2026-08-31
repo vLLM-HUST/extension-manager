@@ -314,9 +314,7 @@ def test_lmcache_uses_remote_service_version_for_compatibility(
         url = str(request.full_url)
         requested.append(url)
         payload = (
-            service_version
-            if url.endswith("/lmc_version")
-            else {"status": "healthy"}
+            service_version if url.endswith("/lmc_version") else {"status": "healthy"}
         )
         return _HTTPResponse(json.dumps(payload).encode())
 
@@ -434,6 +432,16 @@ def test_production_stack_renders_but_never_applies() -> None:
         "router_traffic",
         "autoscaler_decision",
     ]
+    assert operator_plan["verification"]["required_router_data_plane_evidence"] == [
+        "backend_kind",
+        "model",
+        "failure_http_status",
+        "recovered_http_status",
+        "response_marker",
+        "router_version",
+        "architecture",
+        "release_image_supported",
+    ]
 
     check = provider.check(value, {"values": {}})
     assert check.compatible is None
@@ -472,6 +480,8 @@ def test_production_stack_refuses_unsubstantiated_healthy_state() -> None:
         value,
         {
             "values": {},
+            "kube_context": "isolated-kind",
+            "router_backend_endpoint": "http://model.default.svc:8000",
             "cluster_reachable": True,
             "cluster_evidence": "isolated Kubernetes API responded",
             "rollout_healthy": True,
@@ -484,6 +494,27 @@ def test_production_stack_refuses_unsubstantiated_healthy_state() -> None:
         for item in missing_component_evidence.evidence
     )
 
+    missing_service_configuration = provider.check(
+        value,
+        {
+            "values": {},
+            "cluster_reachable": True,
+            "cluster_evidence": "isolated Kubernetes API responded",
+            "rollout_healthy": True,
+            "rollout_evidence": "deployment available",
+            "component_evidence": {
+                "controller_reconciliation": "owned resources reconciled",
+                "router_traffic": "real model returned output",
+                "autoscaler_decision": "HPA changed desired replicas",
+            },
+        },
+    )
+    assert missing_service_configuration.configured is False
+    assert any(
+        "kube_context" in item and "router_backend_endpoint" in item
+        for item in missing_service_configuration.evidence
+    )
+
 
 def test_production_stack_projects_healthy_only_with_evidence() -> None:
     value = manifest("production-stack-v0.2.json")
@@ -491,6 +522,8 @@ def test_production_stack_projects_healthy_only_with_evidence() -> None:
         value,
         {
             "values": {},
+            "kube_context": "isolated-kind",
+            "router_backend_endpoint": "http://model.default.svc:8000",
             "host_version": "0.1.12",
             "host_api_version": "1.0",
             "protocol_versions": {
@@ -503,8 +536,18 @@ def test_production_stack_projects_healthy_only_with_evidence() -> None:
             "rollout_evidence": "deployment available 1/1",
             "component_evidence": {
                 "controller_reconciliation": "VLLMRouter owned Deployment and Service",
-                "router_traffic": "POST /v1/completions returned backend marker",
+                "router_traffic": "POST /v1/chat/completions returned model output",
                 "autoscaler_decision": "Metrics API drove replicas 1 to 3",
+            },
+            "router_data_plane_evidence": {
+                "backend_kind": "real_model",
+                "model": "test/model",
+                "failure_http_status": 503,
+                "recovered_http_status": 200,
+                "response_marker": "ROUTER_OK",
+                "router_version": "0.1.12",
+                "architecture": "amd64",
+                "release_image_supported": True,
             },
         },
     )
@@ -515,6 +558,85 @@ def test_production_stack_projects_healthy_only_with_evidence() -> None:
     assert check.healthy is True
     assert check.degraded is False
     assert any("deployment available 1/1" in item for item in check.evidence)
+
+
+def test_production_stack_rejects_mock_router_as_healthy_evidence() -> None:
+    value = manifest("production-stack-v0.2.json")
+    check = ProductionStackProvider().check(
+        value,
+        {
+            "values": {},
+            "kube_context": "isolated-kind",
+            "router_backend_endpoint": "http://model.default.svc:8000",
+            "cluster_reachable": True,
+            "cluster_evidence": "isolated Kubernetes API responded",
+            "rollout_healthy": True,
+            "rollout_evidence": "deployment available",
+            "component_evidence": {
+                "controller_reconciliation": "owned resources reconciled",
+                "router_traffic": "mock backend returned a marker",
+                "autoscaler_decision": "HPA changed desired replicas",
+            },
+            "router_data_plane_evidence": {
+                "backend_kind": "mock",
+                "model": "mock",
+                "failure_http_status": 500,
+                "recovered_http_status": 200,
+                "response_marker": "MOCK_OK",
+                "router_version": "0.1.12",
+                "architecture": "amd64",
+                "release_image_supported": True,
+            },
+        },
+    )
+
+    assert check.configured is False
+    assert check.degraded is True
+    assert any(
+        "mock backends are smoke evidence only" in item for item in check.evidence
+    )
+
+
+def test_production_stack_projects_release_image_gap_as_degraded() -> None:
+    value = manifest("production-stack-v0.2.json")
+    check = ProductionStackProvider().check(
+        value,
+        {
+            "values": {},
+            "kube_context": "isolated-kind",
+            "router_backend_endpoint": "http://127.0.0.1:8001",
+            "host_version": "0.1.12",
+            "host_api_version": "1.0",
+            "protocol_versions": {
+                "helm-values": "4.2.4",
+                "kubernetes-api": "1.34.11",
+            },
+            "cluster_reachable": True,
+            "cluster_evidence": "isolated Kubernetes API responded",
+            "rollout_healthy": True,
+            "rollout_evidence": "deployment available",
+            "component_evidence": {
+                "controller_reconciliation": "owned resources reconciled",
+                "router_traffic": "real model returned ROUTER_OK",
+                "autoscaler_decision": "HPA changed desired replicas",
+            },
+            "router_data_plane_evidence": {
+                "backend_kind": "real_model",
+                "model": "zai-org/GLM-4-32B-0414",
+                "failure_http_status": 500,
+                "recovered_http_status": 200,
+                "response_marker": "ROUTER_OK",
+                "router_version": "0.1.dev1+g1b87c11a2",
+                "architecture": "arm64",
+                "release_image_supported": False,
+            },
+        },
+    )
+
+    assert check.compatible is True
+    assert check.healthy is True
+    assert check.degraded is True
+    assert any("source-built Router artifact" in item for item in check.evidence)
 
 
 def test_production_stack_rejects_replica_ownership_conflict() -> None:

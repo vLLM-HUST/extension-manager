@@ -27,7 +27,10 @@ Production Stack health evidence is not accepted as a bare boolean:
 `cluster_reachable=true` requires `cluster_evidence`, and
 `rollout_healthy=true` requires both a reachable cluster and
 `rollout_evidence` plus structured `component_evidence` for controller
-reconciliation, Router traffic, and an autoscaler decision. A reported
+reconciliation, Router traffic, and an autoscaler decision. It also requires a
+configured Kubernetes context, a vLLM OpenAI backend endpoint, and structured
+`router_data_plane_evidence`: mock traffic cannot claim health, and the
+evidence must show a real model plus backend 5xx and recovered 2xx results. A reported
 `ownership_conflicts` entry projects `incompatible + degraded`; in particular,
 an HPA and a `VLLMRouter` controller may not both own
 `Deployment.spec.replicas`. Rendered operator plans keep install, upgrade,
@@ -40,6 +43,12 @@ OpenAI-compatible completion request to an external test backend, and a real
 metrics-server CPU signal scaled a separately owned Router Deployment from one
 to three replicas. The separation is intentional: a negative test proved that
 placing an HPA on the operator-owned Deployment creates a two-writer conflict.
+On the arm64 host `180-ascend-bench`, a Router built from the same upstream
+commit returned HTTP 500 for an absent backend, then HTTP 200 and `ROUTER_OK`
+from the existing `zai-org/GLM-4-32B-0414` service after only the isolated
+Router was reconfigured. The official v0.1.12 Router image has no arm64
+manifest, so that successful source-built path is projected as healthy but
+degraded and the release-image matrix remains an alpha gate.
 
 Mooncake runtime detection covers the mutually exclusive official CUDA,
 CUDA 13, non-CUDA, NPU, MUSA, and EFA wheel variants. Installing more than one

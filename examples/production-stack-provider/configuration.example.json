@@ -2,6 +2,8 @@
   "chart": "vllm/vllm-stack",
   "release": "vllm",
   "namespace": "vllm-system",
+  "kube_context": "operator-selected-context",
+  "router_backend_endpoint": "http://vllm-engine.vllm-system.svc:8000",
   "values": {
     "routerSpec": {
       "enableRouter": true

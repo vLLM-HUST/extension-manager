@@ -1,0 +1,34 @@
+{
+  "values": {
+    "routerSpec": {
+      "enableRouter": true
+    }
+  },
+  "kube_context": "isolated-kind",
+  "router_backend_endpoint": "http://127.0.0.1:8001",
+  "host_version": "0.1.12",
+  "host_api_version": "1.0",
+  "protocol_versions": {
+    "helm-values": "4.2.4",
+    "kubernetes-api": "1.34.11"
+  },
+  "cluster_reachable": true,
+  "cluster_evidence": "Kubernetes server v1.34.11 responded",
+  "rollout_healthy": true,
+  "rollout_evidence": "Router and controller workloads available",
+  "component_evidence": {
+    "controller_reconciliation": "VLLMRouter owned resources reconciled",
+    "router_traffic": "real model returned ROUTER_OK",
+    "autoscaler_decision": "Metrics API drove a separately owned Deployment"
+  },
+  "router_data_plane_evidence": {
+    "backend_kind": "real_model",
+    "model": "zai-org/GLM-4-32B-0414",
+    "failure_http_status": 500,
+    "recovered_http_status": 200,
+    "response_marker": "ROUTER_OK",
+    "router_version": "0.1.dev1+g1b87c11a2",
+    "architecture": "arm64",
+    "release_image_supported": false
+  }
+}

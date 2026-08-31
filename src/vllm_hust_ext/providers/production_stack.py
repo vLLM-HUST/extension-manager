@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from urllib.parse import urlparse
 
 from vllm_hust_ext.manifest import BundleManifest
 from vllm_hust_ext.providers.base import (
@@ -21,6 +22,16 @@ class ProductionStackProvider:
         "controller_reconciliation",
         "router_traffic",
         "autoscaler_decision",
+    )
+    required_router_data_plane_evidence = (
+        "backend_kind",
+        "model",
+        "failure_http_status",
+        "recovered_http_status",
+        "response_marker",
+        "router_version",
+        "architecture",
+        "release_image_supported",
     )
 
     def supports(self, manifest: BundleManifest) -> bool:
@@ -119,6 +130,9 @@ class ProductionStackProvider:
                     "<operator-selected-workload>",
                 ],
                 "required_component_evidence": list(self.required_component_evidence),
+                "required_router_data_plane_evidence": list(
+                    self.required_router_data_plane_evidence
+                ),
                 "replica_ownership_rule": (
                     "A VLLMRouter-owned Deployment and an HPA must not both "
                     "write spec.replicas unless the operator explicitly "
@@ -146,13 +160,44 @@ class ProductionStackProvider:
             manifest, configuration
         )
         values = configuration.get("values")
-        configured = isinstance(values, dict) and compatible is not False
+        required_service_keys = tuple(
+            service.endpoint_config
+            for service in manifest.requires_services
+            if not service.optional
+        )
+        missing_service_configuration = tuple(
+            key
+            for key in required_service_keys
+            if not isinstance(configuration.get(key), str)
+            or not str(configuration[key]).strip()
+        )
+        configured = (
+            isinstance(values, dict)
+            and compatible is not False
+            and not missing_service_configuration
+        )
         reachable = configuration.get("cluster_reachable")
         healthy = configuration.get("rollout_healthy")
         cluster_evidence = configuration.get("cluster_evidence")
         rollout_evidence = configuration.get("rollout_evidence")
         component_evidence = configuration.get("component_evidence")
+        router_data_plane_evidence = configuration.get("router_data_plane_evidence")
         ownership_conflicts = configuration.get("ownership_conflicts", [])
+        backend_endpoint = configuration.get("router_backend_endpoint")
+        if backend_endpoint is not None:
+            parsed_backend_endpoint = urlparse(str(backend_endpoint))
+            if (
+                not isinstance(backend_endpoint, str)
+                or parsed_backend_endpoint.scheme not in {"http", "https"}
+                or not parsed_backend_endpoint.netloc
+            ):
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + ("router_backend_endpoint must be an absolute http(s) URL",),
+                )
         if reachable is not None and not isinstance(reachable, bool):
             return ProviderCheck(
                 compatible,
@@ -213,6 +258,108 @@ class ProductionStackProvider:
                         + ", ".join(map(str, invalid_components)),
                     ),
                 )
+        if router_data_plane_evidence is not None and not isinstance(
+            router_data_plane_evidence, dict
+        ):
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("router_data_plane_evidence must be an object",),
+            )
+        if isinstance(router_data_plane_evidence, dict):
+            missing_data_plane_evidence = tuple(
+                name
+                for name in self.required_router_data_plane_evidence
+                if name not in router_data_plane_evidence
+            )
+            if missing_data_plane_evidence:
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "router_data_plane_evidence is missing: "
+                        + ", ".join(missing_data_plane_evidence),
+                    ),
+                )
+            backend_kind = router_data_plane_evidence["backend_kind"]
+            if backend_kind != "real_model":
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "router_data_plane_evidence.backend_kind must be "
+                        "real_model; mock backends are smoke evidence only",
+                    ),
+                )
+            for name in (
+                "model",
+                "response_marker",
+                "router_version",
+                "architecture",
+            ):
+                value = router_data_plane_evidence[name]
+                if not isinstance(value, str) or not value.strip():
+                    return ProviderCheck(
+                        compatible,
+                        False,
+                        degraded=True,
+                        evidence=compatibility_evidence
+                        + (
+                            f"router_data_plane_evidence.{name} must be a "
+                            "non-empty string",
+                        ),
+                    )
+            failure_status = router_data_plane_evidence["failure_http_status"]
+            if (
+                isinstance(failure_status, bool)
+                or not isinstance(failure_status, int)
+                or not 500 <= failure_status < 600
+            ):
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "router_data_plane_evidence.failure_http_status must "
+                        "be a 5xx integer",
+                    ),
+                )
+            recovered_status = router_data_plane_evidence["recovered_http_status"]
+            if (
+                isinstance(recovered_status, bool)
+                or not isinstance(recovered_status, int)
+                or not 200 <= recovered_status < 300
+            ):
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "router_data_plane_evidence.recovered_http_status "
+                        "must be a 2xx integer",
+                    ),
+                )
+            if not isinstance(
+                router_data_plane_evidence["release_image_supported"], bool
+            ):
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "router_data_plane_evidence.release_image_supported "
+                        "must be boolean",
+                    ),
+                )
         if not isinstance(ownership_conflicts, list) or any(
             not isinstance(item, str) or not item.strip()
             for item in ownership_conflicts
@@ -259,6 +406,17 @@ class ProductionStackProvider:
                 + ("rollout_healthy=true requires cluster_reachable=true",),
             )
         if healthy is True:
+            if missing_service_configuration:
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "rollout_healthy=true requires service configuration: "
+                        + ", ".join(missing_service_configuration),
+                    ),
+                )
             supplied = (
                 component_evidence if isinstance(component_evidence, dict) else {}
             )
@@ -278,12 +436,39 @@ class ProductionStackProvider:
                         + ", ".join(missing_component_evidence),
                     ),
                 )
-        degraded = compatible is None or reachable is False or healthy is False
+            if not isinstance(router_data_plane_evidence, dict):
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "rollout_healthy=true requires structured "
+                        "router_data_plane_evidence from a real model, "
+                        "including failure and recovery",
+                    ),
+                )
+        release_image_unsupported = (
+            isinstance(router_data_plane_evidence, dict)
+            and router_data_plane_evidence.get("release_image_supported") is False
+        )
+        degraded = (
+            compatible is None
+            or reachable is False
+            or healthy is False
+            or release_image_unsupported
+        )
         runtime_evidence = tuple(
             item
             for item in (
                 f"cluster evidence: {cluster_evidence}" if cluster_evidence else None,
                 f"rollout evidence: {rollout_evidence}" if rollout_evidence else None,
+                (
+                    "required service configuration present: "
+                    + ", ".join(required_service_keys)
+                    if required_service_keys and not missing_service_configuration
+                    else None
+                ),
             )
             if item is not None
         )
@@ -295,6 +480,27 @@ class ProductionStackProvider:
                 else ()
             )
         )
+        router_evidence = ()
+        if isinstance(router_data_plane_evidence, dict):
+            router_evidence = (
+                "router data plane evidence: "
+                f"model={router_data_plane_evidence['model']}, "
+                f"failure_http_status="
+                f"{router_data_plane_evidence['failure_http_status']}, "
+                f"recovered_http_status="
+                f"{router_data_plane_evidence['recovered_http_status']}, "
+                f"response_marker="
+                f"{router_data_plane_evidence['response_marker']}, "
+                f"router_version="
+                f"{router_data_plane_evidence['router_version']}, "
+                f"architecture="
+                f"{router_data_plane_evidence['architecture']}",
+            )
+            if release_image_unsupported:
+                router_evidence += (
+                    "release image is unavailable for this architecture; "
+                    "a source-built Router artifact was used",
+                )
         return ProviderCheck(
             compatible,
             configured,
@@ -304,5 +510,6 @@ class ProductionStackProvider:
             evidence=compatibility_evidence
             + runtime_evidence
             + structured_evidence
+            + router_evidence
             + ("no cluster mutation was attempted",),
         )

@@ -12,7 +12,7 @@ vLLM.
 | vLLM Provider | vLLM launch configuration and delegation to vLLM entry points | vLLM process supervision |
 | Mooncake Provider | official connector configuration, transport compatibility, service health, and connector-operation evidence | Mooncake service start/stop/upgrade and internal C++ factories |
 | LMCache Provider | official connector configuration, remote service version/readiness checks, and non-mutating plans | LMCache server lifecycle, storage adapters, eviction, cache clearing, and KV data |
-| Production Stack Provider | Helm values, render plan, server-dry-run inputs and rollout checks | Helm apply/uninstall, CRD mutation, controller deployment and cluster credentials |
+| Production Stack Provider | Helm values, render plan, server-dry-run inputs, rollout checks, and structured real-model Router failure/recovery evidence | Helm apply/uninstall, CRD mutation, controller deployment, model-service lifecycle and cluster credentials |
 
 Third-party Provider factories use `vllm_hust_ext.providers`. Static extension
 registrations use `vllm_hust.extension_bundles`. A Provider may delegate to an
