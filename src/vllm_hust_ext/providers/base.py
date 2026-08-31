@@ -109,6 +109,12 @@ def assess_compatibility(
     protocol_versions = dict(default_protocol_versions or {})
     protocol_versions.update(supplied_protocols)
     for protocol in manifest.protocols:
+        if protocol.version_range is None:
+            evidence.append(
+                f"protocol {protocol.name} is not independently versioned; "
+                "compatibility is governed by host ranges and acceptance evidence"
+            )
+            continue
         version = protocol_versions.get(protocol.name)
         if version is None:
             unknown = True

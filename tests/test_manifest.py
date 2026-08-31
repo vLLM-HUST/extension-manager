@@ -53,9 +53,13 @@ def test_experimental_manifest_requires_explicit_host_runtime_and_owner() -> Non
     assert manifest.schema_version == "0.2-experimental"
     assert manifest.kind == "kv_service_adapter"
     assert manifest.host.provider == "mooncake"
+    assert manifest.host.version_range == ">=0.3.12.post1,<0.4"
+    assert manifest.host.api_range is None
     assert manifest.runtime.type == "composite"
     assert manifest.lifecycle_owner == "external_operator"
+    assert all(protocol.version_range is None for protocol in manifest.protocols)
     assert manifest.requires_services[0].service_id == "mooncake-store"
+    assert manifest.requires_services[0].version_range is None
 
 
 def test_python_310_grouped_entry_points_are_flattened() -> None:

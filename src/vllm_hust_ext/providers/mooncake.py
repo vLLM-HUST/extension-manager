@@ -127,11 +127,6 @@ class MooncakeProvider:
             manifest,
             configuration,
             detected_host_version=detected_version,
-            default_api_version="1.0",
-            default_protocol_versions={
-                "mooncake-store-service": "1.0",
-                "vllm-kv-connector": "1.0",
-            },
         )
         compatibility_evidence = distribution_evidence + compatibility_evidence
         if compatible is False:

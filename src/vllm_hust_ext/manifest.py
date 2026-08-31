@@ -111,7 +111,7 @@ class RuntimeSpec:
 @dataclass(frozen=True, slots=True)
 class ProtocolSpec:
     name: str
-    version_range: str
+    version_range: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,7 +124,7 @@ class ImplementationCarrier:
 class RequiredService:
     service_id: str
     protocol: str
-    version_range: str
+    version_range: str | None
     endpoint_config: str
     optional: bool = False
 
@@ -317,6 +317,14 @@ def _specifier(value: Any, location: str) -> str:
     return result
 
 
+def _optional_specifier(value: Any, location: str) -> str | None:
+    """Parse an upstream range without inventing one for unversioned surfaces."""
+
+    if value is None:
+        return None
+    return _specifier(value, location)
+
+
 def _parse_host(value: Any) -> HostSpec:
     host = _object(value, "host")
     required = {"provider", "name", "version_range"}
@@ -362,7 +370,9 @@ def _parse_protocols(value: Any) -> tuple[ProtocolSpec, ...]:
         result.append(
             ProtocolSpec(
                 _string(item["name"], f"protocols[{index}].name"),
-                _specifier(item["version_range"], f"protocols[{index}].version_range"),
+                _optional_specifier(
+                    item["version_range"], f"protocols[{index}].version_range"
+                ),
             )
         )
     return tuple(result)
@@ -422,7 +432,7 @@ def _parse_services(value: Any) -> tuple[RequiredService, ...]:
             RequiredService(
                 _string(item["service_id"], f"requires_services[{index}].service_id"),
                 _string(item["protocol"], f"requires_services[{index}].protocol"),
-                _specifier(
+                _optional_specifier(
                     item["version_range"],
                     f"requires_services[{index}].version_range",
                 ),

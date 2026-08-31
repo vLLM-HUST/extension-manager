@@ -92,6 +92,26 @@ def test_mooncake_unreachable_is_degraded_not_disabled(
     assert LifecycleState.REACHABLE not in status.states
 
 
+def test_mooncake_unversioned_surfaces_do_not_invent_protocol_semver(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("mooncake-v0.2.json")
+
+    def installed_version(distribution: str) -> str:
+        if distribution == "mooncake-transfer-engine-non-cuda":
+            return "0.3.12.post1"
+        raise PackageNotFoundError(distribution)
+
+    monkeypatch.setattr("vllm_hust_ext.providers.mooncake.version", installed_version)
+    check = MooncakeProvider().check(value, {})
+
+    assert check.compatible is True
+    assert any("not independently versioned" in item for item in check.evidence)
+    assert not any(
+        "protocol mooncake-store-rest 1.0" in item for item in check.evidence
+    )
+
+
 def test_mooncake_detects_official_npu_distribution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1,0 +1,11 @@
+{
+  "connector": "MooncakeStoreConnector",
+  "kv_role": "kv_both",
+  "host_version": "0.3.12.post1",
+  "health_url": "http://127.0.0.1:29003/health",
+  "kv_connector_extra_config": {
+    "metadata_server": "http://127.0.0.1:28081/metadata",
+    "master_server_address": "127.0.0.1:25051",
+    "protocol": "tcp"
+  }
+}

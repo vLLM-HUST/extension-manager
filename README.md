@@ -32,7 +32,18 @@ and uninstall as explicit operator-owned `null` actions.
 Mooncake runtime detection covers the mutually exclusive official CUDA,
 CUDA 13, non-CUDA, NPU, MUSA, and EFA wheel variants. Installing more than one
 variant is reported as an incompatible/degraded environment instead of picking
-one arbitrarily.
+one arbitrarily. The experimental Mooncake profile currently declares
+`>=0.3.12.post1,<0.4`. Its Store REST and vLLM KV configuration surfaces are
+marked explicitly unversioned because upstream does not publish independent
+protocol semantic versions; the Manager does not invent `1.0` contracts for
+them.
+
+The official 0.3.12.post1 non-CUDA wheel has completed both a two-process 1 MiB
+TransferEngine TCP write and an isolated Store put/exist/get/remove round trip
+on `a100-dev`. Store deletion remained subject to Mooncake's object lease and
+was performed only for the probe's UUID-scoped key after lease expiry. This is
+data-path evidence, not yet a vLLM connector cache-hit result; alpha remains
+frozen until that final connector gate and the other host gates pass.
 
 > **Compatibility freeze:** Manifest `0.2-experimental` and the former Bundle
 > v1 prototype are not stable APIs. No alpha package will be published until

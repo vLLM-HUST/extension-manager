@@ -6,8 +6,7 @@
   "host": {
     "provider": "mooncake",
     "name": "Mooncake",
-    "version_range": ">=0",
-    "api_range": ">=1,<2"
+    "version_range": ">=0.3.12.post1,<0.4"
   },
   "runtime": {
     "type": "composite",
@@ -16,14 +15,16 @@
   },
   "lifecycle_owner": "external_operator",
   "protocols": [
-    {"name": "mooncake-store-service", "version_range": ">=1,<2"},
-    {"name": "vllm-kv-connector", "version_range": ">=1,<2"}
+    {"name": "mooncake-store-rest", "version_range": null},
+    {"name": "vllm-kv-transfer-config", "version_range": null}
   ],
   "implementation": [
     {
       "type": "external_service",
       "service": "Mooncake Store",
-      "module": "mooncake.mooncake_store_service"
+      "module": "mooncake.mooncake_store_service",
+      "console_scripts": ["mooncake_master", "mc_store_rest_server"],
+      "validated_distribution": "mooncake-transfer-engine-non-cuda==0.3.12.post1"
     },
     {
       "type": "host_builtin",
@@ -35,7 +36,7 @@
     {
       "service_id": "mooncake-store",
       "protocol": "http-health",
-      "version_range": ">=1,<2",
+      "version_range": null,
       "endpoint_config": "health_url",
       "optional": false
     }
