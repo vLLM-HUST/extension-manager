@@ -19,7 +19,9 @@ hosts.
    rollout state, reject conflicts, and prove that no apply/uninstall occurs.
    The isolated Router chart lifecycle (install, upgrade, explicit rollback,
    automatic rollback on a missing image, and uninstall) has passed. Real
-   controller/autoscaler reconciliation and Router-to-model traffic remain.
+   LoRA CRD establishment, controller probe rollout, and HPA target lookup also
+   pass. Official controller business reconciliation, a metrics-backed scale
+   decision, and Router-to-model traffic remain.
 5. Cross-cutting: incompatible host/API ranges, missing required services,
    duplicate registrations, configuration conflicts, rollback, partial health,
    and permission denial have explicit expected results.
