@@ -19,6 +19,23 @@ from vllm_hust_ext.providers.base import (
 )
 
 _CONNECTORS = {"MooncakeConnector", "MooncakeStoreConnector"}
+_DISTRIBUTIONS = (
+    "mooncake-transfer-engine",
+    "mooncake-transfer-engine-cuda13",
+    "mooncake-transfer-engine-non-cuda",
+    "mooncake-transfer-engine-npu",
+    "mooncake-transfer-engine-musa",
+    "mooncake-transfer-engine-efa",
+    "mooncake-transfer-engine-efa-non-cuda",
+)
+
+
+def _installed_distributions() -> tuple[tuple[str, str], ...]:
+    installed: list[tuple[str, str]] = []
+    for distribution in _DISTRIBUTIONS:
+        with suppress(PackageNotFoundError):
+            installed.append((distribution, version(distribution)))
+    return tuple(installed)
 
 
 class MooncakeProvider:
@@ -90,9 +107,22 @@ class MooncakeProvider:
     def check(
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
-        detected_version = None
-        with suppress(PackageNotFoundError):
-            detected_version = version("mooncake-transfer-engine")
+        installed = _installed_distributions()
+        if len(installed) > 1:
+            names = ", ".join(name for name, _ in installed)
+            return ProviderCheck(
+                False,
+                False,
+                degraded=True,
+                evidence=(
+                    "multiple mutually exclusive Mooncake runtime variants are "
+                    f"installed: {names}",
+                ),
+            )
+        detected_version = installed[0][1] if installed else None
+        distribution_evidence = (
+            (f"detected {installed[0][0]} {installed[0][1]}",) if installed else ()
+        )
         compatible, compatibility_evidence = assess_compatibility(
             manifest,
             configuration,
@@ -103,6 +133,7 @@ class MooncakeProvider:
                 "vllm-kv-connector": "1.0",
             },
         )
+        compatibility_evidence = distribution_evidence + compatibility_evidence
         if compatible is False:
             return ProviderCheck(False, False, evidence=compatibility_evidence)
         try:

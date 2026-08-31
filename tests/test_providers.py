@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import URLError
@@ -83,6 +84,44 @@ def test_mooncake_unreachable_is_degraded_not_disabled(
     assert LifecycleState.ENABLED in status.states
     assert LifecycleState.DEGRADED in status.states
     assert LifecycleState.REACHABLE not in status.states
+
+
+def test_mooncake_detects_official_npu_distribution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("mooncake-v0.2.json")
+
+    def installed_version(distribution: str) -> str:
+        if distribution == "mooncake-transfer-engine-npu":
+            return "0.3.13.post1"
+        raise PackageNotFoundError(distribution)
+
+    monkeypatch.setattr("vllm_hust_ext.providers.mooncake.version", installed_version)
+    check = MooncakeProvider().check(value, {})
+
+    assert check.compatible is True
+    assert any("mooncake-transfer-engine-npu" in item for item in check.evidence)
+
+
+def test_mooncake_rejects_multiple_runtime_variants(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("mooncake-v0.2.json")
+
+    def installed_version(distribution: str) -> str:
+        if distribution in {
+            "mooncake-transfer-engine",
+            "mooncake-transfer-engine-npu",
+        }:
+            return "0.3.13.post1"
+        raise PackageNotFoundError(distribution)
+
+    monkeypatch.setattr("vllm_hust_ext.providers.mooncake.version", installed_version)
+    check = MooncakeProvider().check(value, {})
+
+    assert check.compatible is False
+    assert check.degraded is True
+    assert any("multiple mutually exclusive" in item for item in check.evidence)
 
 
 def test_lmcache_plan_uses_mp_connector_without_owning_cache_data() -> None:

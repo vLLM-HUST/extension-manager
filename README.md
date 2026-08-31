@@ -23,6 +23,11 @@ different kinds. Installing or enabling an adapter never gives this manager
 authority to start shared services, change drivers, delete KV data, or mutate a
 production cluster.
 
+Mooncake runtime detection covers the mutually exclusive official CUDA,
+CUDA 13, non-CUDA, NPU, MUSA, and EFA wheel variants. Installing more than one
+variant is reported as an incompatible/degraded environment instead of picking
+one arbitrarily.
+
 > **Compatibility freeze:** Manifest `0.2-experimental` and the former Bundle
 > v1 prototype are not stable APIs. No alpha package will be published until
 > the vLLM, KV-system, and control-plane end-to-end gates pass.
