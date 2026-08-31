@@ -7,9 +7,11 @@ import json
 import os
 import subprocess
 from collections.abc import Sequence
-from dataclasses import asdict, replace
+from dataclasses import asdict
+from pathlib import Path
 
-from vllm_hust_ext.config import load_config, save_config
+from vllm_hust_ext.config import ExtensionConfig, load_config, save_config
+from vllm_hust_ext.core import plan_dict, plan_for, render_plan, status_for
 from vllm_hust_ext.discovery import InstalledBundle, discover_bundles
 
 
@@ -20,6 +22,14 @@ def _bundle_dict(bundle: InstalledBundle, enabled: set[str]) -> dict[str, object
         "distribution": bundle.distribution_name,
         "distribution_version": bundle.distribution_version,
         "enabled": bundle.bundle_id in enabled,
+        "kind": bundle.manifest.kind,
+        "host": asdict(bundle.manifest.host),
+        "runtime": asdict(bundle.manifest.runtime),
+        "lifecycle_owner": bundle.manifest.lifecycle_owner,
+        "requires_services": [
+            asdict(service) for service in bundle.manifest.requires_services
+        ],
+        "experimental": bundle.manifest.experimental,
         "components": [asdict(component) for component in bundle.manifest.components],
         "activation": asdict(bundle.manifest.activation),
         "manifest_path": str(bundle.manifest_path),
@@ -119,20 +129,51 @@ def _extension_command(args: argparse.Namespace) -> int:
         return 0
     if args.action == "enable":
         discover_bundles((args.bundle_id,))
-        if args.bundle_id not in enabled:
-            save_config(replace(config, enabled=config.enabled + (args.bundle_id,)))
+        current = config.extension(args.bundle_id)
+        save_config(
+            config.with_extension(
+                args.bundle_id,
+                ExtensionConfig(True, current.configuration),
+            )
+        )
         print(f"enabled {args.bundle_id}")
         return 0
     if args.action == "disable":
+        current = config.extension(args.bundle_id)
         save_config(
-            replace(
-                config,
-                enabled=tuple(
-                    item for item in config.enabled if item != args.bundle_id
-                ),
+            config.with_extension(
+                args.bundle_id,
+                ExtensionConfig(False, current.configuration),
             )
         )
         print(f"disabled {args.bundle_id}")
+        return 0
+    if args.action == "configure":
+        discover_bundles((args.bundle_id,))
+        configuration = json.loads(Path(args.file).read_text(encoding="utf-8"))
+        if not isinstance(configuration, dict):
+            raise ValueError("extension configuration file must contain an object")
+        current = config.extension(args.bundle_id)
+        save_config(
+            config.with_extension(
+                args.bundle_id,
+                ExtensionConfig(current.enabled, configuration),
+            )
+        )
+        print(f"configured {args.bundle_id}")
+        return 0
+    if args.action in {"status", "check", "plan", "render"}:
+        bundle = discover_bundles((args.bundle_id,))[0]
+        extension = config.extension(args.bundle_id)
+        if args.action in {"status", "check"}:
+            print(json.dumps(status_for(bundle, extension).as_dict(), indent=2))
+            return 0
+        plan = plan_for(bundle, extension)
+        if args.action == "plan":
+            print(json.dumps(plan_dict(plan), indent=2, sort_keys=True))
+            return 0
+        artifacts = [asdict(artifact) for artifact in render_plan(plan)]
+        print(json.dumps(artifacts, indent=2, sort_keys=True))
         return 0
     if args.action == "env":
         bundles = discover_bundles(config.enabled) if config.enabled else ()
@@ -151,12 +192,47 @@ def _run_command(args: argparse.Namespace) -> int:
     if not command:
         raise ValueError("run requires a command after --")
     command = _merge_command_config(command, _activation_config(bundles))
+    for bundle in bundles:
+        extension = config.extension(bundle.bundle_id)
+        plan = plan_for(bundle, extension)
+        if plan.provider == "mooncake":
+            command = _merge_json_option(
+                command,
+                "--kv-transfer-config",
+                plan.generated_config["kv_transfer_config"],
+            )
+        elif plan.provider != "vllm":
+            raise ValueError(
+                f"{plan.provider} extensions use plan/render/check, not run"
+            )
     if args.dry_run:
         print(json.dumps({"command": command, "environment": activation}, indent=2))
         return 0
     environment = os.environ.copy()
     environment.update(activation)
     return subprocess.call(command, env=environment)
+
+
+def _merge_json_option(
+    command: list[str], option: str, generated: dict[str, object]
+) -> list[str]:
+    result = list(command)
+    encoded = json.dumps(generated, separators=(",", ":"), sort_keys=True)
+    for index, argument in enumerate(result):
+        if argument == option:
+            if index + 1 >= len(result):
+                raise ValueError(f"{option} requires a JSON object")
+            existing = json.loads(result[index + 1])
+            if existing != generated:
+                raise ValueError(f"extension activation conflicts with {option}")
+            return result
+        if argument.startswith(f"{option}="):
+            existing = json.loads(argument.partition("=")[2])
+            if existing != generated:
+                raise ValueError(f"extension activation conflicts with {option}")
+            return result
+    result.extend((option, encoded))
+    return result
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -166,9 +242,21 @@ def build_parser() -> argparse.ArgumentParser:
     extension_subcommands = extension.add_subparsers(dest="action", required=True)
     list_parser = extension_subcommands.add_parser("list")
     list_parser.add_argument("--json", action="store_true")
-    for action in ("inspect", "validate", "enable", "disable"):
+    for action in (
+        "inspect",
+        "validate",
+        "enable",
+        "disable",
+        "status",
+        "check",
+        "plan",
+        "render",
+    ):
         action_parser = extension_subcommands.add_parser(action)
         action_parser.add_argument("bundle_id")
+    configure_parser = extension_subcommands.add_parser("configure")
+    configure_parser.add_argument("bundle_id")
+    configure_parser.add_argument("--file", required=True)
     extension_subcommands.add_parser("env")
     run_parser = subcommands.add_parser("run")
     run_parser.add_argument("--dry-run", action="store_true")

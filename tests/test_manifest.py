@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pytest
 
 from vllm_hust_ext.manifest import ManifestError, parse_manifest
@@ -40,3 +43,15 @@ def test_manifest_rejects_incompatible_host_api() -> None:
     payload["host_api_range"] = ">=2"
     with pytest.raises(ManifestError, match="host provides"):
         parse_manifest(payload)
+
+
+def test_experimental_manifest_requires_explicit_host_runtime_and_owner() -> None:
+    path = Path(__file__).parent / "fixtures" / "mooncake-v0.2.json"
+    manifest = parse_manifest(json.loads(path.read_text(encoding="utf-8")))
+
+    assert manifest.schema_version == "0.2-experimental"
+    assert manifest.kind == "kv_service_adapter"
+    assert manifest.host.provider == "mooncake"
+    assert manifest.runtime.type == "composite"
+    assert manifest.lifecycle_owner == "external_operator"
+    assert manifest.requires_services[0].service_id == "mooncake-store"

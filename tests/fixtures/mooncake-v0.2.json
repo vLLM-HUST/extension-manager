@@ -1,0 +1,43 @@
+{
+  "schema_version": "0.2-experimental",
+  "extension_id": "org.vllm-hust.mooncake-provider",
+  "extension_version": "0.2.0a1",
+  "kind": "kv_service_adapter",
+  "host": {
+    "provider": "mooncake",
+    "name": "Mooncake",
+    "version_range": ">=0",
+    "api_range": ">=1,<2"
+  },
+  "runtime": {
+    "type": "composite",
+    "process_scope": "external_service_and_vllm_connector",
+    "isolation": "external_service"
+  },
+  "lifecycle_owner": "external_operator",
+  "protocols": [
+    {"name": "mooncake-store-service", "version_range": ">=1,<2"},
+    {"name": "vllm-kv-connector", "version_range": ">=1,<2"}
+  ],
+  "implementation": [
+    {
+      "type": "external_service",
+      "service": "Mooncake Store",
+      "module": "mooncake.mooncake_store_service"
+    },
+    {
+      "type": "host_builtin",
+      "host": "vllm",
+      "symbols": ["MooncakeConnector", "MooncakeStoreConnector"]
+    }
+  ],
+  "requires_services": [
+    {
+      "service_id": "mooncake-store",
+      "protocol": "http-health",
+      "version_range": ">=1,<2",
+      "endpoint_config": "health_url",
+      "optional": false
+    }
+  ]
+}

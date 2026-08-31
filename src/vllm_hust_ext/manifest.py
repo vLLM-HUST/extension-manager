@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +43,26 @@ _PERMISSIONS = {
     "shared_memory",
     "subprocess",
 }
+_KINDS = {
+    "in_process_plugin",
+    "scheduler_policy",
+    "kv_connector",
+    "kv_service_adapter",
+    "control_plane_extension",
+    "runtime_bridge",
+}
+_RUNTIMES = {"python", "external_service", "oci", "kubernetes", "composite"}
+_LIFECYCLE_OWNERS = {"vllm", "host", "external_operator", "kubernetes", "user"}
+_CARRIERS = {
+    "host_builtin",
+    "python_entry_point",
+    "external_service",
+    "oci_image",
+    "helm_values",
+    "kubernetes_manifest",
+    "crd",
+    "controller",
+}
 
 
 class ManifestError(ValueError):
@@ -73,12 +93,63 @@ class BundleComponent:
 
 
 @dataclass(frozen=True, slots=True)
+class HostSpec:
+    provider: str
+    name: str
+    version_range: str
+    api_range: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeSpec:
+    type: str
+    process_scope: str
+    isolation: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProtocolSpec:
+    name: str
+    version_range: str
+
+
+@dataclass(frozen=True, slots=True)
+class ImplementationCarrier:
+    type: str
+    attributes: tuple[tuple[str, Any], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RequiredService:
+    service_id: str
+    protocol: str
+    version_range: str
+    endpoint_config: str
+    optional: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class BundleManifest:
     bundle_id: str
     bundle_version: str
     host_api_range: str
     components: tuple[BundleComponent, ...]
     activation: BundleActivation
+    schema_version: str = "1.0"
+    kind: str = "legacy_vllm_bundle"
+    host: HostSpec = field(
+        default_factory=lambda: HostSpec("vllm", "vllm", ">=0", ">=1,<2")
+    )
+    runtime: RuntimeSpec = field(
+        default_factory=lambda: RuntimeSpec(
+            "python", "vllm_processes", "trusted_in_process"
+        )
+    )
+    lifecycle_owner: str = "vllm"
+    protocols: tuple[ProtocolSpec, ...] = ()
+    implementation: tuple[ImplementationCarrier, ...] = ()
+    requires_services: tuple[RequiredService, ...] = ()
+    experimental: bool = True
 
 
 def _object(value: Any, location: str) -> dict[str, Any]:
@@ -143,7 +214,7 @@ def _parse_activation(value: Any) -> BundleActivation:
     )
 
 
-def parse_manifest(payload: Any) -> BundleManifest:
+def _parse_legacy_manifest(payload: Any) -> BundleManifest:
     manifest = _object(payload, "manifest")
     unknown = manifest.keys() - _TOP_LEVEL_FIELDS
     if unknown:
@@ -234,6 +305,194 @@ def parse_manifest(payload: Any) -> BundleManifest:
         tuple(components),
         _parse_activation(manifest.get("activation")),
     )
+
+
+def _specifier(value: Any, location: str) -> str:
+    result = _string(value, location)
+    try:
+        SpecifierSet(result)
+    except InvalidSpecifier as error:
+        raise ManifestError(f"{location} is not a valid version range") from error
+    return result
+
+
+def _parse_host(value: Any) -> HostSpec:
+    host = _object(value, "host")
+    required = {"provider", "name", "version_range"}
+    unknown = host.keys() - (required | {"api_range"})
+    missing = required - host.keys()
+    if unknown or missing:
+        raise ManifestError(
+            f"host has unknown={sorted(unknown)} missing={sorted(missing)}"
+        )
+    provider = _string(host["provider"], "host.provider")
+    if not _IDENTIFIER.fullmatch(provider):
+        raise ManifestError("host.provider is invalid")
+    api_range = host.get("api_range")
+    return HostSpec(
+        provider,
+        _string(host["name"], "host.name"),
+        _specifier(host["version_range"], "host.version_range"),
+        None if api_range is None else _specifier(api_range, "host.api_range"),
+    )
+
+
+def _parse_runtime(value: Any) -> RuntimeSpec:
+    runtime = _object(value, "runtime")
+    if runtime.keys() != {"type", "process_scope", "isolation"}:
+        raise ManifestError("runtime requires type, process_scope, and isolation")
+    runtime_type = _string(runtime["type"], "runtime.type")
+    _known((runtime_type,), _RUNTIMES, "runtime.type")
+    return RuntimeSpec(
+        runtime_type,
+        _string(runtime["process_scope"], "runtime.process_scope"),
+        _string(runtime["isolation"], "runtime.isolation"),
+    )
+
+
+def _parse_protocols(value: Any) -> tuple[ProtocolSpec, ...]:
+    if not isinstance(value, list):
+        raise ManifestError("protocols must be an array")
+    result: list[ProtocolSpec] = []
+    for index, raw in enumerate(value):
+        item = _object(raw, f"protocols[{index}]")
+        if item.keys() != {"name", "version_range"}:
+            raise ManifestError(f"protocols[{index}] requires name and version_range")
+        result.append(
+            ProtocolSpec(
+                _string(item["name"], f"protocols[{index}].name"),
+                _specifier(
+                    item["version_range"], f"protocols[{index}].version_range"
+                ),
+            )
+        )
+    return tuple(result)
+
+
+def _parse_implementation(value: Any) -> tuple[ImplementationCarrier, ...]:
+    if not isinstance(value, list) or not value:
+        raise ManifestError("implementation must be a non-empty array")
+    result: list[ImplementationCarrier] = []
+    for index, raw in enumerate(value):
+        item = _object(raw, f"implementation[{index}]")
+        carrier_type = _string(item.get("type"), f"implementation[{index}].type")
+        _known((carrier_type,), _CARRIERS, f"implementation[{index}].type")
+        attributes = {key: val for key, val in item.items() if key != "type"}
+        if not attributes:
+            raise ManifestError(f"implementation[{index}] has no carrier attributes")
+        result.append(
+            ImplementationCarrier(carrier_type, tuple(sorted(attributes.items())))
+        )
+    return tuple(result)
+
+
+def _parse_services(value: Any) -> tuple[RequiredService, ...]:
+    if not isinstance(value, list):
+        raise ManifestError("requires_services must be an array")
+    result: list[RequiredService] = []
+    required = {"service_id", "protocol", "version_range", "endpoint_config"}
+    for index, raw in enumerate(value):
+        item = _object(raw, f"requires_services[{index}]")
+        unknown = item.keys() - (required | {"optional"})
+        missing = required - item.keys()
+        if unknown or missing:
+            raise ManifestError(
+                f"requires_services[{index}] has unknown={sorted(unknown)} "
+                f"missing={sorted(missing)}"
+            )
+        optional = item.get("optional", False)
+        if not isinstance(optional, bool):
+            raise ManifestError(f"requires_services[{index}].optional must be boolean")
+        result.append(
+            RequiredService(
+                _string(item["service_id"], f"requires_services[{index}].service_id"),
+                _string(item["protocol"], f"requires_services[{index}].protocol"),
+                _specifier(
+                    item["version_range"],
+                    f"requires_services[{index}].version_range",
+                ),
+                _string(
+                    item["endpoint_config"],
+                    f"requires_services[{index}].endpoint_config",
+                ),
+                optional,
+            )
+        )
+    return tuple(result)
+
+
+def _parse_experimental_manifest(payload: Any) -> BundleManifest:
+    manifest = _object(payload, "manifest")
+    fields = {
+        "schema_version",
+        "extension_id",
+        "extension_version",
+        "kind",
+        "host",
+        "runtime",
+        "lifecycle_owner",
+        "protocols",
+        "implementation",
+        "requires_services",
+        "components",
+        "activation",
+    }
+    required = fields - {"components", "activation"}
+    unknown = manifest.keys() - fields
+    missing = required - manifest.keys()
+    if unknown or missing:
+        raise ManifestError(
+            f"experimental manifest has unknown={sorted(unknown)} "
+            f"missing={sorted(missing)}"
+        )
+    extension_id = _string(manifest["extension_id"], "extension_id")
+    if not _IDENTIFIER.fullmatch(extension_id):
+        raise ManifestError("extension_id is invalid")
+    version = _string(manifest["extension_version"], "extension_version")
+    try:
+        Version(version)
+    except InvalidVersion as error:
+        raise ManifestError("extension_version is not a valid version") from error
+    kind = _string(manifest["kind"], "kind")
+    _known((kind,), _KINDS, "kind")
+    owner = _string(manifest["lifecycle_owner"], "lifecycle_owner")
+    _known((owner,), _LIFECYCLE_OWNERS, "lifecycle_owner")
+    components: tuple[BundleComponent, ...] = ()
+    if manifest.get("components"):
+        legacy = {
+            "schema_version": "1.0",
+            "bundle_id": extension_id,
+            "bundle_version": version,
+            "host_api_range": ">=1,<2",
+            "components": manifest["components"],
+            "activation": manifest.get("activation"),
+        }
+        components = _parse_legacy_manifest(legacy).components
+    return BundleManifest(
+        extension_id,
+        version,
+        ">=0",
+        components,
+        _parse_activation(manifest.get("activation")),
+        schema_version="0.2-experimental",
+        kind=kind,
+        host=_parse_host(manifest["host"]),
+        runtime=_parse_runtime(manifest["runtime"]),
+        lifecycle_owner=owner,
+        protocols=_parse_protocols(manifest["protocols"]),
+        implementation=_parse_implementation(manifest["implementation"]),
+        requires_services=_parse_services(manifest["requires_services"]),
+    )
+
+
+def parse_manifest(payload: Any) -> BundleManifest:
+    manifest = _object(payload, "manifest")
+    schema_version = manifest.get("schema_version")
+    if schema_version == "1.0":
+        return _parse_legacy_manifest(manifest)
+    if schema_version == "0.2-experimental":
+        return _parse_experimental_manifest(manifest)
+    raise ManifestError("unsupported schema_version")
 
 
 def load_manifest(path: Path) -> BundleManifest:
