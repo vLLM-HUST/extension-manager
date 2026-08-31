@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from importlib.metadata import PackageNotFoundError
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import URLError
@@ -171,6 +172,78 @@ def test_lmcache_unreachable_is_degraded_and_keeps_enabled_intent(
     assert LifecycleState.ENABLED in status.states
     assert LifecycleState.DEGRADED in status.states
     assert LifecycleState.REACHABLE not in status.states
+
+
+def test_lmcache_unreachable_does_not_use_local_package_as_remote_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("lmcache-v0.2.json")
+
+    def unreachable(*args: object, **kwargs: object) -> None:
+        raise URLError("connection refused")
+
+    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.urlopen", unreachable)
+    monkeypatch.setattr(
+        "vllm_hust_ext.providers.lmcache.version", lambda distribution: "0.5.4"
+    )
+
+    check = LMCacheProvider().check(
+        value,
+        {"health_url": "http://127.0.0.1:1/healthcheck"},
+    )
+
+    assert check.compatible is None
+    assert check.reachable is False
+    assert any("host version is unavailable" in item for item in check.evidence)
+
+
+class _HTTPResponse(BytesIO):
+    status = 200
+
+
+@pytest.mark.parametrize(
+    ("service_version", "compatible"),
+    [("0.5.4", True), ("0.4.3", False)],
+)
+def test_lmcache_uses_remote_service_version_for_compatibility(
+    monkeypatch: pytest.MonkeyPatch,
+    service_version: str,
+    compatible: bool,
+) -> None:
+    value = manifest("lmcache-v0.2.json")
+    requested: list[str] = []
+
+    def not_installed(distribution: str) -> str:
+        raise PackageNotFoundError(distribution)
+
+    def respond(request: SimpleNamespace, timeout: int) -> _HTTPResponse:
+        assert timeout == 2
+        url = str(request.full_url)
+        requested.append(url)
+        payload = (
+            service_version
+            if url.endswith("/lmc_version")
+            else {"status": "healthy"}
+        )
+        return _HTTPResponse(json.dumps(payload).encode())
+
+    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.version", not_installed)
+    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.urlopen", respond)
+
+    check = LMCacheProvider().check(
+        value,
+        {"health_url": "http://127.0.0.1:8080/healthcheck"},
+    )
+
+    assert check.compatible is compatible
+    assert check.reachable is True
+    assert check.healthy is True
+    assert check.degraded is not compatible
+    assert requested == [
+        "http://127.0.0.1:8080/healthcheck",
+        "http://127.0.0.1:8080/lmc_version",
+    ]
+    assert any(service_version in item for item in check.evidence)
 
 
 def test_lmcache_rejects_nonofficial_dynamic_connector_module() -> None:

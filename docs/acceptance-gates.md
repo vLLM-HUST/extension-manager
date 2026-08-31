@@ -13,10 +13,17 @@ hosts.
    verify a real externally operated service, preserve enabled intent during an
    outage, report degraded evidence, recover without reinstall, and never start
    or delete the service implicitly.
-3. LMCache: render MP and supported V1 connector configurations, verify a real
-   external MP service through `/healthcheck`, preserve enabled intent across
-   outage/recovery, reject nonofficial module paths, and never clear, evict, or
-   delete cache data implicitly.
+3. LMCache: target the official 0.5.x `lmcache server` interface, render MP and
+   supported dynamic V1 connector configurations, verify service version via
+   `/lmc_version`, verify readiness via `/healthcheck`, and run the official
+   CPU-SHM server benchmark through LOOKUP, STORE, RETRIEVE, and CHECKSUM.
+   Preserve enabled intent across outage/recovery, reject nonofficial module
+   paths, and never clear, evict, or delete cache data implicitly.
+   **Passed for LMCache 0.5.4 on `a100-dev` (2026-09-01):** the immutable
+   official image completed the CPU-SHM LOOKUP/STORE/RETRIEVE/CHECKSUM path at
+   100% checksum pass rate, and Manager health, degradation, recovery,
+   disable, and forget projections passed. See
+   `docs/evidence/lmcache-0.5.4-a100-2026-09-01.md`.
 4. Production Stack: render values against the official chart, run Helm
    template and Kubernetes server dry-run, inspect router/controller/autoscaler
    rollout state, reject conflicts, and prove that no apply/uninstall occurs.

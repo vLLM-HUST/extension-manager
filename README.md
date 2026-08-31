@@ -68,6 +68,13 @@ vllm-hust-ext extension enable org.vllm-hust.lmcache-provider
 vllm-hust-ext run --dry-run -- vllm serve MODEL
 ```
 
+The current LMCache profile targets the official 0.5.x `lmcache server`
+surface. Compatibility is read from the external service's `/lmc_version`
+endpoint and health from `/healthcheck`; a local `lmcache` installation is not
+treated as proof of the remote service version. The 0.5.4 wheel exposes
+`LMCacheMPConnector` and `LMCacheConnectorV1Dynamic`; the former needs no
+fabricated dynamic module path.
+
 LMCache-Ascend is a platform backend plus a vLLM adapter, not another top-level
 KV service. Its separate profile therefore has no `requires_services` entry and
 uses the exact official dynamic module path:

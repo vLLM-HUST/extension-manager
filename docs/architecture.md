@@ -11,6 +11,7 @@ vLLM.
 | Core | discovery, manifest validation, compatibility evidence, saved configuration, enablement intent, state projection, conflict rejection | plugin loading, shared services, drivers, KV data, Kubernetes resources |
 | vLLM Provider | vLLM launch configuration and delegation to vLLM entry points | vLLM process supervision |
 | Mooncake Provider | official connector configuration and service health checks | Mooncake service start/stop/upgrade and internal C++ factories |
+| LMCache Provider | official connector configuration, remote service version/readiness checks, and non-mutating plans | LMCache server lifecycle, storage adapters, eviction, cache clearing, and KV data |
 | Production Stack Provider | Helm values, render plan, server-dry-run inputs and rollout checks | Helm apply/uninstall, CRD mutation, controller deployment and cluster credentials |
 
 Third-party Provider factories use `vllm_hust_ext.providers`. Static extension
@@ -39,4 +40,7 @@ separate operator-owned workflow and explicit authorization.
 
 LMCache follows the same boundary as Mooncake: the Provider will reuse official
 vLLM/LMCache connector and server interfaces, while LMCache keeps ownership of
-its storage backends, transports, controller, and service lifecycle.
+its storage backends, transports, controller, and service lifecycle. For the
+0.5.x MP service, the Provider reads `/lmc_version` and `/healthcheck`; the
+acceptance probe uses LMCache's own CPU-SHM benchmark rather than treating HTTP
+liveness as proof of a working LOOKUP/STORE/RETRIEVE data path.

@@ -25,3 +25,10 @@ Every manifest declares:
 The old Bundle v1 shape remains readable only as an experimental migration
 input. It must not be advertised as stable and receives no forward
 compatibility promise.
+
+An external-service carrier describes the official implementation surface; it
+does not transfer lifecycle ownership to the Manager. For example, the LMCache
+0.5.x profile records both the supported `lmcache server` console command and
+its backing Python module, while `lifecycle_owner=external_operator` prevents
+Core from turning that description into implicit start, stop, clear, or delete
+operations.
