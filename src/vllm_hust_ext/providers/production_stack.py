@@ -98,8 +98,7 @@ class ProductionStackProvider:
             return ProviderCheck(
                 compatible,
                 False,
-                evidence=compatibility_evidence
-                + ("rollout_healthy must be boolean",),
+                evidence=compatibility_evidence + ("rollout_healthy must be boolean",),
             )
         degraded = reachable is False or healthy is False
         return ProviderCheck(
