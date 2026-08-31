@@ -104,9 +104,7 @@ def test_lmcache_plan_uses_mp_connector_without_owning_cache_data() -> None:
 
     connector = plan.generated_config["kv_transfer_config"]
     assert connector["kv_connector"] == "LMCacheMPConnector"
-    assert connector["kv_connector_module_path"].startswith(
-        "lmcache.integration.vllm."
-    )
+    assert connector["kv_connector_module_path"].startswith("lmcache.integration.vllm.")
     assert {action.operation for action in plan.actions} == {
         "render_connector_config",
         "check_service",
@@ -125,9 +123,7 @@ def test_lmcache_unreachable_is_degraded_and_keeps_enabled_intent(
     monkeypatch.setattr("vllm_hust_ext.providers.lmcache.urlopen", unreachable)
     status = status_for(
         bundle(value),
-        ExtensionConfig(
-            True, {"health_url": "http://127.0.0.1:1/healthcheck"}
-        ),
+        ExtensionConfig(True, {"health_url": "http://127.0.0.1:1/healthcheck"}),
         include_external_providers=False,
     )
 
