@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from vllm_hust_ext.discovery import _flatten_entry_points
 from vllm_hust_ext.manifest import ManifestError, parse_manifest
 
 
@@ -55,3 +56,13 @@ def test_experimental_manifest_requires_explicit_host_runtime_and_owner() -> Non
     assert manifest.runtime.type == "composite"
     assert manifest.lifecycle_owner == "external_operator"
     assert manifest.requires_services[0].service_id == "mooncake-store"
+
+
+def test_python_310_grouped_entry_points_are_flattened() -> None:
+    first = object()
+    second = object()
+
+    assert _flatten_entry_points({"one": (first,), "two": (second,)}) == (
+        first,
+        second,
+    )

@@ -35,6 +35,15 @@ class InstalledBundle:
     entry_points: tuple[EntryPoint, ...]
 
 
+def _flatten_entry_points(value: object) -> tuple[EntryPoint, ...]:
+    """Normalize importlib.metadata results across Python 3.10 and 3.12+."""
+
+    values = getattr(value, "values", None)
+    if callable(values):
+        return tuple(entry_point for group in values() for entry_point in group)
+    return tuple(value)  # type: ignore[arg-type]
+
+
 def _manifest_path(entry_point: EntryPoint) -> Path:
     if not _MODULE_PATH.fullmatch(entry_point.value):
         raise DiscoveryError(
@@ -105,7 +114,9 @@ def discover_bundles(
             )
 
     every_entry_point = (
-        tuple(entry_points()) if all_entry_points is None else tuple(all_entry_points)
+        _flatten_entry_points(entry_points())
+        if all_entry_points is None
+        else tuple(all_entry_points)
     )
     loaded: dict[str, InstalledBundle] = {}
     for bundle_id, items in candidates.items():
