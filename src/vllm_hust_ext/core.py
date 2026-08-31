@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from enum import StrEnum
+from enum import Enum
 from typing import Any
 
 from vllm_hust_ext.config import ExtensionConfig
@@ -12,7 +12,7 @@ from vllm_hust_ext.providers import provider_for
 from vllm_hust_ext.providers.base import ProviderPlan, RenderArtifact
 
 
-class LifecycleState(StrEnum):
+class LifecycleState(str, Enum):
     INSTALLED = "installed"
     DISCOVERED = "discovered"
     COMPATIBLE = "compatible"
