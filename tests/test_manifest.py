@@ -66,3 +66,15 @@ def test_python_310_grouped_entry_points_are_flattened() -> None:
         first,
         second,
     )
+
+
+def test_python_module_carrier_requires_explicit_registration_status() -> None:
+    payload = json.loads(
+        (Path(__file__).parent / "fixtures" / "bidkv-v0.2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    del payload["implementation"][0]["status"]
+
+    with pytest.raises(ManifestError, match="module, object, and status"):
+        parse_manifest(payload)

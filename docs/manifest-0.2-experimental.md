@@ -14,7 +14,8 @@ Every manifest declares:
 - `lifecycle_owner`: the system or operator that is authorized to change the
   runtime lifecycle;
 - `protocols`: explicit protocol compatibility ranges;
-- `implementation`: one or more carriers, including Python entry points,
+- `implementation`: one or more carriers, including registered Python entry
+  points and unregistered/import-only Python modules,
   host-builtins, external services, OCI images, Helm values, Kubernetes
   manifests, CRDs, and controllers;
 - `requires_services`: service identity, protocol range, configuration key for

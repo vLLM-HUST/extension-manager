@@ -36,6 +36,12 @@ class VllmProvider:
             "additional_config": dict(manifest.activation.additional_config),
             "user_config": configuration,
         }
+        warnings = ()
+        if manifest.kind == "scheduler_policy" and manifest.protocols:
+            warnings = (
+                "in-process scheduler activation requires explicit host and "
+                "protocol compatibility evidence; run refuses unverified policies",
+            )
         return ProviderPlan(
             manifest.bundle_id,
             self.name,
@@ -48,6 +54,7 @@ class VllmProvider:
                 ),
             ),
             generated,
+            warnings,
         )
 
     def render(self, plan: ProviderPlan) -> tuple[RenderArtifact, ...]:

@@ -10,6 +10,7 @@ from vllm_hust_ext.cli import (
     _merge_provider_plan,
 )
 from vllm_hust_ext.config import ExtensionConfig, UserConfig
+from vllm_hust_ext.core import LifecycleState
 from vllm_hust_ext.manifest import BundleActivation
 from vllm_hust_ext.providers.base import PlanAction, ProviderPlan
 
@@ -146,3 +147,90 @@ def test_forget_removes_disabled_stored_intent(
 
     assert result == 0
     assert saved == [UserConfig()]
+
+
+def test_run_refuses_unverified_in_process_scheduler_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.bidkv"
+    manifest = SimpleNamespace(
+        host=SimpleNamespace(provider="vllm"),
+        kind="scheduler_policy",
+        activation=BundleActivation(),
+    )
+    bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=True)}),
+    )
+    monkeypatch.setattr(cli, "discover_bundles", lambda *_args: (bundle,))
+    monkeypatch.setattr(
+        cli,
+        "status_for",
+        lambda *_args: SimpleNamespace(
+            states=(), evidence=("protocol version is unavailable",)
+        ),
+    )
+
+    with pytest.raises(ValueError, match="unverified in-process scheduler policy"):
+        cli._run_command(SimpleNamespace(command=["vllm"], dry_run=True))
+
+
+def test_run_accepts_scheduler_policy_only_after_compatibility_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.bidkv"
+    manifest = SimpleNamespace(
+        host=SimpleNamespace(provider="vllm"),
+        kind="scheduler_policy",
+        activation=BundleActivation(),
+    )
+    bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=True)}),
+    )
+    monkeypatch.setattr(cli, "discover_bundles", lambda *_args: (bundle,))
+    monkeypatch.setattr(
+        cli,
+        "status_for",
+        lambda *_args: SimpleNamespace(
+            states=(LifecycleState.COMPATIBLE,), evidence=("verified",)
+        ),
+    )
+    monkeypatch.setattr(
+        cli, "plan_for", lambda *_args: ProviderPlan(extension_id, "vllm", ())
+    )
+
+    assert cli._run_command(SimpleNamespace(command=["true"], dry_run=True)) == 0
+
+
+def test_run_refuses_any_enabled_incompatible_extension(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.example"
+    manifest = SimpleNamespace(
+        host=SimpleNamespace(provider="mooncake"),
+        kind="kv_service_adapter",
+        activation=BundleActivation(),
+    )
+    bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=True)}),
+    )
+    monkeypatch.setattr(cli, "discover_bundles", lambda *_args: (bundle,))
+    monkeypatch.setattr(
+        cli,
+        "status_for",
+        lambda *_args: SimpleNamespace(
+            states=(LifecycleState.INCOMPATIBLE,),
+            evidence=("host version is outside the declared range",),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="refusing to launch incompatible extension"):
+        cli._run_command(SimpleNamespace(command=["vllm"], dry_run=True))

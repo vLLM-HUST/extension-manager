@@ -11,7 +11,13 @@ from dataclasses import asdict
 from pathlib import Path
 
 from vllm_hust_ext.config import ExtensionConfig, load_config, save_config
-from vllm_hust_ext.core import plan_dict, plan_for, render_plan, status_for
+from vllm_hust_ext.core import (
+    LifecycleState,
+    plan_dict,
+    plan_for,
+    render_plan,
+    status_for,
+)
 from vllm_hust_ext.discovery import InstalledBundle, discover_bundles
 from vllm_hust_ext.providers.base import ProviderPlan
 
@@ -197,6 +203,23 @@ def _extension_command(args: argparse.Namespace) -> int:
 def _run_command(args: argparse.Namespace) -> int:
     config = load_config()
     bundles = discover_bundles(config.enabled) if config.enabled else ()
+    for bundle in bundles:
+        extension = config.extension(bundle.bundle_id)
+        status = status_for(bundle, extension)
+        if LifecycleState.INCOMPATIBLE in status.states:
+            raise ValueError(
+                f"refusing to launch incompatible extension {bundle.bundle_id!r}: "
+                + "; ".join(status.evidence)
+            )
+        if (
+            bundle.manifest.host.provider == "vllm"
+            and bundle.manifest.kind == "scheduler_policy"
+            and LifecycleState.COMPATIBLE not in status.states
+        ):
+            raise ValueError(
+                f"refusing to launch unverified in-process scheduler policy "
+                f"{bundle.bundle_id!r}: " + "; ".join(status.evidence)
+            )
     activation = _activation_environment(bundles)
     command = list(args.command or ["vllm"])
     if command and command[0] == "--":

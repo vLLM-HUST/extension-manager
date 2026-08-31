@@ -44,19 +44,17 @@ pip install bidkv
 
 vllm-hust-ext extension list
 vllm-hust-ext extension status org.vllm-hust.bidkv
-vllm-hust-ext extension enable org.vllm-hust.bidkv
-vllm-hust-ext extension plan org.vllm-hust.bidkv
-vllm-hust-ext extension render org.vllm-hust.bidkv
 vllm-hust-ext extension check org.vllm-hust.bidkv
-vllm-hust-ext run -- vllm serve MODEL
 ```
 
 The BidKV example currently describes the legacy experimental
 `vllm.victim_selector` contract. The fresh vLLM-HUST 0.23 fork does not provide
-that protocol, so Manager compatibility remains unverified/incompatible unless
-the host supplies explicit protocol evidence. New core work must align with
-upstream scheduler-plugin RFC #51608 and draft PR #51601 instead of adding a
-second private victim-selector API.
+that protocol. The main BidKV distribution no longer registers this private
+entry point, and Manager `run` refuses an unverified or incompatible in-process
+scheduler policy. New core work must align with upstream scheduler-plugin RFC
+#51608 and draft PR #51601 instead of adding a second private victim-selector
+API. There is no supported fresh-fork enable command until that contract is
+stable and the real scheduler/rollback gates pass.
 
 External KV profiles follow the same install/configure/enable flow. For
 example, the experimental LMCache profile renders an official vLLM connector

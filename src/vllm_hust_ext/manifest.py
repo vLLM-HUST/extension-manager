@@ -56,6 +56,7 @@ _LIFECYCLE_OWNERS = {"vllm", "host", "external_operator", "kubernetes", "user"}
 _CARRIERS = {
     "host_builtin",
     "python_entry_point",
+    "python_module",
     "external_service",
     "oci_image",
     "helm_values",
@@ -378,6 +379,22 @@ def _parse_implementation(value: Any) -> tuple[ImplementationCarrier, ...]:
         attributes = {key: val for key, val in item.items() if key != "type"}
         if not attributes:
             raise ManifestError(f"implementation[{index}] has no carrier attributes")
+        if carrier_type == "python_module":
+            expected = {"module", "object", "status"}
+            if attributes.keys() != expected:
+                raise ManifestError(
+                    f"implementation[{index}] python_module requires "
+                    "module, object, and status"
+                )
+            module = _string(attributes["module"], f"implementation[{index}].module")
+            obj = _string(attributes["object"], f"implementation[{index}].object")
+            status = _string(attributes["status"], f"implementation[{index}].status")
+            if not re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", module):
+                raise ManifestError(f"implementation[{index}].module is invalid")
+            if not re.fullmatch(r"[A-Za-z_]\w*", obj):
+                raise ManifestError(f"implementation[{index}].object is invalid")
+            if status not in {"active", "import_only", "legacy_unregistered"}:
+                raise ManifestError(f"implementation[{index}].status is unsupported")
         result.append(
             ImplementationCarrier(carrier_type, tuple(sorted(attributes.items())))
         )

@@ -44,6 +44,11 @@ def test_bidkv_is_a_vllm_owned_scheduler_policy() -> None:
     assert plan.generated_config["additional_config"] == {
         "victim_selector_plugin": "bidkv"
     }
+    assert "run refuses unverified policies" in plan.warnings[0]
+    assert value.activation.entry_points == ()
+    carrier = value.implementation[0]
+    assert carrier.type == "python_module"
+    assert dict(carrier.attributes)["status"] == "legacy_unregistered"
 
 
 def test_mooncake_plan_reuses_official_connector_without_owning_service() -> None:

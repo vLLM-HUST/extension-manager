@@ -3,9 +3,12 @@
 Alpha publication remains blocked until all gates are repeatable on supported
 hosts.
 
-1. vLLM/BidKV: install, discover, validate, configure, enable, plan, render,
-   launch, observe policy selection, disable, restart, and verify upstream
-   fallback.
+1. vLLM/BidKV: the main distribution registers no private
+   `vllm.victim_selector` entry point, and a fresh official vLLM fails closed.
+   After upstream RFC #51608/PR #51601 freezes a Preemption contract, migrate
+   the import-only legacy adapter, then install, discover, validate, configure,
+   enable, plan, render, launch, observe real policy selection, disable,
+   restart, and verify upstream fallback.
 2. Mooncake: render both `MooncakeConnector` and `MooncakeStoreConnector`,
    verify a real externally operated service, preserve enabled intent during an
    outage, report degraded evidence, recover without reinstall, and never start

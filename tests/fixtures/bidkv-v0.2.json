@@ -20,9 +20,10 @@
   ],
   "implementation": [
     {
-      "type": "python_entry_point",
-      "group": "vllm.victim_selector",
-      "name": "bidkv"
+      "type": "python_module",
+      "module": "bidkv.adapters.vllm_hust.selector",
+      "object": "BidkvVictimSelector",
+      "status": "legacy_unregistered"
     }
   ],
   "requires_services": [],
@@ -37,7 +38,7 @@
     }
   ],
   "activation": {
-    "entry_points": [{"group": "vllm.victim_selector", "name": "bidkv"}],
+    "entry_points": [],
     "environment": {"BIDKV_UTILITY_ENABLE": "1"},
     "additional_config": {"victim_selector_plugin": "bidkv"}
   }
