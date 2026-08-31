@@ -9,7 +9,7 @@ from typing import Any
 from vllm_hust_ext.config import ExtensionConfig
 from vllm_hust_ext.discovery import InstalledBundle
 from vllm_hust_ext.providers import provider_for
-from vllm_hust_ext.providers.base import ProviderCheck, ProviderPlan, RenderArtifact
+from vllm_hust_ext.providers.base import ProviderPlan, RenderArtifact
 
 
 class LifecycleState(StrEnum):

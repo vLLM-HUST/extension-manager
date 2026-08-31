@@ -25,7 +25,8 @@ def providers(*, include_external: bool = True) -> dict[str, HostProvider]:
             provider = entry_point.load()()
             if provider.name != entry_point.name:
                 raise ValueError(
-                    f"provider entry point {entry_point.name!r} returned {provider.name!r}"
+                    f"provider entry point {entry_point.name!r} returned "
+                    f"{provider.name!r}"
                 )
             result[provider.name] = provider
     return result

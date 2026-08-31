@@ -84,9 +84,13 @@ class ProductionStackProvider:
         reachable = configuration.get("cluster_reachable")
         healthy = configuration.get("rollout_healthy")
         if reachable is not None and not isinstance(reachable, bool):
-            return ProviderCheck(False, False, evidence=("cluster_reachable must be boolean",))
+            return ProviderCheck(
+                False, False, evidence=("cluster_reachable must be boolean",)
+            )
         if healthy is not None and not isinstance(healthy, bool):
-            return ProviderCheck(False, False, evidence=("rollout_healthy must be boolean",))
+            return ProviderCheck(
+                False, False, evidence=("rollout_healthy must be boolean",)
+            )
         degraded = reachable is False or healthy is False
         return ProviderCheck(
             True,
