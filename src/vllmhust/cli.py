@@ -21,13 +21,13 @@ def _bundle_dict(bundle: InstalledBundle, enabled: set[str]) -> dict[str, object
         "distribution_version": bundle.distribution_version,
         "enabled": bundle.bundle_id in enabled,
         "components": [asdict(component) for component in bundle.manifest.components],
+        "activation": asdict(bundle.manifest.activation),
         "manifest_path": str(bundle.manifest_path),
     }
 
 
 def _activation_environment(bundles: Sequence[InstalledBundle]) -> dict[str, str]:
     environment: dict[str, str] = {}
-    plugin_names: list[str] = []
     for bundle in bundles:
         for key, value in bundle.manifest.activation.environment:
             if key in environment and environment[key] != value:
@@ -35,21 +35,69 @@ def _activation_environment(bundles: Sequence[InstalledBundle]) -> dict[str, str
                     f"enabled Bundles disagree on environment variable {key}"
                 )
             environment[key] = value
-        declared = bundle.manifest.activation.entry_points
-        if declared:
-            plugin_names.extend(entry.name for entry in declared)
-        else:
-            plugin_names.extend(
-                entry.name
-                for entry in bundle.entry_points
-                if entry.group.startswith("vllm.")
-            )
-    if plugin_names:
-        environment["VLLM_PLUGINS"] = ",".join(dict.fromkeys(plugin_names))
     environment["VLLMHUST_ENABLED_BUNDLES"] = ",".join(
         bundle.bundle_id for bundle in bundles
     )
     return environment
+
+
+def _activation_config(bundles: Sequence[InstalledBundle]) -> dict[str, object]:
+    merged: dict[str, object] = {}
+    for bundle in bundles:
+        for key, value in bundle.manifest.activation.additional_config:
+            if key in merged and merged[key] != value:
+                raise ValueError(
+                    f"enabled Bundles disagree on additional_config key {key}"
+                )
+            merged[key] = value
+    return merged
+
+
+def _merge_command_config(
+    command: list[str], activation: dict[str, object]
+) -> list[str]:
+    if not activation:
+        return command
+    result = list(command)
+    existing: dict[str, object] = {}
+    option_index: int | None = None
+    for index, argument in enumerate(result):
+        if argument == "--additional-config":
+            if index + 1 >= len(result):
+                raise ValueError("--additional-config requires a JSON object")
+            option_index = index
+            raw = result[index + 1]
+            break
+        if argument.startswith("--additional-config="):
+            option_index = index
+            raw = argument.partition("=")[2]
+            break
+    else:
+        raw = None
+    if raw is not None:
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            raise ValueError("--additional-config must contain a JSON object")
+        existing = parsed
+    conflicts = {
+        key
+        for key, value in activation.items()
+        if key in existing and existing[key] != value
+    }
+    if conflicts:
+        raise ValueError(
+            "plugin activation conflicts with additional_config keys: "
+            f"{sorted(conflicts)}"
+        )
+    existing.update(activation)
+    encoded = json.dumps(existing, separators=(",", ":"), sort_keys=True)
+    if option_index is None:
+        result.extend(("--additional-config", encoded))
+    elif result[option_index] == "--additional-config":
+        result[option_index + 1] = encoded
+    else:
+        result[option_index] = f"--additional-config={encoded}"
+    return result
 
 
 def _plugin_command(args: argparse.Namespace) -> int:
@@ -97,11 +145,12 @@ def _run_command(args: argparse.Namespace) -> int:
     config = load_config()
     bundles = discover_bundles(config.enabled) if config.enabled else ()
     activation = _activation_environment(bundles)
-    command = args.command or ["vllm"]
+    command = list(args.command or ["vllm"])
     if command and command[0] == "--":
         command = command[1:]
     if not command:
         raise ValueError("run requires a command after --")
+    command = _merge_command_config(command, _activation_config(bundles))
     if args.dry_run:
         print(json.dumps({"command": command, "environment": activation}, indent=2))
         return 0
