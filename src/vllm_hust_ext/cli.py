@@ -13,6 +13,7 @@ from pathlib import Path
 from vllm_hust_ext.config import ExtensionConfig, load_config, save_config
 from vllm_hust_ext.core import plan_dict, plan_for, render_plan, status_for
 from vllm_hust_ext.discovery import InstalledBundle, discover_bundles
+from vllm_hust_ext.providers.base import ProviderPlan
 
 
 def _bundle_dict(bundle: InstalledBundle, enabled: set[str]) -> dict[str, object]:
@@ -195,22 +196,42 @@ def _run_command(args: argparse.Namespace) -> int:
     for bundle in bundles:
         extension = config.extension(bundle.bundle_id)
         plan = plan_for(bundle, extension)
-        if plan.provider == "mooncake":
-            command = _merge_json_option(
-                command,
-                "--kv-transfer-config",
-                plan.generated_config["kv_transfer_config"],
-            )
-        elif plan.provider != "vllm":
-            raise ValueError(
-                f"{plan.provider} extensions use plan/render/check, not run"
-            )
+        command = _merge_provider_plan(command, plan)
     if args.dry_run:
         print(json.dumps({"command": command, "environment": activation}, indent=2))
         return 0
     environment = os.environ.copy()
     environment.update(activation)
     return subprocess.call(command, env=environment)
+
+
+def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
+    """Merge a Provider's declared vLLM launch capability without name checks."""
+
+    kv_transfer_config = plan.generated_config.get("kv_transfer_config")
+    if kv_transfer_config is not None:
+        if not isinstance(kv_transfer_config, dict):
+            raise ValueError("provider kv_transfer_config must be a JSON object")
+        connector_actions = [
+            action
+            for action in plan.actions
+            if action.operation == "render_connector_config"
+            and action.target == "vllm"
+            and not action.mutating
+        ]
+        if len(connector_actions) != 1:
+            raise ValueError(
+                "provider kv_transfer_config requires one non-mutating "
+                "render_connector_config action targeting vllm"
+            )
+        return _merge_json_option(
+            command,
+            "--kv-transfer-config",
+            kv_transfer_config,
+        )
+    if plan.provider != "vllm":
+        raise ValueError(f"{plan.provider} extensions use plan/render/check, not run")
+    return command
 
 
 def _merge_json_option(
