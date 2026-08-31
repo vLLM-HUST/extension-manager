@@ -15,6 +15,7 @@ from vllm_hust_ext.providers.production_stack import ProductionStackProvider
 from vllm_hust_ext.providers.vllm import VllmProvider
 
 FIXTURES = Path(__file__).parent / "fixtures"
+EXAMPLES = Path(__file__).parents[1] / "examples"
 
 
 def manifest(name: str) -> BundleManifest:
@@ -102,3 +103,23 @@ def test_core_rejects_provider_generated_mutation() -> None:
         include_external_providers=False,
     )
     assert all(not action.mutating for action in plan.actions)
+
+
+@pytest.mark.parametrize(
+    ("directory", "provider"),
+    [
+        ("mooncake-provider", "mooncake"),
+        ("production-stack-provider", "production-stack"),
+    ],
+)
+def test_installable_provider_profiles_use_project_owned_namespace(
+    directory: str, provider: str
+) -> None:
+    root = EXAMPLES / directory
+    manifest_path = next(root.glob("src/*/manifests/vllm-hust-extension-v0.2.json"))
+    value = parse_manifest(json.loads(manifest_path.read_text(encoding="utf-8")))
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert value.host.provider == provider
+    assert '[project.entry-points."vllm_hust.extension_bundles"]' in pyproject
+    assert "vllm.extension_bundles" not in pyproject

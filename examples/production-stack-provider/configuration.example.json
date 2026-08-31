@@ -1,0 +1,13 @@
+{
+  "chart": "vllm/vllm-stack",
+  "release": "vllm",
+  "namespace": "vllm-system",
+  "values": {
+    "routerSpec": {
+      "enableRouter": true
+    },
+    "servingEngineSpec": {
+      "enableEngine": true
+    }
+  }
+}

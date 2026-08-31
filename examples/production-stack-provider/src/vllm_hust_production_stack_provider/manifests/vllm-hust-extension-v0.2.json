@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.2-experimental",
+  "extension_id": "org.vllm-hust.production-stack-provider",
+  "extension_version": "0.2.0.dev0",
+  "kind": "control_plane_extension",
+  "host": {
+    "provider": "production-stack",
+    "name": "vLLM Production Stack",
+    "version_range": ">=0",
+    "api_range": ">=1,<2"
+  },
+  "runtime": {
+    "type": "kubernetes",
+    "process_scope": "cluster_control_plane",
+    "isolation": "kubernetes"
+  },
+  "lifecycle_owner": "kubernetes",
+  "protocols": [
+    {"name": "helm-values", "version_range": ">=3,<4"},
+    {"name": "kubernetes-api", "version_range": ">=1.28,<2"}
+  ],
+  "implementation": [
+    {"type": "helm_values", "chart": "vllm/vllm-stack"},
+    {"type": "kubernetes_manifest", "resources": ["Deployment", "Service"]},
+    {"type": "crd", "kinds": ["Model", "Router"]},
+    {"type": "controller", "roles": ["router", "autoscaler"]},
+    {"type": "oci_image", "source": "chart-values"}
+  ],
+  "requires_services": [
+    {
+      "service_id": "kubernetes-api",
+      "protocol": "https",
+      "version_range": ">=1.28,<2",
+      "endpoint_config": "kube_context",
+      "optional": false
+    }
+  ]
+}
