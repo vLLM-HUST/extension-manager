@@ -182,7 +182,13 @@ def test_known_host_version_projects_compatible_or_incompatible() -> None:
 
     compatible = status_for(
         bundle(value),
-        ExtensionConfig(True, {"host_version": "0.19.0"}),
+        ExtensionConfig(
+            True,
+            {
+                "host_version": "0.19.0",
+                "protocol_versions": {"vllm.victim_selector": "1.0"},
+            },
+        ),
         include_external_providers=False,
     )
     incompatible = status_for(
@@ -193,6 +199,20 @@ def test_known_host_version_projects_compatible_or_incompatible() -> None:
 
     assert LifecycleState.COMPATIBLE in compatible.states
     assert LifecycleState.INCOMPATIBLE in incompatible.states
+
+
+def test_vllm_does_not_assume_a_fork_only_protocol_exists() -> None:
+    value = manifest("bidkv-v0.2.json")
+
+    unverified = status_for(
+        bundle(value),
+        ExtensionConfig(True, {"host_version": "0.19.0"}),
+        include_external_providers=False,
+    )
+
+    assert LifecycleState.COMPATIBLE not in unverified.states
+    assert LifecycleState.DEGRADED in unverified.states
+    assert any("protocol vllm.victim_selector" in item for item in unverified.evidence)
 
 
 def test_conflicting_provider_plans_are_rejected() -> None:

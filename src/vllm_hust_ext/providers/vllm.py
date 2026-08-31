@@ -70,7 +70,9 @@ class VllmProvider:
             configuration,
             detected_host_version=detected_version,
             default_api_version="1.0",
-            default_protocol_versions={"vllm.victim_selector": "1.0"},
+            # A matching vLLM distribution version does not prove that a
+            # fork-only or draft extension protocol is actually present.
+            default_protocol_versions={},
         )
         return ProviderCheck(
             compatible=compatible,
