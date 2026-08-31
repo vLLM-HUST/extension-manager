@@ -11,11 +11,7 @@ from vllm_hust_ext.config import (
 def test_config_round_trip(tmp_path: Path) -> None:
     path = tmp_path / "config.json"
     expected = UserConfig(
-        {
-            "org.vllm-hust.bidkv": ExtensionConfig(
-                True, {"utility_strategy": "bidkv"}
-            )
-        }
+        {"org.vllm-hust.bidkv": ExtensionConfig(True, {"utility_strategy": "bidkv"})}
     )
     save_config(expected, path)
     assert load_config(path) == expected

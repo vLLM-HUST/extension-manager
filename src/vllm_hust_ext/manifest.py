@@ -361,9 +361,7 @@ def _parse_protocols(value: Any) -> tuple[ProtocolSpec, ...]:
         result.append(
             ProtocolSpec(
                 _string(item["name"], f"protocols[{index}].name"),
-                _specifier(
-                    item["version_range"], f"protocols[{index}].version_range"
-                ),
+                _specifier(item["version_range"], f"protocols[{index}].version_range"),
             )
         )
     return tuple(result)
