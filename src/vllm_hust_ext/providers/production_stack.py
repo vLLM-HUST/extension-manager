@@ -59,10 +59,59 @@ class ProductionStackProvider:
 
     def render(self, plan: ProviderPlan) -> tuple[RenderArtifact, ...]:
         values = plan.generated_config["values"]
+        release = plan.generated_config["release"]
+        chart = plan.generated_config["chart"]
+        namespace = plan.generated_config["namespace"]
         commands = {
-            "render": "helm template <release> <chart> -f values.json",
-            "validate": "kubectl apply --dry-run=server -f rendered.yaml",
+            "render": {
+                "argv": [
+                    "helm",
+                    "template",
+                    release,
+                    chart,
+                    "--namespace",
+                    namespace,
+                    "-f",
+                    "values.json",
+                ],
+                "mutating": False,
+            },
+            "validate": {
+                "argv": [
+                    "kubectl",
+                    "--namespace",
+                    namespace,
+                    "apply",
+                    "--dry-run=server",
+                    "-f",
+                    "rendered.yaml",
+                ],
+                "mutating": False,
+            },
             "apply": None,
+            "operator_owned_mutations": {
+                "install": None,
+                "upgrade": None,
+                "rollback": None,
+                "uninstall": None,
+            },
+            "verification": {
+                "helm_history_argv": [
+                    "helm",
+                    "history",
+                    release,
+                    "--namespace",
+                    namespace,
+                ],
+                "rollout_status_argv": [
+                    "kubectl",
+                    "--namespace",
+                    namespace,
+                    "rollout",
+                    "status",
+                    "<operator-selected-workload>",
+                ],
+            },
         }
         return (
             RenderArtifact(
@@ -87,6 +136,8 @@ class ProductionStackProvider:
         configured = isinstance(values, dict) and compatible is not False
         reachable = configuration.get("cluster_reachable")
         healthy = configuration.get("rollout_healthy")
+        cluster_evidence = configuration.get("cluster_evidence")
+        rollout_evidence = configuration.get("rollout_evidence")
         if reachable is not None and not isinstance(reachable, bool):
             return ProviderCheck(
                 compatible,
@@ -100,12 +151,66 @@ class ProductionStackProvider:
                 False,
                 evidence=compatibility_evidence + ("rollout_healthy must be boolean",),
             )
+        if cluster_evidence is not None and (
+            not isinstance(cluster_evidence, str) or not cluster_evidence.strip()
+        ):
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("cluster_evidence must be a non-empty string",),
+            )
+        if rollout_evidence is not None and (
+            not isinstance(rollout_evidence, str) or not rollout_evidence.strip()
+        ):
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("rollout_evidence must be a non-empty string",),
+            )
+        if reachable is True and not cluster_evidence:
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("cluster_reachable=true requires cluster_evidence",),
+            )
+        if healthy is True and not rollout_evidence:
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("rollout_healthy=true requires rollout_evidence",),
+            )
+        if healthy is True and reachable is not True:
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("rollout_healthy=true requires cluster_reachable=true",),
+            )
         degraded = compatible is None or reachable is False or healthy is False
+        runtime_evidence = tuple(
+            item
+            for item in (
+                f"cluster evidence: {cluster_evidence}" if cluster_evidence else None,
+                f"rollout evidence: {rollout_evidence}" if rollout_evidence else None,
+            )
+            if item is not None
+        )
         return ProviderCheck(
             compatible,
             configured,
             reachable=reachable,
             healthy=healthy,
             degraded=degraded,
-            evidence=compatibility_evidence + ("no cluster mutation was attempted",),
+            evidence=compatibility_evidence
+            + runtime_evidence
+            + ("no cluster mutation was attempted",),
         )

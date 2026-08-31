@@ -244,10 +244,77 @@ def test_production_stack_renders_but_never_applies() -> None:
     assert all("apply" not in action.operation for action in plan.actions)
     operator_plan = json.loads(artifacts[1].content)
     assert operator_plan["apply"] is None
+    assert set(operator_plan["operator_owned_mutations"]) == {
+        "install",
+        "upgrade",
+        "rollback",
+        "uninstall",
+    }
+    assert all(
+        value is None for value in operator_plan["operator_owned_mutations"].values()
+    )
+    assert operator_plan["render"]["mutating"] is False
+    assert operator_plan["validate"]["mutating"] is False
 
     check = provider.check(value, {"values": {}})
     assert check.compatible is None
     assert check.degraded is True
+
+
+def test_production_stack_refuses_unsubstantiated_healthy_state() -> None:
+    value = manifest("production-stack-v0.2.json")
+    provider = ProductionStackProvider()
+
+    missing_cluster_evidence = provider.check(
+        value,
+        {
+            "values": {},
+            "cluster_reachable": True,
+            "rollout_healthy": True,
+        },
+    )
+    contradictory = provider.check(
+        value,
+        {
+            "values": {},
+            "cluster_reachable": False,
+            "rollout_healthy": True,
+            "rollout_evidence": "deployment available",
+        },
+    )
+
+    assert missing_cluster_evidence.configured is False
+    assert missing_cluster_evidence.degraded is True
+    assert any("cluster_evidence" in item for item in missing_cluster_evidence.evidence)
+    assert contradictory.configured is False
+    assert any("cluster_reachable=true" in item for item in contradictory.evidence)
+
+
+def test_production_stack_projects_healthy_only_with_evidence() -> None:
+    value = manifest("production-stack-v0.2.json")
+    check = ProductionStackProvider().check(
+        value,
+        {
+            "values": {},
+            "host_version": "0.1.12",
+            "host_api_version": "1.0",
+            "protocol_versions": {
+                "helm-values": "3.19",
+                "kubernetes-api": "1.34.11",
+            },
+            "cluster_reachable": True,
+            "cluster_evidence": "Kubernetes server v1.34.11 responded",
+            "rollout_healthy": True,
+            "rollout_evidence": "deployment available 1/1",
+        },
+    )
+
+    assert check.compatible is True
+    assert check.configured is True
+    assert check.reachable is True
+    assert check.healthy is True
+    assert check.degraded is False
+    assert any("deployment available 1/1" in item for item in check.evidence)
 
 
 def test_core_rejects_provider_generated_mutation() -> None:

@@ -23,6 +23,12 @@ different kinds. Installing or enabling an adapter never gives this manager
 authority to start shared services, change drivers, delete KV data, or mutate a
 production cluster.
 
+Production Stack health evidence is not accepted as a bare boolean:
+`cluster_reachable=true` requires `cluster_evidence`, and
+`rollout_healthy=true` requires both a reachable cluster and
+`rollout_evidence`. Rendered operator plans keep install, upgrade, rollback,
+and uninstall as explicit operator-owned `null` actions.
+
 Mooncake runtime detection covers the mutually exclusive official CUDA,
 CUDA 13, non-CUDA, NPU, MUSA, and EFA wheel variants. Installing more than one
 variant is reported as an incompatible/degraded environment instead of picking
