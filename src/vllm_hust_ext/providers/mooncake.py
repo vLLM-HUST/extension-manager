@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import suppress
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -90,10 +91,8 @@ class MooncakeProvider:
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
         detected_version = None
-        try:
+        with suppress(PackageNotFoundError):
             detected_version = version("mooncake-transfer-engine")
-        except PackageNotFoundError:
-            pass
         compatible, compatibility_evidence = assess_compatibility(
             manifest,
             configuration,

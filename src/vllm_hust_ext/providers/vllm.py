@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import suppress
 from dataclasses import asdict
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
@@ -62,10 +63,8 @@ class VllmProvider:
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
         detected_version = None
-        try:
+        with suppress(PackageNotFoundError):
             detected_version = version("vllm")
-        except PackageNotFoundError:
-            pass
         compatible, evidence = assess_compatibility(
             manifest,
             configuration,
