@@ -23,11 +23,23 @@ _CONNECTORS = {
     "LMCacheMPConnector",
     "LMCacheConnectorV1",
     "LMCacheConnectorV1Dynamic",
+    "LMCacheAscendConnector",
+    "LMCacheAscendConnectorV1Dynamic",
 }
 _DEFAULT_MODULE_PATHS = {
     "LMCacheConnectorV1Dynamic": "lmcache.integration.vllm.lmcache_connector_v1",
+    "LMCacheAscendConnectorV1Dynamic": (
+        "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1"
+    ),
 }
-_OFFICIAL_MODULE_PREFIX = "lmcache.integration.vllm."
+_ALLOWED_MODULE_PATHS = {
+    "LMCacheConnectorV1Dynamic": {
+        "lmcache.integration.vllm.lmcache_connector_v1",
+    },
+    "LMCacheAscendConnectorV1Dynamic": {
+        "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1",
+    },
+}
 
 
 class LMCacheProvider:
@@ -55,12 +67,11 @@ class LMCacheProvider:
             "kv_connector_module_path", _DEFAULT_MODULE_PATHS.get(connector)
         )
         if module_path is not None:
-            if not isinstance(module_path, str) or not module_path.startswith(
-                _OFFICIAL_MODULE_PREFIX
-            ):
+            allowed_paths = _ALLOWED_MODULE_PATHS.get(connector, set())
+            if not isinstance(module_path, str) or module_path not in allowed_paths:
                 raise ValueError(
-                    "kv_connector_module_path must reference the official "
-                    "lmcache.integration.vllm namespace"
+                    "kv_connector_module_path does not match the selected official "
+                    f"LMCache connector {connector}"
                 )
             result["kv_connector_module_path"] = module_path
         return result
@@ -90,16 +101,25 @@ class LMCacheProvider:
                     details={"protocol": service.protocol},
                 )
             )
+        warnings = (
+            (
+                "LMCache service and cache-data lifecycle remain owned by the "
+                "external operator; the manager will not start, stop, upgrade, "
+                "clear, evict, or delete them."
+            )
+            if manifest.requires_services
+            else (
+                "LMCache runtime and platform-backend lifecycle remain owned by "
+                "the host operator; the manager only renders the vLLM connector "
+                "configuration and will not import or mutate the backend."
+            )
+        )
         return ProviderPlan(
             manifest.bundle_id,
             self.name,
             tuple(actions),
             {"kv_transfer_config": connector},
-            (
-                "LMCache service and cache-data lifecycle remain owned by the "
-                "external operator; the manager will not start, stop, upgrade, "
-                "clear, evict, or delete them.",
-            ),
+            (warnings,),
         )
 
     def render(self, plan: ProviderPlan) -> tuple[RenderArtifact, ...]:
@@ -115,8 +135,13 @@ class LMCacheProvider:
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
         detected_version = None
+        distribution = (
+            "lmcache-ascend"
+            if manifest.host.name.casefold() == "lmcache-ascend"
+            else "lmcache"
+        )
         with suppress(PackageNotFoundError):
-            detected_version = version("lmcache")
+            detected_version = version(distribution)
         compatible, compatibility_evidence = assess_compatibility(
             manifest,
             configuration,

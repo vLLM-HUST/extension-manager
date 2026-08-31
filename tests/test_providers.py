@@ -91,9 +91,6 @@ def test_lmcache_plan_uses_mp_connector_without_owning_cache_data() -> None:
         value,
         {
             "connector": "LMCacheMPConnector",
-            "kv_connector_module_path": (
-                "lmcache.integration.vllm.lmcache_mp_connector"
-            ),
             "kv_connector_extra_config": {
                 "lmcache.mp.host": "lmcache.example",
                 "lmcache.mp.port": 5555,
@@ -104,7 +101,7 @@ def test_lmcache_plan_uses_mp_connector_without_owning_cache_data() -> None:
 
     connector = plan.generated_config["kv_transfer_config"]
     assert connector["kv_connector"] == "LMCacheMPConnector"
-    assert connector["kv_connector_module_path"].startswith("lmcache.integration.vllm.")
+    assert "kv_connector_module_path" not in connector
     assert {action.operation for action in plan.actions} == {
         "render_connector_config",
         "check_service",
@@ -144,6 +141,53 @@ def test_lmcache_rejects_nonofficial_dynamic_connector_module() -> None:
             },
             enabled=True,
         )
+
+
+def test_lmcache_rejects_module_that_does_not_match_connector() -> None:
+    value = manifest("lmcache-v0.2.json")
+
+    with pytest.raises(ValueError, match="does not match"):
+        LMCacheProvider().plan(
+            value,
+            {
+                "connector": "LMCacheConnectorV1Dynamic",
+                "kv_connector_module_path": (
+                    "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1"
+                ),
+            },
+            enabled=True,
+        )
+
+
+def test_lmcache_ascend_adapter_is_in_process_not_an_mp_service() -> None:
+    value = parse_manifest(
+        json.loads(
+            next(
+                (EXAMPLES / "lmcache-ascend-adapter").glob(
+                    "src/*/manifests/vllm-hust-extension-v0.2.json"
+                )
+            ).read_text(encoding="utf-8")
+        )
+    )
+    plan = LMCacheProvider().plan(
+        value,
+        {"connector": "LMCacheAscendConnectorV1Dynamic"},
+        enabled=True,
+    )
+
+    connector = plan.generated_config["kv_transfer_config"]
+    assert value.kind == "kv_connector"
+    assert value.lifecycle_owner == "vllm"
+    assert not value.requires_services
+    assert connector == {
+        "kv_connector": "LMCacheAscendConnectorV1Dynamic",
+        "kv_role": "kv_both",
+        "kv_connector_module_path": (
+            "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1"
+        ),
+    }
+    assert {action.operation for action in plan.actions} == {"render_connector_config"}
+    assert "only renders the vLLM connector" in plan.warnings[0]
 
 
 def test_production_stack_renders_but_never_applies() -> None:
@@ -229,6 +273,7 @@ def test_conflicting_provider_plans_are_rejected() -> None:
     ("directory", "provider"),
     [
         ("lmcache-provider", "lmcache"),
+        ("lmcache-ascend-adapter", "lmcache"),
         ("mooncake-provider", "mooncake"),
         ("production-stack-provider", "production-stack"),
     ],

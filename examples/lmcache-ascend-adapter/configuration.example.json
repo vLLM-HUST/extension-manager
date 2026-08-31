@@ -1,0 +1,4 @@
+{
+  "connector": "LMCacheAscendConnectorV1Dynamic",
+  "kv_role": "kv_both"
+}

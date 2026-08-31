@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.2-experimental",
+  "extension_id": "org.vllm-hust.lmcache-ascend-vllm-adapter",
+  "extension_version": "0.2.0.dev0",
+  "kind": "kv_connector",
+  "host": {
+    "provider": "lmcache",
+    "name": "LMCache-Ascend",
+    "version_range": ">=0.4.2,<0.5",
+    "api_range": ">=1,<2"
+  },
+  "runtime": {
+    "type": "python",
+    "process_scope": "vllm_process",
+    "isolation": "trusted_in_process"
+  },
+  "lifecycle_owner": "vllm",
+  "protocols": [
+    {"name": "vllm-kv-connector", "version_range": ">=1,<2"},
+    {"name": "lmcache-runtime", "version_range": ">=0.4.2,<0.5"}
+  ],
+  "implementation": [
+    {
+      "type": "host_builtin",
+      "host": "vllm-ascend",
+      "symbols": ["LMCacheAscendConnector"]
+    },
+    {
+      "type": "python_entry_point",
+      "module": "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1",
+      "symbols": ["LMCacheAscendConnectorV1Dynamic"]
+    }
+  ],
+  "requires_services": []
+}

@@ -12,7 +12,9 @@ authority:
 - the Mooncake Provider reuses official vLLM connectors and checks externally
   operated Mooncake services;
 - the LMCache Provider renders the official MP connector configuration and
-  checks externally operated LMCache services without clearing cache data; and
+  checks externally operated LMCache services without clearing cache data;
+- the separate LMCache-Ascend adapter profile renders the official in-process
+  Ascend connector and does not claim that an LMCache MP service exists; and
 - the Production Stack Provider renders Helm/Kubernetes inputs and dry-run
   plans without applying them.
 
@@ -56,6 +58,25 @@ vllm-hust-ext extension configure org.vllm-hust.lmcache-provider \
 vllm-hust-ext extension enable org.vllm-hust.lmcache-provider
 vllm-hust-ext run --dry-run -- vllm serve MODEL
 ```
+
+LMCache-Ascend is a platform backend plus a vLLM adapter, not another top-level
+KV service. Its separate profile therefore has no `requires_services` entry and
+uses the exact official dynamic module path:
+
+```bash
+pip install vllm-hust-lmcache-ascend-adapter
+vllm-hust-ext extension configure \
+  org.vllm-hust.lmcache-ascend-vllm-adapter \
+  --file lmcache-ascend-config.json
+vllm-hust-ext extension enable \
+  org.vllm-hust.lmcache-ascend-vllm-adapter
+vllm-hust-ext run --dry-run -- vllm serve MODEL
+```
+
+`LMCacheMPConnector` is a host-recognized connector and must not be paired with
+a fabricated `lmcache.integration.vllm.lmcache_mp_connector` module. Dynamic
+connectors are accepted only when their connector name exactly matches the
+official LMCache or LMCache-Ascend module path.
 
 Only one enabled extension may claim vLLM's `--kv-transfer-config` in a single
 process. Enabling Mooncake and LMCache together therefore fails closed instead
