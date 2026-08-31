@@ -9,8 +9,8 @@ import subprocess
 from collections.abc import Sequence
 from dataclasses import asdict, replace
 
-from vllmhust.config import load_config, save_config
-from vllmhust.discovery import InstalledBundle, discover_bundles
+from vllm_hust_ext.config import load_config, save_config
+from vllm_hust_ext.discovery import InstalledBundle, discover_bundles
 
 
 def _bundle_dict(bundle: InstalledBundle, enabled: set[str]) -> dict[str, object]:
@@ -35,7 +35,7 @@ def _activation_environment(bundles: Sequence[InstalledBundle]) -> dict[str, str
                     f"enabled Bundles disagree on environment variable {key}"
                 )
             environment[key] = value
-    environment["VLLMHUST_ENABLED_BUNDLES"] = ",".join(
+    environment["VLLM_HUST_EXT_ENABLED_BUNDLES"] = ",".join(
         bundle.bundle_id for bundle in bundles
     )
     return environment
@@ -100,7 +100,7 @@ def _merge_command_config(
     return result
 
 
-def _plugin_command(args: argparse.Namespace) -> int:
+def _extension_command(args: argparse.Namespace) -> int:
     config = load_config()
     enabled = set(config.enabled)
     if args.action == "list":
@@ -160,16 +160,16 @@ def _run_command(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="vllmhust")
+    parser = argparse.ArgumentParser(prog="vllm-hust-ext")
     subcommands = parser.add_subparsers(dest="command_name", required=True)
-    plugin = subcommands.add_parser("plugin")
-    plugin_subcommands = plugin.add_subparsers(dest="action", required=True)
-    list_parser = plugin_subcommands.add_parser("list")
+    extension = subcommands.add_parser("extension")
+    extension_subcommands = extension.add_subparsers(dest="action", required=True)
+    list_parser = extension_subcommands.add_parser("list")
     list_parser.add_argument("--json", action="store_true")
     for action in ("inspect", "validate", "enable", "disable"):
-        action_parser = plugin_subcommands.add_parser(action)
+        action_parser = extension_subcommands.add_parser(action)
         action_parser.add_argument("bundle_id")
-    plugin_subcommands.add_parser("env")
+    extension_subcommands.add_parser("env")
     run_parser = subcommands.add_parser("run")
     run_parser.add_argument("--dry-run", action="store_true")
     run_parser.add_argument("command", nargs=argparse.REMAINDER)
@@ -180,8 +180,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        if args.command_name == "plugin":
-            return _plugin_command(args)
+        if args.command_name == "extension":
+            return _extension_command(args)
         return _run_command(args)
     except (OSError, ValueError) as error:
         parser.error(str(error))

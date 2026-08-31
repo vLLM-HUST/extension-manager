@@ -10,9 +10,9 @@ from importlib.metadata import EntryPoint, entry_points
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
-from vllmhust.manifest import BundleManifest, ManifestError, load_manifest
+from vllm_hust_ext.manifest import BundleManifest, ManifestError, load_manifest
 
-ENTRY_POINT_GROUP = "vllm.extension_bundles"
+ENTRY_POINT_GROUP = "vllm_hust.extension_bundles"
 MANIFEST_FILENAMES = ("vllm-hust-extension-v1.json", "extension-bundle-v1.json")
 _MODULE_PATH = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$")
 

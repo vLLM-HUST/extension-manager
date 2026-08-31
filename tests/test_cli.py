@@ -2,11 +2,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from vllmhust.cli import (
+from vllm_hust_ext.cli import (
     _activation_environment,
     _merge_command_config,
 )
-from vllmhust.manifest import BundleActivation
+from vllm_hust_ext.manifest import BundleActivation
 
 
 def test_activation_does_not_replace_vllm_plugin_allowlist() -> None:
@@ -21,7 +21,7 @@ def test_activation_does_not_replace_vllm_plugin_allowlist() -> None:
 
     assert environment == {
         "BIDKV_UTILITY_ENABLE": "1",
-        "VLLMHUST_ENABLED_BUNDLES": "org.vllm-hust.bidkv",
+        "VLLM_HUST_EXT_ENABLED_BUNDLES": "org.vllm-hust.bidkv",
     }
     assert "VLLM_PLUGINS" not in environment
 

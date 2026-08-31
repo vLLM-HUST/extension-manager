@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vllmhust.config import UserConfig, load_config, save_config
+from vllm_hust_ext.config import UserConfig, load_config, save_config
 
 
 def test_config_round_trip(tmp_path: Path) -> None:

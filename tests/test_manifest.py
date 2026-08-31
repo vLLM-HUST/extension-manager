@@ -1,6 +1,6 @@
 import pytest
 
-from vllmhust.manifest import ManifestError, parse_manifest
+from vllm_hust_ext.manifest import ManifestError, parse_manifest
 
 
 def valid_manifest() -> dict[str, object]:

@@ -17,8 +17,12 @@ class UserConfig:
 
 
 def config_path() -> Path:
-    override = os.environ.get("VLLMHUST_CONFIG")
-    return Path(override) if override else user_config_path("vllmhust") / "config.json"
+    override = os.environ.get("VLLM_HUST_EXT_CONFIG")
+    return (
+        Path(override)
+        if override
+        else user_config_path("vllm-hust-ext") / "config.json"
+    )
 
 
 def load_config(path: Path | None = None) -> UserConfig:
@@ -27,14 +31,14 @@ def load_config(path: Path | None = None) -> UserConfig:
         return UserConfig()
     payload = json.loads(target.read_text(encoding="utf-8"))
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
-        raise ValueError("vllmhust config has an unsupported schema")
+        raise ValueError("vllm-hust-ext config has an unsupported schema")
     enabled = payload.get("enabled", [])
     if not isinstance(enabled, list) or not all(
         isinstance(item, str) for item in enabled
     ):
-        raise ValueError("vllmhust config enabled must be an array of strings")
+        raise ValueError("vllm-hust-ext config enabled must be an array of strings")
     if len(enabled) != len(set(enabled)):
-        raise ValueError("vllmhust config enabled contains duplicates")
+        raise ValueError("vllm-hust-ext config enabled contains duplicates")
     return UserConfig(tuple(enabled))
 
 

@@ -1,4 +1,4 @@
-"""Static Bundle v1 manifest model and validation."""
+"""Static vLLM-HUST Extension Bundle v1 manifest model and validation."""
 
 from __future__ import annotations
 

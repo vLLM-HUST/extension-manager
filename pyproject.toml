@@ -3,9 +3,9 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vllmhust"
+name = "vllm-hust-ext"
 version = "0.1.0"
-description = "Plugin lifecycle manager for the vLLM-HUST ecosystem"
+description = "Extension discovery and activation manager for the vLLM-HUST ecosystem"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
@@ -19,10 +19,10 @@ dependencies = [
 test = ["pytest>=8.0", "ruff>=0.12"]
 
 [project.scripts]
-vllmhust = "vllmhust.cli:main"
+vllm-hust-ext = "vllm_hust_ext.cli:main"
 
 [project.urls]
-Repository = "https://github.com/vLLM-HUST/vllmhust"
+Repository = "https://github.com/vLLM-HUST/extension-manager"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
