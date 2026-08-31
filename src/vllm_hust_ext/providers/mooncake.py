@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -13,6 +14,7 @@ from vllm_hust_ext.providers.base import (
     ProviderCheck,
     ProviderPlan,
     RenderArtifact,
+    assess_compatibility,
 )
 
 _CONNECTORS = {"MooncakeConnector", "MooncakeStoreConnector"}
@@ -87,46 +89,72 @@ class MooncakeProvider:
     def check(
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
+        detected_version = None
+        try:
+            detected_version = version("mooncake-transfer-engine")
+        except PackageNotFoundError:
+            pass
+        compatible, compatibility_evidence = assess_compatibility(
+            manifest,
+            configuration,
+            detected_host_version=detected_version,
+            default_api_version="1.0",
+            default_protocol_versions={
+                "mooncake-store-service": "1.0",
+                "vllm-kv-connector": "1.0",
+            },
+        )
+        if compatible is False:
+            return ProviderCheck(False, False, evidence=compatibility_evidence)
         try:
             self._connector_config(configuration)
         except ValueError as error:
-            return ProviderCheck(False, False, evidence=(str(error),))
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence + (str(error),),
+            )
         health_url = configuration.get("health_url")
         if not health_url:
             required = bool(manifest.requires_services)
             return ProviderCheck(
-                True,
+                compatible,
                 not required,
                 degraded=required,
-                evidence=("health_url is required to verify the external service",),
+                evidence=compatibility_evidence
+                + ("health_url is required to verify the external service",),
             )
         try:
             request = Request(str(health_url), method="GET")
             with urlopen(request, timeout=2) as response:  # noqa: S310
                 healthy = 200 <= response.status < 300
                 return ProviderCheck(
-                    True,
+                    compatible,
                     True,
                     reachable=True,
                     healthy=healthy,
                     degraded=not healthy,
-                    evidence=(f"Mooncake health endpoint returned {response.status}",),
+                    evidence=compatibility_evidence
+                    + (f"Mooncake health endpoint returned {response.status}",),
                 )
         except HTTPError as error:
             return ProviderCheck(
-                True,
+                compatible,
                 True,
                 reachable=True,
                 healthy=False,
                 degraded=True,
-                evidence=(f"Mooncake health endpoint returned {error.code}",),
+                evidence=compatibility_evidence
+                + (f"Mooncake health endpoint returned {error.code}",),
             )
         except (OSError, URLError) as error:
             return ProviderCheck(
-                True,
+                compatible,
                 True,
                 reachable=False,
                 healthy=False,
                 degraded=True,
-                evidence=(f"Mooncake service is unreachable: {error}",),
+                evidence=compatibility_evidence
+                + (f"Mooncake service is unreachable: {error}",),
             )

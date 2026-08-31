@@ -11,6 +11,7 @@ from vllm_hust_ext.providers.base import (
     ProviderCheck,
     ProviderPlan,
     RenderArtifact,
+    assess_compatibility,
 )
 
 
@@ -79,24 +80,33 @@ class ProductionStackProvider:
     def check(
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
+        compatible, compatibility_evidence = assess_compatibility(
+            manifest, configuration
+        )
         values = configuration.get("values")
         configured = isinstance(values, dict)
         reachable = configuration.get("cluster_reachable")
         healthy = configuration.get("rollout_healthy")
         if reachable is not None and not isinstance(reachable, bool):
             return ProviderCheck(
-                False, False, evidence=("cluster_reachable must be boolean",)
+                compatible,
+                False,
+                evidence=compatibility_evidence
+                + ("cluster_reachable must be boolean",),
             )
         if healthy is not None and not isinstance(healthy, bool):
             return ProviderCheck(
-                False, False, evidence=("rollout_healthy must be boolean",)
+                compatible,
+                False,
+                evidence=compatibility_evidence
+                + ("rollout_healthy must be boolean",),
             )
         degraded = reachable is False or healthy is False
         return ProviderCheck(
-            True,
+            compatible,
             configured,
             reachable=reachable,
             healthy=healthy,
             degraded=degraded,
-            evidence=("no cluster mutation was attempted",),
+            evidence=compatibility_evidence + ("no cluster mutation was attempted",),
         )

@@ -62,9 +62,9 @@ def status_for(
             tuple(states + [LifecycleState.INCOMPATIBLE]),
             (str(error),),
         )
-    if check.compatible:
+    if check.compatible is True:
         states.append(LifecycleState.COMPATIBLE)
-    else:
+    elif check.compatible is False:
         states.append(LifecycleState.INCOMPATIBLE)
     if check.configured:
         states.append(LifecycleState.CONFIGURED)

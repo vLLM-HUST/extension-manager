@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
 from vllm_hust_ext.manifest import BundleManifest
@@ -12,6 +13,7 @@ from vllm_hust_ext.providers.base import (
     ProviderCheck,
     ProviderPlan,
     RenderArtifact,
+    assess_compatibility,
 )
 
 
@@ -59,9 +61,21 @@ class VllmProvider:
     def check(
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
-        compatible = self.supports(manifest)
+        detected_version = None
+        try:
+            detected_version = version("vllm")
+        except PackageNotFoundError:
+            pass
+        compatible, evidence = assess_compatibility(
+            manifest,
+            configuration,
+            detected_host_version=detected_version,
+            default_api_version="1.0",
+            default_protocol_versions={"vllm.victim_selector": "1.0"},
+        )
         return ProviderCheck(
             compatible=compatible,
-            configured=compatible,
-            evidence=("vLLM launch configuration can be rendered",),
+            configured=compatible is not False,
+            degraded=compatible is None,
+            evidence=evidence + ("vLLM launch configuration can be rendered",),
         )

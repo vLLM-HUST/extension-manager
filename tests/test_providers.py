@@ -8,8 +8,14 @@ from urllib.error import URLError
 import pytest
 
 from vllm_hust_ext.config import ExtensionConfig
-from vllm_hust_ext.core import LifecycleState, plan_for, status_for
+from vllm_hust_ext.core import (
+    LifecycleState,
+    plan_for,
+    reject_conflicting_plans,
+    status_for,
+)
 from vllm_hust_ext.manifest import BundleManifest, parse_manifest
+from vllm_hust_ext.providers.base import ProviderPlan
 from vllm_hust_ext.providers.mooncake import MooncakeProvider
 from vllm_hust_ext.providers.production_stack import ProductionStackProvider
 from vllm_hust_ext.providers.vllm import VllmProvider
@@ -103,6 +109,34 @@ def test_core_rejects_provider_generated_mutation() -> None:
         include_external_providers=False,
     )
     assert all(not action.mutating for action in plan.actions)
+
+
+def test_known_host_version_projects_compatible_or_incompatible() -> None:
+    value = manifest("bidkv-v0.2.json")
+
+    compatible = status_for(
+        bundle(value),
+        ExtensionConfig(True, {"host_version": "0.19.0"}),
+        include_external_providers=False,
+    )
+    incompatible = status_for(
+        bundle(value),
+        ExtensionConfig(True, {"host_version": "0.20.0"}),
+        include_external_providers=False,
+    )
+
+    assert LifecycleState.COMPATIBLE in compatible.states
+    assert LifecycleState.INCOMPATIBLE in incompatible.states
+
+
+def test_conflicting_provider_plans_are_rejected() -> None:
+    plans = (
+        ProviderPlan("one", "vllm", (), {"additional_config": {"policy": "a"}}),
+        ProviderPlan("two", "vllm", (), {"additional_config": {"policy": "b"}}),
+    )
+
+    with pytest.raises(ValueError, match="conflict"):
+        reject_conflicting_plans(plans)
 
 
 @pytest.mark.parametrize(
