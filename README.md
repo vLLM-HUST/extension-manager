@@ -38,6 +38,13 @@ vllm-hust-ext extension check org.vllm-hust.bidkv
 vllm-hust-ext run -- vllm serve MODEL
 ```
 
+The BidKV example currently describes the legacy experimental
+`vllm.victim_selector` contract. The fresh vLLM-HUST 0.23 fork does not provide
+that protocol, so Manager compatibility remains unverified/incompatible unless
+the host supplies explicit protocol evidence. New core work must align with
+upstream scheduler-plugin RFC #51608 and draft PR #51601 instead of adding a
+second private victim-selector API.
+
 External KV profiles follow the same install/configure/enable flow. For
 example, the experimental LMCache profile renders an official vLLM connector
 argument without starting or modifying the LMCache service:
