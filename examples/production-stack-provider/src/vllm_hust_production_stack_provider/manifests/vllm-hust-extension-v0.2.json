@@ -16,13 +16,13 @@
   },
   "lifecycle_owner": "kubernetes",
   "protocols": [
-    {"name": "helm-values", "version_range": ">=3,<4"},
+    {"name": "helm-values", "version_range": ">=3,<5"},
     {"name": "kubernetes-api", "version_range": ">=1.28,<2"}
   ],
   "implementation": [
     {"type": "helm_values", "chart": "vllm/vllm-stack"},
     {"type": "kubernetes_manifest", "resources": ["Deployment", "Service"]},
-    {"type": "crd", "kinds": ["Model", "Router"]},
+    {"type": "crd", "kinds": ["LoraAdapter"]},
     {"type": "controller", "roles": ["router", "autoscaler"]},
     {"type": "oci_image", "source": "chart-values"}
   ],

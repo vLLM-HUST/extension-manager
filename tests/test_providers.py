@@ -240,6 +240,8 @@ def test_production_stack_renders_but_never_applies() -> None:
     artifacts = provider.render(plan)
 
     assert value.kind == "control_plane_extension"
+    crd_carrier = next(item for item in value.implementation if item.type == "crd")
+    assert dict(crd_carrier.attributes)["kinds"] == ["LoraAdapter"]
     assert all(not action.mutating for action in plan.actions)
     assert all("apply" not in action.operation for action in plan.actions)
     operator_plan = json.loads(artifacts[1].content)
@@ -299,7 +301,7 @@ def test_production_stack_projects_healthy_only_with_evidence() -> None:
             "host_version": "0.1.12",
             "host_api_version": "1.0",
             "protocol_versions": {
-                "helm-values": "3.19",
+                "helm-values": "4.2.4",
                 "kubernetes-api": "1.34.11",
             },
             "cluster_reachable": True,
