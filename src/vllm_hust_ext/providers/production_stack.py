@@ -84,7 +84,7 @@ class ProductionStackProvider:
             manifest, configuration
         )
         values = configuration.get("values")
-        configured = isinstance(values, dict)
+        configured = isinstance(values, dict) and compatible is not False
         reachable = configuration.get("cluster_reachable")
         healthy = configuration.get("rollout_healthy")
         if reachable is not None and not isinstance(reachable, bool):
@@ -100,7 +100,7 @@ class ProductionStackProvider:
                 False,
                 evidence=compatibility_evidence + ("rollout_healthy must be boolean",),
             )
-        degraded = reachable is False or healthy is False
+        degraded = compatible is None or reachable is False or healthy is False
         return ProviderCheck(
             compatible,
             configured,

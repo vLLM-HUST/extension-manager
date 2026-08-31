@@ -100,6 +100,10 @@ def test_production_stack_renders_but_never_applies() -> None:
     operator_plan = json.loads(artifacts[1].content)
     assert operator_plan["apply"] is None
 
+    check = provider.check(value, {"values": {}})
+    assert check.compatible is None
+    assert check.degraded is True
+
 
 def test_core_rejects_provider_generated_mutation() -> None:
     value = manifest("bidkv-v0.2.json")
