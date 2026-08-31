@@ -72,6 +72,10 @@ contract and the remaining support matrix.
 > v1 prototype are not stable APIs. No alpha package will be published until
 > the vLLM, KV-system, and control-plane end-to-end gates pass.
 
+The pinned pass/fail combinations and lifecycle rollback owners are summarized
+in [`docs/support-matrix.md`](docs/support-matrix.md). A passing point does not
+implicitly validate the rest of an experimental version range.
+
 ```bash
 pip install vllm-hust-ext
 pip install bidkv
