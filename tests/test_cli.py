@@ -125,9 +125,7 @@ def test_forget_refuses_enabled_extension(monkeypatch: pytest.MonkeyPatch) -> No
     )
 
     with pytest.raises(ValueError, match="disable"):
-        cli._extension_command(
-            SimpleNamespace(action="forget", bundle_id=extension_id)
-        )
+        cli._extension_command(SimpleNamespace(action="forget", bundle_id=extension_id))
 
 
 def test_forget_removes_disabled_stored_intent(
