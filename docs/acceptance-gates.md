@@ -33,10 +33,12 @@ hosts.
    template and Kubernetes server dry-run, inspect router/controller/autoscaler
    rollout state, reject conflicts, and prove that no apply/uninstall occurs.
    The isolated Router chart lifecycle (install, upgrade, explicit rollback,
-   automatic rollback on a missing image, and uninstall) has passed. Real
-   LoRA CRD establishment, controller probe rollout, and HPA target lookup also
-   pass. Official controller business reconciliation, a metrics-backed scale
-   decision, and Router-to-model traffic remain.
+   automatic rollback on a missing image, and uninstall) has passed. Official
+   controller business reconciliation, Router-to-external-backend traffic, and
+   a metrics-backed Router scale decision now also pass in Kubernetes 1.34.11.
+   A negative test proves that an HPA cannot share `Deployment.spec.replicas`
+   ownership with the current `VLLMRouter` controller. A real model backend and
+   a Production Stack release-supported image matrix remain release gates.
 5. Cross-cutting: incompatible host/API ranges, missing required services,
    duplicate registrations, configuration conflicts, rollback, partial health,
    and permission denial have explicit expected results.

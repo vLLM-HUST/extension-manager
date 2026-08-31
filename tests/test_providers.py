@@ -355,6 +355,12 @@ def test_production_stack_renders_but_never_applies() -> None:
     )
     assert operator_plan["render"]["mutating"] is False
     assert operator_plan["validate"]["mutating"] is False
+    assert "check_ownership_conflicts" in {action.operation for action in plan.actions}
+    assert operator_plan["verification"]["required_component_evidence"] == [
+        "controller_reconciliation",
+        "router_traffic",
+        "autoscaler_decision",
+    ]
 
     check = provider.check(value, {"values": {}})
     assert check.compatible is None
@@ -389,6 +395,22 @@ def test_production_stack_refuses_unsubstantiated_healthy_state() -> None:
     assert contradictory.configured is False
     assert any("cluster_reachable=true" in item for item in contradictory.evidence)
 
+    missing_component_evidence = provider.check(
+        value,
+        {
+            "values": {},
+            "cluster_reachable": True,
+            "cluster_evidence": "isolated Kubernetes API responded",
+            "rollout_healthy": True,
+            "rollout_evidence": "deployment available",
+        },
+    )
+    assert missing_component_evidence.configured is False
+    assert any(
+        "controller_reconciliation" in item
+        for item in missing_component_evidence.evidence
+    )
+
 
 def test_production_stack_projects_healthy_only_with_evidence() -> None:
     value = manifest("production-stack-v0.2.json")
@@ -406,6 +428,11 @@ def test_production_stack_projects_healthy_only_with_evidence() -> None:
             "cluster_evidence": "Kubernetes server v1.34.11 responded",
             "rollout_healthy": True,
             "rollout_evidence": "deployment available 1/1",
+            "component_evidence": {
+                "controller_reconciliation": "VLLMRouter owned Deployment and Service",
+                "router_traffic": "POST /v1/completions returned backend marker",
+                "autoscaler_decision": "Metrics API drove replicas 1 to 3",
+            },
         },
     )
 
@@ -415,6 +442,27 @@ def test_production_stack_projects_healthy_only_with_evidence() -> None:
     assert check.healthy is True
     assert check.degraded is False
     assert any("deployment available 1/1" in item for item in check.evidence)
+
+
+def test_production_stack_rejects_replica_ownership_conflict() -> None:
+    value = manifest("production-stack-v0.2.json")
+    check = ProductionStackProvider().check(
+        value,
+        {
+            "values": {},
+            "cluster_reachable": True,
+            "cluster_evidence": "isolated Kubernetes API responded",
+            "ownership_conflicts": [
+                "VLLMRouter controller and HPA both write Deployment.spec.replicas"
+            ],
+        },
+    )
+
+    assert check.compatible is False
+    assert check.configured is False
+    assert check.healthy is False
+    assert check.degraded is True
+    assert any("ownership conflict" in item for item in check.evidence)
 
 
 def test_core_rejects_provider_generated_mutation() -> None:

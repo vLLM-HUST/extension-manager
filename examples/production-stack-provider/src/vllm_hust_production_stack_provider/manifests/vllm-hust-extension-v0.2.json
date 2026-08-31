@@ -23,7 +23,11 @@
     {"type": "helm_values", "chart": "vllm/vllm-stack"},
     {"type": "kubernetes_manifest", "resources": ["Deployment", "Service"]},
     {"type": "crd", "kinds": ["LoraAdapter"]},
-    {"type": "controller", "roles": ["router", "autoscaler"]},
+    {
+      "type": "controller",
+      "roles": ["router", "autoscaler"],
+      "replica_ownership": "single-writer-required"
+    },
     {"type": "oci_image", "source": "chart-values"}
   ],
   "requires_services": [

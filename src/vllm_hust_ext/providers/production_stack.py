@@ -17,6 +17,11 @@ from vllm_hust_ext.providers.base import (
 
 class ProductionStackProvider:
     name = "production-stack"
+    required_component_evidence = (
+        "controller_reconciliation",
+        "router_traffic",
+        "autoscaler_decision",
+    )
 
     def supports(self, manifest: BundleManifest) -> bool:
         return manifest.host.provider == self.name
@@ -40,6 +45,7 @@ class ProductionStackProvider:
             "namespace": namespace,
             "values": values,
             "enabled": enabled,
+            "replica_ownership": "single-writer-required",
         }
         return ProviderPlan(
             manifest.bundle_id,
@@ -48,6 +54,7 @@ class ProductionStackProvider:
                 PlanAction("helm_template", chart, "kubernetes"),
                 PlanAction("server_dry_run", namespace, "kubernetes"),
                 PlanAction("check_rollout", release, "kubernetes"),
+                PlanAction("check_ownership_conflicts", release, "kubernetes"),
             ),
             generated,
             (
@@ -111,6 +118,12 @@ class ProductionStackProvider:
                     "status",
                     "<operator-selected-workload>",
                 ],
+                "required_component_evidence": list(self.required_component_evidence),
+                "replica_ownership_rule": (
+                    "A VLLMRouter-owned Deployment and an HPA must not both "
+                    "write spec.replicas unless the operator explicitly "
+                    "delegates replica ownership."
+                ),
             },
         }
         return (
@@ -138,6 +151,8 @@ class ProductionStackProvider:
         healthy = configuration.get("rollout_healthy")
         cluster_evidence = configuration.get("cluster_evidence")
         rollout_evidence = configuration.get("rollout_evidence")
+        component_evidence = configuration.get("component_evidence")
+        ownership_conflicts = configuration.get("ownership_conflicts", [])
         if reachable is not None and not isinstance(reachable, bool):
             return ProviderCheck(
                 compatible,
@@ -171,6 +186,54 @@ class ProductionStackProvider:
                 evidence=compatibility_evidence
                 + ("rollout_evidence must be a non-empty string",),
             )
+        if component_evidence is not None and not isinstance(component_evidence, dict):
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("component_evidence must be an object",),
+            )
+        if isinstance(component_evidence, dict):
+            invalid_components = tuple(
+                name
+                for name, value in component_evidence.items()
+                if not isinstance(name, str)
+                or not isinstance(value, str)
+                or not value.strip()
+            )
+            if invalid_components:
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "component_evidence values must be non-empty strings: "
+                        + ", ".join(map(str, invalid_components)),
+                    ),
+                )
+        if not isinstance(ownership_conflicts, list) or any(
+            not isinstance(item, str) or not item.strip()
+            for item in ownership_conflicts
+        ):
+            return ProviderCheck(
+                compatible,
+                False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + ("ownership_conflicts must be a list of non-empty strings",),
+            )
+        if ownership_conflicts:
+            return ProviderCheck(
+                False,
+                False,
+                reachable=reachable,
+                healthy=False,
+                degraded=True,
+                evidence=compatibility_evidence
+                + tuple(f"ownership conflict: {item}" for item in ownership_conflicts),
+            )
         if reachable is True and not cluster_evidence:
             return ProviderCheck(
                 compatible,
@@ -195,6 +258,26 @@ class ProductionStackProvider:
                 evidence=compatibility_evidence
                 + ("rollout_healthy=true requires cluster_reachable=true",),
             )
+        if healthy is True:
+            supplied = (
+                component_evidence if isinstance(component_evidence, dict) else {}
+            )
+            missing_component_evidence = tuple(
+                name
+                for name in self.required_component_evidence
+                if name not in supplied
+            )
+            if missing_component_evidence:
+                return ProviderCheck(
+                    compatible,
+                    False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + (
+                        "rollout_healthy=true requires component_evidence for: "
+                        + ", ".join(missing_component_evidence),
+                    ),
+                )
         degraded = compatible is None or reachable is False or healthy is False
         runtime_evidence = tuple(
             item
@@ -204,6 +287,14 @@ class ProductionStackProvider:
             )
             if item is not None
         )
+        structured_evidence = tuple(
+            f"{name.replace('_', ' ')} evidence: {value}"
+            for name, value in (
+                component_evidence.items()
+                if isinstance(component_evidence, dict)
+                else ()
+            )
+        )
         return ProviderCheck(
             compatible,
             configured,
@@ -212,5 +303,6 @@ class ProductionStackProvider:
             degraded=degraded,
             evidence=compatibility_evidence
             + runtime_evidence
+            + structured_evidence
             + ("no cluster mutation was attempted",),
         )

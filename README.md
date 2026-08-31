@@ -26,8 +26,20 @@ production cluster.
 Production Stack health evidence is not accepted as a bare boolean:
 `cluster_reachable=true` requires `cluster_evidence`, and
 `rollout_healthy=true` requires both a reachable cluster and
-`rollout_evidence`. Rendered operator plans keep install, upgrade, rollback,
-and uninstall as explicit operator-owned `null` actions.
+`rollout_evidence` plus structured `component_evidence` for controller
+reconciliation, Router traffic, and an autoscaler decision. A reported
+`ownership_conflicts` entry projects `incompatible + degraded`; in particular,
+an HPA and a `VLLMRouter` controller may not both own
+`Deployment.spec.replicas`. Rendered operator plans keep install, upgrade,
+rollback, and uninstall as explicit operator-owned `null` actions.
+
+The official Production Stack controller at commit `1b87c11a` has now
+reconciled a `VLLMRouter` into owned RBAC, Service, and Deployment resources in
+an isolated Kubernetes 1.34.11 cluster. The official Router forwarded an
+OpenAI-compatible completion request to an external test backend, and a real
+metrics-server CPU signal scaled a separately owned Router Deployment from one
+to three replicas. The separation is intentional: a negative test proved that
+placing an HPA on the operator-owned Deployment creates a two-writer conflict.
 
 Mooncake runtime detection covers the mutually exclusive official CUDA,
 CUDA 13, non-CUDA, NPU, MUSA, and EFA wheel variants. Installing more than one
