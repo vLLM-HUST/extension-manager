@@ -149,6 +149,17 @@ def _extension_command(args: argparse.Namespace) -> int:
         )
         print(f"disabled {args.bundle_id}")
         return 0
+    if args.action == "forget":
+        current = config.extensions.get(args.bundle_id)
+        if current is None:
+            raise ValueError(f"extension {args.bundle_id!r} has no stored state")
+        if current.enabled:
+            raise ValueError(
+                f"disable {args.bundle_id!r} before forgetting its stored state"
+            )
+        save_config(config.without_extension(args.bundle_id))
+        print(f"forgot {args.bundle_id}")
+        return 0
     if args.action == "configure":
         discover_bundles((args.bundle_id,))
         configuration = json.loads(Path(args.file).read_text(encoding="utf-8"))
@@ -268,6 +279,7 @@ def build_parser() -> argparse.ArgumentParser:
         "validate",
         "enable",
         "disable",
+        "forget",
         "status",
         "check",
         "plan",

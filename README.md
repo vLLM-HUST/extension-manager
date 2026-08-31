@@ -55,6 +55,20 @@ process. Enabling Mooncake and LMCache together therefore fails closed instead
 of silently choosing one. Experimental profile wheels pin the exact Manager
 development version until the compatibility contract is frozen.
 
+Package removal is deliberately split from runtime intent. Stop or restart the
+host process as appropriate, then disable and forget the extension before using
+the Python package manager:
+
+```bash
+vllm-hust-ext extension disable org.vllm-hust.lmcache-provider
+vllm-hust-ext extension forget org.vllm-hust.lmcache-provider
+pip uninstall vllm-hust-lmcache-provider
+```
+
+`forget` only removes Manager-owned configuration and enabled intent. It
+refuses enabled extensions and never stops a shared service, clears KV data, or
+deletes Kubernetes resources.
+
 Installing an extension distribution only makes it discoverable. Enabling is
 explicit and stored in the user configuration. Discovery reads installed
 distribution metadata and the static bundle manifest without importing its

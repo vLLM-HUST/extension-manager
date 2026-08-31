@@ -3,11 +3,13 @@ from types import SimpleNamespace
 
 import pytest
 
+import vllm_hust_ext.cli as cli
 from vllm_hust_ext.cli import (
     _activation_environment,
     _merge_command_config,
     _merge_provider_plan,
 )
+from vllm_hust_ext.config import ExtensionConfig, UserConfig
 from vllm_hust_ext.manifest import BundleActivation
 from vllm_hust_ext.providers.base import PlanAction, ProviderPlan
 
@@ -112,3 +114,37 @@ def test_run_rejects_connector_config_without_declared_vllm_action() -> None:
 
     with pytest.raises(ValueError, match="render_connector_config"):
         _merge_provider_plan(["vllm", "serve", "model"], plan)
+
+
+def test_forget_refuses_enabled_extension(monkeypatch: pytest.MonkeyPatch) -> None:
+    extension_id = "org.vllm-hust.bidkv"
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=True)}),
+    )
+
+    with pytest.raises(ValueError, match="disable"):
+        cli._extension_command(
+            SimpleNamespace(action="forget", bundle_id=extension_id)
+        )
+
+
+def test_forget_removes_disabled_stored_intent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.bidkv"
+    saved: list[UserConfig] = []
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=False)}),
+    )
+    monkeypatch.setattr(cli, "save_config", saved.append)
+
+    result = cli._extension_command(
+        SimpleNamespace(action="forget", bundle_id=extension_id)
+    )
+
+    assert result == 0
+    assert saved == [UserConfig()]

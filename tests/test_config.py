@@ -31,3 +31,18 @@ def test_schema_v1_enablement_is_migrated_in_memory(tmp_path: Path) -> None:
     config = load_config(path)
 
     assert config.extension("org.vllm-hust.bidkv").enabled is True
+
+
+def test_without_extension_removes_stored_intent() -> None:
+    config = UserConfig(
+        {
+            "org.vllm-hust.bidkv": ExtensionConfig(
+                True, {"victim_selector_plugin": "bidkv"}
+            )
+        }
+    )
+
+    forgotten = config.without_extension("org.vllm-hust.bidkv")
+
+    assert forgotten.extensions == {}
+    assert config.extension("org.vllm-hust.bidkv").enabled is True

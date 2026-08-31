@@ -40,6 +40,11 @@ class UserConfig:
         updated[extension_id] = extension
         return UserConfig(updated)
 
+    def without_extension(self, extension_id: str) -> UserConfig:
+        updated = dict(self.extensions)
+        updated.pop(extension_id, None)
+        return UserConfig(updated)
+
 
 def config_path() -> Path:
     override = os.environ.get("VLLM_HUST_EXT_CONFIG")
