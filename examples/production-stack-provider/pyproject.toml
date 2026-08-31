@@ -7,6 +7,7 @@ name = "vllm-hust-production-stack-provider"
 version = "0.2.0.dev0"
 description = "Experimental Production Stack host profile for vLLM-HUST"
 requires-python = ">=3.10"
+dependencies = ["vllm-hust-ext==0.2.0.dev0"]
 
 [project.entry-points."vllm_hust.extension_bundles"]
 "org.vllm-hust.production-stack-provider" = "vllm_hust_production_stack_provider.manifests"

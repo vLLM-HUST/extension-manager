@@ -38,6 +38,23 @@ vllm-hust-ext extension check org.vllm-hust.bidkv
 vllm-hust-ext run -- vllm serve MODEL
 ```
 
+External KV profiles follow the same install/configure/enable flow. For
+example, the experimental LMCache profile renders an official vLLM connector
+argument without starting or modifying the LMCache service:
+
+```bash
+pip install vllm-hust-lmcache-provider
+vllm-hust-ext extension configure org.vllm-hust.lmcache-provider \
+  --file lmcache-config.json
+vllm-hust-ext extension enable org.vllm-hust.lmcache-provider
+vllm-hust-ext run --dry-run -- vllm serve MODEL
+```
+
+Only one enabled extension may claim vLLM's `--kv-transfer-config` in a single
+process. Enabling Mooncake and LMCache together therefore fails closed instead
+of silently choosing one. Experimental profile wheels pin the exact Manager
+development version until the compatibility contract is frozen.
+
 Installing an extension distribution only makes it discoverable. Enabling is
 explicit and stored in the user configuration. Discovery reads installed
 distribution metadata and the static bundle manifest without importing its

@@ -7,6 +7,7 @@ name = "vllm-hust-lmcache-provider"
 version = "0.2.0.dev0"
 description = "Experimental LMCache host profile for vLLM-HUST Extension Manager"
 requires-python = ">=3.10"
+dependencies = ["vllm-hust-ext==0.2.0.dev0"]
 
 [project.entry-points."vllm_hust.extension_bundles"]
 "org.vllm-hust.lmcache-provider" = "vllm_hust_lmcache_provider.manifests"

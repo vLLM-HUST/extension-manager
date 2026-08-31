@@ -224,3 +224,4 @@ def test_installable_provider_profiles_use_project_owned_namespace(
     assert value.host.provider == provider
     assert '[project.entry-points."vllm_hust.extension_bundles"]' in pyproject
     assert "vllm.extension_bundles" not in pyproject
+    assert 'dependencies = ["vllm-hust-ext==0.2.0.dev0"]' in pyproject
