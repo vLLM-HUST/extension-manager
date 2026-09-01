@@ -22,6 +22,8 @@
     {
       "type": "external_service",
       "service": "Mooncake Store",
+      "source_repository": "https://github.com/vLLM-HUST/mooncake-hust",
+      "upstream_repository": "https://github.com/kvcache-ai/Mooncake",
       "module": "mooncake.mooncake_store_service",
       "console_scripts": ["mooncake_master", "mc_store_rest_server"],
       "validated_distribution": "mooncake-transfer-engine-non-cuda==0.3.12.post1",

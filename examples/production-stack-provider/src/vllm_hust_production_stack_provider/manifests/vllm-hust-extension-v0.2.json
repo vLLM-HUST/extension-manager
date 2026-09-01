@@ -28,7 +28,13 @@
       "roles": ["router", "autoscaler"],
       "replica_ownership": "single-writer-required"
     },
-    {"type": "oci_image", "source": "chart-values"}
+    {
+      "type": "oci_image",
+      "source": "chart-values",
+      "source_repository": "https://github.com/vLLM-HUST/production-stack-hust",
+      "upstream_repository": "https://github.com/vllm-project/production-stack",
+      "validated_platform": "linux/arm64"
+    }
   ],
   "requires_services": [
     {

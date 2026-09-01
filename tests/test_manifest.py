@@ -60,6 +60,25 @@ def test_experimental_manifest_requires_explicit_host_runtime_and_owner() -> Non
     assert all(protocol.version_range is None for protocol in manifest.protocols)
     assert manifest.requires_services[0].service_id == "mooncake-store"
     assert manifest.requires_services[0].version_range is None
+    carrier = dict(manifest.implementation[0].attributes)
+    assert carrier["source_repository"] == (
+        "https://github.com/vLLM-HUST/mooncake-hust"
+    )
+    assert carrier["upstream_repository"] == "https://github.com/kvcache-ai/Mooncake"
+
+
+def test_control_plane_carrier_records_hust_fork_and_upstream() -> None:
+    path = Path(__file__).parent / "fixtures" / "production-stack-v0.2.json"
+    manifest = parse_manifest(json.loads(path.read_text(encoding="utf-8")))
+    carrier = dict(manifest.implementation[-1].attributes)
+
+    assert carrier["source_repository"] == (
+        "https://github.com/vLLM-HUST/production-stack-hust"
+    )
+    assert carrier["upstream_repository"] == (
+        "https://github.com/vllm-project/production-stack"
+    )
+    assert carrier["validated_platform"] == "linux/arm64"
 
 
 def test_python_310_grouped_entry_points_are_flattened() -> None:
