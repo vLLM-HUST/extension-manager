@@ -214,11 +214,11 @@ def _run_command(args: argparse.Namespace) -> int:
             )
         if (
             bundle.manifest.host.provider == "vllm"
-            and bundle.manifest.kind == "scheduler_policy"
+            and bundle.manifest.runtime.isolation == "trusted_in_process"
             and LifecycleState.COMPATIBLE not in status.states
         ):
             raise ValueError(
-                f"refusing to launch unverified in-process scheduler policy "
+                f"refusing to launch unverified trusted in-process extension "
                 f"{bundle.bundle_id!r}: " + "; ".join(status.evidence)
             )
     activation = _activation_environment(bundles)
@@ -305,7 +305,15 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         )
     if plan.provider != "vllm":
         raise ValueError(f"{plan.provider} extensions use plan/render/check, not run")
-    return command
+    json_options = plan.generated_config.get("vllm_json_options", {})
+    if not isinstance(json_options, dict):
+        raise ValueError("provider vllm_json_options must be an object")
+    result = command
+    for option, value in json_options.items():
+        if option != "--speculative-config" or not isinstance(value, dict):
+            raise ValueError(f"unsupported provider JSON option {option!r}")
+        result = _merge_json_option(result, option, value)
+    return result
 
 
 def _merge_json_option(
