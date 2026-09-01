@@ -20,10 +20,12 @@ from vllm_hust_ext.core import (
     status_for,
 )
 from vllm_hust_ext.discovery import InstalledBundle, discover_bundles
+from vllm_hust_ext.manifest import activation_blocker
 from vllm_hust_ext.providers.base import ProviderPlan
 
 
 def _bundle_dict(bundle: InstalledBundle, enabled: set[str]) -> dict[str, object]:
+    blocker = activation_blocker(bundle.manifest)
     return {
         "bundle_id": bundle.bundle_id,
         "bundle_version": bundle.manifest.bundle_version,
@@ -34,9 +36,16 @@ def _bundle_dict(bundle: InstalledBundle, enabled: set[str]) -> dict[str, object
         "host": asdict(bundle.manifest.host),
         "runtime": asdict(bundle.manifest.runtime),
         "lifecycle_owner": bundle.manifest.lifecycle_owner,
+        "protocols": [asdict(protocol) for protocol in bundle.manifest.protocols],
+        "implementation": [
+            {"type": carrier.type, **dict(carrier.attributes)}
+            for carrier in bundle.manifest.implementation
+        ],
         "requires_services": [
             asdict(service) for service in bundle.manifest.requires_services
         ],
+        "activation_ready": blocker is None,
+        "activation_blocker": blocker,
         "experimental": bundle.manifest.experimental,
         "components": [asdict(component) for component in bundle.manifest.components],
         "activation": asdict(bundle.manifest.activation),
@@ -136,7 +145,10 @@ def _extension_command(args: argparse.Namespace) -> int:
         print(json.dumps(_bundle_dict(bundle, enabled), indent=2, sort_keys=True))
         return 0
     if args.action == "enable":
-        discover_bundles((args.bundle_id,))
+        bundle = discover_bundles((args.bundle_id,))[0]
+        blocker = activation_blocker(bundle.manifest)
+        if blocker is not None:
+            raise ValueError(f"cannot enable {args.bundle_id!r}: {blocker}")
         current = config.extension(args.bundle_id)
         save_config(
             config.with_extension(
@@ -205,12 +217,26 @@ def _run_command(args: argparse.Namespace) -> int:
     config = load_config()
     bundles = discover_bundles(config.enabled) if config.enabled else ()
     for bundle in bundles:
+        blocker = activation_blocker(bundle.manifest)
+        if blocker is not None:
+            raise ValueError(f"refusing to launch {bundle.bundle_id!r}: {blocker}")
         extension = config.extension(bundle.bundle_id)
         status = status_for(bundle, extension)
         if LifecycleState.INCOMPATIBLE in status.states:
             raise ValueError(
                 f"refusing to launch incompatible extension {bundle.bundle_id!r}: "
                 + "; ".join(status.evidence)
+            )
+        required_services = tuple(
+            service
+            for service in getattr(bundle.manifest, "requires_services", ())
+            if not service.optional
+        )
+        if required_services and LifecycleState.HEALTHY not in status.states:
+            service_ids = ", ".join(service.service_id for service in required_services)
+            raise ValueError(
+                f"refusing to launch {bundle.bundle_id!r}: required service "
+                f"health is not verified ({service_ids}); " + "; ".join(status.evidence)
             )
         if (
             bundle.manifest.host.provider == "vllm"

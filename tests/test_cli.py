@@ -8,12 +8,19 @@ import pytest
 import vllm_hust_ext.cli as cli
 from vllm_hust_ext.cli import (
     _activation_environment,
+    _bundle_dict,
     _merge_command_config,
     _merge_provider_plan,
 )
 from vllm_hust_ext.config import ExtensionConfig, UserConfig
 from vllm_hust_ext.core import LifecycleState
-from vllm_hust_ext.manifest import BundleActivation
+from vllm_hust_ext.manifest import (
+    BundleActivation,
+    HostSpec,
+    ImplementationCarrier,
+    RequiredService,
+    RuntimeSpec,
+)
 from vllm_hust_ext.providers.base import PlanAction, ProviderPlan
 
 
@@ -32,6 +39,43 @@ def test_activation_does_not_replace_vllm_plugin_allowlist() -> None:
         "VLLMHUST_EXT_ENABLED_BUNDLES": "org.vllm-hust.bidkv",
     }
     assert "VLLM_PLUGINS" not in environment
+
+
+def test_inspection_exposes_import_only_activation_blocker() -> None:
+    carrier = ImplementationCarrier(
+        "python_module",
+        (
+            ("module", "example"),
+            ("object", "Descriptor"),
+            ("status", "import_only"),
+        ),
+    )
+    bundle = SimpleNamespace(
+        bundle_id="org.vllm-hust.descriptor",
+        bundle_version="0.1.0",
+        distribution_name="descriptor",
+        distribution_version="0.1.0",
+        manifest_path=Path("descriptor.json"),
+        manifest=SimpleNamespace(
+            bundle_version="0.1.0",
+            kind="in_process_plugin",
+            host=HostSpec("vllm", "vllm", ">=0"),
+            runtime=RuntimeSpec("python", "vllm-worker", "trusted_in_process"),
+            lifecycle_owner="vllm",
+            protocols=(),
+            implementation=(carrier,),
+            requires_services=(),
+            experimental=True,
+            components=(),
+            activation=BundleActivation(),
+        ),
+    )
+
+    value = _bundle_dict(bundle, set())
+
+    assert value["activation_ready"] is False
+    assert "descriptor-only" in str(value["activation_blocker"])
+    assert value["implementation"][0]["status"] == "import_only"
 
 
 def test_run_merges_existing_additional_config() -> None:
@@ -167,6 +211,33 @@ def test_forget_refuses_enabled_extension(monkeypatch: pytest.MonkeyPatch) -> No
 
     with pytest.raises(ValueError, match="disable"):
         cli._extension_command(SimpleNamespace(action="forget", bundle_id=extension_id))
+
+
+def test_enable_refuses_import_only_descriptor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.descriptor"
+    manifest = SimpleNamespace(
+        implementation=(
+            ImplementationCarrier(
+                "python_module",
+                (
+                    ("module", "example"),
+                    ("object", "Descriptor"),
+                    ("status", "import_only"),
+                ),
+            ),
+        )
+    )
+    monkeypatch.setattr(cli, "load_config", UserConfig)
+    monkeypatch.setattr(
+        cli,
+        "discover_bundles",
+        lambda *_args: (SimpleNamespace(manifest=manifest),),
+    )
+
+    with pytest.raises(ValueError, match="descriptor-only"):
+        cli._extension_command(SimpleNamespace(action="enable", bundle_id=extension_id))
 
 
 def test_forget_removes_disabled_stored_intent(
@@ -331,4 +402,42 @@ def test_run_refuses_any_enabled_incompatible_extension(
     )
 
     with pytest.raises(ValueError, match="refusing to launch incompatible extension"):
+        cli._run_command(SimpleNamespace(command=["vllm"], dry_run=True))
+
+
+def test_run_refuses_unhealthy_required_external_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.pegaflow"
+    manifest = SimpleNamespace(
+        host=SimpleNamespace(provider="pegaflow"),
+        kind="kv_service_adapter",
+        activation=BundleActivation(),
+        implementation=(),
+        requires_services=(
+            RequiredService(
+                "pegaflow-server",
+                "http-health",
+                None,
+                "health_url",
+            ),
+        ),
+    )
+    bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=True)}),
+    )
+    monkeypatch.setattr(cli, "discover_bundles", lambda *_args: (bundle,))
+    monkeypatch.setattr(
+        cli,
+        "status_for",
+        lambda *_args: SimpleNamespace(
+            states=(LifecycleState.CONFIGURED, LifecycleState.DEGRADED),
+            evidence=("PegaFlow service is unreachable",),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="required service health is not verified"):
         cli._run_command(SimpleNamespace(command=["vllm"], dry_run=True))

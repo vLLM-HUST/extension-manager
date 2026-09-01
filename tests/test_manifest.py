@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from vllm_hust_ext.discovery import _flatten_entry_points
-from vllm_hust_ext.manifest import ManifestError, parse_manifest
+from vllm_hust_ext.manifest import ManifestError, activation_blocker, parse_manifest
 
 
 def valid_manifest() -> dict[str, object]:
@@ -101,3 +101,17 @@ def test_python_module_carrier_requires_explicit_registration_status() -> None:
 
     with pytest.raises(ManifestError, match="module, object, and status"):
         parse_manifest(payload)
+
+
+def test_import_only_manifest_is_discoverable_but_not_activatable() -> None:
+    payload = json.loads(
+        (Path(__file__).parent / "fixtures" / "bidkv-v0.2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    payload["implementation"][0]["status"] = "import_only"
+
+    blocker = activation_blocker(parse_manifest(payload))
+
+    assert blocker is not None
+    assert "descriptor-only" in blocker

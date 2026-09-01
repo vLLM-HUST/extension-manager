@@ -141,6 +141,32 @@ def test_vllm_provider_renders_configured_speculative_config() -> None:
     assert "native_extension_manifest" not in plan.generated_config
 
 
+def test_vllm_provider_keeps_import_only_descriptor_inert() -> None:
+    value = manifest("bidkv-v0.2.json")
+    carrier = value.implementation[0]
+    value = replace(
+        value,
+        implementation=(
+            replace(
+                carrier,
+                attributes=tuple(
+                    (key, "import_only" if key == "status" else item)
+                    for key, item in carrier.attributes
+                ),
+            ),
+        ),
+    )
+
+    plan = VllmProvider().plan(value, {}, enabled=True)
+    check = VllmProvider().check(value, {"host_version": "0.10.2"})
+
+    assert [action.operation for action in plan.actions] == ["inspect_only"]
+    assert plan.generated_config == {}
+    assert check.configured is False
+    assert check.degraded is True
+    assert "descriptor-only" in check.evidence[-1]
+
+
 def test_mooncake_plan_reuses_official_connector_without_owning_service() -> None:
     value = manifest("mooncake-v0.2.json")
     plan = MooncakeProvider().plan(

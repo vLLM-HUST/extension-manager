@@ -9,7 +9,7 @@ from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
-from vllm_hust_ext.manifest import BundleManifest
+from vllm_hust_ext.manifest import BundleManifest, activation_blocker
 from vllm_hust_ext.providers.base import (
     PlanAction,
     ProviderCheck,
@@ -48,6 +48,21 @@ class VllmProvider:
         *,
         enabled: bool,
     ) -> ProviderPlan:
+        blocker = activation_blocker(manifest)
+        if blocker is not None:
+            return ProviderPlan(
+                manifest.bundle_id,
+                self.name,
+                (
+                    PlanAction(
+                        "inspect_only",
+                        manifest.bundle_id,
+                        manifest.lifecycle_owner,
+                        details={"enabled": False},
+                    ),
+                ),
+                warnings=(blocker,),
+            )
         native_manifest = None
         if manifest.host.api_range is not None:
             native_manifest = {
@@ -145,6 +160,14 @@ class VllmProvider:
             # fork-only or draft extension protocol is actually present.
             default_protocol_versions=_detect_protocol_versions(),
         )
+        blocker = activation_blocker(manifest)
+        if blocker is not None:
+            return ProviderCheck(
+                compatible=compatible,
+                configured=False,
+                degraded=True,
+                evidence=evidence + (blocker,),
+            )
         return ProviderCheck(
             compatible=compatible,
             configured=compatible is not False,
