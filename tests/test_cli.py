@@ -29,7 +29,7 @@ def test_activation_does_not_replace_vllm_plugin_allowlist() -> None:
 
     assert environment == {
         "BIDKV_UTILITY_ENABLE": "1",
-        "VLLM_HUST_EXT_ENABLED_BUNDLES": "org.vllm-hust.bidkv",
+        "VLLMHUST_EXT_ENABLED_BUNDLES": "org.vllm-hust.bidkv",
     }
     assert "VLLM_PLUGINS" not in environment
 

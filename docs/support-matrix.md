@@ -6,7 +6,7 @@ manifest range.
 
 | Host path | Pinned passing evidence | Remaining release gate |
 | --- | --- | --- |
-| vLLM-HUST / BidKV | vLLM-HUST 0.23 typed `vllm.scheduler.policy.v1`; 91 passed 8 core contract tests and 4 real BidKV materialization/trace tests | Real online serving restart/rollback matrix; official vLLM remains unsupported until an upstream contract is released |
+| vLLM-HUST / BidKV | vLLM-HUST 0.23 typed `vllm.scheduler.policy.v1`; 91 passed contract tests plus real Qwen3-0.6B load, three `UTILITY_ACTIVE` preemptions, request completion, disable and next-process built-in fallback | Repeat from clean release image/wheels; official vLLM remains unsupported until an upstream contract is released |
 | Mooncake standalone | Official non-CUDA 0.3.12.post1 TransferEngine TCP and Store REST on `a100-dev` | Cross-version, transport and multi-node matrix |
 | MooncakeStoreConnector / Ascend | vLLM 0.23 + vLLM Ascend + NPU wheel 0.3.11.post1, nine-key save/load and outage/recovery on NPU 4 | Matrix beyond the pinned `ascend` transport and `load_async=true` combination |
 | LMCache MP | Official 0.5.4 CPU-SHM LOOKUP/STORE/RETRIEVE/CHECKSUM and service outage/recovery | Real online `LMCacheMPConnector` data path and 0.5.x matrix; standalone evidence cannot report the connector healthy |
@@ -24,8 +24,8 @@ manifest range.
 - Kubernetes operators own Helm history, apply, rollback, and uninstall.
   Manager only plans, renders, dry-run checks and projects evidence.
 
-Alpha remains **NO-GO** until the real online BidKV restart/rollback gate,
-supported release artifacts for claimed architectures, and the version,
+Alpha remains **NO-GO** until the BidKV online result is repeated from clean
+release artifacts, supported artifacts exist for claimed architectures, and the version,
 permission, failure and rollback matrix are repeatable. BidKV is supported on
 the pinned vLLM-HUST 0.23 host contract; that is not a claim of official-vLLM
 compatibility.

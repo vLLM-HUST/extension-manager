@@ -7,10 +7,13 @@ hosts.
    `vllm.victim_selector` entry point. vLLM-HUST 0.23 owns the minimal generic
    `vllm.scheduler.policy.v1` materializer, while BidKV supplies only the policy
    implementation. On server 91, 8 host contract tests and 4 installed BidKV
-   materialization/trace tests pass. The remaining gate is a real online
-   serving launch followed by disable, process restart, and built-in-policy
-   rollback. Official vLLM remains unsupported until its upstream contract is
-   released.
+   materialization/trace tests pass. A real Qwen3-0.6B serving run then produced
+   three `UTILITY_ACTIVE` selections under full KV pressure; all requests
+   completed, and disable plus next-process restart restored the built-in path
+   with no BidKV load. The remaining release gate is repeating this from clean
+   pushed-commit image/wheel artifacts. Official vLLM remains unsupported until
+   its upstream contract is released. See
+   `docs/evidence/bidkv-vllm-hust-0.23-ascend91-2026-09-01.md`.
 2. Mooncake: render both `MooncakeConnector` and `MooncakeStoreConnector`,
    verify a real externally operated service, preserve enabled intent during an
    outage, report degraded evidence, recover without reinstall, and never start

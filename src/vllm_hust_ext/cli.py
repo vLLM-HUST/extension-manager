@@ -53,7 +53,7 @@ def _activation_environment(bundles: Sequence[InstalledBundle]) -> dict[str, str
                     f"enabled Bundles disagree on environment variable {key}"
                 )
             environment[key] = value
-    environment["VLLM_HUST_EXT_ENABLED_BUNDLES"] = ",".join(
+    environment["VLLMHUST_EXT_ENABLED_BUNDLES"] = ",".join(
         bundle.bundle_id for bundle in bundles
     )
     return environment
