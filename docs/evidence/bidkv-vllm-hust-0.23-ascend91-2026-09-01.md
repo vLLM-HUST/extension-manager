@@ -115,6 +115,28 @@ wheel never registered a BidKV `vllm.general_plugins` entry point. The temporary
 services were removed and NPU 5 had no remaining process.
 
 This passes the clean install, enable, real invocation, disable, fallback,
-forget, and uninstall gate on server 91. Alpha remains blocked on the stated
-112 and broader cross-host matrix; these results do not expand support to
-official vLLM.
+forget, and uninstall gate on server 91.
+
+## Clean cross-host repeat on 112
+
+The exact same source archive and wheel hashes were transferred to arm64
+server 112 and rebuilt from the same pinned official Ascend base. The resulting
+local image ID was
+`sha256:77b159e0c51a89ba75cca289beb0dd56e68f5f4eec400f280979b4121ae1dc43`.
+No source checkout or system Python package was modified.
+
+Qwen2.5-3B-Instruct started on one isolated Ascend 910B2. EngineCore loaded the
+same typed component. Three concurrent 1,400-token generations again produced
+three real `UTILITY_ACTIVE` selections at `kv_util=1.00` (`r=769`, `r=1152`,
+and `r=1407`); all three ended with `finish_reason=length` and 1,400 completion
+tokens. After disable, the next built-in process completed a 64-token request
+and its full log contained zero typed-selector or BidKV matches. Forget yielded
+an empty extension map. A clean virtual-environment uninstall removed the
+Bundle entry point and both Python imports.
+
+Both test containers and temporary installation directories were removed;
+NPU 7 reported no remaining process. The retained wheel/source artifacts are
+inputs, not a runner or maintained service. This completes the clean 91/112
+packaging and online-repeat gate. Alpha remains blocked on the broader version,
+permission and failure matrix; these results do not expand support to official
+vLLM.

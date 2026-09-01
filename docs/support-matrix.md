@@ -6,7 +6,7 @@ manifest range.
 
 | Host path | Pinned passing evidence | Remaining release gate |
 | --- | --- | --- |
-| vLLM-HUST / BidKV | Clean pushed-commit carrier `87096bd3d` plus BidKV `2b55997` and Manager `b4f221f` wheels passed on 91: real Qwen3-0.6B load, three `UTILITY_ACTIVE` preemptions, three completed 1,400-token requests, disable, next-process built-in fallback, forget and uninstall | Repeat the clean packaging gate on 112; official vLLM remains unsupported until an upstream contract is released |
+| vLLM-HUST / BidKV | The same clean pushed-commit carrier `87096bd3d` plus BidKV `2b55997` and Manager `b4f221f` wheels passed on 91/Qwen3-0.6B and 112/Qwen2.5-3B: each host produced three `UTILITY_ACTIVE` preemptions and three completed 1,400-token requests, then passed disable, next-process built-in fallback, forget and uninstall | Official vLLM remains unsupported until an upstream contract is released; wider vLLM-HUST version/platform matrix remains experimental |
 | Mooncake standalone | Official non-CUDA 0.3.12.post1 TransferEngine TCP and Store REST on `a100-dev` | Cross-version, transport and multi-node matrix |
 | MooncakeStoreConnector / Ascend | vLLM 0.23 + vLLM Ascend + NPU wheel 0.3.11.post1, nine-key save/load and outage/recovery on NPU 4 | Matrix beyond the pinned `ascend` transport and `load_async=true` combination |
 | Production Stack control plane | Commit `1b87c11a`, chart 0.1.12, Helm 4.2.4, Kubernetes 1.34.11: render, dry-run, lifecycle rollback, controller, Router and HPA evidence | Additional Kubernetes/Helm versions and permission-denial matrix |
@@ -21,7 +21,7 @@ manifest range.
 - Kubernetes operators own Helm history, apply, rollback, and uninstall.
   Manager only plans, renders, dry-run checks and projects evidence.
 
-Alpha remains **NO-GO** until the remaining cross-host version, permission,
-failure and rollback matrix is repeatable. The clean BidKV gate has passed on
-91, but not yet on 112. BidKV is supported on the pinned vLLM-HUST 0.23 host
-contract; that is not a claim of official-vLLM compatibility.
+Alpha remains **NO-GO** until the remaining version, permission, failure and
+rollback matrix is repeatable. The clean BidKV gate has passed on both 91 and
+112. BidKV is supported on the pinned vLLM-HUST 0.23 host contract; that is not
+a claim of official-vLLM compatibility.

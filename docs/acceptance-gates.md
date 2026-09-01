@@ -13,8 +13,9 @@ hosts.
    with no BidKV load. This was repeated from clean pushed-commit artifacts on
    91 using vLLM-HUST `87096bd3d`, BidKV `2b55997`, and Manager `b4f221f`.
    Forget and isolated-wheel uninstall also removed all BidKV registration and
-   import state. The remaining packaging gate is the clean 112 repeat. Official
-   vLLM remains unsupported until its upstream contract is released. See
+   import state. The same artifacts then passed the full online gate on 112 with
+   Qwen2.5-3B, including three policy calls, built-in fallback and uninstall.
+   Official vLLM remains unsupported until its upstream contract is released. See
    `docs/evidence/bidkv-vllm-hust-0.23-ascend91-2026-09-01.md`.
 2. Mooncake: render both `MooncakeConnector` and `MooncakeStoreConnector`,
    verify a real externally operated service, preserve enabled intent during an
