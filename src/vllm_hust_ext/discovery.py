@@ -13,7 +13,11 @@ from urllib.parse import unquote, urlparse
 from vllm_hust_ext.manifest import BundleManifest, ManifestError, load_manifest
 
 ENTRY_POINT_GROUP = "vllm_hust.extension_bundles"
-MANIFEST_FILENAMES = ("vllm-hust-extension-v1.json", "extension-bundle-v1.json")
+MANIFEST_FILENAMES = (
+    "vllm-hust-extension-v0.2.json",
+    "vllm-hust-extension-v1.json",
+    "extension-bundle-v1.json",
+)
 _MODULE_PATH = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$")
 
 
@@ -29,6 +33,15 @@ class InstalledBundle:
     manifest_path: Path
     manifest: BundleManifest
     entry_points: tuple[EntryPoint, ...]
+
+
+def _flatten_entry_points(value: object) -> tuple[EntryPoint, ...]:
+    """Normalize importlib.metadata results across Python 3.10 and 3.12+."""
+
+    values = getattr(value, "values", None)
+    if callable(values):
+        return tuple(entry_point for group in values() for entry_point in group)
+    return tuple(value)  # type: ignore[arg-type]
 
 
 def _manifest_path(entry_point: EntryPoint) -> Path:
@@ -101,7 +114,9 @@ def discover_bundles(
             )
 
     every_entry_point = (
-        tuple(entry_points()) if all_entry_points is None else tuple(all_entry_points)
+        _flatten_entry_points(entry_points())
+        if all_entry_points is None
+        else tuple(all_entry_points)
     )
     loaded: dict[str, InstalledBundle] = {}
     for bundle_id, items in candidates.items():
