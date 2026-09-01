@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -71,7 +72,10 @@ def _manifest_path(entry_point: EntryPoint) -> Path:
                 and parsed.scheme == "file"
                 and parsed.netloc in ("", "localhost")
             ):
-                root = Path(unquote(parsed.path))
+                path = unquote(parsed.path)
+                if os.name == "nt" and re.match(r"^/[A-Za-z]:", path):
+                    path = path[1:]
+                root = Path(path)
                 matches = [
                     candidate
                     for source_root in (root, root / "src")

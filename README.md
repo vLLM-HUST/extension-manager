@@ -106,6 +106,13 @@ explicit and stored in the user configuration. Discovery reads installed
 distribution metadata and the static bundle manifest without importing its
 implementation modules.
 
+Descriptors whose only Python implementation is marked `import_only` or
+`legacy_unregistered` remain inspectable but cannot be enabled. Inspection
+reports `activation_ready=false` and the blocker instead of pretending that an
+inert research package is runnable. Likewise, saved enabled intent survives an
+external-service outage, but `run` refuses a new launch until every non-optional
+`requires_services` dependency reports healthy.
+
 Third-party host providers register factories only under the project-owned
 entry-point group `vllm_hust_ext.providers`. Extension distributions register
 static manifests under `vllm_hust.extension_bundles`. Neither namespace claims

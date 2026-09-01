@@ -28,7 +28,9 @@ State is evidence-based rather than one enabled flag:
 These states are not a single linear finite-state machine. For example, an
 enabled Mooncake adapter can remain enabled while its external service is
 unreachable; the projected state is then `enabled + degraded`, preserving the
-operator's intent and the failure evidence.
+operator's intent and the failure evidence. That intent does not authorize a
+new launch: `run` fails closed while a non-optional required service lacks a
+healthy check.
 
 For an external KV service, a serving-process `/health` result is not sufficient
 for `healthy`. The Mooncake Provider can also consume windowed lookup/save/load

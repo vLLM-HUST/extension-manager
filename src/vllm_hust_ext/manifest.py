@@ -527,3 +527,25 @@ def load_manifest(path: Path) -> BundleManifest:
         return parse_manifest(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ManifestError("manifest cannot be read as JSON") from error
+
+
+def activation_blocker(manifest: BundleManifest) -> str | None:
+    """Explain why a descriptor-only Python extension cannot be enabled."""
+
+    module_statuses = [
+        str(dict(carrier.attributes).get("status"))
+        for carrier in getattr(manifest, "implementation", ())
+        if carrier.type == "python_module"
+    ]
+    has_active_carrier = any(
+        carrier.type != "python_module"
+        or dict(carrier.attributes).get("status") == "active"
+        for carrier in getattr(manifest, "implementation", ())
+    )
+    if module_statuses and not has_active_carrier:
+        statuses = ", ".join(sorted(set(module_statuses)))
+        return (
+            "extension is descriptor-only and cannot be enabled "
+            f"(implementation status: {statuses})"
+        )
+    return None
