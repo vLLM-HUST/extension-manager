@@ -17,6 +17,7 @@ from vllm_hust_ext.core import (
     status_for,
 )
 from vllm_hust_ext.manifest import BundleManifest, parse_manifest
+from vllm_hust_ext.providers import vllm as vllm_provider
 from vllm_hust_ext.providers.base import ProviderPlan
 from vllm_hust_ext.providers.lmcache import LMCacheProvider
 from vllm_hust_ext.providers.mooncake import MooncakeProvider
@@ -43,13 +44,45 @@ def test_bidkv_is_a_vllm_owned_scheduler_policy() -> None:
     assert value.lifecycle_owner == "vllm"
     assert all(not action.mutating for action in plan.actions)
     assert plan.generated_config["additional_config"] == {
-        "victim_selector_plugin": "bidkv"
+        "victim_selector_component": "org.vllm-hust.bidkv/victim-selector"
     }
     assert "run refuses unverified policies" in plan.warnings[0]
     assert value.activation.entry_points == ()
     carrier = value.implementation[0]
     assert carrier.type == "python_module"
-    assert dict(carrier.attributes)["status"] == "legacy_unregistered"
+    assert dict(carrier.attributes)["status"] == "active"
+    assert plan.generated_config["native_extension_manifest"] == {
+        "schema_version": "1.0",
+        "bundle_id": "org.vllm-hust.bidkv",
+        "bundle_version": "0.2.0a1",
+        "host_api_range": ">=1,<2",
+        "components": [
+            {
+                "component_id": "victim-selector",
+                "contracts": ["vllm.scheduler.policy.v1"],
+                "execution_planes": ["scheduler"],
+                "isolation": "trusted_in_process",
+                "implementation_ref": (
+                    "bidkv.adapters.vllm_hust.selector:BidkvVictimSelector"
+                ),
+                "permissions": [],
+            }
+        ],
+    }
+
+
+def test_vllm_detects_scheduler_policy_only_from_host_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    contract = SimpleNamespace(value="vllm.scheduler.policy.v1")
+    module = SimpleNamespace(
+        DomainContract=SimpleNamespace(SCHEDULER_POLICY_V1=contract)
+    )
+    monkeypatch.setattr(vllm_provider, "import_module", lambda _name: module)
+
+    assert vllm_provider._detect_protocol_versions() == {
+        "vllm.scheduler.policy": "1.0"
+    }
 
 
 def test_mooncake_plan_reuses_official_connector_without_owning_service() -> None:
@@ -323,12 +356,23 @@ def test_lmcache_uses_remote_service_version_for_compatibility(
 
     check = LMCacheProvider().check(
         value,
-        {"health_url": "http://127.0.0.1:8080/healthcheck"},
+        {
+            "health_url": "http://127.0.0.1:8080/healthcheck",
+            "connector_operation_evidence": {
+                "mode": "vllm_mp_connector",
+                "model": "tiny-random-opt",
+                "backend": "cpu-shm",
+                "stored_tokens": 64,
+                "hit_tokens": 64,
+                "retrieved_tokens": 64,
+                "failed_requests": 0,
+            },
+        },
     )
 
     assert check.compatible is compatible
     assert check.reachable is True
-    assert check.healthy is True
+    assert check.healthy is compatible
     assert check.degraded is not compatible
     assert requested == [
         "http://127.0.0.1:8080/healthcheck",
@@ -379,7 +423,7 @@ def test_lmcache_ascend_adapter_is_in_process_not_an_mp_service() -> None:
     )
     plan = LMCacheProvider().plan(
         value,
-        {"connector": "LMCacheAscendConnectorV1Dynamic"},
+        {"connector": "LMCacheConnectorV1"},
         enabled=True,
     )
 
@@ -388,14 +432,93 @@ def test_lmcache_ascend_adapter_is_in_process_not_an_mp_service() -> None:
     assert value.lifecycle_owner == "vllm"
     assert not value.requires_services
     assert connector == {
-        "kv_connector": "LMCacheAscendConnectorV1Dynamic",
+        "kv_connector": "LMCacheConnectorV1",
         "kv_role": "kv_both",
         "kv_connector_module_path": (
-            "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1"
+            "vllm_ascend.distributed.kv_transfer.kv_pool.lmcache_ascend_connector"
         ),
     }
     assert {action.operation for action in plan.actions} == {"render_connector_config"}
     assert "only renders the vLLM connector" in plan.warnings[0]
+
+
+def test_lmcache_ascend_real_operation_evidence_projects_healthy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = parse_manifest(
+        json.loads(
+            next(
+                (EXAMPLES / "lmcache-ascend-adapter").glob(
+                    "src/*/manifests/vllm-hust-extension-v0.2.json"
+                )
+            ).read_text(encoding="utf-8")
+        )
+    )
+    versions = {
+        "vllm-ascend": "0.23.0rc1",
+        "lmcache": "0.4.3",
+        "lmcache-ascend": "0.4.4.dev2",
+    }
+
+    def installed(distribution: str) -> str:
+        return versions[distribution]
+
+    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.version", installed)
+    check = LMCacheProvider().check(
+        value,
+        {
+            "connector": "LMCacheConnectorV1",
+            "connector_operation_evidence": {
+                "mode": "vllm_ascend_in_process",
+                "model": "Qwen/Qwen3-0.6B",
+                "backend": "fs",
+                "stored_tokens": 2236,
+                "hit_tokens": 2236,
+                "retrieved_tokens": 2236,
+                "failed_requests": 0,
+            },
+        },
+    )
+
+    assert value.host.name == "vllm-ascend"
+    assert check.compatible is True
+    assert check.configured is True
+    assert check.reachable is None
+    assert check.healthy is True
+    assert check.degraded is False
+    assert any("stored=2236" in item for item in check.evidence)
+
+
+def test_lmcache_ascend_rejects_mp_operation_evidence() -> None:
+    value = parse_manifest(
+        json.loads(
+            next(
+                (EXAMPLES / "lmcache-ascend-adapter").glob(
+                    "src/*/manifests/vllm-hust-extension-v0.2.json"
+                )
+            ).read_text(encoding="utf-8")
+        )
+    )
+    check = LMCacheProvider().check(
+        value,
+        {
+            "connector": "LMCacheConnectorV1",
+            "connector_operation_evidence": {
+                "mode": "vllm_mp_connector",
+                "model": "Qwen/Qwen3-0.6B",
+                "backend": "fs",
+                "stored_tokens": 1,
+                "hit_tokens": 1,
+                "retrieved_tokens": 1,
+                "failed_requests": 0,
+            },
+        },
+    )
+
+    assert check.configured is False
+    assert check.healthy is None
+    assert check.degraded is True
+    assert any("vllm_ascend_in_process" in item for item in check.evidence)
 
 
 def test_production_stack_renders_but_never_applies() -> None:
@@ -678,15 +801,15 @@ def test_known_host_version_projects_compatible_or_incompatible() -> None:
         ExtensionConfig(
             True,
             {
-                "host_version": "0.19.0",
-                "protocol_versions": {"vllm.victim_selector": "1.0"},
+                "host_version": "0.23.0",
+                "protocol_versions": {"vllm.scheduler.policy": "1.0"},
             },
         ),
         include_external_providers=False,
     )
     incompatible = status_for(
         bundle(value),
-        ExtensionConfig(True, {"host_version": "0.20.0"}),
+        ExtensionConfig(True, {"host_version": "0.24.0"}),
         include_external_providers=False,
     )
 
@@ -699,13 +822,13 @@ def test_vllm_does_not_assume_a_fork_only_protocol_exists() -> None:
 
     unverified = status_for(
         bundle(value),
-        ExtensionConfig(True, {"host_version": "0.19.0"}),
+        ExtensionConfig(True, {"host_version": "0.23.0"}),
         include_external_providers=False,
     )
 
     assert LifecycleState.COMPATIBLE not in unverified.states
     assert LifecycleState.DEGRADED in unverified.states
-    assert any("protocol vllm.victim_selector" in item for item in unverified.evidence)
+    assert any("protocol vllm.scheduler.policy" in item for item in unverified.evidence)
 
 
 def test_conflicting_provider_plans_are_rejected() -> None:

@@ -65,8 +65,8 @@ on `a100-dev`. A separate Ascend NPU 4 run completed a real
 MooncakeStoreConnector save/load hit: nine keys and 133,191,072 bytes each way,
 with local prefix caching disabled. Master outage produced partial save
 failures while inference remained available, and recovery restored save/load
-without restarting vLLM. Alpha remains frozen for BidKV's upstream scheduler
-contract and the remaining support matrix.
+without restarting vLLM. Alpha remains frozen for the remaining online
+restart/rollback and support-matrix gates.
 
 > **Compatibility freeze:** Manifest `0.2-experimental` and the former Bundle
 > v1 prototype are not stable APIs. No alpha package will be published until
@@ -85,14 +85,18 @@ vllm-hust-ext extension status org.vllm-hust.bidkv
 vllm-hust-ext extension check org.vllm-hust.bidkv
 ```
 
-The BidKV example currently describes the legacy experimental
-`vllm.victim_selector` contract. The fresh vLLM-HUST 0.23 fork does not provide
-that protocol. The main BidKV distribution no longer registers this private
-entry point, and Manager `run` refuses an unverified or incompatible in-process
-scheduler policy. New core work must align with upstream scheduler-plugin RFC
-#51608 and draft PR #51601 instead of adding a second private victim-selector
-API. There is no supported fresh-fork enable command until that contract is
-stable and the real scheduler/rollback gates pass.
+BidKV is supported by the pinned vLLM-HUST 0.23 host through the generic typed
+`vllm.scheduler.policy.v1` contract. The main BidKV distribution does not
+register the private legacy `vllm.victim_selector` entry point. Manager
+converts the extension manifest to the host-native startup manifest, selects
+`org.vllm-hust.bidkv/victim-selector`, and refuses incompatible official-vLLM
+hosts. This support statement applies to vLLM-HUST, not to official vLLM while
+the upstream scheduler-plugin contract is still unsettled.
+
+```bash
+vllm-hust-ext extension enable org.vllm-hust.bidkv
+vllm-hust-ext run -- vllm serve MODEL
+```
 
 External KV profiles follow the same install/configure/enable flow. For
 example, the experimental LMCache profile renders an official vLLM connector

@@ -21,10 +21,25 @@ from vllm_hust_ext.providers.base import (
 
 _CONNECTORS = {
     "LMCacheMPConnector",
+    "LMCacheConnectorV1",
     "LMCacheConnectorV1Dynamic",
     "LMCacheAscendConnector",
     "LMCacheAscendConnectorV1Dynamic",
 }
+_ASCEND_CONNECTORS = {
+    "LMCacheConnectorV1",
+    "LMCacheAscendConnector",
+    "LMCacheAscendConnectorV1Dynamic",
+}
+_REQUIRED_OPERATION_EVIDENCE = (
+    "mode",
+    "model",
+    "backend",
+    "stored_tokens",
+    "hit_tokens",
+    "retrieved_tokens",
+    "failed_requests",
+)
 
 
 def _version_url(health_url: str, configured: object | None) -> str:
@@ -52,12 +67,18 @@ def _read_service_version(value: object) -> str:
 
 
 _DEFAULT_MODULE_PATHS = {
+    "LMCacheConnectorV1": (
+        "vllm_ascend.distributed.kv_transfer.kv_pool.lmcache_ascend_connector"
+    ),
     "LMCacheConnectorV1Dynamic": "lmcache.integration.vllm.lmcache_connector_v1",
     "LMCacheAscendConnectorV1Dynamic": (
         "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1"
     ),
 }
 _ALLOWED_MODULE_PATHS = {
+    "LMCacheConnectorV1": {
+        "vllm_ascend.distributed.kv_transfer.kv_pool.lmcache_ascend_connector",
+    },
     "LMCacheConnectorV1Dynamic": {
         "lmcache.integration.vllm.lmcache_connector_v1",
     },
@@ -100,6 +121,87 @@ class LMCacheProvider:
                 )
             result["kv_connector_module_path"] = module_path
         return result
+
+    def _operation_evidence(
+        self, configuration: dict[str, Any], connector: str
+    ) -> tuple[bool | None, bool, tuple[str, ...]]:
+        expected_mode = (
+            "vllm_ascend_in_process"
+            if connector in _ASCEND_CONNECTORS
+            else "vllm_mp_connector"
+        )
+        raw = configuration.get("connector_operation_evidence")
+        if raw is None:
+            return (
+                None,
+                True,
+                (
+                    "connector_operation_evidence is required before this "
+                    f"{expected_mode} path can be reported healthy",
+                ),
+            )
+        if not isinstance(raw, dict):
+            return False, False, ("connector_operation_evidence must be an object",)
+        missing = [name for name in _REQUIRED_OPERATION_EVIDENCE if name not in raw]
+        if missing:
+            return (
+                False,
+                False,
+                ("connector_operation_evidence is missing: " + ", ".join(missing),),
+            )
+        if raw["mode"] != expected_mode:
+            return (
+                False,
+                False,
+                (
+                    "connector_operation_evidence.mode must be "
+                    f"{expected_mode} for {connector}",
+                ),
+            )
+        for name in ("model", "backend"):
+            if not isinstance(raw[name], str) or not raw[name].strip():
+                return (
+                    False,
+                    False,
+                    (f"connector_operation_evidence.{name} must be non-empty",),
+                )
+        counts: dict[str, int] = {}
+        for name in (
+            "stored_tokens",
+            "hit_tokens",
+            "retrieved_tokens",
+            "failed_requests",
+        ):
+            value = raw[name]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                return (
+                    False,
+                    False,
+                    (
+                        f"connector_operation_evidence.{name} must be a "
+                        "non-negative integer",
+                    ),
+                )
+            counts[name] = value
+        healthy = (
+            counts["stored_tokens"] > 0
+            and counts["hit_tokens"] > 0
+            and counts["retrieved_tokens"] == counts["hit_tokens"]
+            and counts["stored_tokens"] >= counts["hit_tokens"]
+            and counts["failed_requests"] == 0
+        )
+        return (
+            healthy,
+            True,
+            (
+                "LMCache connector operations: "
+                f"mode={expected_mode}, model={raw['model']}, "
+                f"backend={raw['backend']}, stored={counts['stored_tokens']}, "
+                f"hit={counts['hit_tokens']}, "
+                f"retrieved={counts['retrieved_tokens']}, "
+                f"failed_requests={counts['failed_requests']}",
+            ),
+        )
 
     def plan(
         self,
@@ -159,17 +261,8 @@ class LMCacheProvider:
     def check(
         self, manifest: BundleManifest, configuration: dict[str, Any]
     ) -> ProviderCheck:
-        locally_detected_version = None
-        distribution = (
-            "lmcache-ascend"
-            if manifest.host.name.casefold() == "lmcache-ascend"
-            else "lmcache"
-        )
-        if not manifest.requires_services:
-            with suppress(PackageNotFoundError):
-                locally_detected_version = version(distribution)
         try:
-            self._connector_config(configuration)
+            connector_config = self._connector_config(configuration)
         except ValueError as error:
             return ProviderCheck(
                 None,
@@ -177,6 +270,56 @@ class LMCacheProvider:
                 degraded=True,
                 evidence=(str(error),),
             )
+        connector = str(connector_config["kv_connector"])
+        operations_healthy, operations_configured, operations_evidence = (
+            self._operation_evidence(configuration, connector)
+        )
+        if not operations_configured:
+            return ProviderCheck(
+                None,
+                False,
+                degraded=True,
+                evidence=operations_evidence,
+            )
+
+        if connector in _ASCEND_CONNECTORS:
+            detected_versions: dict[str, str] = {}
+            for distribution in ("vllm-ascend", "lmcache", "lmcache-ascend"):
+                with suppress(PackageNotFoundError):
+                    detected_versions[distribution] = version(distribution)
+            protocol_versions = {"vllm-kv-connector": "1.0"}
+            for distribution, protocol in (
+                ("lmcache", "lmcache-runtime"),
+                ("lmcache-ascend", "lmcache-ascend-runtime"),
+            ):
+                if distribution in detected_versions:
+                    protocol_versions[protocol] = detected_versions[distribution]
+            compatible, compatibility_evidence = assess_compatibility(
+                manifest,
+                configuration,
+                detected_host_version=detected_versions.get("vllm-ascend"),
+                default_api_version="1.0",
+                default_protocol_versions=protocol_versions,
+            )
+            detected_evidence = tuple(
+                f"detected {name} {value}"
+                for name, value in sorted(detected_versions.items())
+            )
+            evidence = (
+                detected_evidence + compatibility_evidence + operations_evidence
+            )
+            return ProviderCheck(
+                compatible,
+                True,
+                healthy=operations_healthy is True and compatible is True,
+                degraded=operations_healthy is not True or compatible is not True,
+                evidence=evidence,
+            )
+
+        locally_detected_version = None
+        if not manifest.requires_services:
+            with suppress(PackageNotFoundError):
+                locally_detected_version = version("lmcache")
 
         health_url = configuration.get("health_url")
         if not health_url:
@@ -184,8 +327,9 @@ class LMCacheProvider:
             return ProviderCheck(
                 None,
                 not required,
-                degraded=required,
-                evidence=("health_url is required to verify the LMCache service",),
+                degraded=required or operations_healthy is not True,
+                evidence=operations_evidence
+                + ("health_url is required to verify the LMCache service",),
             )
         parsed = urlparse(str(health_url))
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
@@ -250,10 +394,21 @@ class LMCacheProvider:
                     compatible,
                     True,
                     reachable=True,
-                    healthy=healthy,
-                    degraded=not healthy or compatible is not True,
+                    healthy=(
+                        healthy
+                        and operations_healthy is True
+                        and compatible is True
+                    ),
+                    degraded=(
+                        not healthy
+                        or operations_healthy is not True
+                        or compatible is not True
+                    ),
                     evidence=(
-                        health_evidence + version_evidence + compatibility_evidence
+                        health_evidence
+                        + version_evidence
+                        + compatibility_evidence
+                        + operations_evidence
                     ),
                 )
         except HTTPError as error:
@@ -274,6 +429,7 @@ class LMCacheProvider:
                 healthy=False,
                 degraded=True,
                 evidence=compatibility_evidence
+                + operations_evidence
                 + (f"LMCache health endpoint returned {error.code}",),
             )
         except (OSError, URLError) as error:
@@ -294,5 +450,6 @@ class LMCacheProvider:
                 healthy=False,
                 degraded=True,
                 evidence=compatibility_evidence
+                + operations_evidence
                 + (f"LMCache service is unreachable: {error}",),
             )

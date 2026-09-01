@@ -6,7 +6,7 @@
   "host": {
     "provider": "vllm",
     "name": "vllm",
-    "version_range": ">=0.18,<0.20",
+    "version_range": ">=0.23,<0.24",
     "api_range": ">=1,<2"
   },
   "runtime": {
@@ -16,14 +16,14 @@
   },
   "lifecycle_owner": "vllm",
   "protocols": [
-    {"name": "vllm.victim_selector", "version_range": ">=1,<2"}
+    {"name": "vllm.scheduler.policy", "version_range": ">=1,<2"}
   ],
   "implementation": [
     {
       "type": "python_module",
       "module": "bidkv.adapters.vllm_hust.selector",
       "object": "BidkvVictimSelector",
-      "status": "legacy_unregistered"
+      "status": "active"
     }
   ],
   "requires_services": [],
@@ -40,6 +40,8 @@
   "activation": {
     "entry_points": [],
     "environment": {"BIDKV_UTILITY_ENABLE": "1"},
-    "additional_config": {"victim_selector_plugin": "bidkv"}
+    "additional_config": {
+      "victim_selector_component": "org.vllm-hust.bidkv/victim-selector"
+    }
   }
 }

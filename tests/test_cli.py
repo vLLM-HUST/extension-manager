@@ -1,4 +1,6 @@
 import json
+import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -205,6 +207,61 @@ def test_run_accepts_scheduler_policy_only_after_compatibility_evidence(
     )
 
     assert cli._run_command(SimpleNamespace(command=["true"], dry_run=True)) == 0
+
+
+def test_run_materializes_native_manifest_for_vllm_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.bidkv"
+    manifest = SimpleNamespace(
+        host=SimpleNamespace(provider="vllm"),
+        kind="scheduler_policy",
+        activation=BundleActivation(),
+    )
+    bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
+    native_manifest = {
+        "schema_version": "1.0",
+        "bundle_id": extension_id,
+        "bundle_version": "0.1.1",
+        "host_api_range": ">=1,<2",
+        "components": [],
+    }
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=True)}),
+    )
+    monkeypatch.setattr(cli, "discover_bundles", lambda *_args: (bundle,))
+    monkeypatch.setattr(
+        cli,
+        "status_for",
+        lambda *_args: SimpleNamespace(
+            states=(LifecycleState.COMPATIBLE,), evidence=("verified",)
+        ),
+    )
+    monkeypatch.setattr(
+        cli,
+        "plan_for",
+        lambda *_args: ProviderPlan(
+            extension_id,
+            "vllm",
+            (),
+            {"native_extension_manifest": native_manifest},
+        ),
+    )
+    monkeypatch.delenv("VLLM_EXTENSION_MANIFESTS", raising=False)
+    monkeypatch.delenv("VLLM_EXTENSION_BUNDLES", raising=False)
+
+    def call(command: list[str], *, env: dict[str, str]) -> int:
+        paths = env["VLLM_EXTENSION_MANIFESTS"].split(os.pathsep)
+        assert len(paths) == 1
+        assert json.loads(Path(paths[0]).read_text(encoding="utf-8")) == native_manifest
+        assert env["VLLM_EXTENSION_BUNDLES"] == extension_id
+        return 17
+
+    monkeypatch.setattr(cli.subprocess, "call", call)
+
+    assert cli._run_command(SimpleNamespace(command=["true"], dry_run=False)) == 17
 
 
 def test_run_refuses_any_enabled_incompatible_extension(

@@ -4,11 +4,13 @@ Alpha publication remains blocked until all gates are repeatable on supported
 hosts.
 
 1. vLLM/BidKV: the main distribution registers no private
-   `vllm.victim_selector` entry point, and a fresh official vLLM fails closed.
-   After upstream RFC #51608/PR #51601 freezes a Preemption contract, migrate
-   the import-only legacy adapter, then install, discover, validate, configure,
-   enable, plan, render, launch, observe real policy selection, disable,
-   restart, and verify upstream fallback.
+   `vllm.victim_selector` entry point. vLLM-HUST 0.23 owns the minimal generic
+   `vllm.scheduler.policy.v1` materializer, while BidKV supplies only the policy
+   implementation. On server 91, 8 host contract tests and 4 installed BidKV
+   materialization/trace tests pass. The remaining gate is a real online
+   serving launch followed by disable, process restart, and built-in-policy
+   rollback. Official vLLM remains unsupported until its upstream contract is
+   released.
 2. Mooncake: render both `MooncakeConnector` and `MooncakeStoreConnector`,
    verify a real externally operated service, preserve enabled intent during an
    outage, report degraded evidence, recover without reinstall, and never start
@@ -20,17 +22,27 @@ hosts.
    outage/degraded/recovery cycle.** See
    `docs/evidence/mooncake-0.3.12.post1-tcp-a100-2026-09-01.md` and
    `docs/evidence/mooncake-store-vllm-ascend-180-2026-09-01.md`.
-3. LMCache: target the official 0.5.x `lmcache server` interface, render MP and
-   supported dynamic V1 connector configurations, verify service version via
-   `/lmc_version`, verify readiness via `/healthcheck`, and run the official
-   CPU-SHM server benchmark through LOOKUP, STORE, RETRIEVE, and CHECKSUM.
-   Preserve enabled intent across outage/recovery, reject nonofficial module
-   paths, and never clear, evict, or delete cache data implicitly.
+3. LMCache: keep two distinct profiles. The MP profile targets the official
+   0.5.x `lmcache server` and `LMCacheMPConnector`, verifies service version via
+   `/lmc_version` and readiness via `/healthcheck`, and requires a real online
+   vLLM connector store/hit/retrieve path in addition to the standalone
+   CPU-SHM benchmark. The Ascend profile targets the in-process
+   `LMCacheAscendConnector*`, evaluates vLLM-Ascend, LMCache, and
+   LMCache-Ascend versions separately, and never inherits MP service evidence.
+   Both profiles preserve enabled intent across outage/recovery, reject
+   mismatched module paths, and never clear, evict, or delete cache data
+   implicitly.
    **Passed for LMCache 0.5.4 on `a100-dev` (2026-09-01):** the immutable
    official image completed the CPU-SHM LOOKUP/STORE/RETRIEVE/CHECKSUM path at
    100% checksum pass rate, and Manager health, degradation, recovery,
-   disable, and forget projections passed. See
-   `docs/evidence/lmcache-0.5.4-a100-2026-09-01.md`.
+   disable, and forget projections passed. This does not yet pass the online
+   MP connector gate. **Passed for a pinned LMCache-Ascend combination on
+   server 91:** two Qwen3-0.6B requests stored, hit, and retrieved all 2236
+   tokens across separate producer and consumer processes. The adapter was a
+   four-commit CANN 9 compatibility branch beyond v0.4.3, and controlled
+   backend outage/recovery remains open. See
+   `docs/evidence/lmcache-0.5.4-a100-2026-09-01.md` and
+   `docs/evidence/lmcache-ascend-0.4.3-91-2026-09-01.md`.
 4. Production Stack: render values against the official chart, run Helm
    template and Kubernetes server dry-run, inspect router/controller/autoscaler
    rollout state, reject conflicts, and prove that no apply/uninstall occurs.

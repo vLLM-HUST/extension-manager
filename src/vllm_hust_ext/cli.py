@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import subprocess
+import tempfile
 from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
@@ -227,16 +228,55 @@ def _run_command(args: argparse.Namespace) -> int:
     if not command:
         raise ValueError("run requires a command after --")
     command = _merge_command_config(command, _activation_config(bundles))
+    plans = []
     for bundle in bundles:
         extension = config.extension(bundle.bundle_id)
         plan = plan_for(bundle, extension)
+        plans.append(plan)
         command = _merge_provider_plan(command, plan)
+    native_manifests = [
+        (plan.extension_id, plan.generated_config["native_extension_manifest"])
+        for plan in plans
+        if "native_extension_manifest" in plan.generated_config
+    ]
     if args.dry_run:
-        print(json.dumps({"command": command, "environment": activation}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "command": command,
+                    "environment": activation,
+                    "native_extension_manifests": dict(native_manifests),
+                },
+                indent=2,
+            )
+        )
         return 0
+    if native_manifests and (
+        "VLLM_EXTENSION_MANIFESTS" in os.environ
+        or "VLLM_EXTENSION_BUNDLES" in os.environ
+    ):
+        raise ValueError(
+            "vllm-hust-ext owns VLLM_EXTENSION_MANIFESTS and "
+            "VLLM_EXTENSION_BUNDLES while launching enabled vLLM extensions"
+        )
     environment = os.environ.copy()
     environment.update(activation)
-    return subprocess.call(command, env=environment)
+    if not native_manifests:
+        return subprocess.call(command, env=environment)
+    with tempfile.TemporaryDirectory(prefix="vllm-hust-ext-") as directory:
+        manifest_paths = []
+        for index, (_bundle_id, native_manifest) in enumerate(native_manifests):
+            manifest_path = Path(directory) / f"{index}-manifest.json"
+            manifest_path.write_text(
+                json.dumps(native_manifest, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+            manifest_paths.append(str(manifest_path))
+        environment["VLLM_EXTENSION_MANIFESTS"] = os.pathsep.join(manifest_paths)
+        environment["VLLM_EXTENSION_BUNDLES"] = ",".join(
+            bundle_id for bundle_id, _ in native_manifests
+        )
+        return subprocess.call(command, env=environment)
 
 
 def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:

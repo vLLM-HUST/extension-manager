@@ -5,8 +5,8 @@
   "kind": "kv_connector",
   "host": {
     "provider": "lmcache",
-    "name": "LMCache-Ascend",
-    "version_range": ">=0.4.2,<0.5",
+    "name": "vllm-ascend",
+    "version_range": ">=0.14,<0.24",
     "api_range": ">=1,<2"
   },
   "runtime": {
@@ -17,13 +17,20 @@
   "lifecycle_owner": "vllm",
   "protocols": [
     {"name": "vllm-kv-connector", "version_range": ">=1,<2"},
-    {"name": "lmcache-runtime", "version_range": ">=0.4.2,<0.5"}
+    {"name": "lmcache-runtime", "version_range": "==0.4.3"},
+    {"name": "lmcache-ascend-runtime", "version_range": "==0.4.4.dev2"}
   ],
   "implementation": [
     {
       "type": "host_builtin",
       "host": "vllm-ascend",
-      "symbols": ["LMCacheAscendConnector"]
+      "symbols": ["LMCacheAscendConnector", "LMCacheConnectorV1"]
+    },
+    {
+      "type": "python_module",
+      "module": "vllm_ascend.distributed.kv_transfer.kv_pool.lmcache_ascend_connector",
+      "object": "LMCacheConnectorV1",
+      "status": "active"
     },
     {
       "type": "python_entry_point",
