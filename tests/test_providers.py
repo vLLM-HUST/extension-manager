@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from importlib.metadata import PackageNotFoundError
 from io import BytesIO
 from pathlib import Path
@@ -83,9 +84,61 @@ def test_vllm_detects_scheduler_policy_only_from_host_contract(
     )
     monkeypatch.setattr(vllm_provider, "import_module", lambda _name: module)
 
-    assert vllm_provider._detect_protocol_versions() == {
-        "vllm.scheduler.policy": "1.0"
+    assert vllm_provider._detect_protocol_versions() == {"vllm.scheduler.policy": "1.0"}
+
+
+def test_vllm_provider_uses_manifest_host_distribution_for_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("bidkv-v0.2.json")
+    value = replace(
+        value,
+        host=type(value.host)(
+            provider="vllm",
+            name="vllm-ascend",
+            version_range=">=0.23,<0.24",
+            api_range=None,
+        ),
+    )
+    requested: list[str] = []
+
+    def installed_version(distribution: str) -> str:
+        requested.append(distribution)
+        return "0.23.0"
+
+    monkeypatch.setattr(vllm_provider, "version", installed_version)
+
+    check = VllmProvider().check(value, {})
+
+    assert requested == ["vllm-ascend"]
+    assert check.compatible is None
+    assert any("host version 0.23.0 satisfies" in item for item in check.evidence)
+
+
+def test_vllm_provider_renders_configured_speculative_config() -> None:
+    value = manifest("bidkv-v0.2.json")
+    value = replace(value, host=replace(value.host, api_range=None))
+
+    plan = VllmProvider().plan(
+        value,
+        {
+            "launch_options": {
+                "speculative_config": {
+                    "method": "eagle3",
+                    "draft_context_policy": "diffspec",
+                }
+            }
+        },
+        enabled=True,
+    )
+
+    assert plan.generated_config["vllm_json_options"] == {
+        "--speculative-config": {
+            "method": "eagle3",
+            "draft_context_policy": "diffspec",
+        }
     }
+    assert "native_extension_manifest" not in plan.generated_config
 
 
 def test_mooncake_plan_reuses_official_connector_without_owning_service() -> None:

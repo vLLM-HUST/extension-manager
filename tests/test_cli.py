@@ -118,6 +118,45 @@ def test_run_rejects_connector_config_without_declared_vllm_action() -> None:
         _merge_provider_plan(["vllm", "serve", "model"], plan)
 
 
+def test_vllm_provider_merges_declared_speculative_config() -> None:
+    plan = ProviderPlan(
+        "org.vllm-hust.diffspec",
+        "vllm",
+        (),
+        {
+            "vllm_json_options": {
+                "--speculative-config": {
+                    "method": "eagle3",
+                    "draft_context_policy": "diffspec",
+                }
+            }
+        },
+    )
+
+    command = _merge_provider_plan(["vllm", "serve", "model"], plan)
+
+    assert command[-2] == "--speculative-config"
+    assert json.loads(command[-1]) == {
+        "method": "eagle3",
+        "draft_context_policy": "diffspec",
+    }
+
+
+def test_vllm_provider_rejects_conflicting_speculative_config() -> None:
+    plan = ProviderPlan(
+        "org.vllm-hust.diffspec",
+        "vllm",
+        (),
+        {"vllm_json_options": {"--speculative-config": {"method": "eagle3"}}},
+    )
+
+    with pytest.raises(ValueError, match="conflicts"):
+        _merge_provider_plan(
+            ["vllm", "serve", "model", "--speculative-config", '{"method":"ngram"}'],
+            plan,
+        )
+
+
 def test_forget_refuses_enabled_extension(monkeypatch: pytest.MonkeyPatch) -> None:
     extension_id = "org.vllm-hust.bidkv"
     monkeypatch.setattr(
@@ -157,6 +196,7 @@ def test_run_refuses_unverified_in_process_scheduler_policy(
     manifest = SimpleNamespace(
         host=SimpleNamespace(provider="vllm"),
         kind="scheduler_policy",
+        runtime=SimpleNamespace(isolation="trusted_in_process"),
         activation=BundleActivation(),
     )
     bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
@@ -174,7 +214,7 @@ def test_run_refuses_unverified_in_process_scheduler_policy(
         ),
     )
 
-    with pytest.raises(ValueError, match="unverified in-process scheduler policy"):
+    with pytest.raises(ValueError, match="unverified trusted in-process extension"):
         cli._run_command(SimpleNamespace(command=["vllm"], dry_run=True))
 
 
@@ -185,6 +225,7 @@ def test_run_accepts_scheduler_policy_only_after_compatibility_evidence(
     manifest = SimpleNamespace(
         host=SimpleNamespace(provider="vllm"),
         kind="scheduler_policy",
+        runtime=SimpleNamespace(isolation="trusted_in_process"),
         activation=BundleActivation(),
     )
     bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
@@ -215,6 +256,7 @@ def test_run_materializes_native_manifest_for_vllm_process(
     manifest = SimpleNamespace(
         host=SimpleNamespace(provider="vllm"),
         kind="scheduler_policy",
+        runtime=SimpleNamespace(isolation="trusted_in_process"),
         activation=BundleActivation(),
     )
     bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
