@@ -42,9 +42,9 @@ placing an HPA on the operator-owned Deployment creates a two-writer conflict.
 On the arm64 host `180-ascend-bench`, a Router built from the same upstream
 commit returned HTTP 500 for an absent backend, then HTTP 200 and `ROUTER_OK`
 from the existing `zai-org/GLM-4-32B-0414` service after only the isolated
-Router was reconfigured. The official v0.1.12 Router image has no arm64
-manifest, so that successful source-built path is projected as healthy but
-degraded and the release-image matrix remains an alpha gate.
+Router was reconfigured. The product does not require amd64: the remaining
+carrier gate is a reproducible vLLM-HUST arm64 image built from the pinned
+upstream source, rather than validation of upstream's amd64-only image.
 
 Mooncake runtime detection covers the mutually exclusive official CUDA,
 CUDA 13, non-CUDA, NPU, MUSA, and EFA wheel variants. Installing more than one

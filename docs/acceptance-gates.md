@@ -37,9 +37,9 @@ hosts.
    passes on `180-ascend-bench`:** an absent backend produced HTTP 500, and
    reconnecting only the isolated Router to the existing GLM-4-32B service
    produced HTTP 200 and `ROUTER_OK` without restarting vLLM. Mock traffic no
-   longer satisfies Manager health. The official v0.1.12 Router image has no
-   arm64 manifest, so a Production Stack release-supported image matrix remains
-   a release gate. See
+   longer satisfies Manager health. The product does not require amd64; the
+   remaining release gate is a reproducible vLLM-HUST arm64 carrier built from
+   the pinned upstream source. See
    `docs/evidence/production-stack-real-model-180-2026-09-01.md`.
 4. Cross-cutting: incompatible host/API ranges, missing required services,
    duplicate registrations, configuration conflicts, rollback, partial health,
