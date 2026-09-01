@@ -19,7 +19,6 @@ from vllm_hust_ext.core import (
 from vllm_hust_ext.manifest import BundleManifest, parse_manifest
 from vllm_hust_ext.providers import vllm as vllm_provider
 from vllm_hust_ext.providers.base import ProviderPlan
-from vllm_hust_ext.providers.lmcache import LMCacheProvider
 from vllm_hust_ext.providers.mooncake import MooncakeProvider
 from vllm_hust_ext.providers.production_stack import ProductionStackProvider
 from vllm_hust_ext.providers.vllm import VllmProvider
@@ -34,6 +33,10 @@ def manifest(name: str) -> BundleManifest:
 
 def bundle(value: BundleManifest) -> SimpleNamespace:
     return SimpleNamespace(bundle_id=value.bundle_id, manifest=value)
+
+
+class _HTTPResponse(BytesIO):
+    status = 200
 
 
 def test_bidkv_is_a_vllm_owned_scheduler_policy() -> None:
@@ -254,271 +257,6 @@ def test_mooncake_operation_failures_degrade_an_otherwise_healthy_service(
     assert check.healthy is False
     assert check.degraded is True
     assert any("failed_keys=4" in item for item in check.evidence)
-
-
-def test_lmcache_plan_uses_mp_connector_without_owning_cache_data() -> None:
-    value = manifest("lmcache-v0.2.json")
-    plan = LMCacheProvider().plan(
-        value,
-        {
-            "connector": "LMCacheMPConnector",
-            "kv_connector_extra_config": {
-                "lmcache.mp.host": "lmcache.example",
-                "lmcache.mp.port": 5555,
-            },
-        },
-        enabled=True,
-    )
-
-    connector = plan.generated_config["kv_transfer_config"]
-    assert connector["kv_connector"] == "LMCacheMPConnector"
-    assert "kv_connector_module_path" not in connector
-    assert {action.operation for action in plan.actions} == {
-        "render_connector_config",
-        "check_service",
-    }
-    assert all(not action.mutating for action in plan.actions)
-
-
-def test_lmcache_unreachable_is_degraded_and_keeps_enabled_intent(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    value = manifest("lmcache-v0.2.json")
-
-    def unreachable(*args: object, **kwargs: object) -> None:
-        raise URLError("connection refused")
-
-    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.urlopen", unreachable)
-    status = status_for(
-        bundle(value),
-        ExtensionConfig(True, {"health_url": "http://127.0.0.1:1/healthcheck"}),
-        include_external_providers=False,
-    )
-
-    assert LifecycleState.ENABLED in status.states
-    assert LifecycleState.DEGRADED in status.states
-    assert LifecycleState.REACHABLE not in status.states
-
-
-def test_lmcache_unreachable_does_not_use_local_package_as_remote_evidence(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    value = manifest("lmcache-v0.2.json")
-
-    def unreachable(*args: object, **kwargs: object) -> None:
-        raise URLError("connection refused")
-
-    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.urlopen", unreachable)
-    monkeypatch.setattr(
-        "vllm_hust_ext.providers.lmcache.version", lambda distribution: "0.5.4"
-    )
-
-    check = LMCacheProvider().check(
-        value,
-        {"health_url": "http://127.0.0.1:1/healthcheck"},
-    )
-
-    assert check.compatible is None
-    assert check.reachable is False
-    assert any("host version is unavailable" in item for item in check.evidence)
-
-
-class _HTTPResponse(BytesIO):
-    status = 200
-
-
-@pytest.mark.parametrize(
-    ("service_version", "compatible"),
-    [("0.5.4", True), ("0.4.3", False)],
-)
-def test_lmcache_uses_remote_service_version_for_compatibility(
-    monkeypatch: pytest.MonkeyPatch,
-    service_version: str,
-    compatible: bool,
-) -> None:
-    value = manifest("lmcache-v0.2.json")
-    requested: list[str] = []
-
-    def not_installed(distribution: str) -> str:
-        raise PackageNotFoundError(distribution)
-
-    def respond(request: SimpleNamespace, timeout: int) -> _HTTPResponse:
-        assert timeout == 2
-        url = str(request.full_url)
-        requested.append(url)
-        payload = (
-            service_version if url.endswith("/lmc_version") else {"status": "healthy"}
-        )
-        return _HTTPResponse(json.dumps(payload).encode())
-
-    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.version", not_installed)
-    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.urlopen", respond)
-
-    check = LMCacheProvider().check(
-        value,
-        {
-            "health_url": "http://127.0.0.1:8080/healthcheck",
-            "connector_operation_evidence": {
-                "mode": "vllm_mp_connector",
-                "model": "tiny-random-opt",
-                "backend": "cpu-shm",
-                "stored_tokens": 64,
-                "hit_tokens": 64,
-                "retrieved_tokens": 64,
-                "failed_requests": 0,
-            },
-        },
-    )
-
-    assert check.compatible is compatible
-    assert check.reachable is True
-    assert check.healthy is compatible
-    assert check.degraded is not compatible
-    assert requested == [
-        "http://127.0.0.1:8080/healthcheck",
-        "http://127.0.0.1:8080/lmc_version",
-    ]
-    assert any(service_version in item for item in check.evidence)
-
-
-def test_lmcache_rejects_nonofficial_dynamic_connector_module() -> None:
-    value = manifest("lmcache-v0.2.json")
-
-    with pytest.raises(ValueError, match="official"):
-        LMCacheProvider().plan(
-            value,
-            {
-                "connector": "LMCacheMPConnector",
-                "kv_connector_module_path": "untrusted.connector.module",
-            },
-            enabled=True,
-        )
-
-
-def test_lmcache_rejects_module_that_does_not_match_connector() -> None:
-    value = manifest("lmcache-v0.2.json")
-
-    with pytest.raises(ValueError, match="does not match"):
-        LMCacheProvider().plan(
-            value,
-            {
-                "connector": "LMCacheConnectorV1Dynamic",
-                "kv_connector_module_path": (
-                    "lmcache_ascend.integration.vllm.lmcache_ascend_connector_v1"
-                ),
-            },
-            enabled=True,
-        )
-
-
-def test_lmcache_ascend_adapter_is_in_process_not_an_mp_service() -> None:
-    value = parse_manifest(
-        json.loads(
-            next(
-                (EXAMPLES / "lmcache-ascend-adapter").glob(
-                    "src/*/manifests/vllm-hust-extension-v0.2.json"
-                )
-            ).read_text(encoding="utf-8")
-        )
-    )
-    plan = LMCacheProvider().plan(
-        value,
-        {"connector": "LMCacheConnectorV1"},
-        enabled=True,
-    )
-
-    connector = plan.generated_config["kv_transfer_config"]
-    assert value.kind == "kv_connector"
-    assert value.lifecycle_owner == "vllm"
-    assert not value.requires_services
-    assert connector == {
-        "kv_connector": "LMCacheConnectorV1",
-        "kv_role": "kv_both",
-        "kv_connector_module_path": (
-            "vllm_ascend.distributed.kv_transfer.kv_pool.lmcache_ascend_connector"
-        ),
-    }
-    assert {action.operation for action in plan.actions} == {"render_connector_config"}
-    assert "only renders the vLLM connector" in plan.warnings[0]
-
-
-def test_lmcache_ascend_real_operation_evidence_projects_healthy(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    value = parse_manifest(
-        json.loads(
-            next(
-                (EXAMPLES / "lmcache-ascend-adapter").glob(
-                    "src/*/manifests/vllm-hust-extension-v0.2.json"
-                )
-            ).read_text(encoding="utf-8")
-        )
-    )
-    versions = {
-        "vllm-ascend": "0.23.0rc1",
-        "lmcache": "0.4.3",
-        "lmcache-ascend": "0.4.4.dev2",
-    }
-
-    def installed(distribution: str) -> str:
-        return versions[distribution]
-
-    monkeypatch.setattr("vllm_hust_ext.providers.lmcache.version", installed)
-    check = LMCacheProvider().check(
-        value,
-        {
-            "connector": "LMCacheConnectorV1",
-            "connector_operation_evidence": {
-                "mode": "vllm_ascend_in_process",
-                "model": "Qwen/Qwen3-0.6B",
-                "backend": "fs",
-                "stored_tokens": 2236,
-                "hit_tokens": 2236,
-                "retrieved_tokens": 2236,
-                "failed_requests": 0,
-            },
-        },
-    )
-
-    assert value.host.name == "vllm-ascend"
-    assert check.compatible is True
-    assert check.configured is True
-    assert check.reachable is None
-    assert check.healthy is True
-    assert check.degraded is False
-    assert any("stored=2236" in item for item in check.evidence)
-
-
-def test_lmcache_ascend_rejects_mp_operation_evidence() -> None:
-    value = parse_manifest(
-        json.loads(
-            next(
-                (EXAMPLES / "lmcache-ascend-adapter").glob(
-                    "src/*/manifests/vllm-hust-extension-v0.2.json"
-                )
-            ).read_text(encoding="utf-8")
-        )
-    )
-    check = LMCacheProvider().check(
-        value,
-        {
-            "connector": "LMCacheConnectorV1",
-            "connector_operation_evidence": {
-                "mode": "vllm_mp_connector",
-                "model": "Qwen/Qwen3-0.6B",
-                "backend": "fs",
-                "stored_tokens": 1,
-                "hit_tokens": 1,
-                "retrieved_tokens": 1,
-                "failed_requests": 0,
-            },
-        },
-    )
-
-    assert check.configured is False
-    assert check.healthy is None
-    assert check.degraded is True
-    assert any("vllm_ascend_in_process" in item for item in check.evidence)
 
 
 def test_production_stack_renders_but_never_applies() -> None:
@@ -844,8 +582,6 @@ def test_conflicting_provider_plans_are_rejected() -> None:
 @pytest.mark.parametrize(
     ("directory", "provider"),
     [
-        ("lmcache-provider", "lmcache"),
-        ("lmcache-ascend-adapter", "lmcache"),
         ("mooncake-provider", "mooncake"),
         ("production-stack-provider", "production-stack"),
     ],

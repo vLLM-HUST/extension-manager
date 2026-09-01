@@ -79,7 +79,6 @@ def connector_plan(provider: str, connector: str) -> ProviderPlan:
 @pytest.mark.parametrize(
     ("provider", "connector"),
     [
-        ("lmcache", "LMCacheMPConnector"),
         ("mooncake", "MooncakeStoreConnector"),
     ],
 )
@@ -103,7 +102,7 @@ def test_run_rejects_two_connectors_claiming_vllm_transfer_config() -> None:
     with pytest.raises(ValueError, match="conflicts"):
         _merge_provider_plan(
             command,
-            connector_plan("lmcache", "LMCacheMPConnector"),
+            connector_plan("other", "OtherConnector"),
         )
 
 

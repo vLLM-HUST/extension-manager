@@ -25,7 +25,7 @@ its manifest has no `linux/arm64/v8` variant. The acceptance therefore built
 the exact upstream source commit on arm64. The host Docker installation lacked
 BuildKit/buildx, so the Dockerfile's two cache-mount annotations were removed;
 the commands, source, entry point, and installed Router package were otherwise
-unchanged. Optional semantic-cache and LMCache dependencies were deliberately
+unchanged. Optional semantic-cache dependencies were deliberately
 excluded because this test covers the control-plane Router, not a KV extension.
 The Python 3.12 arm64 base digest was
 `sha256:09f7da3bc104798d0afb40bc08d23ab2da20a76130cec1f2ef170848f5d85217`.

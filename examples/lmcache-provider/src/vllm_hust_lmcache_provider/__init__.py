@@ -1,1 +1,0 @@
-"""Installable LMCache extension profile."""

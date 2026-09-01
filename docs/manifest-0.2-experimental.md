@@ -27,8 +27,8 @@ input. It must not be advertised as stable and receives no forward
 compatibility promise.
 
 An external-service carrier describes the official implementation surface; it
-does not transfer lifecycle ownership to the Manager. For example, the LMCache
-0.5.x profile records both the supported `lmcache server` console command and
+does not transfer lifecycle ownership to the Manager. For example, an external
+service profile may record both its operator-owned console command and
 its backing Python module, while `lifecycle_owner=external_operator` prevents
 Core from turning that description into implicit start, stop, clear, or delete
 operations.
