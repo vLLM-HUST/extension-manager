@@ -74,8 +74,47 @@ it as an unknown vLLM-owned setting.
 
 ## Remaining release boundary
 
-This closes the online load, policy-call, request-completion, disable, and
-next-process fallback behavior gate. It does not turn the overlay into a
-release artifact. Alpha still requires the same result from a clean image and
-wheel built from the pushed commits, plus the remaining cross-host release
-matrix.
+The first isolated run closed the online load, policy-call,
+request-completion, disable, and next-process fallback behavior gate. The
+following clean-artifact repeat closes that remaining 91 packaging gap; the
+cross-host release matrix is still open.
+
+## Clean pushed-artifact repeat
+
+The repeat used only artifacts derived from pushed commits:
+
+- vLLM-HUST `87096bd3de782b2cd32d0dfd4efcbc891adad268`;
+- BidKV `2b55997`, wheel SHA-256
+  `cb10f1a8fbfb5a9ec8f64bb163baddf7719a0071618836ad3804a05823444f27`;
+- Extension Manager `b4f221f`, wheel SHA-256
+  `6e467fa276cfa64a1cfff7655e38ca11d654dc7aa111526bef7e8dfc2e726123`;
+- source archive SHA-256
+  `0888a19706641c3539cf971ed9f639bfa41debd01a90562f5ba4f27bd9e6c1d0`;
+- resulting arm64 image manifest
+  `sha256:81e3dfba8affd27c6ace86c39a026d4383a1a908d80ca24e0226d5bfb0b42ee3`.
+
+The clean carrier initially exposed a packaging defect: copying only
+`victim_selector.py` admitted BidKV but did not invoke it. Copying the entire
+fork scheduler was then rejected because it drifted from the pinned Ascend
+base. The final carrier instead applies four fail-closed edits to the native
+base scheduler: import, construction, preemption selection, and observability.
+The build aborts if any pinned fragment changes.
+
+With the corrected carrier, EngineCore loaded the typed component and three
+concurrent 1,400-token generations produced three real selections at
+`kv_util=1.00` (`r=769`, `r=1152`, and `r=1407`). All requests ended with
+`finish_reason=length` and 1,400 completion tokens.
+
+After Manager disable, the next process used the same carrier without the
+BidKV wheel or extension environment. It completed a real 64-token request;
+its full log contained zero `Loaded typed victim selector` and zero `[BidKV]`
+matches. Manager `forget` produced an empty extension map. In a fresh container
+virtual environment, uninstalling BidKV removed its
+`vllm_hust.extension_bundles` entry point and made `import bidkv` fail; the main
+wheel never registered a BidKV `vllm.general_plugins` entry point. The temporary
+services were removed and NPU 5 had no remaining process.
+
+This passes the clean install, enable, real invocation, disable, fallback,
+forget, and uninstall gate on server 91. Alpha remains blocked on the stated
+112 and broader cross-host matrix; these results do not expand support to
+official vLLM.
