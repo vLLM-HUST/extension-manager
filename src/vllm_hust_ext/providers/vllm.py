@@ -24,6 +24,16 @@ _JSON_LAUNCH_OPTIONS = {
 _RUNTIME_QUALIFICATION_KEY = "_manager_runtime_qualification"
 
 
+def _qualname_from_implementation_ref(implementation_ref: str) -> str:
+    """Convert manifest ``module:object`` syntax to vLLM's Python qualname."""
+    module, separator, object_name = implementation_ref.partition(":")
+    if not separator or not module or not object_name:
+        raise ValueError(
+            "preemption policy implementation_ref must use module:object syntax"
+        )
+    return f"{module}.{object_name}"
+
+
 def _detect_protocol_versions() -> dict[str, str]:
     """Report only contracts exported by the installed vLLM host."""
     detected: dict[str, str] = {}
@@ -126,7 +136,9 @@ class VllmProvider:
                     "exactly one vllm.preemption-policy.v1 component is required"
                 )
             generated["vllm_options"] = {
-                "--preemption-policy": preemption_components[0].implementation_ref
+                "--preemption-policy": _qualname_from_implementation_ref(
+                    preemption_components[0].implementation_ref
+                )
             }
         if native_manifest is not None:
             generated["native_extension_manifest"] = native_manifest

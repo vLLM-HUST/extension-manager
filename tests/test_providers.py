@@ -47,13 +47,10 @@ def test_bidkv_is_a_vllm_owned_scheduler_policy() -> None:
     assert value.kind == "scheduler_policy"
     assert value.lifecycle_owner == "vllm"
     assert all(not action.mutating for action in plan.actions)
-    assert plan.generated_config["additional_config"] == {
-        "enable_utility_victim_selection": True,
-        "utility_strategy": "bidkv",
-    }
+    assert plan.generated_config["additional_config"] == {}
     assert plan.generated_config["vllm_options"] == {
         "--preemption-policy": (
-            "bidkv.adapters.vllm_hust.selector:BidkvPreemptionPolicy"
+            "bidkv.adapters.vllm_hust.selector.BidkvPreemptionPolicy"
         )
     }
     assert "run refuses unverified policies" in plan.warnings[0]

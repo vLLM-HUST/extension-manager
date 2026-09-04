@@ -44,8 +44,6 @@
       "BIDKV_UTILITY_STRATEGY": "bidkv"
     },
     "additional_config": {
-      "enable_utility_victim_selection": true,
-      "utility_strategy": "bidkv",
       "_manager_runtime_qualification": {
         "accelerator": "ascend",
         "execution_mode": "graph",
