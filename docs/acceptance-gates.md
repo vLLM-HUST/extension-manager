@@ -7,9 +7,12 @@ hosts.
    `vllm.victim_selector` entry point. vLLM-HUST `0.28.1rc1.dev319` owns the
    typed `vllm.preemption-policy` v1 loader, validation, observability, and
    built-in failover, while BidKV supplies only the policy implementation.
-   Source and installed-package tests pass, but the Sage Mate Qwen3.8-27B TP4
-   graph runtime gate remains unverified and therefore cannot be called
-   compatible. The following 0.23 results are historical only: on server 91,
+   Source and installed-package tests pass. The Sage Mate Qwen3.8-27B TP4 graph
+   pressure gate also passed on the exact candidate: all four long requests
+   completed, the policy ran 187 times with zero selector failures, output was
+   correct, and disable plus restart restored the built-in policy. This is a
+   candidate-lane result pending human upstream review, not a stable-v1 promise.
+   The following 0.23 results are historical only: on server 91,
    8 host contract tests and 4 installed BidKV
    materialization/trace tests pass. A real Qwen3-0.6B serving run then produced
    three `UTILITY_ACTIVE` selections under full KV pressure; all requests
