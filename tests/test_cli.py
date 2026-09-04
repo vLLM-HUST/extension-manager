@@ -201,6 +201,35 @@ def test_vllm_provider_rejects_conflicting_speculative_config() -> None:
         )
 
 
+def test_vllm_provider_merges_declared_preemption_policy() -> None:
+    implementation = "bidkv.adapters.vllm_hust.selector:BidkvPreemptionPolicy"
+    plan = ProviderPlan(
+        "org.vllm-hust.bidkv",
+        "vllm",
+        (),
+        {"vllm_options": {"--preemption-policy": implementation}},
+    )
+
+    command = _merge_provider_plan(["vllm", "serve", "model"], plan)
+
+    assert command[-2:] == ["--preemption-policy", implementation]
+
+
+def test_vllm_provider_rejects_conflicting_preemption_policy() -> None:
+    plan = ProviderPlan(
+        "org.vllm-hust.bidkv",
+        "vllm",
+        (),
+        {"vllm_options": {"--preemption-policy": "example:Bidkv"}},
+    )
+
+    with pytest.raises(ValueError, match="conflicts"):
+        _merge_provider_plan(
+            ["vllm", "serve", "model", "--preemption-policy=example:Other"],
+            plan,
+        )
+
+
 def test_forget_refuses_enabled_extension(monkeypatch: pytest.MonkeyPatch) -> None:
     extension_id = "org.vllm-hust.bidkv"
     monkeypatch.setattr(

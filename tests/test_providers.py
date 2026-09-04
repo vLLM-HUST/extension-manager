@@ -48,7 +48,13 @@ def test_bidkv_is_a_vllm_owned_scheduler_policy() -> None:
     assert value.lifecycle_owner == "vllm"
     assert all(not action.mutating for action in plan.actions)
     assert plan.generated_config["additional_config"] == {
-        "victim_selector_component": "org.vllm-hust.bidkv/victim-selector"
+        "enable_utility_victim_selection": True,
+        "utility_strategy": "bidkv",
+    }
+    assert plan.generated_config["vllm_options"] == {
+        "--preemption-policy": (
+            "bidkv.adapters.vllm_hust.selector:BidkvPreemptionPolicy"
+        )
     }
     assert "run refuses unverified policies" in plan.warnings[0]
     assert value.activation.entry_points == ()
@@ -58,16 +64,16 @@ def test_bidkv_is_a_vllm_owned_scheduler_policy() -> None:
     assert plan.generated_config["native_extension_manifest"] == {
         "schema_version": "1.0",
         "bundle_id": "org.vllm-hust.bidkv",
-        "bundle_version": "0.2.0a1",
+        "bundle_version": "0.2.0",
         "host_api_range": ">=1,<2",
         "components": [
             {
                 "component_id": "victim-selector",
-                "contracts": ["vllm.scheduler.policy.v1"],
+                "contracts": ["vllm.preemption-policy.v1"],
                 "execution_planes": ["scheduler"],
                 "isolation": "trusted_in_process",
                 "implementation_ref": (
-                    "bidkv.adapters.vllm_hust.selector:BidkvVictimSelector"
+                    "bidkv.adapters.vllm_hust.selector:BidkvPreemptionPolicy"
                 ),
                 "permissions": [],
             }
@@ -85,6 +91,21 @@ def test_vllm_detects_scheduler_policy_only_from_host_contract(
     monkeypatch.setattr(vllm_provider, "import_module", lambda _name: module)
 
     assert vllm_provider._detect_protocol_versions() == {"vllm.scheduler.policy": "1.0"}
+
+
+def test_vllm_detects_preemption_policy_from_versioned_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def imported(name: str) -> SimpleNamespace:
+        if name == "vllm.v1.core.sched.preemption":
+            return SimpleNamespace(PREEMPTION_POLICY_API_VERSION="1.0")
+        raise ImportError(name)
+
+    monkeypatch.setattr(vllm_provider, "import_module", imported)
+
+    assert vllm_provider._detect_protocol_versions() == {
+        "vllm.preemption-policy": "1.0"
+    }
 
 
 def test_vllm_provider_uses_manifest_host_distribution_for_version(
@@ -618,20 +639,50 @@ def test_known_host_version_projects_compatible_or_incompatible() -> None:
         ExtensionConfig(
             True,
             {
-                "host_version": "0.23.0",
-                "protocol_versions": {"vllm.scheduler.policy": "1.0"},
+                "host_version": "0.28.1rc1.dev319",
+                "protocol_versions": {"vllm.preemption-policy": "1.0"},
+                "runtime_qualification": {
+                    "status": "passed",
+                    "accelerator": "ascend",
+                    "execution_mode": "graph",
+                    "model": "Qwen3.8-27B",
+                    "tensor_parallel_size": 4,
+                },
             },
         ),
         include_external_providers=False,
     )
     incompatible = status_for(
         bundle(value),
-        ExtensionConfig(True, {"host_version": "0.24.0"}),
+        ExtensionConfig(True, {"host_version": "0.29.0"}),
         include_external_providers=False,
     )
 
     assert LifecycleState.COMPATIBLE in compatible.states
+    assert LifecycleState.RUNTIME_EFFECTIVE not in compatible.states
     assert LifecycleState.INCOMPATIBLE in incompatible.states
+
+
+def test_bidkv_source_contract_does_not_claim_runtime_compatibility() -> None:
+    value = manifest("bidkv-v0.2.json")
+
+    status = status_for(
+        bundle(value),
+        ExtensionConfig(
+            True,
+            {
+                "host_version": "0.28.1rc1.dev319",
+                "protocol_versions": {"vllm.preemption-policy": "1.0"},
+            },
+        ),
+        include_external_providers=False,
+    )
+
+    assert LifecycleState.COMPATIBLE not in status.states
+    assert LifecycleState.ENABLED in status.states
+    assert LifecycleState.RUNTIME_EFFECTIVE not in status.states
+    assert LifecycleState.DEGRADED in status.states
+    assert any("qualification is unavailable" in item for item in status.evidence)
 
 
 def test_vllm_does_not_assume_a_fork_only_protocol_exists() -> None:
@@ -639,13 +690,15 @@ def test_vllm_does_not_assume_a_fork_only_protocol_exists() -> None:
 
     unverified = status_for(
         bundle(value),
-        ExtensionConfig(True, {"host_version": "0.23.0"}),
+        ExtensionConfig(True, {"host_version": "0.28.1rc1.dev319"}),
         include_external_providers=False,
     )
 
     assert LifecycleState.COMPATIBLE not in unverified.states
     assert LifecycleState.DEGRADED in unverified.states
-    assert any("protocol vllm.scheduler.policy" in item for item in unverified.evidence)
+    assert any(
+        "protocol vllm.preemption-policy" in item for item in unverified.evidence
+    )
 
 
 def test_conflicting_provider_plans_are_rejected() -> None:

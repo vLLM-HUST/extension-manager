@@ -339,6 +339,30 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         if option != "--speculative-config" or not isinstance(value, dict):
             raise ValueError(f"unsupported provider JSON option {option!r}")
         result = _merge_json_option(result, option, value)
+    scalar_options = plan.generated_config.get("vllm_options", {})
+    if not isinstance(scalar_options, dict):
+        raise ValueError("provider vllm_options must be an object")
+    for option, value in scalar_options.items():
+        if option != "--preemption-policy" or not isinstance(value, str):
+            raise ValueError(f"unsupported provider option {option!r}")
+        result = _merge_scalar_option(result, option, value)
+    return result
+
+
+def _merge_scalar_option(command: list[str], option: str, generated: str) -> list[str]:
+    result = list(command)
+    for index, argument in enumerate(result):
+        if argument == option:
+            if index + 1 >= len(result):
+                raise ValueError(f"{option} requires a value")
+            if result[index + 1] != generated:
+                raise ValueError(f"extension activation conflicts with {option}")
+            return result
+        if argument.startswith(f"{option}="):
+            if argument.partition("=")[2] != generated:
+                raise ValueError(f"extension activation conflicts with {option}")
+            return result
+    result.extend((option, generated))
     return result
 
 

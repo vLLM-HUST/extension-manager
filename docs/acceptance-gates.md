@@ -3,10 +3,14 @@
 Alpha publication remains blocked until all gates are repeatable on supported
 hosts.
 
-1. vLLM/BidKV: the main distribution registers no private
-   `vllm.victim_selector` entry point. vLLM-HUST 0.23 owns the minimal generic
-   `vllm.scheduler.policy.v1` materializer, while BidKV supplies only the policy
-   implementation. On server 91, 8 host contract tests and 4 installed BidKV
+1. vLLM/BidKV: the 0.2 distribution registers no private
+   `vllm.victim_selector` entry point. vLLM-HUST `0.28.1rc1.dev319` owns the
+   typed `vllm.preemption-policy` v1 loader, validation, observability, and
+   built-in failover, while BidKV supplies only the policy implementation.
+   Source and installed-package tests pass, but the Sage Mate Qwen3.8-27B TP4
+   graph runtime gate remains unverified and therefore cannot be called
+   compatible. The following 0.23 results are historical only: on server 91,
+   8 host contract tests and 4 installed BidKV
    materialization/trace tests pass. A real Qwen3-0.6B serving run then produced
    three `UTILITY_ACTIVE` selections under full KV pressure; all requests
    completed, and disable plus next-process restart restored the built-in path
@@ -15,7 +19,8 @@ hosts.
    Forget and isolated-wheel uninstall also removed all BidKV registration and
    import state. The same artifacts then passed the full online gate on 112 with
    Qwen2.5-3B, including three policy calls, built-in fallback and uninstall.
-   Official vLLM remains unsupported until its upstream contract is released. See
+   They do not qualify the new baseline. Official vLLM remains unsupported
+   until its upstream contract is released. See
    `docs/evidence/bidkv-vllm-hust-0.23-ascend91-2026-09-01.md`.
 2. Mooncake: render both `MooncakeConnector` and `MooncakeStoreConnector`,
    verify a real externally operated service, preserve enabled intent during an

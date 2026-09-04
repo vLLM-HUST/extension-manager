@@ -18,6 +18,9 @@ class LifecycleState(str, Enum):
     COMPATIBLE = "compatible"
     CONFIGURED = "configured"
     ENABLED = "enabled"
+    # This state is deliberately never inferred from saved enable intent. A
+    # runtime observer must add it from process-owned invocation evidence.
+    RUNTIME_EFFECTIVE = "runtime_effective"
     REACHABLE = "reachable"
     HEALTHY = "healthy"
     DEGRADED = "degraded"

@@ -82,13 +82,14 @@ vllm-hust-ext extension status org.vllm-hust.bidkv
 vllm-hust-ext extension check org.vllm-hust.bidkv
 ```
 
-BidKV is supported by the pinned vLLM-HUST 0.23 host through the generic typed
-`vllm.scheduler.policy.v1` contract. The main BidKV distribution does not
-register the private legacy `vllm.victim_selector` entry point. Manager
-converts the extension manifest to the host-native startup manifest, selects
-`org.vllm-hust.bidkv/victim-selector`, and refuses incompatible official-vLLM
-hosts. This support statement applies to vLLM-HUST, not to official vLLM while
-the upstream scheduler-plugin contract is still unsettled.
+BidKV 0.2 targets vLLM-HUST `0.28.1rc1.dev319` through the typed
+`vllm.preemption-policy` API v1. The main BidKV distribution does not register
+the removed private `vllm.victim_selector` entry point and does not monkey
+patch the scheduler. Manager resolves the static bundle component into the
+host-native `--preemption-policy` option and refuses incompatible official-vLLM
+hosts. Source compatibility is currently unverified on the Sage Mate TP4 graph
+target; the older vLLM-HUST 0.23 serving record is retained only as historical
+evidence and is not inherited by this baseline.
 
 ```bash
 vllm-hust-ext extension enable org.vllm-hust.bidkv
@@ -106,6 +107,13 @@ explicit and stored in the user configuration. Discovery reads installed
 distribution metadata and the static bundle manifest without importing its
 implementation modules.
 
+Lifecycle states are independent: `installed`, `configured`, and `enabled`
+describe artifacts and saved launch intent. `runtime_effective` requires a
+process-owned observer to prove that the selected implementation was invoked
+by the running engine. This Manager does not infer runtime effectiveness from
+static discovery or an environment variable, so ordinary status output omits
+that state until an external runtime observer supplies evidence.
+
 Descriptors whose only Python implementation is marked `import_only` or
 `legacy_unregistered` remain inspectable but cannot be enabled. Inspection
 reports `activation_ready=false` and the blocker instead of pretending that an
@@ -117,4 +125,3 @@ Third-party host providers register factories only under the project-owned
 entry-point group `vllm_hust_ext.providers`. Extension distributions register
 static manifests under `vllm_hust.extension_bundles`. Neither namespace claims
 an unofficial `vllm.*` entry-point group.
-

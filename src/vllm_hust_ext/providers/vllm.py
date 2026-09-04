@@ -21,18 +21,29 @@ from vllm_hust_ext.providers.base import (
 _JSON_LAUNCH_OPTIONS = {
     "speculative_config": "--speculative-config",
 }
+_RUNTIME_QUALIFICATION_KEY = "_manager_runtime_qualification"
 
 
 def _detect_protocol_versions() -> dict[str, str]:
     """Report only contracts exported by the installed vLLM host."""
+    detected: dict[str, str] = {}
     try:
         contracts = import_module("vllm.plugins.contracts")
         scheduler_policy = contracts.DomainContract.SCHEDULER_POLICY_V1
     except (AttributeError, ImportError):
-        return {}
-    if scheduler_policy.value != "vllm.scheduler.policy.v1":
-        return {}
-    return {"vllm.scheduler.policy": "1.0"}
+        pass
+    else:
+        if scheduler_policy.value == "vllm.scheduler.policy.v1":
+            detected["vllm.scheduler.policy"] = "1.0"
+    try:
+        preemption = import_module("vllm.v1.core.sched.preemption")
+        preemption_version = preemption.PREEMPTION_POLICY_API_VERSION
+    except (AttributeError, ImportError):
+        pass
+    else:
+        if preemption_version == "1.0":
+            detected["vllm.preemption-policy"] = preemption_version
+    return detected
 
 
 class VllmProvider:
@@ -96,12 +107,27 @@ class VllmProvider:
                 raise ValueError(f"launch_options.{name} must be an object")
             json_options[_JSON_LAUNCH_OPTIONS[name]] = value
 
+        additional_config = dict(manifest.activation.additional_config)
+        additional_config.pop(_RUNTIME_QUALIFICATION_KEY, None)
         generated = {
             "environment": dict(manifest.activation.environment),
-            "additional_config": dict(manifest.activation.additional_config),
+            "additional_config": additional_config,
             "user_config": configuration,
             "vllm_json_options": json_options,
         }
+        preemption_components = [
+            component
+            for component in manifest.components
+            if "vllm.preemption-policy.v1" in component.contracts
+        ]
+        if preemption_components:
+            if len(preemption_components) != 1:
+                raise ValueError(
+                    "exactly one vllm.preemption-policy.v1 component is required"
+                )
+            generated["vllm_options"] = {
+                "--preemption-policy": preemption_components[0].implementation_ref
+            }
         if native_manifest is not None:
             generated["native_extension_manifest"] = native_manifest
         warnings = ()
@@ -160,6 +186,41 @@ class VllmProvider:
             # fork-only or draft extension protocol is actually present.
             default_protocol_versions=_detect_protocol_versions(),
         )
+        required_profile = dict(manifest.activation.additional_config).get(
+            _RUNTIME_QUALIFICATION_KEY
+        )
+        if compatible is True and required_profile is not None:
+            qualification = configuration.get("runtime_qualification")
+            if not isinstance(required_profile, dict):
+                return ProviderCheck(
+                    compatible=False,
+                    configured=False,
+                    degraded=True,
+                    evidence=evidence
+                    + ("manifest runtime qualification profile is invalid",),
+                )
+            if (
+                not isinstance(qualification, dict)
+                or qualification.get("status") != "passed"
+            ):
+                compatible = None
+                evidence += (
+                    "matching source contracts are insufficient; required runtime "
+                    "qualification is unavailable",
+                )
+            else:
+                mismatches = {
+                    key: (expected, qualification.get(key))
+                    for key, expected in required_profile.items()
+                    if qualification.get(key) != expected
+                }
+                if mismatches:
+                    compatible = False
+                    evidence += (
+                        f"runtime qualification profile mismatch: {mismatches}",
+                    )
+                else:
+                    evidence += ("required runtime qualification profile passed",)
         blocker = activation_blocker(manifest)
         if blocker is not None:
             return ProviderCheck(
