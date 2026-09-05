@@ -78,6 +78,34 @@ def test_bidkv_is_a_vllm_owned_scheduler_policy() -> None:
     }
 
 
+def test_pipeline_microbatch_uses_batch_admission_policy_contract() -> None:
+    value = manifest("pipeline-microbatch-v0.2.json")
+    plan = VllmProvider().plan(
+        value,
+        {
+            "launch_options": {
+                "batch_admission_policy_config": {
+                    "mode": "balanced",
+                    "microbatch_count": 2,
+                }
+            }
+        },
+        enabled=True,
+    )
+
+    assert plan.generated_config["vllm_options"] == {
+        "--batch-admission-policy": (
+            "vllm_hust_pipeline_microbatch.policy.PipelineMicrobatchPolicy"
+        )
+    }
+    assert plan.generated_config["vllm_json_options"] == {
+        "--batch-admission-policy-config": {
+            "mode": "balanced",
+            "microbatch_count": 2,
+        }
+    }
+
+
 def test_vllm_detects_scheduler_policy_only_from_host_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -102,6 +130,21 @@ def test_vllm_detects_preemption_policy_from_versioned_module(
 
     assert vllm_provider._detect_protocol_versions() == {
         "vllm.preemption-policy": "1.0"
+    }
+
+
+def test_vllm_detects_batch_admission_policy_from_versioned_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def imported(name: str) -> SimpleNamespace:
+        if name == "vllm.v1.core.sched.batch_admission":
+            return SimpleNamespace(BATCH_ADMISSION_POLICY_API_VERSION="1.1")
+        raise ImportError(name)
+
+    monkeypatch.setattr(vllm_provider, "import_module", imported)
+
+    assert vllm_provider._detect_protocol_versions() == {
+        "vllm.batch-admission-policy": "1.1"
     }
 
 
