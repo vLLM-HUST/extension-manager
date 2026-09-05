@@ -201,6 +201,21 @@ def test_vllm_provider_rejects_conflicting_speculative_config() -> None:
         )
 
 
+def test_vllm_provider_merges_batch_admission_policy_config() -> None:
+    config = {"mode": "balanced", "microbatch_count": 2}
+    plan = ProviderPlan(
+        "org.vllm-hust.pipeline-microbatch",
+        "vllm",
+        (),
+        {"vllm_json_options": {"--batch-admission-policy-config": config}},
+    )
+
+    command = _merge_provider_plan(["vllm", "serve", "model"], plan)
+
+    assert command[-2] == "--batch-admission-policy-config"
+    assert json.loads(command[-1]) == config
+
+
 def test_vllm_provider_merges_declared_preemption_policy() -> None:
     implementation = "bidkv.adapters.vllm_hust.selector:BidkvPreemptionPolicy"
     plan = ProviderPlan(

@@ -336,14 +336,20 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         raise ValueError("provider vllm_json_options must be an object")
     result = command
     for option, value in json_options.items():
-        if option != "--speculative-config" or not isinstance(value, dict):
+        if option not in {
+            "--batch-admission-policy-config",
+            "--speculative-config",
+        } or not isinstance(value, dict):
             raise ValueError(f"unsupported provider JSON option {option!r}")
         result = _merge_json_option(result, option, value)
     scalar_options = plan.generated_config.get("vllm_options", {})
     if not isinstance(scalar_options, dict):
         raise ValueError("provider vllm_options must be an object")
     for option, value in scalar_options.items():
-        if option != "--preemption-policy" or not isinstance(value, str):
+        if option not in {
+            "--batch-admission-policy",
+            "--preemption-policy",
+        } or not isinstance(value, str):
             raise ValueError(f"unsupported provider option {option!r}")
         result = _merge_scalar_option(result, option, value)
     return result
