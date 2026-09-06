@@ -125,3 +125,23 @@ Third-party host providers register factories only under the project-owned
 entry-point group `vllm_hust_ext.providers`. Extension distributions register
 static manifests under `vllm_hust.extension_bundles`. Neither namespace claims
 an unofficial `vllm.*` entry-point group.
+
+## Organization catalog feed
+
+The Manager validates the organization-wide, immutable extension catalog used
+by Workstation Mod Center. The feed is metadata only: listing an entry never
+installs or enables it. `qualified` requires passed functional and recovery
+evidence plus an immutable install target. An extension with correct behavior
+but a negative matched performance result remains available and records
+`not-recommended-for-tested-cell`; unverified function or recovery remains a
+non-enableable `preview`.
+
+```bash
+vllm-hust-ext catalog validate extension-catalog-v1.json
+vllm-hust-ext catalog list extension-catalog-v1.json --include-preview
+vllm-hust-ext catalog inspect extension-catalog-v1.json org.vllm-hust.bidkv
+```
+
+Catalog availability is not runtime state. Workstation and API consumers must
+continue to distinguish `installed`, `configured`, `enabled`, and
+`runtime_effective`; only a process-owned observer may prove the last state.
