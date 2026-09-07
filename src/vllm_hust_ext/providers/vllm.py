@@ -19,6 +19,7 @@ from vllm_hust_ext.providers.base import (
 )
 
 _JSON_LAUNCH_OPTIONS = {
+    "batch_admission_policy_config": "--batch-admission-policy-config",
     "speculative_config": "--speculative-config",
 }
 _RUNTIME_QUALIFICATION_KEY = "_manager_runtime_qualification"
@@ -28,9 +29,7 @@ def _qualname_from_implementation_ref(implementation_ref: str) -> str:
     """Convert manifest ``module:object`` syntax to vLLM's Python qualname."""
     module, separator, object_name = implementation_ref.partition(":")
     if not separator or not module or not object_name:
-        raise ValueError(
-            "preemption policy implementation_ref must use module:object syntax"
-        )
+        raise ValueError("policy implementation_ref must use module:object syntax")
     return f"{module}.{object_name}"
 
 
@@ -53,6 +52,14 @@ def _detect_protocol_versions() -> dict[str, str]:
     else:
         if preemption_version == "1.0":
             detected["vllm.preemption-policy"] = preemption_version
+    try:
+        admission = import_module("vllm.v1.core.sched.batch_admission")
+        admission_version = admission.BATCH_ADMISSION_POLICY_API_VERSION
+    except (AttributeError, ImportError):
+        pass
+    else:
+        if admission_version.startswith("1."):
+            detected["vllm.batch-admission-policy"] = admission_version
     return detected
 
 
@@ -140,6 +147,21 @@ class VllmProvider:
                     preemption_components[0].implementation_ref
                 )
             }
+        admission_components = [
+            component
+            for component in manifest.components
+            if "vllm.batch-admission-policy.v1" in component.contracts
+        ]
+        if admission_components:
+            if len(admission_components) != 1:
+                raise ValueError(
+                    "exactly one vllm.batch-admission-policy.v1 component is required"
+                )
+            generated.setdefault("vllm_options", {})["--batch-admission-policy"] = (
+                _qualname_from_implementation_ref(
+                    admission_components[0].implementation_ref
+                )
+            )
         if native_manifest is not None:
             generated["native_extension_manifest"] = native_manifest
         warnings = ()

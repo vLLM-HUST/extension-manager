@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
+from vllm_hust_ext.catalog import load_catalog
 from vllm_hust_ext.config import ExtensionConfig, load_config, save_config
 from vllm_hust_ext.core import (
     LifecycleState,
@@ -213,6 +214,44 @@ def _extension_command(args: argparse.Namespace) -> int:
     raise AssertionError(args.action)
 
 
+def _catalog_command(args: argparse.Namespace) -> int:
+    catalog = load_catalog(Path(args.file))
+    if args.action == "validate":
+        print(
+            json.dumps(
+                {
+                    "schema": catalog["schema"],
+                    "extensions": len(catalog["extensions"]),
+                    "valid": True,
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.action == "list":
+        entries = [
+            entry
+            for entry in catalog["extensions"]
+            if args.include_preview or entry["availability"] != "preview"
+        ]
+        if args.json:
+            print(json.dumps(entries, indent=2, sort_keys=True))
+        else:
+            for entry in entries:
+                print(
+                    f"{entry['id']} {entry['maturity']} "
+                    f"{entry['availability']} {entry['recommendation']['level']}"
+                )
+        return 0
+    if args.action == "inspect":
+        for entry in catalog["extensions"]:
+            if entry["id"] == args.extension_id:
+                print(json.dumps(entry, indent=2, sort_keys=True))
+                return 0
+        raise ValueError(f"catalog extension {args.extension_id!r} was not found")
+    raise AssertionError(args.action)
+
+
 def _run_command(args: argparse.Namespace) -> int:
     config = load_config()
     bundles = discover_bundles(config.enabled) if config.enabled else ()
@@ -336,14 +375,20 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         raise ValueError("provider vllm_json_options must be an object")
     result = command
     for option, value in json_options.items():
-        if option != "--speculative-config" or not isinstance(value, dict):
+        if option not in {
+            "--batch-admission-policy-config",
+            "--speculative-config",
+        } or not isinstance(value, dict):
             raise ValueError(f"unsupported provider JSON option {option!r}")
         result = _merge_json_option(result, option, value)
     scalar_options = plan.generated_config.get("vllm_options", {})
     if not isinstance(scalar_options, dict):
         raise ValueError("provider vllm_options must be an object")
     for option, value in scalar_options.items():
-        if option != "--preemption-policy" or not isinstance(value, str):
+        if option not in {
+            "--batch-admission-policy",
+            "--preemption-policy",
+        } or not isinstance(value, str):
             raise ValueError(f"unsupported provider option {option!r}")
         result = _merge_scalar_option(result, option, value)
     return result
@@ -412,6 +457,17 @@ def build_parser() -> argparse.ArgumentParser:
     configure_parser.add_argument("bundle_id")
     configure_parser.add_argument("--file", required=True)
     extension_subcommands.add_parser("env")
+    catalog = subcommands.add_parser("catalog")
+    catalog_subcommands = catalog.add_subparsers(dest="action", required=True)
+    catalog_validate = catalog_subcommands.add_parser("validate")
+    catalog_validate.add_argument("file")
+    catalog_list = catalog_subcommands.add_parser("list")
+    catalog_list.add_argument("file")
+    catalog_list.add_argument("--json", action="store_true")
+    catalog_list.add_argument("--include-preview", action="store_true")
+    catalog_inspect = catalog_subcommands.add_parser("inspect")
+    catalog_inspect.add_argument("file")
+    catalog_inspect.add_argument("extension_id")
     run_parser = subcommands.add_parser("run")
     run_parser.add_argument("--dry-run", action="store_true")
     run_parser.add_argument("command", nargs=argparse.REMAINDER)
@@ -424,6 +480,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command_name == "extension":
             return _extension_command(args)
+        if args.command_name == "catalog":
+            return _catalog_command(args)
         return _run_command(args)
     except (OSError, ValueError) as error:
         parser.error(str(error))
