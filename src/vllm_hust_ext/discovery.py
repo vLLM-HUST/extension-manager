@@ -13,7 +13,7 @@ from urllib.parse import unquote, urlparse
 
 from vllm_hust_ext.manifest import BundleManifest, ManifestError, load_manifest
 
-ENTRY_POINT_GROUP = "vllm_hust.extension_bundles"
+ENTRY_POINT_GROUP = "vllm.extension_bundles"
 MANIFEST_FILENAMES = (
     "vllm-hust-extension-v0.2.json",
     "vllm-hust-extension-v1.json",
