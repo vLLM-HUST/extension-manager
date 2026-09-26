@@ -251,6 +251,7 @@ def test_mooncake_plan_reuses_official_connector_without_owning_service() -> Non
 def test_ascend_store_plan_preserves_connector_options() -> None:
     configuration = {
         "connector": "AscendStoreConnector",
+        "kv_load_failure_policy": "fail",
         "device_backend": "ascend",
         "transport_protocol": "ascend",
         "kv_connector_extra_config": {"backend": "mooncake", "use_layerwise": False},
@@ -262,6 +263,7 @@ def test_ascend_store_plan_preserves_connector_options() -> None:
         "kv_transfer_config": {
             "kv_connector": "AscendStoreConnector",
             "kv_role": "kv_both",
+            "kv_load_failure_policy": "fail",
             "kv_connector_extra_config": configuration["kv_connector_extra_config"],
         }
     }
@@ -273,6 +275,22 @@ def test_ascend_store_plan_preserves_connector_options() -> None:
             MooncakeProvider().plan(
                 manifest("mooncake-v0.2.json"), invalid, enabled=True
             )
+
+    for policy in ("fail", "recompute"):
+        configured = dict(configuration, kv_load_failure_policy=policy)
+        result = MooncakeProvider().plan(
+            manifest("mooncake-v0.2.json"), configured, enabled=True
+        )
+        assert (
+            result.generated_config["kv_transfer_config"]["kv_load_failure_policy"]
+            == policy
+        )
+    with pytest.raises(ValueError, match="unsupported KV load failure policy"):
+        MooncakeProvider().plan(
+            manifest("mooncake-v0.2.json"),
+            dict(configuration, kv_load_failure_policy="ignore"),
+            enabled=True,
+        )
 
 
 def test_ascend_store_requires_host_distribution(

@@ -58,6 +58,13 @@ class MooncakeProvider:
         if role not in {"kv_producer", "kv_consumer", "kv_both"}:
             raise ValueError(f"unsupported Mooncake KV role: {role}")
         result: dict[str, Any] = {"kv_connector": connector, "kv_role": role}
+        if "kv_load_failure_policy" in configuration:
+            failure_policy = configuration["kv_load_failure_policy"]
+            if failure_policy not in {"fail", "recompute"}:
+                raise ValueError(
+                    f"unsupported KV load failure policy: {failure_policy}"
+                )
+            result["kv_load_failure_policy"] = failure_policy
         extra = configuration.get("kv_connector_extra_config", {})
         if not isinstance(extra, dict):
             raise ValueError("kv_connector_extra_config must be an object")
