@@ -62,4 +62,4 @@
   research/evidence/result validation, Tectonic, package build, and clean-wheel
   CLI validation.
 - [x] Open organization PR #29 from `codex/port-pr53-system-overview`.
-- [ ] Verify Python 3.10/3.12 plus wheel CI and merge into organization `main`.
+- [x] Verify Python 3.10/3.12 plus wheel CI and mark PR #29 ready to merge.
