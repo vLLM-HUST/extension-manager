@@ -11,6 +11,16 @@ Date: 2026-09-28 (UTC)
 
 Safety constraints: no unknown service/process mutation; no NPU use unless CPU/fixture/contract checks require escalation and assigned devices/processes are audited first; no modification of unrelated dirty workspaces.
 
+## PR #53 research-diagram migration (2026-10-06)
+
+1. Preserve the two useful authored commits from archived research PR #53 on
+   current organization `main` in an isolated worktree.
+2. Remove `.DS_Store` and correct source references, Plan/inventory ownership,
+   and provider-health versus runtime-effect evidence semantics.
+3. Add source-contract regression coverage; run Ruff, full pytest, evidence
+   checks, paper build, package build, and clean-wheel validation.
+4. Publish a narrow `vLLM-HUST/extension-manager` PR and verify remote CI.
+
 ## Organization-wide follow-up (2026-10-02)
 
 - Base: `origin/main` at `ff144b469ad8cf7a1109610b3a6a4e3528bc40ee`.

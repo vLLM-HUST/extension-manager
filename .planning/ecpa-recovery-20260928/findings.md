@@ -72,6 +72,26 @@
   only the vLLM 0.23 compatibility adapter, not the merged native API v1.0 host.
   Compatibility freeze remains in force.
 
+## Archived research PR #53 migration (2026-10-06)
+
+- PR #28 made organization `main` and archived research `main` tree-identical,
+  but research PR #53 remained open and diverged; its two commits were not in
+  either `main`.
+- The detailed diagram and paper overview are useful, but the original text
+  referenced nonexistent `Plan.targets`, linked a nonexistent `evaluation.md`,
+  and treated Mooncake reachability/health inputs as independent runtime-effect
+  evidence. Current code grants those inputs no host-process attestation
+  authority and does not route them through the evidence verifier.
+- The corrected model separates immutable role/ordinal obligations, observed
+  post-launch inventory, plan-bound host-process evidence, external lease/health
+  conditions, and operator-supplied production-stack status.
+- Local validation passed Ruff lint, changed-file Ruff format, strict mypy for
+  31 source files, 601 pytest tests, research/evidence/result validation,
+  Tectonic paper build, sdist/wheel build, and clean-wheel CLI help.
+  Full-repository formatting under newer Ruff 0.16 still reports four
+  pre-existing files that CI does not format;
+  this migration does not rewrite those unrelated sources.
+
 ## ECPA 0.3 follow-through
 
 - Manager PRs #18 and #19 merged as `2694cb11400b324e3a926a5e76b54a6a8710d0a3`
