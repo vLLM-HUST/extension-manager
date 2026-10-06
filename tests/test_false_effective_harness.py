@@ -1,0 +1,3246 @@
+import base64
+import copy
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+import time
+from dataclasses import replace
+from pathlib import Path
+
+import pytest
+from jsonschema import Draft7Validator
+
+from vllm_hust_ext.ecpa_model import (
+    EvidenceObligation,
+    HostCompatibility,
+    Plan,
+    PluginIdentity,
+    PredecessorSnapshot,
+)
+from vllm_hust_ext.formal_lifecycle_source import build_parser
+from vllm_hust_ext.host_event_sink import quarantine_journal, snapshot_journal
+from vllm_hust_ext.plan_artifact import plan_artifact_bytes, read_plan_artifact
+from vllm_hust_ext.quarantine_transaction import (
+    install_quarantine_source_fence,
+    mark_quarantine_applied,
+    prepare_quarantine_transaction,
+    quarantine_transaction_id,
+    read_quarantine_record,
+)
+
+ROOT = Path("experiments/false_effective").resolve()
+sys.path.insert(0, str(ROOT))
+
+import harness as harness_module  # noqa: E402
+import runner as runner_module  # noqa: E402
+from harness import (  # noqa: E402
+    aggregate,
+    canonical,
+    conflict_metrics,
+    digest_file,
+    oracle,
+    project_paper_result,
+    run_command,
+    safe_path,
+    sanitized_env,
+    validate_batch,
+    validate_cross_arm_scenario_binding,
+    validate_record,
+    validate_scenario_binding_contract,
+)
+from runner import (  # noqa: E402
+    ECPAAdapter,
+    ManualIntegrationAdapter,
+    VanillaVLLMAdapter,
+    command_fingerprint,
+    command_references_fixture,
+    parse_proc_stat_start_ticks,
+    planned_records,
+    run_formal_start,
+    run_reference_start,
+    wait_for_linux_process_identity,
+    write_formal_manifest,
+)
+
+
+def scenarios():
+    return json.loads((ROOT / "scenarios.json").read_text())["scenarios"]
+
+
+def planned():
+    return planned_records(scenarios())
+
+
+def activation_probe(adapter, arguments):
+    probe_arguments = [
+        *arguments,
+        *adapter.activation_arguments,
+        "--ecpa-formal-activation-probe",
+    ]
+    fingerprint = command_fingerprint(sys.executable, probe_arguments)
+    return {
+        "required_options": list(adapter.activation_arguments),
+        "timeout_s": 2,
+        "command_digest": fingerprint["digest"],
+    }
+
+
+def test_runner_alone_finalizes_bound_quarantine_transaction(tmp_path):
+    events = tmp_path / "events"
+    quarantine = tmp_path / "quarantine"
+    events.mkdir(mode=0o700)
+    quarantine.mkdir(mode=0o700)
+    event_identity = (events.stat().st_dev, events.stat().st_ino)
+    quarantine_identity = (quarantine.stat().st_dev, quarantine.stat().st_ino)
+    journal = events / "worker.jsonl"
+    journal.write_bytes(b'{"event":"invoked"}\n')
+    snapshot = snapshot_journal(
+        events,
+        journal.name,
+        expected_root_identity=event_identity,
+        max_bytes=4096,
+    )
+    target = {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 1}
+    entry_point = {"group": "vllm.general_plugins", "name": "p", "value": "p:r"}
+    request = {
+        "scenario": "partial-worker-coverage",
+        "plan_id": "sha256:" + "1" * 64,
+        "launch_id": "launch:test",
+        "controller_instance": "controller:test",
+        "invocation_id": "invocation:test",
+        "challenge": "challenge:test",
+    }
+    descriptor_digest = "sha256:" + "2" * 64
+    binding = {
+        "schema": "ecpa-quarantine-transaction-binding/v1",
+        **request,
+        "target": target,
+        "entry_point": entry_point,
+        "journal": journal.name,
+        "descriptor_sha256": descriptor_digest,
+    }
+    transaction_id = quarantine_transaction_id(binding)
+    intent = prepare_quarantine_transaction(
+        quarantine,
+        quarantine_identity,
+        transaction_id,
+        binding=binding,
+        source_identity=event_identity,
+        snapshot=snapshot,
+    )
+    install_quarantine_source_fence(
+        events,
+        event_identity,
+        transaction_id,
+        intent_digest=intent.digest,
+        snapshot=snapshot,
+    )
+    retained = quarantine_journal(
+        events,
+        quarantine,
+        journal.name,
+        expected_root_identity=event_identity,
+        expected_quarantine_identity=quarantine_identity,
+        max_bytes=4096,
+        expected_journal=snapshot,
+    )
+    applied = mark_quarantine_applied(
+        quarantine,
+        quarantine_identity,
+        transaction_id,
+        intent_digest=intent.digest,
+        quarantined=retained,
+    )
+    fingerprint = {
+        "arguments": [
+            "partial-coverage",
+            "--quarantine-dir",
+            str(quarantine),
+            "--quarantine-device",
+            str(quarantine_identity[0]),
+            "--quarantine-inode",
+            str(quarantine_identity[1]),
+            "--event-dir",
+            str(events),
+            "--device",
+            str(event_identity[0]),
+            "--inode",
+            str(event_identity[1]),
+            "--descriptor-sha256",
+            descriptor_digest,
+        ]
+    }
+    audit = {
+        "schema": "ecpa-lifecycle-source-audit/v1",
+        "kind": "partial-worker-evidence-quarantine",
+        "scenario": request["scenario"],
+        "plan_id": request["plan_id"],
+        "launch_id": request["launch_id"],
+        "controller_instance": request["controller_instance"],
+        "lifecycle_invocation_id": request["invocation_id"],
+        "transaction_id": transaction_id,
+        "transaction_directory": str(quarantine),
+        "transaction_directory_device": quarantine_identity[0],
+        "transaction_directory_inode": quarantine_identity[1],
+        "transaction_intent_sha256": intent.digest,
+        "transaction_applied_sha256": applied.digest,
+        "descriptor_sha256": descriptor_digest,
+        "target": target,
+        "entry_point": entry_point,
+        "quarantined_journal": journal.name,
+    }
+    stderr = canonical(audit) + b"\n"
+    source_identity = {
+        "pid": os.getpid(),
+        "start_ticks": 1,
+        "argv": ["source"],
+        "executable_device": 1,
+        "executable_inode": 1,
+    }
+
+    result = runner_module._finalize_fault_transaction(
+        fingerprint, request, stderr, b"receipt", source_identity
+    )
+
+    finalized = read_quarantine_record(
+        quarantine, quarantine_identity, transaction_id, "finalized"
+    )
+    assert finalized is not None
+    assert result["finalized_sha256"] == finalized.digest
+
+
+def test_runner_rejects_unbound_audit_without_finalizing(tmp_path):
+    quarantine = tmp_path / "quarantine"
+    events = tmp_path / "events"
+    quarantine.mkdir(mode=0o700)
+    events.mkdir(mode=0o700)
+    identity = (quarantine.stat().st_dev, quarantine.stat().st_ino)
+    event_identity = (events.stat().st_dev, events.stat().st_ino)
+    fingerprint = {
+        "arguments": [
+            "--quarantine-dir",
+            str(quarantine),
+            "--quarantine-device",
+            str(identity[0]),
+            "--quarantine-inode",
+            str(identity[1]),
+            "--event-dir",
+            str(events),
+            "--device",
+            str(event_identity[0]),
+            "--inode",
+            str(event_identity[1]),
+            "--descriptor-sha256",
+            "sha256:" + "2" * 64,
+        ]
+    }
+    audit = {
+        "schema": "ecpa-lifecycle-source-audit/v1",
+        "kind": "partial-worker-evidence-quarantine",
+        "scenario": "another-scenario",
+    }
+    with pytest.raises(ValueError, match="audit binding"):
+        runner_module._finalize_fault_transaction(
+            fingerprint,
+            {
+                "scenario": "partial-worker-coverage",
+                "plan_id": "plan",
+                "launch_id": "launch",
+                "controller_instance": "controller",
+                "invocation_id": "invocation",
+                "challenge": "challenge",
+            },
+            canonical(audit) + b"\n",
+            b"receipt",
+            {},
+        )
+    assert not list(quarantine.glob("*.finalized.json"))
+
+
+def lifecycle_registry_fields(tmp_path):
+    source = tmp_path / "lifecycle_fact_source.py"
+    source.write_text(
+        """import json, os, socket, sys, time
+from pathlib import Path
+request = json.loads(sys.stdin.readline())
+assert request['fact'] == sys.argv[1]
+pid = request['sut_pid']
+identity = request['sut_process_identity']
+if request['fact'] != 'service-shutdown':
+    stat = Path(f'/proc/{pid}/stat').read_text()
+    close = stat.rfind(')')
+    ticks = int(stat[close + 2:].split()[19])
+    argv = Path(f'/proc/{pid}/cmdline').read_bytes().rstrip(b'\\0').split(b'\\0')
+    assert ticks == identity['start_ticks']
+    assert [part.decode() for part in argv] == identity['argv']
+else:
+    process_path = Path(f'/proc/{pid}')
+    if process_path.exists():
+        stat = (process_path / 'stat').read_text()
+        assert stat[stat.rfind(')') + 2:].split()[0] == 'Z'
+payload = {
+    'schema': 'ecpa-formal-lifecycle-fact/v1',
+    'fact': request['fact'],
+    'source_kind': request['source_kind'],
+    'plan_id': request['plan_id'],
+    'launch_id': request['launch_id'],
+    'controller_instance': request['controller_instance'],
+    'invocation_id': request['invocation_id'],
+    'sequence': request['sequence'],
+    'challenge': request['challenge'],
+    'monotonic_ns': time.monotonic_ns(),
+    'value': request['scenario'] if request['fact'] == 'fault-injected' else True,
+    'sut_process_identity': identity,
+}
+channel = socket.socket(fileno=int(os.environ['ECPA_LIFECYCLE_FACT_FD']))
+channel.send(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode())
+commit = json.loads(sys.stdin.readline())
+assert commit == {
+    'command': 'commit',
+    'challenge': request['challenge'],
+    'phase': request['fact'],
+}
+"""
+    )
+    entry_point = {
+        "group": "vllm.general_plugins",
+        "name": "demo",
+        "value": "demo.plugin:register",
+    }
+    descriptor = tmp_path / "partial-worker-coverage.json"
+    descriptor.write_bytes(
+        canonical(
+            {
+                "schema": "ecpa-evidence-quarantine-fault/v1",
+                "scenario": "partial-worker-coverage",
+                "target": {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 0,
+                    "process_epoch": 7,
+                },
+                "entry_point": entry_point,
+            }
+        )
+        + b"\n"
+    )
+    commands = {
+        phase: (sys.executable, [str(source), phase])
+        for phase in runner_module.FORMAL_LIFECYCLE_FACT_SOURCES
+    }
+    commands["fault-injected"][1].extend(
+        [
+            "partial-coverage-quarantine",
+            "--event-dir",
+            str(tmp_path / "events"),
+            "--device",
+            "1",
+            "--inode",
+            "2",
+            "--quarantine-dir",
+            str(tmp_path / "quarantine"),
+            "--quarantine-device",
+            "1",
+            "--quarantine-inode",
+            "3",
+            "--descriptor",
+            str(descriptor),
+            "--descriptor-sha256",
+            digest_file(descriptor),
+        ]
+    )
+    fields = {
+        "lifecycle_fact_schema": "ecpa-formal-lifecycle-fact/v1",
+        "lifecycle_fact_schema_digest": digest_file(
+            runner_module.FORMAL_LIFECYCLE_FACT_SCHEMA_PATH
+        ),
+        "lifecycle_fact_sources": runner_module.FORMAL_LIFECYCLE_FACT_SOURCES,
+        "lifecycle_fact_transport": (runner_module.FORMAL_LIFECYCLE_FACT_TRANSPORT),
+        "lifecycle_fact_command_digests": {
+            phase: command_fingerprint(executable, arguments)["digest"]
+            for phase, (executable, arguments) in commands.items()
+        },
+        "scenario_bindings": {
+            "partial-worker-coverage": {
+                "descriptor_sha256": digest_file(descriptor),
+                "entry_point": entry_point,
+                "fault_source_subcommand": "partial-coverage-quarantine",
+            }
+        },
+    }
+    return fields, commands
+
+
+def adapter_admission():
+    return {
+        "schema": "ecpa-formal-adapter-admission/v1",
+        "repository": "vLLM-HUST/vllm-hust",
+        "repository_id": 1360701120,
+        "node_id": "R_kgDOURE3QwA",
+        "default_branch": "main",
+        "pull_request": 27,
+        "reviewed_head": "1" * 40,
+        "reviewed_tree": "2" * 40,
+        "base": "3" * 40,
+        "state": "merged",
+        "merge_commit": "4" * 40,
+        "human_line_review": True,
+        "commands_reviewed": True,
+        "activation_path_reviewed": True,
+        "observer_independence_reviewed": True,
+        "observed_at": "2026-09-21T07:00:00+08:00",
+    }
+
+
+def lifecycle_process_records(fingerprints):
+    metadata = Path(sys.executable).resolve().stat()
+    return {
+        phase: {
+            "argv": [fingerprint["executable"], *fingerprint["arguments"]],
+            "pid": 9000 + index,
+            "start_identity": f"pid:{9000 + index}@ticks:{1000 + index}",
+            "linux_identity": {
+                "pid": 9000 + index,
+                "start_ticks": 1000 + index,
+                "argv": [fingerprint["executable"], *fingerprint["arguments"]],
+            },
+            "executable_identity": {
+                "device": metadata.st_dev,
+                "inode": metadata.st_ino,
+            },
+            "command_digest": fingerprint["digest"],
+            "channel_credentials": {
+                "pid": 9000 + index,
+                "uid": os.geteuid(),
+                "gid": os.getegid(),
+            },
+            "exit_code": 0,
+        }
+        for index, (phase, fingerprint) in enumerate(sorted(fingerprints.items()))
+    }
+
+
+def test_scenario_binding_pins_descriptor_and_cross_arm_entry_point(tmp_path):
+    fields, commands = lifecycle_registry_fields(tmp_path)
+    entry = {"scenario_bindings": fields["scenario_bindings"]}
+    fault = command_fingerprint(*commands["fault-injected"])
+    subcommand_index = fault["arguments"].index("partial-coverage-quarantine")
+    parsed = build_parser().parse_args(fault["arguments"][subcommand_index:])
+    assert parsed.source == "partial-coverage-quarantine"
+
+    verified = runner_module.verified_scenario_binding(
+        entry, "partial-worker-coverage", fault
+    )
+    assert verified["scenario"] == "partial-worker-coverage"
+    assert verified["entry_point"] == {
+        "group": "vllm.general_plugins",
+        "name": "demo",
+        "value": "demo.plugin:register",
+    }
+    assert verified["comparison_binding_id"] == harness_module.digest_bytes(
+        canonical(
+            {
+                "scenario": "partial-worker-coverage",
+                "descriptor_sha256": verified["descriptor_sha256"],
+                "entry_point": verified["entry_point"],
+                "fault_source_subcommand": "partial-coverage-quarantine",
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="does not bind"):
+        runner_module.verified_scenario_binding(entry, "worker-replacement", fault)
+
+    wrong_subcommand = copy.deepcopy(fault)
+    index = wrong_subcommand["arguments"].index("partial-coverage-quarantine")
+    wrong_subcommand["arguments"][index] = "another-fault"
+    wrong_subcommand["arguments"].extend(["--marker", "partial-coverage-quarantine"])
+    with pytest.raises(ValueError, match="subcommand or entry point"):
+        runner_module.verified_scenario_binding(
+            entry, "partial-worker-coverage", wrong_subcommand
+        )
+    self_declared_slot = copy.deepcopy(entry)
+    self_declared_slot["scenario_bindings"]["partial-worker-coverage"][
+        "fault_source_subcommand_index"
+    ] = len(wrong_subcommand["arguments"]) - 1
+    with pytest.raises(ValueError, match="does not bind"):
+        runner_module.verified_scenario_binding(
+            self_declared_slot, "partial-worker-coverage", wrong_subcommand
+        )
+
+    for malformed in (
+        {**verified, "fault_source_subcommand": "journal-capture"},
+        {**verified, "entry_point": {"group": "vllm.general_plugins"}},
+    ):
+        malformed.pop("comparison_binding_id", None)
+        malformed.pop("scenario", None)
+        with pytest.raises(ValueError, match="subcommand or entry point"):
+            validate_scenario_binding_contract(
+                malformed, "partial-worker-coverage", fault["arguments"]
+            )
+
+    descriptor_index = fault["arguments"].index("--descriptor") + 1
+    descriptor = Path(fault["arguments"][descriptor_index])
+    altered = json.loads(descriptor.read_text())
+    altered["entry_point"]["name"] = "another-plugin"
+    descriptor.write_bytes(canonical(altered) + b"\n")
+    changed = copy.deepcopy(entry)
+    changed["scenario_bindings"]["partial-worker-coverage"]["descriptor_sha256"] = (
+        digest_file(descriptor)
+    )
+    changed_fault = copy.deepcopy(fault)
+    digest_index = changed_fault["arguments"].index("--descriptor-sha256") + 1
+    changed_fault["arguments"][digest_index] = digest_file(descriptor)
+    with pytest.raises(ValueError, match="differs from scenario binding"):
+        runner_module.verified_scenario_binding(
+            changed, "partial-worker-coverage", changed_fault
+        )
+
+    descriptor.write_bytes(canonical(["not", "an", "object"]) + b"\n")
+    non_object = copy.deepcopy(entry)
+    non_object["scenario_bindings"]["partial-worker-coverage"]["descriptor_sha256"] = (
+        digest_file(descriptor)
+    )
+    non_object_fault = copy.deepcopy(fault)
+    non_object_fault["arguments"][digest_index] = digest_file(descriptor)
+    with pytest.raises(ValueError, match="differs from scenario binding"):
+        runner_module.verified_scenario_binding(
+            non_object, "partial-worker-coverage", non_object_fault
+        )
+
+
+def test_cross_arm_scenario_binding_rejects_mismatched_entry_point():
+    def row(binding_id, descriptor="sha256:same"):
+        return {
+            "identity": {
+                "adapter_verification": {
+                    "scenario_binding": {
+                        "comparison_binding_id": binding_id,
+                        "descriptor_sha256": descriptor,
+                    }
+                }
+            }
+        }
+
+    validate_cross_arm_scenario_binding("partial-worker-coverage", [row("same")] * 3)
+    with pytest.raises(ValueError, match="do not share"):
+        validate_cross_arm_scenario_binding(
+            "partial-worker-coverage", [row("same"), row("same"), row("different")]
+        )
+    with pytest.raises(ValueError, match="do not share"):
+        validate_cross_arm_scenario_binding(
+            "partial-worker-coverage", [row("same"), row("same"), row(None)]
+        )
+    with pytest.raises(ValueError, match="do not share"):
+        validate_cross_arm_scenario_binding(
+            "partial-worker-coverage",
+            [row("same"), row("same"), row("same", "sha256:different")],
+        )
+
+
+def test_formal_planned_aggregate_has_zero_cells_and_null_metrics(tmp_path):
+    result = aggregate(planned(), tmp_path, formal=True)
+    assert result["completed_cells"] == 0
+    assert result["metrics"] is None
+
+
+def test_planned_to_complete_without_artifacts_is_rejected(tmp_path):
+    record = planned()[0]
+    record["status"] = "complete"
+    with pytest.raises(ValueError, match="formal complete missing"):
+        validate_record(record, tmp_path)
+
+
+def test_synthetic_cannot_enter_formal_aggregate(tmp_path):
+    record = planned()[0]
+    record["evidence_class"] = "reference-synthetic"
+    with pytest.raises(ValueError, match="synthetic evidence"):
+        validate_batch([record], tmp_path, formal=True)
+
+
+def test_fewer_than_three_starts_and_missing_arm_are_rejected(tmp_path):
+    records = planned()[:2]
+    for record in records:
+        record["status"] = "complete"
+        record["command"] = {}
+        record["artifacts"] = {
+            key: key for key in ("raw_log", "environment", "command", "oracle")
+        }
+    with pytest.raises(ValueError):
+        validate_batch(records, tmp_path, formal=True)
+
+
+def test_duplicate_start_id_is_rejected(tmp_path):
+    records = planned()[:2]
+    records[1]["start_id"] = records[0]["start_id"]
+    with pytest.raises(ValueError, match="duplicate start_id"):
+        validate_batch(records, tmp_path, formal=True)
+
+
+def formal_complete_records(tmp_path):
+    records = []
+    protocol = json.loads((ROOT / "protocol.json").read_text())
+    scenario = scenarios()[0]
+    sut = str(Path("tests/fixtures/formal_sut_service.py").resolve())
+    observer = str(Path("tests/fixtures/formal_observer_service.py").resolve())
+    adapters = {
+        "vanilla-vllm-entry-points": VanillaVLLMAdapter(),
+        "manual-integration": ManualIntegrationAdapter(),
+        "ecpa": ECPAAdapter(),
+    }
+    schedule = (
+        ("vanilla-vllm-entry-points", "manual-integration", "ecpa"),
+        ("manual-integration", "ecpa", "vanilla-vllm-entry-points"),
+        ("ecpa", "vanilla-vllm-entry-points", "manual-integration"),
+    )
+    for repetition, order in enumerate(schedule, 1):
+        for arm_order, arm in enumerate(order, 1):
+            identity = {
+                "arm": arm,
+                "model": "same",
+                "dataset": "same",
+                "workload": "same",
+                "hardware": "same",
+                "software": {"runtime": "same"},
+                "observer": "same",
+                "runtime_commit": "same",
+                "plugin_commits": [],
+                "topology": "same",
+                "fault_plan": "same",
+                "fault": "same",
+                "warm_state": "cold",
+                "git_dirty": False,
+                "container_digest": "sha256:test",
+                "cpu": "test",
+                "gpu": "not-applicable",
+                "npu": "not-applicable",
+                "driver": "test",
+                "runtime": "same",
+                "semantic_environment": "same",
+            }
+            record = run_formal_start(
+                tmp_path / "formal",
+                scenario,
+                protocol,
+                adapters[arm],
+                repetition,
+                arm_order,
+                executable=sys.executable,
+                arguments=[sut],
+                observer_executable=sys.executable,
+                observer_arguments=[observer],
+                identity=identity,
+                timeout_s=5,
+                fixture_mode=True,
+            )
+            record["artifact_root"] = f"formal/{record['artifact_root']}"
+            records.append(record)
+    return records
+
+
+def test_matched_arm_metadata_mismatch_is_rejected(tmp_path):
+    records = formal_complete_records(tmp_path)
+    records[-1]["identity"]["model"] = "different"
+    with pytest.raises(ValueError, match="relabelled|metadata mismatch|fixture-only"):
+        validate_batch(records, tmp_path, formal=True)
+
+
+def test_unbalanced_order_is_rejected(tmp_path):
+    records = formal_complete_records(tmp_path)
+    records[-1]["arm_order"] = records[-2]["arm_order"]
+    with pytest.raises(
+        ValueError, match="relabelled|unbalanced|Latin square|fixture-only"
+    ):
+        validate_batch(records, tmp_path, formal=True)
+
+
+def test_missing_is_not_imputed_to_zero(tmp_path):
+    result = aggregate(planned(), tmp_path, formal=True)
+    assert result["metrics"] is None
+    assert "no validator-approved" in result["reason"]
+
+
+def test_oracle_rejects_sut_truth_fields():
+    scenario = scenarios()[0]
+    record = {
+        "observations": [{"event": "claim", "false_effective": False}],
+        "artifacts": {},
+    }
+    with pytest.raises(ValueError, match="oracle-owned"):
+        oracle(scenario, record)
+
+
+def test_path_escape_and_secret_redaction(tmp_path):
+    with pytest.raises(ValueError, match="escapes"):
+        safe_path(tmp_path, "../secret")
+    manifest = sanitized_env({"PATH": "/bin", "API_TOKEN": "do-not-print"})
+    assert manifest["PATH"] == "/bin"
+    assert manifest["API_TOKEN"]["redacted"] is True
+    assert "do-not-print" not in json.dumps(manifest)
+
+
+@pytest.mark.parametrize(
+    ("argv", "failed"),
+    [
+        ([sys.executable, "-c", "raise SystemExit(7)"], True),
+        ([sys.executable, "-c", "import time; time.sleep(1)"], True),
+    ],
+)
+def test_nonzero_and_timeout_preserve_raw_command_record(tmp_path, argv, failed):
+    result = run_command(
+        tmp_path / ("timeout" if "sleep" in argv[-1] else "nonzero"),
+        argv,
+        env=dict(os.environ),
+        timeout_s=0.05,
+    )
+    assert result["timeout"] or result["exit_code"] == 7
+    assert (Path(result["cwd"]) / result["stdout"]).is_file()
+    assert (Path(result["cwd"]) / "command.json").is_file()
+    assert failed
+
+
+def test_digest_tamper_is_rejected(tmp_path):
+    path = tmp_path / "raw"
+    path.write_text("before")
+    record = {
+        "schema": "ecpa-false-effective-start/v1",
+        "status": "failed",
+        "evidence_class": "unit-selftest",
+        "measurement_source": "test",
+        "cell_id": "x",
+        "scenario": "x",
+        "arm": "ecpa",
+        "start_id": "x",
+        "repetition": 1,
+        "arm_order": 1,
+        "identity": {},
+        "command": {},
+        "artifacts": {"digests": {"raw": digest_file(path)}},
+        "observations": [],
+        "missing_reason": None,
+    }
+    path.write_text("after")
+    with pytest.raises(ValueError, match="digest mismatch"):
+        validate_record(record, tmp_path)
+
+
+def test_reproduce_checked_deterministic_outputs(tmp_path):
+    spec = importlib.util.spec_from_file_location(
+        "false_effective_reproduce", ROOT / "reproduce.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    output = tmp_path / "output"
+    summary = module.generate(output)
+    assert summary["starts"] == 45
+    assert summary["formal_completed_cells"] == 0
+    checked = ROOT / "artifacts"
+    for name in (
+        "formal-aggregate-summary.json",
+        "paper-table.csv",
+        "reference-summary.json",
+    ):
+        assert (output / name).read_bytes() == (checked / name).read_bytes()
+
+
+def test_json_rejects_nan_and_infinity():
+    with pytest.raises(ValueError):
+        canonical({"bad": float("nan")})
+
+
+def test_conflict_arm_summary_counts_fp_and_fn():
+    rows = [
+        {"conflict_truth": "conflict", "conflict_decision": "reject"},
+        {"conflict_truth": "conflict", "conflict_decision": "accept"},
+        {"conflict_truth": "compatible", "conflict_decision": "reject"},
+        {"conflict_truth": "conditional", "conflict_decision": "conditional"},
+    ]
+    result = conflict_metrics(rows)
+    assert result["confusion"] == {"tp": 1, "fp": 1, "fn": 1, "tn": 1}
+    assert result["precision"] is None
+    assert result["recall"] is None
+
+
+def test_raw_record_schema_accepts_planned_and_forbids_sut_truth():
+    schema = json.loads((ROOT / "raw-record.schema.json").read_text())
+    Draft7Validator(schema).validate(planned()[0])
+    invalid = planned()[0]
+    invalid["observations"] = [{"event": "bad", "truth": True}]
+    assert list(Draft7Validator(schema).iter_errors(invalid))
+
+
+def test_reference_record_relabelled_formal_is_rejected(tmp_path):
+    record = run_reference_start(tmp_path, scenarios()[0], "ecpa", 1, 3)
+    record["evidence_class"] = "formal-real"
+    with pytest.raises(ValueError, match="relabelled"):
+        validate_record(
+            record,
+            tmp_path,
+            scenario=scenarios()[0],
+            protocol=json.loads((ROOT / "protocol.json").read_text()),
+            schema=json.loads((ROOT / "raw-record.schema.json").read_text()),
+        )
+
+
+def test_missing_required_observation_is_incomplete_and_null():
+    scenario = scenarios()[0]
+    record = {"observations": [], "artifacts": {}, "command": {}}
+    result = oracle(scenario, record)
+    assert result["verdict"] == "INCOMPLETE"
+    assert result["outcome"]["activation_event_coverage"] is None
+
+
+def test_failed_safe_is_not_counted_as_rollback_success():
+    scenario = next(row for row in scenarios() if row["id"] == "rollback-failure")
+    record = {
+        "observations": [
+            {"event": name, "value": True} for name in scenario["expected_observable"]
+        ]
+        + [{"event": "rollback-class", "value": "FAILED_SAFE"}],
+        "artifacts": {},
+        "command": {},
+    }
+    assert oracle(scenario, record)["outcome"]["rollback_success"] is False
+
+
+def test_planned_projection_validates_paper_schema():
+    schema = json.loads(Path("paper/artifacts/results.schema.json").read_text())
+    result = project_paper_result(planned()[0], schema)
+    assert result["schema"] == "ecpa-result/v1"
+    assert result["status"] == "planned"
+    assert result["outcome"]["false_effective"] is None
+
+
+@pytest.mark.parametrize("missing", ["effective-claim", "plugin-invoked"])
+def test_core_claim_observations_are_mandatory(missing):
+    scenario = scenarios()[0]
+    events = [
+        {"event": name, "value": True}
+        for name in scenario["expected_observable"]
+        + [
+            "service-ready",
+            "workload-complete",
+            "fault-injected",
+            "observer-captured",
+            "effective-claim",
+            "plugin-invoked",
+            "service-shutdown",
+        ]
+        if name != missing
+    ]
+    result = oracle(scenario, {"observations": events, "artifacts": {}, "command": {}})
+    assert result["verdict"] == "INCOMPLETE"
+    assert any(missing in reason for reason in result["reasons"])
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("status", "failed"),
+        ("cell_id", "forged"),
+    ],
+)
+def test_runner_receipt_rejects_core_relabel(tmp_path, field, value):
+    record = run_reference_start(tmp_path, scenarios()[0], "ecpa", 1, 3)
+    record[field] = value
+    with pytest.raises(ValueError):
+        validate_record(
+            record,
+            tmp_path,
+            scenario=scenarios()[0],
+            protocol=json.loads((ROOT / "protocol.json").read_text()),
+            schema=json.loads((ROOT / "raw-record.schema.json").read_text()),
+        )
+
+
+def test_disk_command_and_oracle_are_exactly_bound(tmp_path):
+    record = run_reference_start(tmp_path, scenarios()[0], "ecpa", 1, 3)
+    run_dir = tmp_path / record["artifact_root"]
+    record["command"]["exit_code"] = 9
+    with pytest.raises(ValueError, match="command|oracle|receipt"):
+        validate_record(
+            record,
+            tmp_path,
+            scenario=scenarios()[0],
+            protocol=json.loads((ROOT / "protocol.json").read_text()),
+            schema=json.loads((ROOT / "raw-record.schema.json").read_text()),
+        )
+    assert (run_dir / "oracle.json").is_file()
+
+
+def test_formal_sut_cannot_write_trusted_result(tmp_path):
+    record = formal_complete_records(tmp_path)[0]
+    run_dir = tmp_path / record["artifact_root"]
+    sut_environment = json.loads((run_dir / "sut-environment.json").read_text())
+    assert not any(name.startswith("ECPA_OBSERVER_") for name in sut_environment)
+    assert not any(name.startswith("ECPA_RUNNER_") for name in sut_environment)
+    assert (
+        record["command"]["sut_process"]["pid"]
+        != record["command"]["observer_process"]["pid"]
+    )
+    assert (
+        record["observer_binding"]["pid"]
+        == record["command"]["observer_process"]["pid"]
+    )
+
+
+def test_pid_reuse_identity_mutation_is_rejected(tmp_path):
+    record = formal_complete_records(tmp_path)[0]
+    record["command"]["observer_process"]["linux_identity"]["start_ticks"] += 1
+    with pytest.raises(ValueError, match="identity"):
+        validate_record(
+            record,
+            tmp_path,
+            scenario=scenarios()[0],
+            protocol=json.loads((ROOT / "protocol.json").read_text()),
+            schema=json.loads((ROOT / "raw-record.schema.json").read_text()),
+        )
+
+
+def test_frozen_registry_is_present_even_for_partial_input(tmp_path):
+    result = aggregate(planned()[:1], tmp_path, formal=True)
+    assert len(result["cells"]) == len(scenarios()) * 3
+
+
+def test_interface_observer_ignores_plain_stdout_and_captures_lifecycle(tmp_path):
+    records = formal_complete_records(tmp_path)
+    record = records[0]
+    assert record["status"] == "complete"
+    assert record["evidence_class"] == "interface-fixture"
+    assert record["measurement_source"] == "controlled-interface-observer"
+    events = [item["event"] for item in record["observations"]]
+    assert events.index("service-ready") < events.index("workload-complete")
+    assert events.index("workload-complete") < events.index("fault-injected")
+    assert events.index("fault-injected") < events.index("observer-captured")
+    assert events.index("observer-captured") < events.index("service-shutdown")
+    assert (
+        record["command"]["sut_process"]["argv"]
+        != record["command"]["observer_process"]["argv"]
+    )
+
+
+def test_arm_launch_contracts_are_distinct_and_auditable():
+    adapters = [VanillaVLLMAdapter(), ManualIntegrationAdapter(), ECPAAdapter()]
+    launches = [adapter.launch("service", [], {}) for adapter in adapters]
+    assert len({env["ECPA_ACTIVATION_CONTRACT"] for _, env in launches}) == 3
+    assert len({tuple(argv) for argv, _ in launches}) == 3
+    assert any("--enable-ecpa-manager" in argv for argv, _ in launches)
+    assert {env["ECPA_EVALUATION_ARM"] for _, env in launches} == {
+        adapter.arm for adapter in adapters
+    }
+
+
+def test_process_identity_rejects_executable_symlink_retarget(tmp_path):
+    executable = tmp_path / "tool"
+    executable.symlink_to(Path(sys.executable).absolute())
+    fingerprint = command_fingerprint(str(executable), [])
+    executable.unlink()
+    executable.symlink_to("/bin/sleep")
+    with pytest.raises(ValueError, match="registered fingerprint"):
+        runner_module.popen_pinned([str(executable), "5"], fingerprint)
+    process = subprocess.Popen([str(executable), "5"])
+    try:
+        with pytest.raises(RuntimeError, match="executable differs"):
+            wait_for_linux_process_identity(
+                process,
+                [str(executable), "5"],
+                2,
+                fingerprint,
+            )
+    finally:
+        process.terminate()
+        process.wait(timeout=2)
+
+
+def test_popen_pinned_rejects_mutated_argument_file(tmp_path):
+    argument = tmp_path / "request.json"
+    argument.write_text('{"model":"before"}\n')
+    argv = [sys.executable, str(argument.resolve())]
+    fingerprint = command_fingerprint(argv[0], argv[1:])
+    argument.write_text('{"model":"after"}\n')
+
+    with pytest.raises(ValueError, match="argument file differs"):
+        runner_module.popen_pinned(argv, fingerprint)
+
+
+def test_post_identity_pipe_failure_reaps_both_processes_and_pipes(
+    tmp_path, monkeypatch
+):
+    original_wait = runner_module.wait_for_linux_process_identity
+    processes = []
+
+    def stop_observer(process, expected_argv, timeout_s, expected_executable=None):
+        processes.append(process)
+        identity = original_wait(process, expected_argv, timeout_s, expected_executable)
+        if len(processes) == 2:
+            process.terminate()
+            process.wait(timeout=2)
+        return identity
+
+    monkeypatch.setattr(runner_module, "wait_for_linux_process_identity", stop_observer)
+    sut = str(Path("tests/fixtures/formal_sut_service.py").resolve())
+    observer = str(Path("tests/fixtures/formal_observer_service.py").resolve())
+    env = dict(os.environ)
+    env["ECPA_EVALUATION_ARM"] = "ecpa"
+    env["ECPA_ACTIVATION_CONTRACT"] = "manager-controlled-activation"
+    before = len(list(Path("/proc/self/fd").iterdir()))
+    with pytest.raises(BrokenPipeError):
+        runner_module._run_start(
+            tmp_path,
+            scenarios()[0],
+            "ecpa",
+            1,
+            3,
+            argv=[sys.executable, sut],
+            env=env,
+            timeout_s=2,
+            evidence_class="interface-fixture",
+            measurement_source="cleanup-regression",
+            identity=runner_module.measured_identity(
+                _minimal_formal_identity(),
+                "ecpa",
+                env,
+                "manager-controlled-activation",
+            ),
+            observations_from_stdout=False,
+            observer_argv=[sys.executable, observer],
+            execution_identity={
+                "plan_id": "plan:cleanup",
+                "launch_id": "launch:cleanup",
+                "controller_instance": "controller:cleanup",
+            },
+            activation_contract="manager-controlled-activation",
+            sut_executable_fingerprint=command_fingerprint(sys.executable, [sut]),
+            observer_executable_fingerprint=command_fingerprint(
+                sys.executable, [observer]
+            ),
+        )
+    assert len(processes) == 2
+    assert all(process.poll() is not None for process in processes)
+    assert len(list(Path("/proc/self/fd").iterdir())) == before
+
+
+def _write_formal_execution_plan(tmp_path: Path) -> Path:
+    plan = Plan(
+        (PluginIdentity("org.vllm-hust", "formal", "0.1.0", "a" * 64),),
+        HostCompatibility("vllm-hust", "0.11.0", "vllm", "1"),
+        (),
+        (EvidenceObligation("worker-load", "worker", "resolved", (0,)),),
+        PredecessorSnapshot(0, None, {}),
+        True,
+    )
+    path = (tmp_path / "plan.json").resolve()
+    path.write_bytes(plan_artifact_bytes(plan))
+    path.chmod(0o600)
+    return path
+
+
+def test_ecpa_managed_launch_uses_real_formal_run_and_manager_owned_identity(tmp_path):
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    adapter = ECPAAdapter()
+    manager = str(Path(sys.executable).with_name("vllm-hust-ext"))
+    argv, env, binding = adapter.managed_launch(
+        manager_executable=manager,
+        plan_path=plan_path,
+        launch_id="launch:test",
+        controller_instance="controller:test",
+        host_event_dir=event_dir,
+        target_argv=[sys.executable, "-c", "raise SystemExit(99)"],
+        env=dict(os.environ),
+        dry_run=True,
+    )
+
+    assert "--enable-ecpa-manager" not in argv
+    assert "--disable-entrypoints" not in argv
+    assert argv[-3:] == [
+        str(Path(sys.executable).absolute()),
+        "-c",
+        "raise SystemExit(99)",
+    ]
+    assert not runner_module.CONTROLLED_ENVIRONMENT.intersection(env)
+    completed = subprocess.run(argv, env=env, text=True, capture_output=True)
+    assert completed.returncode == 0, completed.stderr
+    receipt = json.loads(completed.stdout)
+    assert receipt["schema"] == "ecpa-managed-launch/v1"
+    assert receipt["command"] == binding["target_argv"]
+    assert receipt["plan_id"] == binding["plan_id"]
+    assert receipt["controller_instance"] == "controller:test"
+
+
+def test_ecpa_managed_launch_rejects_runner_owned_host_identity(tmp_path):
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    with pytest.raises(ValueError, match="manager-owned"):
+        ECPAAdapter().managed_launch(
+            manager_executable=str(Path(sys.executable).with_name("vllm-hust-ext")),
+            plan_path=plan_path,
+            launch_id="launch:test",
+            controller_instance="controller:test",
+            host_event_dir=event_dir,
+            target_argv=[sys.executable, "-c", "pass"],
+            env={"VLLM_ECPA_PLAN_ID": "forged"},
+        )
+
+
+def test_ecpa_managed_launch_propagates_host_owned_binding_to_target(tmp_path):
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    target = (
+        "import json,os; print(json.dumps({k:os.environ[k] for k in "
+        "['VLLM_ECPA_PLAN_ID','VLLM_ECPA_LAUNCH_ID',"
+        "'VLLM_ECPA_EVIDENCE_STRICT','ECPA_CONTROLLER_INSTANCE',"
+        "'ECPA_ACTIVATION_CONTRACT']},sort_keys=True))"
+    )
+    argv, env, binding = ECPAAdapter().managed_launch(
+        manager_executable=str(Path(sys.executable).with_name("vllm-hust-ext")),
+        plan_path=plan_path,
+        launch_id="launch:real-path-test",
+        controller_instance="controller:real-path-test",
+        host_event_dir=event_dir,
+        target_argv=[sys.executable, "-c", target],
+        env=dict(os.environ),
+    )
+    completed = subprocess.run(argv, env=env, text=True, capture_output=True)
+    assert completed.returncode == 0, completed.stderr
+    received = json.loads(completed.stdout)
+    assert received == {
+        "ECPA_ACTIVATION_CONTRACT": "manager-controlled-activation",
+        "ECPA_CONTROLLER_INSTANCE": "controller:real-path-test",
+        "VLLM_ECPA_EVIDENCE_STRICT": "1",
+        "VLLM_ECPA_LAUNCH_ID": "launch:real-path-test",
+        "VLLM_ECPA_PLAN_ID": binding["plan_id"],
+    }
+
+
+def test_ecpa_manager_rejects_target_symlink_retarget(tmp_path):
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    target = tmp_path / "target"
+    target.symlink_to(Path(sys.executable).absolute())
+    argv, env, _ = ECPAAdapter().managed_launch(
+        manager_executable=str(Path(sys.executable).with_name("vllm-hust-ext")),
+        plan_path=plan_path,
+        launch_id="launch:target-retarget",
+        controller_instance="controller:target-retarget",
+        host_event_dir=event_dir,
+        target_argv=[str(target), "-c", "print('GOOD')"],
+        env=dict(os.environ),
+    )
+    target.unlink()
+    target.symlink_to("/bin/echo")
+    completed = subprocess.run(argv, env=env, text=True, capture_output=True)
+    assert completed.returncode != 0
+    assert "target executable differs from its fingerprint" in completed.stderr
+    assert "GOOD" not in completed.stdout
+
+
+def test_runner_allows_manager_to_reap_signal_ignoring_target(tmp_path):
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    target_pid_path = tmp_path / "target.pid"
+    target = (
+        "import os,pathlib,signal,time; "
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        f"pathlib.Path({str(target_pid_path)!r}).write_text(str(os.getpid())); "
+        "time.sleep(60)"
+    )
+    manager = str(Path(sys.executable).with_name("vllm-hust-ext"))
+    argv, env, _ = ECPAAdapter().managed_launch(
+        manager_executable=manager,
+        plan_path=plan_path,
+        launch_id="launch:combined-cleanup",
+        controller_instance="controller:combined-cleanup",
+        host_event_dir=event_dir,
+        target_argv=[sys.executable, "-c", target],
+        env=dict(os.environ),
+    )
+    manager_prefix = runner_module.executable_launch_prefix(manager)
+    fingerprint = command_fingerprint(manager_prefix[0], manager_prefix[1:])
+    process = runner_module.popen_pinned(argv, fingerprint, env=env)
+    try:
+        for _ in range(200):
+            if target_pid_path.is_file():
+                break
+            if process.poll() is not None:
+                pytest.fail(f"manager exited early with {process.returncode}")
+            time.sleep(0.01)
+        else:
+            pytest.fail("target did not start")
+        target_pid = int(target_pid_path.read_text())
+        runner_module._terminate_process(process)
+        assert process.returncode == 128 + 15
+        with pytest.raises(ProcessLookupError):
+            os.kill(target_pid, 0)
+    finally:
+        runner_module._terminate_process(process)
+
+
+def test_ecpa_managed_launch_snapshots_plan_before_original_is_replaced(tmp_path):
+    original = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    argv, env, binding = ECPAAdapter().managed_launch(
+        manager_executable=str(Path(sys.executable).with_name("vllm-hust-ext")),
+        plan_path=original,
+        launch_id="launch:snapshot-test",
+        controller_instance="controller:snapshot-test",
+        host_event_dir=event_dir,
+        target_argv=[sys.executable, "-c", "raise SystemExit(99)"],
+        env=dict(os.environ),
+        dry_run=True,
+    )
+    replacement = replace(
+        Plan(
+            (PluginIdentity("org.vllm-hust", "formal", "0.1.0", "a" * 64),),
+            HostCompatibility("vllm-hust", "0.11.0", "vllm", "1"),
+            (),
+            (EvidenceObligation("worker-load", "worker", "resolved", (0,)),),
+            PredecessorSnapshot(0, None, {}),
+            True,
+        ),
+        plugins=(PluginIdentity("org.vllm-hust", "replacement", "0.1.0", "b" * 64),),
+    )
+    original.write_bytes(plan_artifact_bytes(replacement))
+    original.chmod(0o600)
+
+    snapshot = Path(binding["plan_path"])
+    assert snapshot != original
+    assert snapshot.read_bytes() != original.read_bytes()
+    assert snapshot.stat().st_mode & 0o777 == 0o400
+    assert snapshot.parent.stat().st_mode & 0o777 == 0o500
+    completed = subprocess.run(argv, env=env, text=True, capture_output=True)
+    assert completed.returncode == 0, completed.stderr
+    receipt = json.loads(completed.stdout)
+    assert receipt["plan_id"] == binding["plan_id"]
+    assert receipt["plan_id"] != replacement.plan_id
+
+
+def test_ecpa_managed_launch_has_no_injectable_manager_argument_prefix():
+    assert "manager_arguments" not in ECPAAdapter.managed_launch.__annotations__
+
+
+def test_ecpa_managed_launch_closes_event_fd_when_fstat_fails(tmp_path, monkeypatch):
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    real_fstat = os.fstat
+
+    def reject_directory(descriptor):
+        metadata = real_fstat(descriptor)
+        if runner_module.stat.S_ISDIR(metadata.st_mode):
+            raise OSError("injected event fstat failure")
+        return metadata
+
+    before = len(list(Path("/proc/self/fd").iterdir()))
+    monkeypatch.setattr(runner_module.os, "fstat", reject_directory)
+    with pytest.raises(OSError, match="injected event fstat failure"):
+        ECPAAdapter().managed_launch(
+            manager_executable=str(Path(sys.executable).with_name("vllm-hust-ext")),
+            plan_path=plan_path,
+            launch_id="launch:fstat-failure",
+            controller_instance="controller:fstat-failure",
+            host_event_dir=event_dir,
+            target_argv=[sys.executable, "-c", "pass"],
+            env=dict(os.environ),
+        )
+    assert len(list(Path("/proc/self/fd").iterdir())) == before
+
+
+def test_ecpa_managed_launch_cleans_partial_snapshot_on_publish_failure(
+    tmp_path, monkeypatch
+):
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+
+    def reject_fchmod(*args, **kwargs):
+        raise OSError("injected snapshot chmod failure")
+
+    monkeypatch.setattr(runner_module.os, "fchmod", reject_fchmod)
+    with pytest.raises(OSError, match="injected snapshot chmod failure"):
+        ECPAAdapter().managed_launch(
+            manager_executable=str(Path(sys.executable).with_name("vllm-hust-ext")),
+            plan_path=plan_path,
+            launch_id="launch:chmod-failure",
+            controller_instance="controller:chmod-failure",
+            host_event_dir=event_dir,
+            target_argv=[sys.executable, "-c", "pass"],
+            env=dict(os.environ),
+        )
+    assert list(event_dir.iterdir()) == []
+
+
+def _minimal_formal_identity() -> dict:
+    return {
+        "model": "test",
+        "dataset": "test",
+        "workload": "test",
+        "software": {"runtime": "test"},
+        "observer": "host-event-stream/v1",
+        "plugin_commits": [],
+        "topology": "single",
+        "fault_plan": "test",
+        "fault": "test",
+        "warm_state": "cold",
+        "container_digest": "sha256:test",
+        "gpu": "not-applicable",
+        "npu": "not-applicable",
+        "driver": "test",
+        "required_processes": [
+            {
+                "host": "host-a",
+                "role": "worker",
+                "ordinal": 0,
+                "process_epoch": 7,
+            }
+        ],
+    }
+
+
+def test_real_formal_rejects_caller_assertion_and_empty_registry(tmp_path):
+    kwargs = {
+        "root": tmp_path,
+        "scenario": scenarios()[0],
+        "protocol": json.loads((ROOT / "protocol.json").read_text()),
+        "adapter": ECPAAdapter(),
+        "repetition": 1,
+        "arm_order": 3,
+        "executable": sys.executable,
+        "arguments": [str(Path("tests/fixtures/formal_sut_service.py").resolve())],
+        "observer_executable": sys.executable,
+        "observer_arguments": [
+            str(Path("tests/fixtures/formal_observer_service.py").resolve())
+        ],
+        "timeout_s": 1,
+    }
+    with pytest.raises(ValueError, match="registry verification id"):
+        run_formal_start(identity=_minimal_formal_identity(), **kwargs)
+    asserted = _minimal_formal_identity() | {"adapter_contract_verified": True}
+    with pytest.raises(ValueError, match="caller-declared"):
+        run_formal_start(identity=asserted, **kwargs)
+
+
+@pytest.mark.parametrize(
+    "snapshot,error",
+    [
+        (None, "target process snapshot is missing"),
+        ([], "target process snapshot is missing"),
+        (
+            [
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": False,
+                    "process_epoch": 7,
+                }
+            ],
+            "target process snapshot is malformed",
+        ),
+        (
+            [
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 0,
+                    "process_epoch": 7,
+                    "unexpected": True,
+                }
+            ],
+            "target process snapshot is malformed",
+        ),
+        (
+            [
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 0,
+                    "process_epoch": 7,
+                },
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 0,
+                    "process_epoch": 7,
+                },
+            ],
+            "target process snapshot contains duplicates",
+        ),
+        (
+            [
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 0,
+                    "process_epoch": 7,
+                },
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 0,
+                    "process_epoch": 8,
+                },
+            ],
+            "target process snapshot contains duplicates",
+        ),
+        (
+            [
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 1,
+                    "process_epoch": 7,
+                },
+                {
+                    "host": "host-a",
+                    "role": "worker",
+                    "ordinal": 0,
+                    "process_epoch": 7,
+                },
+            ],
+            "target process snapshot is not canonical",
+        ),
+    ],
+)
+def test_real_formal_rejects_invalid_target_snapshot_before_adapter_probe(
+    tmp_path, monkeypatch, snapshot, error
+):
+    monkeypatch.setattr(
+        runner_module,
+        "verified_adapter_contract",
+        lambda *args, **kwargs: pytest.fail(
+            "adapter probe ran before target validation"
+        ),
+    )
+    identity = _minimal_formal_identity()
+    if snapshot is None:
+        identity.pop("required_processes")
+    else:
+        identity["required_processes"] = snapshot
+    with pytest.raises(ValueError, match=error):
+        run_formal_start(
+            tmp_path,
+            scenarios()[0],
+            json.loads((ROOT / "protocol.json").read_text()),
+            ECPAAdapter(),
+            1,
+            3,
+            executable=sys.executable,
+            arguments=["unused"],
+            observer_executable=sys.executable,
+            observer_arguments=["unused-observer"],
+            identity=identity,
+            timeout_s=1,
+            adapter_verification_id="reviewed",
+        )
+
+
+def test_adapter_probe_cannot_mutate_runner_owned_identity_or_plan(
+    tmp_path, monkeypatch
+):
+    protocol = json.loads((ROOT / "protocol.json").read_text())
+    scenario = scenarios()[0]
+    adapter = ECPAAdapter()
+    caller_identity = _minimal_formal_identity()
+    declared_before_probe = copy.deepcopy(caller_identity)
+    manager = str(Path(sys.executable).with_name("vllm-hust-ext").absolute())
+    manager_prefix = runner_module.executable_launch_prefix(manager)
+    verification = {
+        "verification_id": "reviewed",
+        "manager_command": command_fingerprint(manager_prefix[0], manager_prefix[1:]),
+        "target_command": command_fingerprint(sys.executable, ["unused"]),
+        "observer_command": command_fingerprint(sys.executable, ["unused-observer"]),
+    }
+
+    def mutate_caller_during_probe(*args, **kwargs):
+        caller_identity["required_processes"].append(
+            {
+                "host": "host-a",
+                "role": "worker",
+                "ordinal": 0,
+                "process_epoch": 8,
+            }
+        )
+        caller_identity["software"]["runtime"] = "mutated-during-probe"
+        return verification
+
+    monkeypatch.setattr(
+        runner_module, "verified_ecpa_adapter_contract", mutate_caller_during_probe
+    )
+    monkeypatch.setattr(runner_module, "_run_start", lambda *args, **kwargs: kwargs)
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    captured = run_formal_start(
+        tmp_path,
+        scenario,
+        protocol,
+        adapter,
+        1,
+        3,
+        executable=sys.executable,
+        arguments=["unused"],
+        observer_executable=sys.executable,
+        observer_arguments=["unused-observer"],
+        identity=caller_identity,
+        timeout_s=1,
+        adapter_verification_id="reviewed",
+        manager_executable=manager,
+        execution_plan_path=plan_path,
+        host_event_dir=event_dir,
+    )
+
+    assert len(caller_identity["required_processes"]) == 2
+    assert (
+        captured["identity"]["required_processes"]
+        == declared_before_probe["required_processes"]
+    )
+    assert captured["identity"]["software"] == declared_before_probe["software"]
+    assert (
+        captured["execution_identity"]["plan_id"]
+        == read_plan_artifact(plan_path).plan_id
+    )
+    assert (
+        captured["managed_binding"]["plan_id"]
+        == captured["execution_identity"]["plan_id"]
+    )
+    assert captured["argv"][:3] == [
+        str(Path(sys.executable).absolute()),
+        manager,
+        "formal-run",
+    ]
+
+
+def test_verified_adapter_registry_pins_commands_and_rejects_fixture_symlink(
+    tmp_path, monkeypatch
+):
+    sut = tmp_path / "sut.py"
+    observer = tmp_path / "observer.py"
+    sut_source = """import argparse
+import json
+parser = argparse.ArgumentParser()
+parser.add_argument('--disable-ecpa-manager', action='store_true')
+parser.add_argument('--manual-hooks', action='store_true')
+parser.add_argument('--ecpa-formal-activation-probe', action='store_true')
+args = parser.parse_args()
+if args.ecpa_formal_activation_probe:
+    receipt = {
+        'schema': 'ecpa-activation-probe/v1',
+        'activation_contract': 'explicit-manual-hooks',
+        'accepted_options': ['--disable-ecpa-manager', '--manual-hooks'],
+    }
+    print(json.dumps(receipt, sort_keys=True, separators=(',', ':')))
+"""
+    sut.write_text(sut_source)
+    observer.write_text("print('observer')\n")
+    adapter = ManualIntegrationAdapter()
+    sut_fingerprint = command_fingerprint(
+        sys.executable, [str(sut), *adapter.activation_arguments]
+    )
+    observer_fingerprint = command_fingerprint(sys.executable, [str(observer)])
+    lifecycle_fields, lifecycle_commands = lifecycle_registry_fields(tmp_path)
+    registry = {
+        "schema": "ecpa-formal-adapter-registry/v2",
+        "adapters": [
+            {
+                "id": "test-host-v1",
+                "admission": adapter_admission(),
+                "arm": adapter.arm,
+                "activation_contract": adapter.activation_contract,
+                "evidence_owner": "vllm-hust-host",
+                "evidence_channel": "host-owned-event-stream",
+                "host_event_schema": "ecpa-host-runtime-evidence/v1",
+                **lifecycle_fields,
+                "required_observables": sorted(runner_module.FORMAL_HOST_OBSERVABLES),
+                "sut_command_digest": sut_fingerprint["digest"],
+                "observer_command_digest": observer_fingerprint["digest"],
+                "activation_probe": activation_probe(adapter, [str(sut)]),
+            }
+        ],
+    }
+    registry_path = tmp_path / "verified-adapters.json"
+    registry_path.write_bytes(canonical(registry) + b"\n")
+    monkeypatch.setattr(runner_module, "VERIFIED_ADAPTER_REGISTRY", registry_path)
+    verified = runner_module.verified_adapter_contract(
+        "test-host-v1",
+        adapter,
+        sys.executable,
+        [str(sut)],
+        sys.executable,
+        [str(observer)],
+        lifecycle_commands,
+    )
+    assert verified["sut_command"] == sut_fingerprint
+    rejected_sources = [
+        "print('--disable-ecpa-manager --manual-hooks')\n",
+        """import argparse
+import json
+parser = argparse.ArgumentParser()
+parser.add_argument('--disable-ecpa-manager', action='store_true')
+parser.add_argument('--manual-hooks', action='store_true')
+parser.add_argument('--ecpa-formal-activation-probe', action='store_true')
+parser.parse_args()
+receipt = {
+    'schema': 'ecpa-activation-probe/v1',
+    'activation_contract': 'explicit-manual-hooks',
+    'accepted_options': ['--disable-ecpa-manager', '--manual-hooks'],
+}
+print(json.dumps(receipt, indent=2))
+""",
+        """import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--disable-ecpa-manager-evil', action='store_true')
+parser.add_argument('--manual-hooks-other', action='store_true')
+parser.add_argument('--ecpa-formal-activation-probe', action='store_true')
+parser.parse_args()
+""",
+        """import sys
+sys.stdout.write('{\"accepted_options\":[\"--disable-ecpa')
+sys.stderr.write('-manager\",\"--manual-hooks\"]}')
+""",
+        "import sys; sys.stdout.buffer.write(b'x' * (1024 * 1024 + 1))\n",
+    ]
+    for rejected_source in rejected_sources:
+        sut.write_text(rejected_source)
+        broken_probe = copy.deepcopy(registry)
+        broken_sut = command_fingerprint(
+            sys.executable, [str(sut), *adapter.activation_arguments]
+        )
+        broken_arguments = [
+            str(sut),
+            *adapter.activation_arguments,
+            "--ecpa-formal-activation-probe",
+        ]
+        broken_probe["adapters"][0]["sut_command_digest"] = broken_sut["digest"]
+        broken_probe["adapters"][0]["activation_probe"]["command_digest"] = (
+            command_fingerprint(sys.executable, broken_arguments)["digest"]
+        )
+        registry_path.write_bytes(canonical(broken_probe) + b"\n")
+        with pytest.raises(
+            ValueError, match="JSON receipt|does not expose|output exceeds"
+        ):
+            runner_module.verified_adapter_contract(
+                "test-host-v1",
+                adapter,
+                sys.executable,
+                [str(sut)],
+                sys.executable,
+                [str(observer)],
+                lifecycle_commands,
+            )
+    descendant_pid_file = tmp_path / "probe-descendant.pid"
+    sut.write_text(
+        "import subprocess, sys\n"
+        "from pathlib import Path\n"
+        "child = subprocess.Popen([sys.executable, '-c', "
+        "'import time; time.sleep(60)'])\n"
+        f"Path({str(descendant_pid_file)!r}).write_text(str(child.pid))\n"
+    )
+    descendant_probe = copy.deepcopy(registry)
+    descendant_sut = command_fingerprint(
+        sys.executable, [str(sut), *adapter.activation_arguments]
+    )
+    descendant_arguments = [
+        str(sut),
+        *adapter.activation_arguments,
+        "--ecpa-formal-activation-probe",
+    ]
+    descendant_probe["adapters"][0]["sut_command_digest"] = descendant_sut["digest"]
+    descendant_probe["adapters"][0]["activation_probe"]["command_digest"] = (
+        command_fingerprint(sys.executable, descendant_arguments)["digest"]
+    )
+    registry_path.write_bytes(canonical(descendant_probe) + b"\n")
+    with pytest.raises(ValueError, match="did not complete"):
+        runner_module.verified_adapter_contract(
+            "test-host-v1",
+            adapter,
+            sys.executable,
+            [str(sut)],
+            sys.executable,
+            [str(observer)],
+            lifecycle_commands,
+        )
+    descendant_pid = int(descendant_pid_file.read_text())
+    descendant_stat = Path(f"/proc/{descendant_pid}/stat")
+    for _ in range(200):
+        try:
+            stat_text = descendant_stat.read_text()
+        except FileNotFoundError:
+            break
+        state = stat_text.rsplit(")", 1)[1].split()[0]
+        if state == "Z":
+            break
+        time.sleep(0.01)
+    else:
+        pytest.fail(f"activation probe descendant {descendant_pid} survived cleanup")
+    sut.write_text(sut_source)
+    registry_path.write_bytes(canonical(registry) + b"\n")
+    observer.write_text("print('changed')\n")
+    with pytest.raises(ValueError, match="observer command"):
+        runner_module.verified_adapter_contract(
+            "test-host-v1",
+            adapter,
+            sys.executable,
+            [str(sut)],
+            sys.executable,
+            [str(observer)],
+            lifecycle_commands,
+        )
+
+    fixture_link = tmp_path / "renamed-sut.py"
+    fixture_link.symlink_to(Path("tests/fixtures/formal_sut_service.py").resolve())
+    with pytest.raises(ValueError, match="fixture-referencing"):
+        runner_module.verified_adapter_contract(
+            "test-host-v1",
+            adapter,
+            sys.executable,
+            [str(fixture_link)],
+            sys.executable,
+            [str(observer)],
+            lifecycle_commands,
+        )
+
+
+def test_offline_validator_rechecks_registry_and_executed_commands(
+    tmp_path, monkeypatch
+):
+    sut = tmp_path / "sut.py"
+    observer = tmp_path / "observer.py"
+    sut.write_text("""import argparse
+import json
+parser = argparse.ArgumentParser()
+parser.add_argument('--disable-ecpa-manager', action='store_true')
+parser.add_argument('--manual-hooks', action='store_true')
+parser.add_argument('--ecpa-formal-activation-probe', action='store_true')
+args = parser.parse_args()
+if args.ecpa_formal_activation_probe:
+    receipt = {
+        'schema': 'ecpa-activation-probe/v1',
+        'activation_contract': 'explicit-manual-hooks',
+        'accepted_options': ['--disable-ecpa-manager', '--manual-hooks'],
+    }
+    print(json.dumps(receipt, sort_keys=True, separators=(',', ':')))
+""")
+    observer.write_text("print('observer')\n")
+    adapter = ManualIntegrationAdapter()
+    sut_arguments = [str(sut), *adapter.activation_arguments]
+    observer_arguments = [str(observer)]
+    sut_fingerprint = command_fingerprint(sys.executable, sut_arguments)
+    observer_fingerprint = command_fingerprint(sys.executable, observer_arguments)
+    lifecycle_fields, lifecycle_commands = lifecycle_registry_fields(tmp_path)
+    registry = {
+        "schema": "ecpa-formal-adapter-registry/v2",
+        "adapters": [
+            {
+                "id": "test-host-v1",
+                "admission": adapter_admission(),
+                "arm": adapter.arm,
+                "activation_contract": adapter.activation_contract,
+                "evidence_owner": "vllm-hust-host",
+                "evidence_channel": "host-owned-event-stream",
+                "host_event_schema": "ecpa-host-runtime-evidence/v1",
+                **lifecycle_fields,
+                "required_observables": sorted(runner_module.FORMAL_HOST_OBSERVABLES),
+                "sut_command_digest": sut_fingerprint["digest"],
+                "observer_command_digest": observer_fingerprint["digest"],
+                "activation_probe": activation_probe(adapter, [str(sut)]),
+            }
+        ],
+    }
+    registry_path = tmp_path / "verified-adapters.json"
+    registry_path.write_bytes(canonical(registry) + b"\n")
+    monkeypatch.setattr(runner_module, "VERIFIED_ADAPTER_REGISTRY", registry_path)
+    monkeypatch.setattr(harness_module, "VERIFIED_ADAPTER_REGISTRY", registry_path)
+    verification = runner_module.verified_adapter_contract(
+        "test-host-v1",
+        adapter,
+        sys.executable,
+        [str(sut)],
+        sys.executable,
+        observer_arguments,
+        lifecycle_commands,
+    )
+    record = {
+        "arm": adapter.arm,
+        "scenario": "partial-worker-coverage",
+        "identity": {"adapter_verification": verification},
+    }
+    command = {
+        "argv": [sys.executable, *sut_arguments],
+        "sut_process": {
+            "argv": [sys.executable, *sut_arguments],
+            "executable_identity": {
+                "device": sut_fingerprint["executable_device"],
+                "inode": sut_fingerprint["executable_inode"],
+            },
+        },
+        "observer_process": {
+            "argv": [sys.executable, *observer_arguments],
+            "executable_identity": {
+                "device": observer_fingerprint["executable_device"],
+                "inode": observer_fingerprint["executable_inode"],
+            },
+        },
+        "lifecycle_fact_processes": lifecycle_process_records(
+            verification["lifecycle_fact_commands"]
+        ),
+        "lifecycle_fact_errors": {},
+    }
+    harness_module.validate_formal_adapter_verification(record, command)
+
+    for malformed_binding in (
+        {
+            **lifecycle_fields["scenario_bindings"]["partial-worker-coverage"],
+            "fault_source_subcommand": "journal-capture",
+        },
+        {
+            **lifecycle_fields["scenario_bindings"]["partial-worker-coverage"],
+            "entry_point": {"group": "vllm.general_plugins"},
+        },
+    ):
+        malformed_registry = copy.deepcopy(registry)
+        malformed_registry["adapters"][0]["scenario_bindings"][
+            "partial-worker-coverage"
+        ] = malformed_binding
+        registry_path.write_bytes(canonical(malformed_registry) + b"\n")
+        with pytest.raises(ValueError, match="subcommand or entry point"):
+            harness_module.validate_formal_adapter_verification(record, command)
+    registry_path.write_bytes(canonical(registry) + b"\n")
+
+    tampered = copy.deepcopy(record)
+    tampered["identity"]["adapter_verification"]["registry_digest"] = "sha256:fake"
+    with pytest.raises(ValueError, match="metadata differs"):
+        harness_module.validate_formal_adapter_verification(tampered, command)
+    tampered = copy.deepcopy(record)
+    tampered["identity"]["adapter_verification"]["admission"]["reviewed_head"] = (
+        "5" * 40
+    )
+    with pytest.raises(ValueError, match="metadata differs"):
+        harness_module.validate_formal_adapter_verification(tampered, command)
+    tampered = copy.deepcopy(record)
+    tampered["identity"]["adapter_verification"]["activation_probe"][
+        "stdout_base64"
+    ] = "not-base64!"
+    with pytest.raises(ValueError, match="probe bytes are invalid"):
+        harness_module.validate_formal_adapter_verification(tampered, command)
+    tampered = copy.deepcopy(record)
+    tampered["identity"]["adapter_verification"]["activation_probe"][
+        "stdout_base64"
+    ] = base64.b64encode(b"forged --manual-hooks").decode()
+    with pytest.raises(ValueError, match="metadata differs|does not satisfy"):
+        harness_module.validate_formal_adapter_verification(tampered, command)
+    changed_command = copy.deepcopy(command)
+    changed_command["sut_process"]["argv"][-1] = "--different"
+    with pytest.raises(ValueError, match="executed SUT argv"):
+        harness_module.validate_formal_adapter_verification(record, changed_command)
+
+    fixture_sut = Path("tests/fixtures/formal_sut_service.py").resolve()
+    fixture_observer = Path("tests/fixtures/formal_observer_service.py").resolve()
+    fixture_sut_arguments = [str(fixture_sut), *adapter.activation_arguments]
+    fixture_observer_arguments = [str(fixture_observer)]
+    fixture_sut_fingerprint = command_fingerprint(sys.executable, fixture_sut_arguments)
+    fixture_observer_fingerprint = command_fingerprint(
+        sys.executable, fixture_observer_arguments
+    )
+    fixture_registry = copy.deepcopy(registry)
+    fixture_entry = fixture_registry["adapters"][0]
+    fixture_entry["sut_command_digest"] = fixture_sut_fingerprint["digest"]
+    fixture_entry["observer_command_digest"] = fixture_observer_fingerprint["digest"]
+    registry_path.write_bytes(canonical(fixture_registry) + b"\n")
+    fixture_verification = {
+        **verification,
+        "registry_digest": harness_module.digest_bytes(registry_path.read_bytes()),
+        "sut_command": fixture_sut_fingerprint,
+        "observer_command": fixture_observer_fingerprint,
+    }
+    fixture_record = {
+        "arm": adapter.arm,
+        "scenario": "partial-worker-coverage",
+        "identity": {"adapter_verification": fixture_verification},
+    }
+    fixture_command = {
+        "argv": [sys.executable, *fixture_sut_arguments],
+        "sut_process": {"argv": [sys.executable, *fixture_sut_arguments]},
+        "observer_process": {"argv": [sys.executable, *fixture_observer_arguments]},
+    }
+    with pytest.raises(ValueError, match="fixture-referencing"):
+        harness_module.validate_formal_adapter_verification(
+            fixture_record, fixture_command
+        )
+
+
+def test_ecpa_offline_validator_binds_manager_target_observer_and_plan(
+    tmp_path, monkeypatch
+):
+    manager = str(Path(sys.executable).with_name("vllm-hust-ext").resolve())
+    target = tmp_path / "target.py"
+    observer = tmp_path / "observer.py"
+    target.write_text("print('target')\n")
+    observer.write_text("print('observer')\n")
+    monkeypatch.chdir(tmp_path)
+    adapter = ECPAAdapter()
+    target_arguments = [target.name]
+    observer_arguments = [observer.name]
+    manager_prefix = runner_module.executable_launch_prefix(manager)
+    manager_fingerprint = command_fingerprint(manager_prefix[0], manager_prefix[1:])
+    target_fingerprint = command_fingerprint(sys.executable, target_arguments)
+    observer_fingerprint = command_fingerprint(sys.executable, observer_arguments)
+    probe_fingerprint = command_fingerprint(
+        manager_prefix[0],
+        [
+            *manager_prefix[1:],
+            "formal-run",
+            "--ecpa-formal-activation-probe",
+        ],
+    )
+    lifecycle_fields, lifecycle_commands = lifecycle_registry_fields(tmp_path)
+    registry = {
+        "schema": "ecpa-formal-adapter-registry/v2",
+        "adapters": [
+            {
+                "id": "managed-test-host-v1",
+                "admission": adapter_admission(),
+                "arm": adapter.arm,
+                "activation_contract": adapter.activation_contract,
+                "evidence_owner": "vllm-hust-host",
+                "evidence_channel": "host-owned-event-stream",
+                "host_event_schema": "ecpa-host-runtime-evidence/v1",
+                **lifecycle_fields,
+                "required_observables": sorted(runner_module.FORMAL_HOST_OBSERVABLES),
+                "manager_command_digest": manager_fingerprint["digest"],
+                "target_command_digest": target_fingerprint["digest"],
+                "observer_command_digest": observer_fingerprint["digest"],
+                "activation_probe": {
+                    "required_options": sorted(
+                        runner_module.ECPA_FORMAL_ACTIVATION_OPTIONS
+                    ),
+                    "timeout_s": 2,
+                    "command_digest": probe_fingerprint["digest"],
+                },
+            }
+        ],
+    }
+    registry_path = tmp_path / "verified-adapters.json"
+    registry_path.write_bytes(canonical(registry) + b"\n")
+    monkeypatch.setattr(runner_module, "VERIFIED_ADAPTER_REGISTRY", registry_path)
+    monkeypatch.setattr(harness_module, "VERIFIED_ADAPTER_REGISTRY", registry_path)
+
+    verification = runner_module.verified_ecpa_adapter_contract(
+        "managed-test-host-v1",
+        adapter,
+        manager,
+        sys.executable,
+        target_arguments,
+        sys.executable,
+        observer_arguments,
+        lifecycle_commands,
+    )
+    assert verification["manager_command"] == manager_fingerprint
+    assert verification["target_command"] == target_fingerprint
+    assert verification["observer_command"] == observer_fingerprint
+    assert verification["target_command"]["arguments"] == [str(target)]
+    assert verification["observer_command"]["arguments"] == [str(observer)]
+
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    launch_id = "launch:offline-test"
+    controller = "controller:offline-test"
+    argv, _, binding = adapter.managed_launch(
+        manager_executable=manager,
+        plan_path=plan_path,
+        launch_id=launch_id,
+        controller_instance=controller,
+        host_event_dir=event_dir,
+        target_argv=[sys.executable, *target_arguments],
+        env={},
+    )
+    record = {
+        "arm": adapter.arm,
+        "scenario": "partial-worker-coverage",
+        "identity": {"adapter_verification": verification},
+    }
+    command = {
+        "argv": argv,
+        "sut_process": {"argv": argv},
+        "observer_process": {
+            "argv": [
+                verification["observer_command"]["executable"],
+                *verification["observer_command"]["arguments"],
+            ],
+            "executable_identity": {
+                "device": observer_fingerprint["executable_device"],
+                "inode": observer_fingerprint["executable_inode"],
+            },
+        },
+        "execution_identity": {
+            "plan_id": binding["plan_id"],
+            "launch_id": launch_id,
+            "controller_instance": controller,
+        },
+        "managed_binding": binding,
+        "lifecycle_fact_processes": lifecycle_process_records(
+            verification["lifecycle_fact_commands"]
+        ),
+        "lifecycle_fact_errors": {},
+    }
+    command["sut_process"]["executable_identity"] = {
+        "device": manager_fingerprint["executable_device"],
+        "inode": manager_fingerprint["executable_inode"],
+    }
+    harness_module.validate_formal_adapter_verification(record, command)
+
+    changed_target = copy.deepcopy(command)
+    changed_target["sut_process"]["argv"][-1] = "different-target.py"
+    with pytest.raises(ValueError, match="managed ECPA argv"):
+        harness_module.validate_formal_adapter_verification(record, changed_target)
+    changed_plan = copy.deepcopy(command)
+    changed_plan["managed_binding"]["plan_sha256"] = "sha256:forged"
+    with pytest.raises(ValueError, match="Plan binding"):
+        harness_module.validate_formal_adapter_verification(record, changed_plan)
+    changed_event_directory = copy.deepcopy(command)
+    changed_event_directory["managed_binding"]["host_event_directory"]["inode"] += 1
+    with pytest.raises(ValueError, match="Plan binding"):
+        harness_module.validate_formal_adapter_verification(
+            record, changed_event_directory
+        )
+
+
+def test_managed_ecpa_record_validates_without_spoofing_target_contract(
+    tmp_path,
+):
+    adapter = ECPAAdapter()
+    plan_path = _write_formal_execution_plan(tmp_path)
+    event_dir = (tmp_path / "events").resolve()
+    event_dir.mkdir(mode=0o700)
+    manager = str(Path(sys.executable).with_name("vllm-hust-ext").resolve())
+    sut = str(Path("tests/fixtures/formal_sut_service.py").resolve())
+    observer_fixture = Path("tests/fixtures/formal_observer_service.py").resolve()
+    observer = tmp_path / "managed-observer.py"
+    observer.write_text(
+        observer_fixture.read_text().replace(
+            'assert "--enable-ecpa-manager" in target_argv',
+            'assert "formal-run" in target_argv',
+        )
+    )
+    launch_id = "launch:complete-record"
+    controller = "controller:complete-record"
+    argv, env, binding = adapter.managed_launch(
+        manager_executable=manager,
+        plan_path=plan_path,
+        launch_id=launch_id,
+        controller_instance=controller,
+        host_event_dir=event_dir,
+        target_argv=[sys.executable, sut],
+        env=dict(os.environ),
+    )
+    manager_prefix = runner_module.executable_launch_prefix(manager)
+    assert "ECPA_ACTIVATION_CONTRACT" not in env
+    identity = runner_module.measured_identity(
+        _minimal_formal_identity(),
+        adapter.arm,
+        env,
+        adapter.activation_contract,
+    )
+    record = runner_module._run_start(
+        tmp_path / "run",
+        scenarios()[0],
+        adapter.arm,
+        1,
+        3,
+        argv=argv,
+        env=env,
+        timeout_s=5,
+        evidence_class="interface-fixture",
+        measurement_source="managed-interface-regression",
+        identity=identity,
+        observations_from_stdout=False,
+        observer_argv=[sys.executable, str(observer)],
+        execution_identity={
+            "plan_id": binding["plan_id"],
+            "launch_id": launch_id,
+            "controller_instance": controller,
+        },
+        activation_contract=adapter.activation_contract,
+        managed_binding=binding,
+        sut_executable_fingerprint=command_fingerprint(
+            manager_prefix[0], manager_prefix[1:]
+        ),
+        observer_executable_fingerprint=command_fingerprint(
+            sys.executable, [str(observer)]
+        ),
+    )
+    assert record["status"] == "complete"
+    validate_record(
+        record,
+        tmp_path / "run",
+        scenario=scenarios()[0],
+        protocol=json.loads((ROOT / "protocol.json").read_text()),
+        schema=json.loads((ROOT / "raw-record.schema.json").read_text()),
+    )
+
+
+def test_interpreter_indirection_cannot_hide_fixture_commands(tmp_path, monkeypatch):
+    adapter = ManualIntegrationAdapter()
+    sut_fixture = Path("tests/fixtures/formal_sut_service.py").resolve()
+    observer_fixture = Path("tests/fixtures/formal_observer_service.py").resolve()
+    sut_source = (
+        f"exec(compile(open({str(sut_fixture)!r},'rb').read(),"
+        f"{str(sut_fixture)!r},'exec'))"
+    )
+    observer_source = (
+        f"exec(compile(open({str(observer_fixture)!r},'rb').read(),"
+        f"{str(observer_fixture)!r},'exec'))"
+    )
+    sut_arguments = ["-c", sut_source, *adapter.activation_arguments]
+    observer_arguments = ["-c", observer_source]
+    assert command_references_fixture(
+        [sys.executable, *sut_arguments, sys.executable, *observer_arguments]
+    )
+    sut_fingerprint = command_fingerprint(sys.executable, sut_arguments)
+    observer_fingerprint = command_fingerprint(sys.executable, observer_arguments)
+    lifecycle_fields, lifecycle_commands = lifecycle_registry_fields(tmp_path)
+    registry = {
+        "schema": "ecpa-formal-adapter-registry/v2",
+        "adapters": [
+            {
+                "id": "indirect-fixture",
+                "admission": adapter_admission(),
+                "arm": adapter.arm,
+                "activation_contract": adapter.activation_contract,
+                "evidence_owner": "vllm-hust-host",
+                "evidence_channel": "host-owned-event-stream",
+                "host_event_schema": "ecpa-host-runtime-evidence/v1",
+                **lifecycle_fields,
+                "required_observables": sorted(runner_module.FORMAL_HOST_OBSERVABLES),
+                "sut_command_digest": sut_fingerprint["digest"],
+                "observer_command_digest": observer_fingerprint["digest"],
+                "activation_probe": activation_probe(adapter, ["-c", sut_source]),
+            }
+        ],
+    }
+    registry_path = tmp_path / "verified-adapters.json"
+    registry_path.write_bytes(canonical(registry) + b"\n")
+    monkeypatch.setattr(runner_module, "VERIFIED_ADAPTER_REGISTRY", registry_path)
+    with pytest.raises(ValueError, match="fixture-referencing"):
+        runner_module.verified_adapter_contract(
+            "indirect-fixture",
+            adapter,
+            sys.executable,
+            ["-c", sut_source],
+            sys.executable,
+            observer_arguments,
+            lifecycle_commands,
+        )
+
+
+def test_fixture_evidence_is_nonformal_and_execution_identity_is_bound(tmp_path):
+    record = formal_complete_records(tmp_path)[0]
+    run_dir = tmp_path / record["artifact_root"]
+    assert record["evidence_class"] == "interface-fixture"
+    assert record["identity"]["adapter_verification"] is None
+    assert not (run_dir / "sut-telemetry.json").exists()
+    assert not (tmp_path / "formal" / "formal-record-index.json").exists()
+    execution = record["command"]["execution_identity"]
+    assert set(execution) == {"plan_id", "launch_id", "controller_instance"}
+    invocation_ids = {
+        item["invocation_id"] for item in record["command"]["phase_invocations"]
+    }
+    assert len(invocation_ids) == 5
+    assert all(
+        event["launch_id"] == execution["launch_id"] for event in record["observations"]
+    )
+    assert all(
+        event["sut_process_identity"]
+        == record["command"]["sut_process"]["linux_identity"]
+        for event in record["observations"]
+    )
+    counterexample = copy.deepcopy(record)
+    counterexample["observations"][0]["launch_id"] = "launch:replayed"
+    assert oracle(scenarios()[0], counterexample)["verdict"] == "INCOMPLETE"
+    with pytest.raises(ValueError, match="fixture-only"):
+        validate_batch([record], tmp_path, formal=True)
+
+
+def test_formal_observer_receives_no_phase_material(tmp_path, monkeypatch):
+    observer = tmp_path / "capture_formal_observer.py"
+    observer.write_text(
+        """import json, os, sys
+messages = [json.loads(raw) for raw in sys.stdin]
+print(json.dumps(messages), flush=True)
+os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
+"""
+    )
+    sut = str(Path("tests/fixtures/formal_sut_service.py").resolve())
+    execution = {
+        "plan_id": "sha256:" + "1" * 64,
+        "launch_id": "launch:formal-message",
+        "controller_instance": "controller:formal-message",
+    }
+    identity = _minimal_formal_identity()
+    identity["required_processes"] = [
+        {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 1}
+    ]
+    _, lifecycle_commands = lifecycle_registry_fields(tmp_path)
+    lifecycle_fingerprints = {
+        phase: command_fingerprint(executable, arguments)
+        for phase, (executable, arguments) in lifecycle_commands.items()
+    }
+    monkeypatch.setattr(runner_module, "validate_record", lambda *args, **kwargs: None)
+
+    record = runner_module._run_start(
+        tmp_path / "formal-message",
+        scenarios()[0],
+        "ecpa",
+        1,
+        3,
+        argv=[sys.executable, sut],
+        env=dict(os.environ),
+        timeout_s=2,
+        evidence_class="formal-real",
+        measurement_source="formal-message-boundary-test",
+        identity=identity,
+        observations_from_stdout=False,
+        observer_argv=[sys.executable, str(observer)],
+        execution_identity=execution,
+        activation_contract="manager-controlled-activation",
+        lifecycle_fact_commands=lifecycle_fingerprints,
+        sut_executable_fingerprint=command_fingerprint(sys.executable, [sut]),
+        observer_executable_fingerprint=command_fingerprint(
+            sys.executable, [str(observer)]
+        ),
+    )
+    run_dir = tmp_path / "formal-message" / record["artifact_root"]
+    messages = json.loads((run_dir / "observer-stdout.bin").read_text())
+
+    assert messages == []
+    assert set(record["command"]["lifecycle_fact_processes"]) == set(
+        runner_module.FORMAL_LIFECYCLE_FACT_SOURCES
+    )
+    assert record["command"]["lifecycle_fact_errors"] == {}
+    lifecycle_events = {
+        item["event"]: item
+        for item in record["observations"]
+        if item["event"] in runner_module.FORMAL_LIFECYCLE_FACT_SOURCES
+    }
+    assert set(lifecycle_events) == set(runner_module.FORMAL_LIFECYCLE_FACT_SOURCES)
+    assert all("causal_ack" not in item for item in lifecycle_events.values())
+
+
+def test_lifecycle_fact_source_output_is_bounded(tmp_path):
+    source = tmp_path / "oversized_lifecycle_source.py"
+    source.write_text(
+        "import sys\nsys.stdin.readline()\nsys.stdout.write('x' * (1024 * 1024 + 1))\n"
+    )
+    fingerprint = command_fingerprint(sys.executable, [str(source)])
+
+    with pytest.raises(ValueError, match="output exceeds"):
+        runner_module.run_lifecycle_fact_source(
+            "service-ready",
+            fingerprint,
+            request={"schema": "test"},
+            cwd=tmp_path,
+            env=dict(os.environ),
+            timeout_s=2,
+        )
+
+
+def test_lifecycle_fact_source_rejects_exec_after_initial_identity(tmp_path):
+    source = tmp_path / "execing_lifecycle_source.py"
+    source.write_text(
+        """import os, sys
+sys.stdin.readline()
+code = (
+    "import os,socket,sys; "
+    "fd=int(os.environ['ECPA_LIFECYCLE_FACT_FD']); "
+    "socket.socket(fileno=fd).send(b'{}'); "
+    "sys.stdin.readline()"
+)
+os.execv(sys.executable, [sys.executable, '-c', code])
+"""
+    )
+    fingerprint = command_fingerprint(sys.executable, [str(source)])
+
+    with pytest.raises(ValueError, match="changed exec identity"):
+        runner_module.run_lifecycle_fact_source(
+            "service-ready",
+            fingerprint,
+            request={"schema": "test", "challenge": "challenge"},
+            cwd=tmp_path,
+            env=dict(os.environ),
+            timeout_s=2,
+        )
+
+
+def test_lifecycle_fact_source_timeout_kills_process_group(tmp_path):
+    descendant_pid_path = tmp_path / "lifecycle-descendant.pid"
+    source = tmp_path / "forking_lifecycle_source.py"
+    source.write_text(
+        """import subprocess, sys
+from pathlib import Path
+sys.stdin.readline()
+child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+Path(sys.argv[1]).write_text(str(child.pid))
+"""
+    )
+    fingerprint = command_fingerprint(
+        sys.executable, [str(source), str(descendant_pid_path)]
+    )
+
+    with pytest.raises(ValueError, match="timed out|truncated|exited before receipt"):
+        runner_module.run_lifecycle_fact_source(
+            "service-ready",
+            fingerprint,
+            request={"schema": "test", "challenge": "challenge"},
+            cwd=tmp_path,
+            env=dict(os.environ),
+            timeout_s=0.2,
+        )
+
+    descendant_pid = int(descendant_pid_path.read_text())
+    descendant_stat = Path(f"/proc/{descendant_pid}/stat")
+    for _ in range(200):
+        try:
+            state = descendant_stat.read_text().rsplit(")", 1)[1].split()[0]
+        except FileNotFoundError:
+            break
+        if state == "Z":
+            break
+        time.sleep(0.01)
+    else:
+        pytest.fail(f"lifecycle source descendant {descendant_pid} survived cleanup")
+
+
+def test_lifecycle_fact_source_rejects_forked_sender(tmp_path):
+    source = tmp_path / "forked_sender_lifecycle_source.py"
+    source.write_text(
+        """import os, socket, sys, time
+sys.stdin.readline()
+pid = os.fork()
+if pid == 0:
+    channel = socket.socket(fileno=int(os.environ['ECPA_LIFECYCLE_FACT_FD']))
+    channel.send(b'{}')
+    time.sleep(60)
+sys.stdin.readline()
+"""
+    )
+    fingerprint = command_fingerprint(sys.executable, [str(source)])
+
+    with pytest.raises(ValueError, match="sender identity mismatch"):
+        runner_module.run_lifecycle_fact_source(
+            "service-ready",
+            fingerprint,
+            request={"schema": "test", "challenge": "challenge"},
+            cwd=tmp_path,
+            env=dict(os.environ),
+            timeout_s=2,
+        )
+
+
+def test_lifecycle_fact_source_rejects_duplicate_datagrams(tmp_path):
+    source = tmp_path / "duplicate_lifecycle_source.py"
+    source.write_text(
+        """import os, socket, sys
+sys.stdin.readline()
+channel = socket.socket(fileno=int(os.environ['ECPA_LIFECYCLE_FACT_FD']))
+channel.send(b'{}')
+channel.send(b'{}')
+sys.stdin.readline()
+"""
+    )
+    fingerprint = command_fingerprint(sys.executable, [str(source)])
+
+    with pytest.raises(ValueError, match="duplicate receipts"):
+        runner_module.run_lifecycle_fact_source(
+            "service-ready",
+            fingerprint,
+            request={"schema": "test", "challenge": "challenge"},
+            cwd=tmp_path,
+            env=dict(os.environ),
+            timeout_s=2,
+        )
+
+
+def test_lifecycle_fact_source_uses_pidfd_after_diagnostics_close(tmp_path):
+    source = tmp_path / "delayed_exit_lifecycle_source.py"
+    source.write_text(
+        """import json, os, socket, sys, time
+request = json.loads(sys.stdin.readline())
+payload = {
+    'schema': 'ecpa-formal-lifecycle-fact/v1',
+    'fact': request['fact'],
+    'source_kind': request['source_kind'],
+    'plan_id': request['plan_id'],
+    'launch_id': request['launch_id'],
+    'controller_instance': request['controller_instance'],
+    'invocation_id': request['invocation_id'],
+    'sequence': request['sequence'],
+    'challenge': request['challenge'],
+    'monotonic_ns': time.monotonic_ns(),
+    'value': True,
+    'sut_process_identity': request['sut_process_identity'],
+}
+channel = socket.socket(fileno=int(os.environ['ECPA_LIFECYCLE_FACT_FD']))
+channel.send(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode())
+sys.stdin.readline()
+os.close(1)
+os.close(2)
+time.sleep(0.1)
+"""
+    )
+    fingerprint = command_fingerprint(sys.executable, [str(source)])
+    request = {
+        "schema": "ecpa-lifecycle-fact-request/v1",
+        "fact": "service-ready",
+        "source_kind": "readiness-probe",
+        "plan_id": "plan",
+        "launch_id": "launch",
+        "controller_instance": "controller",
+        "invocation_id": "invocation",
+        "sequence": 1,
+        "challenge": "challenge",
+        "sut_process_identity": {
+            "pid": os.getpid(),
+            "start_ticks": 1,
+            "argv": ["test"],
+        },
+    }
+
+    event, process = runner_module.run_lifecycle_fact_source(
+        "service-ready",
+        fingerprint,
+        request=request,
+        cwd=tmp_path,
+        env=dict(os.environ),
+        timeout_s=1,
+    )
+
+    assert event["value"] is True
+    assert process["exit_code"] == 0
+
+
+def test_lifecycle_fact_source_rejects_false_value_before_commit(tmp_path):
+    commit_marker = tmp_path / "commit-received"
+    source = tmp_path / "false_lifecycle_source.py"
+    source.write_text(
+        """import json, os, socket, sys, time
+from pathlib import Path
+request = json.loads(sys.stdin.readline())
+payload = {
+    'schema': 'ecpa-formal-lifecycle-fact/v1',
+    'fact': request['fact'],
+    'source_kind': request['source_kind'],
+    'plan_id': request['plan_id'],
+    'launch_id': request['launch_id'],
+    'controller_instance': request['controller_instance'],
+    'invocation_id': request['invocation_id'],
+    'sequence': request['sequence'],
+    'challenge': request['challenge'],
+    'monotonic_ns': time.monotonic_ns(),
+    'value': False,
+    'sut_process_identity': request['sut_process_identity'],
+}
+channel = socket.socket(fileno=int(os.environ['ECPA_LIFECYCLE_FACT_FD']))
+channel.send(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode())
+if sys.stdin.readline():
+    Path(sys.argv[1]).write_text('commit')
+"""
+    )
+    fingerprint = command_fingerprint(sys.executable, [str(source), str(commit_marker)])
+    request = {
+        "schema": "ecpa-lifecycle-fact-request/v1",
+        "fact": "service-ready",
+        "source_kind": "readiness-probe",
+        "plan_id": "plan",
+        "launch_id": "launch",
+        "controller_instance": "controller",
+        "invocation_id": "invocation",
+        "sequence": 1,
+        "challenge": "challenge",
+        "scenario": "partial-worker-coverage",
+        "sut_process_identity": {
+            "pid": os.getpid(),
+            "start_ticks": 1,
+            "argv": ["test"],
+        },
+    }
+
+    with pytest.raises(ValueError, match="binding is invalid before commit"):
+        runner_module.run_lifecycle_fact_source(
+            "service-ready",
+            fingerprint,
+            request=request,
+            cwd=tmp_path,
+            env=dict(os.environ),
+            timeout_s=1,
+        )
+
+    assert not commit_marker.exists()
+
+
+def test_runner_seals_inconsistent_observer_ack_as_failed(tmp_path):
+    observer = tmp_path / "inconsistent_observer.py"
+    observer.write_text(
+        """import json, os, sys
+from pathlib import Path
+pid = int(os.environ['ECPA_SUT_PID'])
+stat = Path(f'/proc/{pid}/stat').read_text()
+close = stat.rfind(')')
+ticks = int(stat[close + 2:].split()[19])
+argv_bytes = Path(f'/proc/{pid}/cmdline').read_bytes()
+argv = [
+    part.decode(errors='surrogateescape')
+    for part in argv_bytes.split(b'\\0')
+    if part
+]
+identity = {'pid': pid, 'start_ticks': ticks, 'argv': argv}
+events = []
+for raw in sys.stdin:
+    message = json.loads(raw)
+    common = {
+        'source_role': 'interface-observer', 'clock': 'monotonic',
+        'monotonic_ns': message['monotonic_ns'],
+        'plan_id': message['plan_id'], 'launch_id': message['launch_id'],
+        'controller_instance': message['controller_instance'],
+        'invocation_id': message['invocation_id'], 'sequence': 999,
+        'challenge': 'wrong', 'causal_ack': False,
+        'sut_process_identity': identity,
+    }
+    phase = message['phase']
+    value = message['scenario'] if phase == 'fault-injected' else True
+    events.append({'event': phase, 'value': value, **common})
+    if phase == 'observer-captured':
+        for name, value in (
+            ('activation-path', os.environ['ECPA_EXPECTED_CONTRACT']),
+            ('effective-claim', False), ('plugin-invoked', False),
+            ('service_started', True), ('plugin_not_invoked', True),
+        ):
+            events.append({'event': name, 'value': value, **common})
+os.write(int(os.environ['ECPA_OBSERVER_FD']), json.dumps({'events': events}).encode())
+"""
+    )
+    record = run_formal_start(
+        tmp_path / "formal",
+        scenarios()[0],
+        json.loads((ROOT / "protocol.json").read_text()),
+        ECPAAdapter(),
+        1,
+        3,
+        executable=sys.executable,
+        arguments=[str(Path("tests/fixtures/formal_sut_service.py").resolve())],
+        observer_executable=sys.executable,
+        observer_arguments=[str(observer)],
+        identity=_minimal_formal_identity(),
+        timeout_s=2,
+        fixture_mode=True,
+    )
+    assert record["status"] == "failed"
+    assert record["oracle"]["verdict"] == "INCOMPLETE"
+    assert any(
+        "causal acknowledgement mismatch" in reason
+        for reason in record["oracle"]["reasons"]
+    )
+
+
+def test_exact_observer_pipe_bytes_are_bound_independently(tmp_path):
+    record = formal_complete_records(tmp_path)[0]
+    run_dir = tmp_path / record["artifact_root"]
+    pipe = run_dir / record["artifacts"]["observer_pipe"]
+    pipe.write_bytes(pipe.read_bytes() + b" ")
+    record["artifacts"]["digests"]["observer-pipe.bin"] = digest_file(pipe)
+    with pytest.raises(ValueError, match="observer pipe bytes"):
+        validate_record(
+            record,
+            tmp_path,
+            scenario=scenarios()[0],
+            protocol=json.loads((ROOT / "protocol.json").read_text()),
+            schema=json.loads((ROOT / "raw-record.schema.json").read_text()),
+        )
+
+
+def test_semantic_environment_is_runner_measured(tmp_path, monkeypatch):
+    monkeypatch.setenv("VLLM_USE_V1", "1")
+    record = run_reference_start(tmp_path, scenarios()[0], "ecpa", 1, 3)
+    assert record["identity"]["semantic_environment"]["VLLM_USE_V1"] == "1"
+    manifest = json.loads(
+        (tmp_path / record["artifact_root"] / "environment.json").read_text()
+    )
+    assert manifest["VLLM_USE_V1"] == "1"
+
+
+def test_oracle_mutation_is_rejected(tmp_path):
+    record = run_reference_start(tmp_path, scenarios()[0], "ecpa", 1, 3)
+    record["oracle"]["outcome"]["false_effective"] = True
+    with pytest.raises(ValueError, match="oracle"):
+        validate_record(
+            record,
+            tmp_path,
+            scenario=scenarios()[0],
+            protocol=json.loads((ROOT / "protocol.json").read_text()),
+            schema=json.loads((ROOT / "raw-record.schema.json").read_text()),
+        )
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "print('plain log')",
+        "raise SystemExit(7)",
+        "import time; time.sleep(10)",
+        (
+            "import json,time; phases=['service-ready','workload-complete',"
+            "'fault-injected','observer-captured','service-shutdown'];"
+            "[print(json.dumps({'ack':True,'phase':p,'sequence':i+1,"
+            "'challenge':'guessed'}),flush=True) for i,p in enumerate(phases)];"
+            "time.sleep(10)"
+        ),
+        """import json, sys
+first = None
+for raw in sys.stdin:
+    request = json.loads(raw)
+    first = first or request
+    response = dict(request)
+    response["ack"] = True
+    if request["sequence"] > 1:
+        response["challenge"] = first["challenge"]
+    print(json.dumps(response), flush=True)
+""",
+        """import json, sys
+for raw in sys.stdin:
+    request = json.loads(raw)
+    response = dict(request)
+    response["ack"] = True
+    if request["sequence"] == 2:
+        response["phase"] = "fault-injected"
+    print(json.dumps(response), flush=True)
+""",
+        """import json, sys
+for raw in sys.stdin:
+    request = json.loads(raw)
+    if request["phase"] == "service-shutdown":
+        break
+    response = dict(request)
+    response["ack"] = True
+    print(json.dumps(response), flush=True)
+""",
+    ],
+)
+def test_formal_plain_or_nonzero_command_still_writes_failed_record(tmp_path, code):
+    identity = {
+        "model": "test",
+        "dataset": "test",
+        "workload": "test",
+        "software": {"runtime": "test"},
+        "observer": "result-file/v1",
+        "plugin_commits": [],
+        "topology": "single",
+        "fault_plan": "test",
+        "fault": "test",
+        "warm_state": "cold",
+        "container_digest": "test",
+        "gpu": "not-applicable",
+        "npu": "not-applicable",
+        "driver": "test",
+    }
+    record = run_formal_start(
+        tmp_path,
+        scenarios()[0],
+        json.loads((ROOT / "protocol.json").read_text()),
+        ECPAAdapter(),
+        1,
+        3,
+        executable=sys.executable,
+        arguments=["-c", code],
+        observer_executable=sys.executable,
+        observer_arguments=[
+            str(Path("tests/fixtures/formal_observer_service.py").resolve())
+        ],
+        identity=identity,
+        timeout_s=1,
+        fixture_mode=True,
+    )
+    assert record["status"] == "failed"
+    assert record["oracle"]["verdict"] == "INCOMPLETE"
+    assert (tmp_path / record["artifact_root"] / "record.json").is_file()
+
+
+def test_proc_stat_parser_handles_parentheses_in_comm():
+    tail = ["S"] + [str(value) for value in range(4, 23)]
+    stat = "321 (worker (rank 0)) " + " ".join(tail)
+    assert parse_proc_stat_start_ticks(stat) == 22
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "duplicate",
+        "reverse",
+        "false",
+        "source",
+        "fault",
+        "activation",
+        "causal-ack",
+        "sequence",
+        "challenge",
+        "sut-identity",
+    ],
+)
+def test_formal_oracle_rejects_lifecycle_counterexamples(tmp_path, mutation):
+    record = copy.deepcopy(formal_complete_records(tmp_path)[0])
+    events = record["observations"]
+    if mutation == "duplicate":
+        events.append(copy.deepcopy(events[0]))
+    elif mutation == "reverse":
+        ready = next(item for item in events if item["event"] == "service-ready")
+        shutdown = next(item for item in events if item["event"] == "service-shutdown")
+        ready["monotonic_ns"], shutdown["monotonic_ns"] = (
+            shutdown["monotonic_ns"],
+            ready["monotonic_ns"],
+        )
+    elif mutation == "false":
+        next(item for item in events if item["event"] == "service-ready")["value"] = (
+            False
+        )
+    elif mutation == "source":
+        next(item for item in events if item["event"] == "plugin-invoked")[
+            "source_role"
+        ] = "sut"
+    elif mutation == "fault":
+        next(item for item in events if item["event"] == "fault-injected")["value"] = (
+            "other"
+        )
+    elif mutation == "activation":
+        next(item for item in events if item["event"] == "activation-path")["value"] = (
+            "wrong-path"
+        )
+    elif mutation == "causal-ack":
+        events[0]["causal_ack"] = False
+    elif mutation == "sequence":
+        events[0]["sequence"] = 999
+    elif mutation == "challenge":
+        events[0]["challenge"] = "replayed"
+    else:
+        events[0]["sut_process_identity"]["start_ticks"] += 1
+    assert oracle(scenarios()[0], record)["verdict"] == "INCOMPLETE"
+
+
+def _effect_identity(
+    linux_identity,
+    *,
+    role: str,
+    ordinal: int,
+    epoch: int = 7,
+    host: str = "host-a",
+):
+    return {
+        "host": host,
+        "role": role,
+        "ordinal": ordinal,
+        "process_epoch": epoch,
+        "pid": linux_identity["pid"],
+        "start_ticks": linux_identity["start_ticks"],
+        "start_identity": (
+            f"pid:{linux_identity['pid']}:start_ticks:{linux_identity['start_ticks']}"
+        ),
+        "argv": linux_identity["argv"],
+        "assignment_source": "host",
+    }
+
+
+def _formal_process_record(tmp_path):
+    record = copy.deepcopy(formal_complete_records(tmp_path)[0])
+    record["evidence_class"] = "formal-real"
+    for invocation in record["command"]["phase_invocations"]:
+        invocation["fact_collected"] = True
+    record["identity"]["adapter_verification"] = {
+        "evidence_owner": "vllm-hust-host",
+        "evidence_channel": "host-owned-event-stream",
+    }
+    lifecycle_processes = {}
+    for event in record["observations"]:
+        event["source_role"] = (
+            "lifecycle-fact-source"
+            if event["event"] in harness_module.FORMAL_LIFECYCLE_FACT_SOURCES
+            else "host-observer"
+        )
+        event.pop("causal_ack", None)
+        source_kind = harness_module.FORMAL_LIFECYCLE_FACT_SOURCES.get(event["event"])
+        if source_kind is not None:
+            ordinal = len(lifecycle_processes)
+            source_identity = {
+                "pid": 10000 + ordinal,
+                "start_ticks": 20000 + ordinal,
+                "argv": ["/usr/bin/source", event["event"]],
+            }
+            source_digest = "sha256:" + f"{ordinal + 1:064x}"
+            lifecycle_processes[event["event"]] = {
+                "linux_identity": source_identity,
+                "command_digest": source_digest,
+                "channel_credentials": {
+                    "pid": source_identity["pid"],
+                    "uid": os.geteuid(),
+                    "gid": os.getegid(),
+                },
+                "monotonic_start_ns": event["monotonic_ns"] - 1,
+                "monotonic_end_ns": event["monotonic_ns"] + 1,
+            }
+            payload = {
+                "schema": "ecpa-formal-lifecycle-fact/v1",
+                "fact": event["event"],
+                "source_kind": source_kind,
+                "plan_id": event["plan_id"],
+                "launch_id": event["launch_id"],
+                "controller_instance": event["controller_instance"],
+                "invocation_id": event["invocation_id"],
+                "sequence": event["sequence"],
+                "challenge": event["challenge"],
+                "monotonic_ns": event["monotonic_ns"],
+                "value": event["value"],
+                "sut_process_identity": event["sut_process_identity"],
+            }
+            raw = canonical(payload)
+            event["fact_receipt"] = {
+                "source_kind": source_kind,
+                "source_process_identity": copy.deepcopy(source_identity),
+                "source_command_digest": source_digest,
+                "source_channel_credentials": copy.deepcopy(
+                    lifecycle_processes[event["event"]]["channel_credentials"]
+                ),
+                "raw_base64": base64.b64encode(raw).decode(),
+                "raw_sha256": harness_module.digest_bytes(raw),
+            }
+    record["command"]["lifecycle_fact_processes"] = lifecycle_processes
+    record["command"]["lifecycle_fact_errors"] = {}
+    return record
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        ("missing", "missing or malformed"),
+        ("digest", "digest mismatch"),
+        ("source", "binding mismatch"),
+        ("source-process", "binding mismatch"),
+        ("source-command", "binding mismatch"),
+        ("source-channel", "binding mismatch"),
+        ("payload", "binding mismatch"),
+        ("noncanonical", "not canonical"),
+        ("nonfinite", "not canonical"),
+        ("schema", "schema mismatch"),
+    ],
+)
+def test_formal_oracle_rejects_invalid_lifecycle_fact_receipt(
+    tmp_path, mutation, reason
+):
+    record = _formal_process_record(tmp_path)
+    ready = next(
+        item for item in record["observations"] if item["event"] == "service-ready"
+    )
+    receipt = ready["fact_receipt"]
+    if mutation == "missing":
+        ready.pop("fact_receipt")
+    elif mutation == "digest":
+        receipt["raw_sha256"] = "sha256:" + "0" * 64
+    elif mutation == "source":
+        receipt["source_kind"] = "sut-stdout"
+    elif mutation == "source-process":
+        receipt["source_process_identity"]["start_ticks"] += 1
+    elif mutation == "source-command":
+        receipt["source_command_digest"] = "sha256:" + "0" * 64
+    elif mutation == "source-channel":
+        receipt["source_channel_credentials"]["pid"] += 1
+    else:
+        if mutation == "nonfinite":
+            raw = b'{"value":NaN}'
+        else:
+            payload = json.loads(base64.b64decode(receipt["raw_base64"]))
+            if mutation == "payload":
+                payload["challenge"] = "replayed"
+                raw = canonical(payload)
+            elif mutation == "schema":
+                payload["unreviewed"] = True
+                raw = canonical(payload)
+            else:
+                raw = json.dumps(payload, indent=2, sort_keys=True).encode()
+        receipt["raw_base64"] = base64.b64encode(raw).decode()
+        receipt["raw_sha256"] = harness_module.digest_bytes(raw)
+
+    result = oracle(scenarios()[0], record)
+
+    assert result["verdict"] == "INCOMPLETE"
+    assert any(reason in item for item in result["reasons"])
+
+
+def test_formal_oracle_rejects_generic_observer_fabricated_lifecycle(tmp_path):
+    record = _formal_process_record(tmp_path)
+    record["command"]["lifecycle_fact_processes"] = {}
+    for event in record["observations"]:
+        if event["event"] in harness_module.FORMAL_LIFECYCLE_FACT_SOURCES:
+            event["source_role"] = "host-observer"
+
+    result = oracle(scenarios()[0], record)
+
+    assert result["verdict"] == "INCOMPLETE"
+    assert any("untrusted observable source" in reason for reason in result["reasons"])
+    assert any("receipt binding mismatch" in reason for reason in result["reasons"])
+
+
+def test_formal_oracle_rejects_causal_ack_on_extra_observable(tmp_path):
+    record = _formal_process_record(tmp_path)
+    record["observations"].append(
+        {
+            "event": "unrequired-self-report",
+            "causal_ack": True,
+            "source_role": "sut",
+        }
+    )
+
+    result = oracle(scenarios()[0], record)
+
+    assert result["verdict"] == "INCOMPLETE"
+    assert any(
+        "improperly carries SUT acknowledgement" in reason
+        for reason in result["reasons"]
+    )
+
+
+def test_formal_oracle_rejects_controller_only_full_coverage_claim(tmp_path):
+    record = _formal_process_record(tmp_path)
+    controller = record["command"]["sut_process"]["linux_identity"]
+    record["identity"]["required_processes"] = [
+        {"host": "host-a", "role": "engine-core", "ordinal": 0, "process_epoch": 7},
+        {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 7},
+    ]
+    invoked = next(
+        item for item in record["observations"] if item["event"] == "plugin-invoked"
+    )
+    invoked["value"] = True
+    invoked["effect_process_identities"] = [
+        _effect_identity(controller, role="engine-core", ordinal=0)
+    ]
+    next(item for item in record["observations"] if item["event"] == "coverage")[
+        "value"
+    ] = 1.0
+    next(item for item in record["observations"] if item["event"] == "effective-claim")[
+        "value"
+    ] = True
+
+    result = oracle(scenarios()[0], record)
+    assert result["verdict"] == "INCOMPLETE"
+    assert result["outcome"]["activation_event_coverage"] == 0.5
+    assert result["outcome"]["false_effective"] is True
+    assert "reported coverage disagrees with process evidence" in result["reasons"]
+
+
+def test_formal_oracle_rejects_one_linux_identity_covering_two_roles(tmp_path):
+    record = _formal_process_record(tmp_path)
+    controller = record["command"]["sut_process"]["linux_identity"]
+    record["identity"]["required_processes"] = [
+        {"host": "host-a", "role": "engine-core", "ordinal": 0, "process_epoch": 7},
+        {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 7},
+    ]
+    invoked = next(
+        item for item in record["observations"] if item["event"] == "plugin-invoked"
+    )
+    invoked["value"] = True
+    invoked["effect_process_identities"] = [
+        _effect_identity(controller, role="engine-core", ordinal=0),
+        _effect_identity(controller, role="worker", ordinal=0),
+    ]
+    next(item for item in record["observations"] if item["event"] == "coverage")[
+        "value"
+    ] = 1.0
+
+    result = oracle(scenarios()[0], record)
+    assert result["verdict"] == "INCOMPLETE"
+    assert "formal effect process identities contain duplicates" in result["reasons"]
+
+
+def test_formal_oracle_rejects_exec_argv_change_covering_two_roles(tmp_path):
+    record = _formal_process_record(tmp_path)
+    controller = record["command"]["sut_process"]["linux_identity"]
+    after_exec = {**controller, "argv": ["renamed-after-exec", "30"]}
+    record["identity"]["required_processes"] = [
+        {"host": "host-a", "role": "engine-core", "ordinal": 0, "process_epoch": 7},
+        {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 7},
+    ]
+    invoked = next(
+        item for item in record["observations"] if item["event"] == "plugin-invoked"
+    )
+    invoked["value"] = True
+    invoked["effect_process_identities"] = [
+        _effect_identity(controller, role="engine-core", ordinal=0),
+        _effect_identity(after_exec, role="worker", ordinal=0),
+    ]
+    next(item for item in record["observations"] if item["event"] == "coverage")[
+        "value"
+    ] = 1.0
+
+    result = oracle(scenarios()[0], record)
+
+    assert result["verdict"] == "INCOMPLETE"
+    assert "formal effect process identities contain duplicates" in result["reasons"]
+
+
+def test_formal_oracle_rejects_stale_process_epoch(tmp_path):
+    record = _formal_process_record(tmp_path)
+    controller = record["command"]["sut_process"]["linux_identity"]
+    record["identity"]["required_processes"] = [
+        {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 8}
+    ]
+    invoked = next(
+        item for item in record["observations"] if item["event"] == "plugin-invoked"
+    )
+    invoked["value"] = True
+    invoked["effect_process_identities"] = [
+        _effect_identity(controller, role="worker", ordinal=0, epoch=7)
+    ]
+    next(item for item in record["observations"] if item["event"] == "coverage")[
+        "value"
+    ] = 1.0
+
+    result = oracle(scenarios()[0], record)
+    assert result["verdict"] == "INCOMPLETE"
+    assert "formal effect process is outside the target snapshot" in result["reasons"]
+
+
+def test_formal_oracle_accepts_distinct_complete_effect_processes(tmp_path):
+    record = _formal_process_record(tmp_path)
+    controller = record["command"]["sut_process"]["linux_identity"]
+    worker = {"pid": controller["pid"] + 1000, "start_ticks": 12345, "argv": ["worker"]}
+    record["identity"]["required_processes"] = [
+        {"host": "host-a", "role": "engine-core", "ordinal": 0, "process_epoch": 7},
+        {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 7},
+    ]
+    invoked = next(
+        item for item in record["observations"] if item["event"] == "plugin-invoked"
+    )
+    invoked["value"] = True
+    invoked["effect_process_identities"] = [
+        _effect_identity(controller, role="engine-core", ordinal=0),
+        _effect_identity(worker, role="worker", ordinal=0),
+    ]
+    next(item for item in record["observations"] if item["event"] == "coverage")[
+        "value"
+    ] = 1.0
+
+    result = oracle(scenarios()[0], record)
+    assert result["verdict"] == "PASS"
+    assert result["outcome"]["activation_event_coverage"] == 1.0
+
+
+def test_formal_oracle_accepts_same_numeric_identity_on_distinct_hosts(tmp_path):
+    record = _formal_process_record(tmp_path)
+    controller = record["command"]["sut_process"]["linux_identity"]
+    record["identity"]["required_processes"] = [
+        {"host": "host-a", "role": "engine-core", "ordinal": 0, "process_epoch": 7},
+        {"host": "host-b", "role": "worker", "ordinal": 0, "process_epoch": 7},
+    ]
+    invoked = next(
+        item for item in record["observations"] if item["event"] == "plugin-invoked"
+    )
+    invoked["value"] = True
+    invoked["effect_process_identities"] = [
+        _effect_identity(controller, role="engine-core", ordinal=0, host="host-a"),
+        _effect_identity(controller, role="worker", ordinal=0, host="host-b"),
+    ]
+    next(item for item in record["observations"] if item["event"] == "coverage")[
+        "value"
+    ] = 1.0
+
+    result = oracle(scenarios()[0], record)
+    assert result["verdict"] == "PASS"
+    assert result["outcome"]["activation_event_coverage"] == 1.0
+
+
+def test_oracle_rejects_duplicate_or_reordered_phase_invocations(tmp_path):
+    record = copy.deepcopy(formal_complete_records(tmp_path)[0])
+    duplicate = copy.deepcopy(record["command"]["phase_invocations"][0])
+    duplicate["challenge"] = "different"
+    duplicate["invocation_id"] = "different"
+    record["command"]["phase_invocations"].append(duplicate)
+    assert oracle(scenarios()[0], record)["verdict"] == "INCOMPLETE"
+
+    record = copy.deepcopy(formal_complete_records(tmp_path / "reordered")[0])
+    record["command"]["phase_invocations"].reverse()
+    assert oracle(scenarios()[0], record)["verdict"] == "INCOMPLETE"
+
+
+def test_runner_manifest_rejects_tampered_record_and_manual_jsonl(tmp_path):
+    formal_complete_records(tmp_path)
+    root = tmp_path / "formal"
+    records = [
+        json.loads(path.read_text())
+        for path in sorted(root.glob("starts/*/record.json"))
+    ]
+    manifest = write_formal_manifest(root, records)
+    target = root / records[0]["artifact_root"] / "record.json"
+    target.write_text(
+        target.read_text().replace('"status":"complete"', '"status":"failed"')
+    )
+    module = _reproduce_module()
+    with pytest.raises(ValueError, match="digest"):
+        module.generate(tmp_path / "published", manifest)
+    assert not (tmp_path / "published").exists()
+    manual = tmp_path / "manual.jsonl"
+    manual.write_text("{}\n")
+    with pytest.raises(ValueError, match="manifest|schema|current pointer"):
+        module.generate(tmp_path / "manual-output", manual)
+    assert not (tmp_path / "manual-output").exists()
+
+
+def test_manifest_rejects_noncanonical_jsonl_and_wrong_start_binding(tmp_path):
+    formal_complete_records(tmp_path)
+    root = tmp_path / "formal"
+    records = [
+        json.loads(path.read_text())
+        for path in sorted(root.glob("starts/*/record.json"))
+    ]
+    write_formal_manifest(root, records)
+    current_path = root / "formal-record-index.json"
+    current = json.loads(current_path.read_text())
+    manifest_path = root / current["generation_index"]
+    manifest = json.loads(manifest_path.read_text())
+    manifest["records"][0]["start_id"] = "forged"
+    manifest_path.write_bytes(canonical(manifest) + b"\n")
+    current["generation_index_digest"] = digest_file(manifest_path)
+    current_path.write_bytes(canonical(current) + b"\n")
+    with pytest.raises(ValueError, match="start_id"):
+        _reproduce_module().generate(tmp_path / "bad-index", current_path)
+
+    current_path = write_formal_manifest(root, records)
+    current = json.loads(current_path.read_text())
+    manifest_path = root / current["generation_index"]
+    manifest = json.loads(manifest_path.read_text())
+    jsonl = root / manifest["records_jsonl"]
+    jsonl.write_text("\n".join(json.dumps(row) for row in records) + "\n")
+    manifest["records_jsonl_digest"] = digest_file(jsonl)
+    manifest_path.write_bytes(canonical(manifest) + b"\n")
+    current["generation_index_digest"] = digest_file(manifest_path)
+    current_path.write_bytes(canonical(current) + b"\n")
+    with pytest.raises(ValueError, match="canonical"):
+        _reproduce_module().generate(tmp_path / "noncanonical", current_path)
+
+
+def test_manifest_requires_runner_owned_pointer_and_generation_layout(tmp_path):
+    formal_complete_records(tmp_path)
+    root = tmp_path / "formal"
+    records = [
+        json.loads(path.read_text())
+        for path in sorted(root.glob("starts/*/record.json"))
+    ]
+    current_path = write_formal_manifest(root, records)
+    renamed = root / "caller-chosen.json"
+    renamed.write_bytes(current_path.read_bytes())
+    with pytest.raises(ValueError, match="runner-owned current pointer"):
+        _reproduce_module().generate(tmp_path / "renamed-output", renamed)
+
+    current = json.loads(current_path.read_text())
+    index_path = root / current["generation_index"]
+    outside = root / "not-a-generation" / "index.json"
+    outside.parent.mkdir()
+    outside.write_bytes(index_path.read_bytes())
+    current["generation_index"] = "not-a-generation/index.json"
+    current["generation_index_digest"] = digest_file(outside)
+    current_path.write_bytes(canonical(current) + b"\n")
+    with pytest.raises(ValueError, match="generation index path"):
+        _reproduce_module().generate(tmp_path / "layout-output", current_path)
+
+
+def test_manifest_rejects_generation_symlinks(tmp_path):
+    formal_complete_records(tmp_path)
+    root = tmp_path / "formal"
+    records = [
+        json.loads(path.read_text())
+        for path in sorted(root.glob("starts/*/record.json"))
+    ]
+    current_path = write_formal_manifest(root, records)
+    current = json.loads(current_path.read_text())
+    index_path = root / current["generation_index"]
+    index_bytes = index_path.read_bytes()
+    outside = root / "outside"
+    outside.mkdir()
+    outside_index = outside / "index.json"
+    outside_index.write_bytes(index_bytes)
+    index_path.unlink()
+    index_path.symlink_to(outside_index)
+    with pytest.raises(ValueError, match="symlink|invalid component"):
+        _reproduce_module().generate(tmp_path / "index-symlink", current_path)
+
+    index_path.unlink()
+    index_path.write_bytes(index_bytes)
+    manifest = json.loads(index_bytes)
+    jsonl_path = root / manifest["records_jsonl"]
+    outside_jsonl = outside / "records.jsonl"
+    outside_jsonl.write_bytes(jsonl_path.read_bytes())
+    jsonl_path.unlink()
+    jsonl_path.symlink_to(outside_jsonl)
+    with pytest.raises(ValueError, match="symlink|invalid component"):
+        _reproduce_module().generate(tmp_path / "jsonl-symlink", current_path)
+
+
+def test_reproduce_default_output_uses_nonexistent_child():
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "reproduce.py")],
+        cwd=Path.cwd(),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(completed.stdout)
+    assert result["starts"] == 45
+    assert result["formal_completed_cells"] == 0
+
+
+def test_cli_rejects_fixture_completed_and_failed_manifest_without_partial_output(
+    tmp_path,
+):
+    formal_complete_records(tmp_path)
+    root = tmp_path / "formal"
+    first = json.loads(next(root.glob("starts/*/record.json")).read_text())
+    failed = run_formal_start(
+        root,
+        scenarios()[1],
+        json.loads((ROOT / "protocol.json").read_text()),
+        ECPAAdapter(),
+        4,
+        3,
+        executable=sys.executable,
+        arguments=["-c", "raise SystemExit(7)"],
+        observer_executable=sys.executable,
+        observer_arguments=[
+            str(Path("tests/fixtures/formal_observer_service.py").resolve())
+        ],
+        identity=first["identity"],
+        timeout_s=1,
+        fixture_mode=True,
+    )
+    assert failed["status"] == "failed"
+    records = [
+        json.loads(path.read_text())
+        for path in sorted(root.glob("starts/*/record.json"))
+    ]
+    manifest = write_formal_manifest(root, records)
+    output = tmp_path / "published"
+    with pytest.raises(ValueError, match="fixture-only"):
+        _reproduce_module().generate(output, manifest)
+    assert not output.exists()
+
+
+def _reproduce_module():
+    spec = importlib.util.spec_from_file_location(
+        "false_effective_reproduce_extra", ROOT / "reproduce.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module

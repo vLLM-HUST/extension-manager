@@ -1,0 +1,1888 @@
+"""False-effective experiment control plane; no production-result defaults."""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import math
+import subprocess
+import time
+from pathlib import Path
+from typing import Any
+
+from jsonschema import Draft7Validator
+
+from vllm_hust_ext.formal_adapter_admission import (
+    FORMAL_ADAPTER_REGISTRY_SCHEMA,
+    validate_formal_adapter_admission,
+)
+from vllm_hust_ext.plan_artifact import read_plan_artifact
+
+ARMS = ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
+LATIN_SQUARE = (
+    ("vanilla-vllm-entry-points", "manual-integration", "ecpa"),
+    ("manual-integration", "ecpa", "vanilla-vllm-entry-points"),
+    ("ecpa", "vanilla-vllm-entry-points", "manual-integration"),
+)
+RULE_VERSION = "ecpa-false-effective-oracle/v1"
+SEMANTIC_ENV = (
+    "VLLM_USE_V1",
+    "VLLM_ATTENTION_BACKEND",
+    "VLLM_WORKER_MULTIPROC_METHOD",
+    "CUDA_VISIBLE_DEVICES",
+    "CUDA_DEVICE_ORDER",
+    "ASCEND_RT_VISIBLE_DEVICES",
+    "NCCL_DEBUG",
+    "NCCL_SOCKET_IFNAME",
+    "HCCL_CONNECT_TIMEOUT",
+    "LD_PRELOAD",
+    "PYTHONHASHSEED",
+)
+ALLOW_ENV = {
+    "LANG",
+    "LC_ALL",
+    "PATH",
+    "PYTHONPATH",
+    "ECPA_EVALUATION_ARM",
+    "ECPA_ACTIVATION_CONTRACT",
+    *SEMANTIC_ENV,
+}
+VERIFIED_ADAPTER_REGISTRY = Path(__file__).with_name("verified-adapters.json")
+FORMAL_LIFECYCLE_FACT_SCHEMA_PATH = Path(__file__).with_name(
+    "formal-lifecycle-fact.schema.json"
+)
+FORMAL_LIFECYCLE_FACT_SCHEMA = json.loads(FORMAL_LIFECYCLE_FACT_SCHEMA_PATH.read_text())
+FORMAL_LIFECYCLE_FACT_TRANSPORT = "unix-dgram-scm-credentials/v1"
+FORMAL_HOST_OBSERVABLES = {
+    "service-ready",
+    "workload-complete",
+    "fault-injected",
+    "observer-captured",
+    "service-shutdown",
+    "activation-path",
+    "effective-claim",
+    "plugin-invoked",
+    "coverage",
+}
+FORMAL_LIFECYCLE_FACT_SOURCES = {
+    "service-ready": "readiness-probe",
+    "workload-complete": "workload-driver",
+    "fault-injected": "fault-actuator",
+    "observer-captured": "host-observer",
+    "service-shutdown": "process-monitor",
+}
+PARTIAL_COVERAGE_ACTUATOR_OPTIONS = {
+    "--event-dir",
+    "--device",
+    "--inode",
+    "--quarantine-dir",
+    "--quarantine-device",
+    "--quarantine-inode",
+    "--descriptor",
+    "--descriptor-sha256",
+}
+
+
+def canonical(value: Any) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode()
+
+
+def digest_bytes(value: bytes) -> str:
+    return "sha256:" + hashlib.sha256(value).hexdigest()
+
+
+def digest_file(path: Path) -> str:
+    return digest_bytes(path.read_bytes())
+
+
+def validate_scenario_binding_contract(
+    binding: Any, scenario: str, fault_arguments: Any
+) -> dict[str, Any]:
+    """Validate registry data against the actuator's fixed command-tail grammar."""
+    if not isinstance(binding, dict) or set(binding) != {
+        "descriptor_sha256",
+        "entry_point",
+        "fault_source_subcommand",
+    }:
+        raise ValueError("trusted registry does not bind the formal scenario")
+    entry_point = binding.get("entry_point")
+    descriptor_digest = binding.get("descriptor_sha256")
+    subcommand = binding.get("fault_source_subcommand")
+    if not isinstance(fault_arguments, list):
+        raise ValueError(
+            "trusted registry scenario subcommand or entry point is invalid"
+        )
+    option_positions = [
+        index
+        for index, value in enumerate(fault_arguments)
+        if isinstance(value, str) and value.startswith("--")
+    ]
+    first_option = option_positions[0] if option_positions else -1
+    option_tail = fault_arguments[first_option:] if first_option > 0 else []
+    option_pairs = (
+        list(zip(option_tail[::2], option_tail[1::2], strict=True))
+        if len(option_tail) % 2 == 0
+        else []
+    )
+    options = {name: value for name, value in option_pairs}
+    if (
+        not isinstance(scenario, str)
+        or not scenario
+        or not isinstance(entry_point, dict)
+        or set(entry_point) != {"group", "name", "value"}
+        or any(
+            not isinstance(entry_point.get(field), str)
+            or not entry_point[field]
+            or entry_point[field].strip() != entry_point[field]
+            for field in ("group", "name", "value")
+        )
+        or not isinstance(descriptor_digest, str)
+        or not descriptor_digest.startswith("sha256:")
+        or subcommand != "partial-coverage-quarantine"
+        or first_option < 1
+        or fault_arguments[first_option - 1] != subcommand
+        or len(option_pairs) != len(PARTIAL_COVERAGE_ACTUATOR_OPTIONS)
+        or {name for name, _ in option_pairs} != PARTIAL_COVERAGE_ACTUATOR_OPTIONS
+        or any(
+            not isinstance(value, str) or not value or value.startswith("--")
+            for _, value in option_pairs
+        )
+        or options.get("--descriptor-sha256") != descriptor_digest
+    ):
+        raise ValueError(
+            "trusted registry scenario subcommand or entry point is invalid"
+        )
+    comparison_material = {
+        "scenario": scenario,
+        "descriptor_sha256": descriptor_digest,
+        "entry_point": entry_point,
+        "fault_source_subcommand": subcommand,
+    }
+    return {
+        **binding,
+        "comparison_binding_id": digest_bytes(canonical(comparison_material)),
+        "scenario": scenario,
+    }
+
+
+def safe_path(root: Path, relative: str) -> Path:
+    candidate = (root / relative).resolve()
+    if candidate != root.resolve() and root.resolve() not in candidate.parents:
+        raise ValueError("artifact path escapes run root")
+    return candidate
+
+
+def validate_formal_adapter_verification(
+    record: dict[str, Any], command: dict[str, Any]
+) -> None:
+    """Recheck formal provenance against the repository-owned adapter registry."""
+    registry_bytes = VERIFIED_ADAPTER_REGISTRY.read_bytes()
+    registry = json.loads(registry_bytes)
+    if (
+        registry_bytes != canonical(registry) + b"\n"
+        or registry.get("schema") != FORMAL_ADAPTER_REGISTRY_SCHEMA
+    ):
+        raise ValueError("verified adapter registry is not canonical")
+    rows = registry.get("adapters", [])
+    entries = {entry.get("id"): entry for entry in rows}
+    if None in entries or len(entries) != len(rows):
+        raise ValueError("verified adapter registry contains invalid or duplicate ids")
+    verification = record.get("identity", {}).get("adapter_verification")
+    entry = entries.get(verification.get("verification_id"))
+    if entry is None:
+        raise ValueError("formal adapter is absent from the trusted registry")
+    admission = validate_formal_adapter_admission(entry.get("admission"))
+    expected_contract = {
+        "vanilla-vllm-entry-points": "entry-points-unmanaged",
+        "manual-integration": "explicit-manual-hooks",
+        "ecpa": "manager-controlled-activation",
+    }[record["arm"]]
+    if (
+        entry.get("arm") != record["arm"]
+        or entry.get("activation_contract") != expected_contract
+        or entry.get("evidence_owner") != "vllm-hust-host"
+        or entry.get("evidence_channel") != "host-owned-event-stream"
+        or entry.get("host_event_schema") != "ecpa-host-runtime-evidence/v1"
+        or entry.get("lifecycle_fact_schema") != "ecpa-formal-lifecycle-fact/v1"
+        or entry.get("lifecycle_fact_schema_digest")
+        != digest_file(FORMAL_LIFECYCLE_FACT_SCHEMA_PATH)
+        or entry.get("lifecycle_fact_sources") != FORMAL_LIFECYCLE_FACT_SOURCES
+        or entry.get("lifecycle_fact_transport") != FORMAL_LIFECYCLE_FACT_TRANSPORT
+        or not FORMAL_HOST_OBSERVABLES.issubset(
+            set(entry.get("required_observables", []))
+        )
+    ):
+        raise ValueError("trusted registry entry does not satisfy the formal contract")
+    scenario = record.get("scenario")
+    bindings = entry.get("scenario_bindings")
+    registered_binding = (
+        bindings.get(scenario)
+        if isinstance(bindings, dict) and isinstance(scenario, str)
+        else None
+    )
+    verification_fact_commands = verification.get("lifecycle_fact_commands")
+    verification_fault = (
+        verification_fact_commands.get("fault-injected")
+        if isinstance(verification_fact_commands, dict)
+        else None
+    )
+    fault_arguments = (
+        verification_fault.get("arguments")
+        if isinstance(verification_fault, dict)
+        else None
+    )
+    expected_scenario_binding = validate_scenario_binding_contract(
+        registered_binding, scenario, fault_arguments
+    )
+    expected = {
+        "registry_schema": registry["schema"],
+        "verification_id": entry["id"],
+        "registry_digest": digest_bytes(registry_bytes),
+        "admission": admission,
+        "observer_command": verification.get("observer_command"),
+        "lifecycle_fact_commands": verification.get("lifecycle_fact_commands"),
+        "scenario_binding": expected_scenario_binding,
+        "activation_probe": verification.get("activation_probe"),
+        "evidence_owner": entry.get("evidence_owner"),
+        "evidence_channel": entry.get("evidence_channel"),
+        "host_event_schema": entry.get("host_event_schema"),
+        "lifecycle_fact_schema": entry.get("lifecycle_fact_schema"),
+        "lifecycle_fact_schema_digest": entry.get("lifecycle_fact_schema_digest"),
+        "lifecycle_fact_sources": entry.get("lifecycle_fact_sources"),
+        "lifecycle_fact_transport": entry.get("lifecycle_fact_transport"),
+        "required_observables": sorted(entry.get("required_observables", [])),
+    }
+    if record["arm"] == "ecpa":
+        expected["manager_command"] = verification.get("manager_command")
+        expected["target_command"] = verification.get("target_command")
+    else:
+        expected["sut_command"] = verification.get("sut_command")
+    if verification != expected:
+        raise ValueError("formal adapter metadata differs from the trusted registry")
+
+    activation_probe = verification.get("activation_probe")
+    registered_probe = entry.get("activation_probe")
+    if not isinstance(activation_probe, dict) or not isinstance(registered_probe, dict):
+        raise ValueError("formal activation probe metadata is missing")
+    expected_options = {
+        "vanilla-vllm-entry-points": [
+            "--disable-ecpa-manager",
+            "--enable-entrypoints",
+        ],
+        "manual-integration": ["--disable-ecpa-manager", "--manual-hooks"],
+        "ecpa": [
+            "--controller-instance",
+            "--host-event-dir",
+            "--launch-id",
+            "--plan",
+            "--target-executable-device",
+            "--target-executable-inode",
+            "--target-executable-sha256",
+            "formal-run",
+        ],
+    }[record["arm"]]
+    try:
+        probe_stdout = base64.b64decode(
+            activation_probe.get("stdout_base64", ""), validate=True
+        )
+        probe_stderr = base64.b64decode(
+            activation_probe.get("stderr_base64", ""), validate=True
+        )
+    except (ValueError, TypeError) as exc:
+        raise ValueError("formal activation probe bytes are invalid") from exc
+    probe_output = probe_stdout + probe_stderr
+    expected_receipt = {
+        "schema": "ecpa-activation-probe/v1",
+        "activation_contract": expected_contract,
+        "accepted_options": sorted(expected_options),
+    }
+    if (
+        activation_probe.get("exit_code") != 0
+        or activation_probe.get("required_options") != sorted(expected_options)
+        or activation_probe.get("command", {}).get("digest")
+        != registered_probe.get("command_digest")
+        or not isinstance(activation_probe.get("output_sha256"), str)
+        or activation_probe.get("output_sha256") != digest_bytes(probe_output)
+        or len(probe_output) > 1024 * 1024
+        or activation_probe.get("receipt") != expected_receipt
+        or probe_stdout != canonical(expected_receipt) + b"\n"
+    ):
+        raise ValueError("formal activation probe does not satisfy the registry")
+
+    fixture_root = (Path(__file__).parents[2] / "tests" / "fixtures").resolve()
+    fixture_files = [path for path in fixture_root.rglob("*") if path.is_file()]
+    fixture_digests = {digest_file(path) for path in fixture_files}
+    fixture_markers = {str(fixture_root), "tests/fixtures", "tests\\fixtures"}
+    fingerprints = [
+        (
+            "observer",
+            verification["observer_command"],
+            entry.get("observer_command_digest"),
+        ),
+        (
+            "activation probe",
+            activation_probe["command"],
+            registered_probe.get("command_digest"),
+        ),
+    ]
+    fact_commands = verification.get("lifecycle_fact_commands")
+    registered_fact_digests = entry.get("lifecycle_fact_command_digests")
+    if (
+        not isinstance(fact_commands, dict)
+        or set(fact_commands) != set(FORMAL_LIFECYCLE_FACT_SOURCES)
+        or not isinstance(registered_fact_digests, dict)
+        or set(registered_fact_digests) != set(FORMAL_LIFECYCLE_FACT_SOURCES)
+    ):
+        raise ValueError("formal lifecycle fact command metadata is incomplete")
+    fault_arguments = fact_commands["fault-injected"].get("arguments")
+    if not isinstance(fault_arguments, list):
+        raise ValueError("formal fault source arguments are missing")
+    descriptor_positions = [
+        index for index, value in enumerate(fault_arguments) if value == "--descriptor"
+    ]
+    digest_positions = [
+        index
+        for index, value in enumerate(fault_arguments)
+        if value == "--descriptor-sha256"
+    ]
+    if (
+        len(descriptor_positions) != 1
+        or descriptor_positions[0] + 1 >= len(fault_arguments)
+        or len(digest_positions) != 1
+        or digest_positions[0] + 1 >= len(fault_arguments)
+    ):
+        raise ValueError("formal fault source does not bind one descriptor")
+    descriptor_path = Path(fault_arguments[descriptor_positions[0] + 1])
+    descriptor_raw = descriptor_path.read_bytes()
+    try:
+        descriptor = json.loads(descriptor_raw)
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise ValueError("formal fault descriptor JSON is invalid") from exc
+    target = descriptor.get("target") if isinstance(descriptor, dict) else None
+    if (
+        not isinstance(descriptor, dict)
+        or descriptor_raw != canonical(descriptor) + b"\n"
+        or set(descriptor) != {"schema", "scenario", "target", "entry_point"}
+        or descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v1"
+        or descriptor.get("scenario") != scenario
+        or descriptor.get("entry_point") != registered_binding.get("entry_point")
+        or not isinstance(target, dict)
+        or set(target) != {"host", "role", "ordinal", "process_epoch"}
+        or target.get("role") != "worker"
+        or not isinstance(target.get("host"), str)
+        or not target["host"]
+        or target["host"].strip() != target["host"]
+        or any(
+            isinstance(target.get(field), bool)
+            or not isinstance(target.get(field), int)
+            or target[field] < 0
+            for field in ("ordinal", "process_epoch")
+        )
+        or digest_bytes(descriptor_raw) != registered_binding.get("descriptor_sha256")
+        or fault_arguments[digest_positions[0] + 1]
+        != registered_binding.get("descriptor_sha256")
+    ):
+        raise ValueError("formal fault descriptor differs from scenario binding")
+    fingerprints.extend(
+        (
+            f"lifecycle fact source {phase}",
+            fact_commands[phase],
+            registered_fact_digests[phase],
+        )
+        for phase in sorted(FORMAL_LIFECYCLE_FACT_SOURCES)
+    )
+    if record["arm"] == "ecpa":
+        fingerprints.extend(
+            (
+                (
+                    "manager",
+                    verification["manager_command"],
+                    entry.get("manager_command_digest"),
+                ),
+                (
+                    "target",
+                    verification["target_command"],
+                    entry.get("target_command_digest"),
+                ),
+            )
+        )
+    else:
+        fingerprints.append(
+            ("SUT", verification["sut_command"], entry.get("sut_command_digest"))
+        )
+    for role, fingerprint, registered_digest in fingerprints:
+        if not isinstance(fingerprint, dict):
+            raise ValueError(f"{role} fingerprint is missing")
+        values = [fingerprint.get("executable"), *fingerprint.get("arguments", [])]
+        for value in values:
+            if not isinstance(value, str):
+                raise ValueError(f"{role} fingerprint contains a non-string argv")
+            if any(marker in value for marker in fixture_markers):
+                raise ValueError(
+                    f"{role} fixture-referencing command is forbidden for formal-real"
+                )
+            candidate = Path(value)
+            if not candidate.is_file():
+                continue
+            resolved = candidate.resolve()
+            try:
+                content = resolved.read_text(errors="ignore")
+            except OSError:
+                content = ""
+            if (
+                resolved.is_relative_to(fixture_root)
+                or digest_file(resolved) in fixture_digests
+                or any(marker in content for marker in fixture_markers)
+            ):
+                raise ValueError(
+                    f"{role} fixture-referencing command is forbidden for formal-real"
+                )
+        unsigned = {key: value for key, value in fingerprint.items() if key != "digest"}
+        if (
+            fingerprint.get("digest") != digest_bytes(canonical(unsigned))
+            or fingerprint.get("digest") != registered_digest
+        ):
+            raise ValueError(f"{role} fingerprint differs from the trusted registry")
+        executable = Path(fingerprint["executable"])
+        if (
+            not executable.is_file()
+            or str(executable.resolve()) != fingerprint.get("executable_resolved")
+            or digest_file(executable) != fingerprint.get("executable_sha256")
+            or executable.resolve().stat().st_dev
+            != fingerprint.get("executable_device")
+            or executable.resolve().stat().st_ino != fingerprint.get("executable_inode")
+        ):
+            raise ValueError(f"{role} executable no longer matches its fingerprint")
+        for artifact in fingerprint.get("argument_files", []):
+            path = Path(artifact["path"])
+            if (
+                not path.is_file()
+                or digest_file(path) != artifact.get("sha256")
+                or path.resolve()
+                != Path(fingerprint["arguments"][artifact["index"]]).resolve()
+            ):
+                raise ValueError(
+                    f"{role} argument file no longer matches its fingerprint"
+                )
+
+    observer_fingerprint = verification["observer_command"]
+    probe_fingerprint = activation_probe["command"]
+    sut_argv = command.get("sut_process", {}).get("argv", [])
+    observer_argv = command.get("observer_process", {}).get("argv", [])
+    if record["arm"] == "ecpa":
+        manager_fingerprint = verification["manager_command"]
+        target_fingerprint = verification["target_command"]
+        execution = command.get("execution_identity", {})
+        binding = command.get("managed_binding", {})
+        expected_binding_fields = {
+            "activation_contract",
+            "controller_instance",
+            "host_event_dir",
+            "host_event_directory",
+            "launch_id",
+            "plan_id",
+            "plan_path",
+            "plan_sha256",
+            "target_argv",
+            "target_executable",
+        }
+        if not isinstance(binding, dict) or not isinstance(
+            binding.get("plan_path"), str
+        ):
+            raise ValueError("managed ECPA binding is malformed")
+        plan_path = Path(binding["plan_path"])
+        event_path = Path(binding.get("host_event_dir", ""))
+        if (
+            set(binding) != expected_binding_fields
+            or not plan_path.is_absolute()
+            or plan_path.is_symlink()
+            or not event_path.is_absolute()
+            or event_path.is_symlink()
+        ):
+            raise ValueError("managed ECPA binding is malformed")
+        try:
+            if plan_path.resolve(strict=True) != plan_path:
+                raise ValueError("managed ECPA Plan path is not canonical")
+            plan_artifact = read_plan_artifact(plan_path)
+            if event_path.resolve(strict=True) != event_path:
+                raise ValueError("managed ECPA event path is not canonical")
+            event_metadata = event_path.stat()
+        except (OSError, ValueError) as exc:
+            raise ValueError(
+                "managed ECPA Plan or event directory is unavailable"
+            ) from exc
+        event_identity = binding.get("host_event_directory")
+        if (
+            binding.get("activation_contract") != expected_contract
+            or binding.get("plan_id") != plan_artifact.plan_id
+            or binding.get("plan_sha256") != digest_bytes(plan_artifact.raw)
+            or binding.get("launch_id") != execution.get("launch_id")
+            or binding.get("controller_instance")
+            != execution.get("controller_instance")
+            or event_identity
+            != {"device": event_metadata.st_dev, "inode": event_metadata.st_ino}
+        ):
+            raise ValueError("managed ECPA Plan binding differs from execution")
+        manager_prefix = [
+            manager_fingerprint["executable"],
+            *manager_fingerprint["arguments"],
+        ]
+        expected_prefix = [
+            *manager_prefix,
+            "formal-run",
+            "--plan",
+        ]
+        option_start = len(manager_prefix) + 2
+        target_executable = binding.get("target_executable", {})
+        if (
+            len(sut_argv) < len(expected_prefix) + 15
+            or sut_argv[0] != manager_fingerprint["executable"]
+            or sut_argv[: len(expected_prefix)] != expected_prefix
+            or sut_argv[option_start] != binding.get("plan_path")
+            or binding.get("plan_id") != execution.get("plan_id")
+            or sut_argv[option_start + 1 : option_start + 7]
+            != [
+                "--launch-id",
+                execution.get("launch_id"),
+                "--controller-instance",
+                execution.get("controller_instance"),
+                "--host-event-dir",
+                binding.get("host_event_dir"),
+            ]
+            or sut_argv[option_start + 7 : option_start + 13]
+            != [
+                "--target-executable-device",
+                str(target_executable.get("device")),
+                "--target-executable-inode",
+                str(target_executable.get("inode")),
+                "--target-executable-sha256",
+                target_executable.get("sha256"),
+            ]
+            or target_executable
+            != {
+                "device": target_fingerprint.get("executable_device"),
+                "inode": target_fingerprint.get("executable_inode"),
+                "sha256": target_fingerprint.get("executable_sha256"),
+            }
+            or sut_argv[option_start + 13] != "--"
+            or sut_argv[option_start + 14 :]
+            != [target_fingerprint["executable"], *target_fingerprint["arguments"]]
+            or binding.get("target_argv") != sut_argv[option_start + 14 :]
+            or command.get("argv") != sut_argv
+        ):
+            raise ValueError("executed managed ECPA argv differs from the registry")
+        if probe_fingerprint.get("executable") != manager_fingerprint.get(
+            "executable"
+        ) or probe_fingerprint.get("arguments") != [
+            *manager_fingerprint.get("arguments", []),
+            "formal-run",
+            "--ecpa-formal-activation-probe",
+        ]:
+            raise ValueError("activation probe does not exercise the manager command")
+    else:
+        sut_fingerprint = verification["sut_command"]
+        if probe_fingerprint.get("executable") != sut_fingerprint.get(
+            "executable"
+        ) or probe_fingerprint.get("arguments") != [
+            *sut_fingerprint.get("arguments", []),
+            "--ecpa-formal-activation-probe",
+        ]:
+            raise ValueError(
+                "activation probe does not exercise the registered SUT argv"
+            )
+        if (
+            not sut_argv
+            or sut_argv[0] != sut_fingerprint["executable"]
+            or sut_argv[1:] != sut_fingerprint["arguments"]
+            or command.get("argv") != sut_argv
+        ):
+            raise ValueError("executed SUT argv differs from the registered command")
+    if (
+        not observer_argv
+        or observer_argv[0] != observer_fingerprint["executable"]
+        or observer_argv[1:] != observer_fingerprint["arguments"]
+    ):
+        raise ValueError("executed observer argv differs from the registered command")
+    sut_fingerprint = (
+        verification["manager_command"]
+        if record["arm"] == "ecpa"
+        else verification["sut_command"]
+    )
+    for role, process, fingerprint in (
+        ("SUT", command.get("sut_process", {}), sut_fingerprint),
+        ("observer", command.get("observer_process", {}), observer_fingerprint),
+    ):
+        actual = process.get("executable_identity", {})
+        if actual.get("device") != fingerprint.get("executable_device") or actual.get(
+            "inode"
+        ) != fingerprint.get("executable_inode"):
+            raise ValueError(f"{role} executable identity differs from its fingerprint")
+    fact_processes = command.get("lifecycle_fact_processes")
+    if (
+        not isinstance(fact_processes, dict)
+        or set(fact_processes) != set(FORMAL_LIFECYCLE_FACT_SOURCES)
+        or command.get("lifecycle_fact_errors") != {}
+    ):
+        raise ValueError("formal lifecycle fact process set is incomplete")
+    occupied_identities = {
+        (
+            command.get(process_name, {}).get("linux_identity", {}).get("pid"),
+            command.get(process_name, {}).get("linux_identity", {}).get("start_ticks"),
+        )
+        for process_name in ("sut_process", "observer_process")
+    }
+    fact_identities: set[tuple[Any, Any]] = set()
+    for phase, process in fact_processes.items():
+        fingerprint = fact_commands[phase]
+        linux_identity = process.get("linux_identity", {})
+        actual = process.get("executable_identity", {})
+        channel_credentials = process.get("channel_credentials", {})
+        identity_key = (linux_identity.get("pid"), linux_identity.get("start_ticks"))
+        expected_start = (
+            f"pid:{process.get('pid')}@ticks:{linux_identity.get('start_ticks')}"
+        )
+        if (
+            process.get("pid") != linux_identity.get("pid")
+            or process.get("argv") != linux_identity.get("argv")
+            or process.get("start_identity") != expected_start
+            or process.get("command_digest") != fingerprint.get("digest")
+            or process.get("argv")
+            != [fingerprint.get("executable"), *fingerprint.get("arguments", [])]
+            or actual.get("device") != fingerprint.get("executable_device")
+            or actual.get("inode") != fingerprint.get("executable_inode")
+            or process.get("exit_code") != 0
+            or channel_credentials.get("pid") != process.get("pid")
+            or not isinstance(channel_credentials.get("uid"), int)
+            or not isinstance(channel_credentials.get("gid"), int)
+            or identity_key in occupied_identities
+            or identity_key in fact_identities
+        ):
+            raise ValueError(
+                f"lifecycle fact source {phase} execution identity is invalid"
+            )
+        fact_identities.add(identity_key)
+
+
+def canonical_record_core(record: dict[str, Any]) -> dict[str, Any]:
+    """Fields sealed by the runner receipt; receipt pointers are cycle-excluded."""
+    return {
+        key: record.get(key)
+        for key in (
+            "schema",
+            "status",
+            "evidence_class",
+            "measurement_source",
+            "cell_id",
+            "scenario",
+            "arm",
+            "start_id",
+            "repetition",
+            "arm_order",
+            "identity",
+            "command",
+            "observations",
+            "observer_binding",
+            "missing_reason",
+            "intake_digest",
+            "oracle",
+        )
+    } | {
+        "artifact_digests": {
+            name: record.get("artifacts", {}).get("digests", {}).get(name)
+            for name in sorted(record.get("artifacts", {}).get("digests", {}))
+            if name != "runner-receipt.json"
+        }
+    }
+
+
+def sanitized_env(source: dict[str, str]) -> dict[str, Any]:
+    secret_words = ("TOKEN", "SECRET", "PASSWORD", "KEY", "CREDENTIAL")
+    result: dict[str, Any] = {}
+    for key, value in sorted(source.items()):
+        if key in ALLOW_ENV:
+            result[key] = value
+        elif any(word in key.upper() for word in secret_words):
+            result[key] = {"redacted": True, "sha256": digest_bytes(value.encode())}
+    return result
+
+
+def run_command(
+    run_dir: Path,
+    argv: list[str],
+    *,
+    env: dict[str, str],
+    timeout_s: float,
+) -> dict[str, Any]:
+    run_dir.mkdir(parents=True, exist_ok=False)
+    stdout_path = run_dir / "stdout.bin"
+    stderr_path = run_dir / "stderr.bin"
+    env_path = run_dir / "environment.json"
+    command_path = run_dir / "command.json"
+    manifest = sanitized_env(env)
+    env_path.write_bytes(canonical(manifest) + b"\n")
+    wall_start = time.time_ns()
+    mono_start = time.monotonic_ns()
+    timed_out = False
+    signal = None
+    try:
+        completed = subprocess.run(
+            argv,
+            cwd=run_dir,
+            env=env,
+            capture_output=True,
+            timeout=timeout_s,
+            check=False,
+        )
+        exit_code = completed.returncode
+        if exit_code < 0:
+            signal = -exit_code
+        stdout, stderr = completed.stdout, completed.stderr
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        exit_code = None
+        stdout = exc.stdout or b""
+        stderr = exc.stderr or b""
+    mono_end = time.monotonic_ns()
+    wall_end = time.time_ns()
+    stdout_path.write_bytes(stdout)
+    stderr_path.write_bytes(stderr)
+    command = {
+        "argv": argv,
+        "cwd": str(run_dir.resolve()),
+        "environment_manifest": env_path.name,
+        "wall_start_ns": wall_start,
+        "wall_end_ns": wall_end,
+        "monotonic_start_ns": mono_start,
+        "monotonic_end_ns": mono_end,
+        "exit_code": exit_code,
+        "signal": signal,
+        "timeout": timed_out,
+    }
+    command = {
+        **command,
+        "stdout": stdout_path.name,
+        "stdout_sha256": digest_file(stdout_path),
+        "stderr": stderr_path.name,
+        "stderr_sha256": digest_file(stderr_path),
+        "environment_sha256": digest_file(env_path),
+    }
+    command_path.write_bytes(canonical(command) + b"\n")
+    return {**command, "command_sha256": digest_file(command_path)}
+
+
+def validate_required_process_snapshot(
+    required: Any,
+) -> tuple[tuple[str, str, int, int], ...]:
+    """Validate and freeze the logical target identity before a formal launch."""
+    required_fields = {"host", "role", "ordinal", "process_epoch"}
+    if not isinstance(required, list) or not required:
+        raise ValueError("formal target process snapshot is missing")
+
+    required_keys: list[tuple[str, str, int, int]] = []
+    for item in required:
+        if not isinstance(item, dict) or set(item) != required_fields:
+            raise ValueError("formal target process snapshot is malformed")
+        host, role = item.get("host"), item.get("role")
+        ordinal, epoch = item.get("ordinal"), item.get("process_epoch")
+        if (
+            not isinstance(host, str)
+            or not host
+            or host.strip() != host
+            or not isinstance(role, str)
+            or not role
+            or role.strip() != role
+            or isinstance(ordinal, bool)
+            or not isinstance(ordinal, int)
+            or ordinal < 0
+            or isinstance(epoch, bool)
+            or not isinstance(epoch, int)
+            or epoch < 0
+        ):
+            raise ValueError("formal target process snapshot is malformed")
+        required_keys.append((host, role, ordinal, epoch))
+    logical_slots = [(host, role, ordinal) for host, role, ordinal, _ in required_keys]
+    if len(logical_slots) != len(set(logical_slots)):
+        raise ValueError("formal target process snapshot contains duplicates")
+    if required_keys != sorted(required_keys):
+        raise ValueError("formal target process snapshot is not canonical")
+    return tuple(required_keys)
+
+
+def formal_process_coverage(
+    record: dict[str, Any],
+    invoked_event: dict[str, Any] | None,
+    coverage_event: dict[str, Any] | None,
+    reasons: list[str],
+) -> float | None:
+    """Recompute formal hook coverage from a Plan-bound target snapshot.
+
+    The runner-owned controller identity proves only which process answered the
+    phase protocol. Runtime-effect coverage is instead derived from distinct
+    host-assigned process identities observed at the hook boundary.
+    """
+    try:
+        required_keys = validate_required_process_snapshot(
+            record.get("identity", {}).get("required_processes")
+        )
+    except ValueError as exc:
+        reasons.append(str(exc))
+        return None
+
+    observed = (
+        invoked_event.get("effect_process_identities")
+        if isinstance(invoked_event, dict)
+        else None
+    )
+    if not isinstance(observed, list):
+        reasons.append("formal invocation lacks effect process identities")
+        return None
+
+    observed_fields = {
+        "host",
+        "role",
+        "ordinal",
+        "process_epoch",
+        "pid",
+        "start_ticks",
+        "start_identity",
+        "argv",
+        "assignment_source",
+    }
+    observed_keys: list[tuple[str, str, int, int]] = []
+    linux_identities: list[tuple[str, int, int]] = []
+    malformed = False
+    for item in observed:
+        if not isinstance(item, dict) or set(item) != observed_fields:
+            malformed = True
+            break
+        host, role = item.get("host"), item.get("role")
+        ordinal, epoch = item.get("ordinal"), item.get("process_epoch")
+        pid, start_ticks, argv = (
+            item.get("pid"),
+            item.get("start_ticks"),
+            item.get("argv"),
+        )
+        if (
+            not isinstance(host, str)
+            or not host
+            or host.strip() != host
+            or not isinstance(role, str)
+            or not role
+            or role.strip() != role
+            or isinstance(ordinal, bool)
+            or not isinstance(ordinal, int)
+            or ordinal < 0
+            or isinstance(epoch, bool)
+            or not isinstance(epoch, int)
+            or epoch < 0
+            or isinstance(pid, bool)
+            or not isinstance(pid, int)
+            or pid <= 0
+            or isinstance(start_ticks, bool)
+            or not isinstance(start_ticks, int)
+            or start_ticks <= 0
+            or not isinstance(argv, list)
+            or not argv
+            or any(not isinstance(arg, str) or not arg for arg in argv)
+            or item.get("start_identity") != f"pid:{pid}:start_ticks:{start_ticks}"
+            or item.get("assignment_source") != "host"
+        ):
+            malformed = True
+            break
+        observed_keys.append((host, role, ordinal, epoch))
+        # Linux preserves PID and start ticks across exec.  argv is retained
+        # as an observed attribute, but must not split one process identity
+        # into multiple identities after an exec or argv rewrite.
+        linux_identities.append((host, pid, start_ticks))
+    if malformed:
+        reasons.append("formal effect process identity is malformed")
+        return None
+    if len(observed_keys) != len(set(observed_keys)) or len(linux_identities) != len(
+        set(linux_identities)
+    ):
+        reasons.append("formal effect process identities contain duplicates")
+        return None
+    if not set(observed_keys).issubset(required_keys):
+        reasons.append("formal effect process is outside the target snapshot")
+        return None
+
+    invoked = invoked_event.get("value") if invoked_event else None
+    if not isinstance(invoked, bool) or invoked != bool(observed_keys):
+        reasons.append("plugin invocation claim disagrees with process evidence")
+    computed = len(observed_keys) / len(required_keys)
+    reported = coverage_event.get("value") if coverage_event else None
+    if (
+        isinstance(reported, bool)
+        or not isinstance(reported, (int, float))
+        or not math.isfinite(reported)
+        or not math.isclose(reported, computed, rel_tol=0.0, abs_tol=1e-12)
+    ):
+        reasons.append("reported coverage disagrees with process evidence")
+    return computed
+
+
+def validate_formal_lifecycle_receipt(
+    name: str,
+    event: dict[str, Any],
+    source_process: dict[str, Any] | None,
+    reasons: list[str],
+) -> None:
+    """Validate exact bytes from the owner of one formal lifecycle fact."""
+    receipt = event.get("fact_receipt")
+    expected_source = FORMAL_LIFECYCLE_FACT_SOURCES[name]
+    if not isinstance(receipt, dict) or set(receipt) != {
+        "source_kind",
+        "source_process_identity",
+        "source_command_digest",
+        "source_channel_credentials",
+        "raw_base64",
+        "raw_sha256",
+    }:
+        reasons.append(f"formal lifecycle receipt missing or malformed: {name}")
+        return
+    try:
+        raw = base64.b64decode(receipt["raw_base64"], validate=True)
+    except (TypeError, ValueError):
+        reasons.append(f"formal lifecycle receipt bytes are invalid: {name}")
+        return
+    if receipt.get("raw_sha256") != digest_bytes(raw):
+        reasons.append(f"formal lifecycle receipt digest mismatch: {name}")
+        return
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, ValueError):
+        reasons.append(f"formal lifecycle receipt JSON is invalid: {name}")
+        return
+    try:
+        canonical_payload = canonical(payload)
+    except (TypeError, ValueError, UnicodeEncodeError):
+        canonical_payload = None
+    if not isinstance(payload, dict) or raw != canonical_payload:
+        reasons.append(f"formal lifecycle receipt is not canonical: {name}")
+        return
+    if list(Draft7Validator(FORMAL_LIFECYCLE_FACT_SCHEMA).iter_errors(payload)):
+        reasons.append(f"formal lifecycle receipt schema mismatch: {name}")
+        return
+    expected = {
+        "schema": "ecpa-formal-lifecycle-fact/v1",
+        "fact": name,
+        "source_kind": expected_source,
+        "plan_id": event.get("plan_id"),
+        "launch_id": event.get("launch_id"),
+        "controller_instance": event.get("controller_instance"),
+        "invocation_id": event.get("invocation_id"),
+        "sequence": event.get("sequence"),
+        "challenge": event.get("challenge"),
+        "monotonic_ns": event.get("monotonic_ns"),
+        "value": event.get("value"),
+        "sut_process_identity": event.get("sut_process_identity"),
+    }
+    if (
+        not isinstance(source_process, dict)
+        or receipt.get("source_process_identity")
+        != source_process.get("linux_identity")
+        or receipt.get("source_command_digest") != source_process.get("command_digest")
+        or receipt.get("source_channel_credentials")
+        != source_process.get("channel_credentials")
+        or receipt.get("source_channel_credentials", {}).get("pid")
+        != source_process.get("linux_identity", {}).get("pid")
+        or receipt.get("source_kind") != expected_source
+        or payload != expected
+        or not isinstance(source_process.get("monotonic_start_ns"), int)
+        or not isinstance(source_process.get("monotonic_end_ns"), int)
+        or not source_process["monotonic_start_ns"]
+        <= event.get("monotonic_ns", -1)
+        <= source_process["monotonic_end_ns"]
+    ):
+        reasons.append(f"formal lifecycle receipt binding mismatch: {name}")
+
+
+def oracle(scenario: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
+    observations = record["observations"]
+    forbidden = {"truth", "false_effective", "conflict_truth"}
+    if any(forbidden.intersection(item) for item in observations):
+        raise ValueError("SUT observations contain oracle-owned truth fields")
+    names = [item.get("event") for item in observations]
+    duplicate = sorted({name for name in names if names.count(name) > 1})
+    events = {item["event"]: item for item in observations}
+    required = [
+        *scenario["expected_observable"],
+        "service-ready",
+        "workload-complete",
+        "fault-injected",
+        "observer-captured",
+        "effective-claim",
+        "plugin-invoked",
+        "service-shutdown",
+    ]
+    if record.get("evidence_class") == "formal-real":
+        required.append("coverage")
+    reasons = [f"missing observable: {name}" for name in required if name not in events]
+    reasons.extend(f"duplicate observable: {name}" for name in duplicate)
+    causal_evidence = record.get("evidence_class") in {
+        "formal-real",
+        "interface-fixture",
+    }
+    if causal_evidence:
+        if record.get("evidence_class") == "formal-real":
+            for event in observations:
+                if "causal_ack" in event:
+                    reasons.append(
+                        "formal observable improperly carries SUT "
+                        f"acknowledgement: {event.get('event')}"
+                    )
+        if not record.get("command", {}).get("phase_complete"):
+            reasons.append("runner did not confirm every lifecycle phase")
+        if record.get("command", {}).get("premature_exit"):
+            reasons.append("SUT exited before runner shutdown phase")
+        lifecycle = [
+            "service-ready",
+            "workload-complete",
+            "fault-injected",
+            "observer-captured",
+            "service-shutdown",
+        ]
+        expected_observer_source = (
+            "host-observer"
+            if record.get("evidence_class") == "formal-real"
+            else "interface-observer"
+        )
+        execution_identity = record.get("command", {}).get("execution_identity", {})
+        invocation_rows = record.get("command", {}).get("phase_invocations", [])
+        invocations = {item.get("phase"): item for item in invocation_rows}
+        if set(execution_identity) != {
+            "plan_id",
+            "launch_id",
+            "controller_instance",
+        } or not all(execution_identity.values()):
+            reasons.append("missing plan/launch/controller execution identity")
+        if (
+            len(invocation_rows) != len(lifecycle)
+            or [item.get("phase") for item in invocation_rows] != lifecycle
+            or [item.get("sequence") for item in invocation_rows]
+            != list(range(1, len(lifecycle) + 1))
+            or len(invocations) != len(lifecycle)
+            or len({item.get("challenge") for item in invocation_rows})
+            != len(lifecycle)
+            or len({item.get("invocation_id") for item in invocation_rows})
+            != len(lifecycle)
+            or any(not item.get("acknowledged") for item in invocation_rows)
+            or (
+                record.get("evidence_class") == "formal-real"
+                and any(not item.get("fact_collected") for item in invocation_rows)
+            )
+        ):
+            reasons.append("phase invocation identity is incomplete")
+        sut_identity = (
+            record.get("command", {}).get("sut_process", {}).get("linux_identity")
+        )
+        for name in required:
+            event = events.get(name)
+            expected_source = (
+                "lifecycle-fact-source"
+                if record.get("evidence_class") == "formal-real"
+                and name in FORMAL_LIFECYCLE_FACT_SOURCES
+                else expected_observer_source
+            )
+            if event and event.get("source_role") != expected_source:
+                reasons.append(f"untrusted observable source: {name}")
+            if event and event.get("clock") != "monotonic":
+                reasons.append(f"invalid clock: {name}")
+            phase = name if name in lifecycle else "observer-captured"
+            invocation = invocations.get(phase, {})
+            if event and any(
+                event.get(field) != execution_identity.get(field)
+                for field in ("plan_id", "launch_id", "controller_instance")
+            ):
+                reasons.append(f"execution identity mismatch: {name}")
+            if event and event.get("invocation_id") != invocation.get("invocation_id"):
+                reasons.append(f"invocation identity mismatch: {name}")
+            if event and (
+                event.get("sequence") != invocation.get("sequence")
+                or event.get("challenge") != invocation.get("challenge")
+            ):
+                reasons.append(f"phase invocation binding mismatch: {name}")
+            if event and record.get("evidence_class") == "formal-real":
+                if name in FORMAL_LIFECYCLE_FACT_SOURCES:
+                    validate_formal_lifecycle_receipt(
+                        name,
+                        event,
+                        record.get("command", {})
+                        .get("lifecycle_fact_processes", {})
+                        .get(name),
+                        reasons,
+                    )
+            elif event and event.get("causal_ack") is not True:
+                reasons.append(f"causal acknowledgement mismatch: {name}")
+            if event and event.get("sut_process_identity") != sut_identity:
+                reasons.append(f"observer SUT identity mismatch: {name}")
+        times = [events.get(name, {}).get("monotonic_ns") for name in lifecycle]
+        if all(isinstance(value, int) for value in times):
+            if times != sorted(times) or len(set(times)) != len(times):
+                reasons.append("lifecycle timestamps are not strictly ordered")
+            bounds = record.get("command", {}).get("phase_bounds", {})
+            for name, timestamp in zip(lifecycle, times, strict=True):
+                phase = bounds.get(name)
+                if not phase or not phase[0] <= timestamp <= phase[1]:
+                    reasons.append(f"observable outside runner phase: {name}")
+        else:
+            reasons.append("lifecycle monotonic timestamp missing")
+        fault = events.get("fault-injected", {}).get("value")
+        if fault != scenario["id"]:
+            reasons.append("fault observable does not match frozen scenario")
+        boolean_lifecycle = [name for name in lifecycle if name != "fault-injected"]
+        if any(
+            events.get(name, {}).get("value") is not True for name in boolean_lifecycle
+        ):
+            reasons.append("lifecycle value must be true")
+        activation = events.get("activation-path")
+        expected_contract = record.get("identity", {}).get("activation_contract")
+        if not activation:
+            reasons.append("missing observable: activation-path")
+        elif activation.get("value") != expected_contract:
+            reasons.append("activation path does not match adapter contract")
+        elif (
+            activation.get("source_role") != expected_observer_source
+            or activation.get("clock") != "monotonic"
+        ):
+            reasons.append("activation path lacks trusted observer provenance")
+        if record.get("evidence_class") == "formal-real":
+            verification = record.get("identity", {}).get("adapter_verification", {})
+            if (
+                verification.get("evidence_owner") != "vllm-hust-host"
+                or verification.get("evidence_channel") != "host-owned-event-stream"
+            ):
+                reasons.append("formal result lacks registry-pinned host evidence")
+    truth = scenario["truth"]
+    claimed = bool(events.get("effective-claim", {}).get("value", False))
+    invoked = bool(events.get("plugin-invoked", {}).get("value", False))
+    covered = events.get("coverage", {}).get("value")
+    if record.get("evidence_class") == "formal-real":
+        covered = formal_process_coverage(
+            record,
+            events.get("plugin-invoked"),
+            events.get("coverage"),
+            reasons,
+        )
+    decision = events.get("conflict-decision", {}).get("value")
+    rollback = events.get("rollback-class", {}).get("value")
+    false_effective = claimed and (
+        not truth["activation_possible"]
+        or not invoked
+        or (record.get("evidence_class") == "formal-real" and covered != 1.0)
+    )
+    rollback_success = None
+    if truth["rollback_required"]:
+        rollback_success = rollback in {"RESTORED_STRONG", "BEHAVIORAL"}
+    launch_ns = record.get("command", {}).get("monotonic_start_ns")
+    ready_ns = events.get("service-ready", {}).get("monotonic_ns")
+    startup_ms = None
+    if launch_ns is not None and ready_ns is not None and ready_ns >= launch_ns:
+        startup_ms = (ready_ns - launch_ns) / 1_000_000
+    outcome = {
+        "false_effective": false_effective,
+        "activation_event_coverage": covered,
+        "conflict_truth": truth["conflict"],
+        "conflict_decision": decision,
+        "rollback_class": rollback,
+        "rollback_success": rollback_success,
+        "startup_ms": startup_ms,
+        "recovery_ms": None,
+        "throughput": None,
+        "latency_p99_ms": None,
+        "evidence_bytes": record["artifacts"].get("evidence_bytes"),
+        "message_bytes": record["artifacts"].get("message_bytes"),
+    }
+    inputs = {"scenario": scenario, "observations": observations}
+    record_binding = {
+        key: record.get(key)
+        for key in (
+            "schema",
+            "status",
+            "evidence_class",
+            "measurement_source",
+            "cell_id",
+            "scenario",
+            "arm",
+            "start_id",
+            "repetition",
+            "arm_order",
+            "identity",
+            "command",
+            "observations",
+            "missing_reason",
+            "intake_digest",
+        )
+    }
+    return {
+        "schema": RULE_VERSION,
+        "input_digest": digest_bytes(canonical(inputs)),
+        "record_digest": digest_bytes(canonical(record_binding)),
+        "verdict": "INCOMPLETE" if reasons else "PASS",
+        "reasons": reasons,
+        "outcome": outcome,
+    }
+
+
+def validate_record(
+    record: dict[str, Any],
+    root: Path,
+    *,
+    scenario: dict[str, Any] | None = None,
+    protocol: dict[str, Any] | None = None,
+    schema: dict[str, Any] | None = None,
+) -> None:
+    canonical(record)
+    artifact_root = safe_path(root, record.get("artifact_root", "."))
+    if schema is not None:
+        Draft7Validator(schema).validate(record)
+    if record["status"] == "planned":
+        if record["missing_reason"] is None:
+            raise ValueError("planned record requires missing reason")
+        return
+    command = record.get("command")
+    artifacts = record.get("artifacts", {})
+    if record["status"] == "complete" and record["evidence_class"] == "formal-real":
+        identity_fields = {
+            "model",
+            "dataset",
+            "workload",
+            "hardware",
+            "software",
+            "observer",
+            "runtime_commit",
+            "plugin_commits",
+            "topology",
+            "fault_plan",
+            "fault",
+            "warm_state",
+            "git_dirty",
+            "container_digest",
+            "cpu",
+            "gpu",
+            "npu",
+            "driver",
+            "runtime",
+            "semantic_environment",
+        }
+        missing_identity = identity_fields.difference(record["identity"])
+        if missing_identity:
+            raise ValueError(
+                f"formal complete missing identity: {sorted(missing_identity)}"
+            )
+        if any(value is None for value in record["identity"].values()):
+            raise ValueError("formal complete identity values must not be null")
+        for field in (
+            "raw_log",
+            "environment",
+            "command",
+            "oracle",
+            "intake",
+            "observations",
+            "scenario",
+            "protocol",
+        ):
+            if not artifacts.get(field):
+                raise ValueError(f"formal complete missing {field}")
+            name = artifacts[field]
+            if name not in artifacts.get("digests", {}):
+                raise ValueError(f"formal complete missing digest for {field}")
+    if command is None:
+        raise ValueError("executed record requires command")
+    for name, expected in artifacts.get("digests", {}).items():
+        path = safe_path(artifact_root, name)
+        if not path.is_file() or digest_file(path) != expected:
+            raise ValueError(f"artifact digest mismatch: {name}")
+    if record["status"] != "planned":
+        intake_path = safe_path(artifact_root, artifacts.get("intake", ""))
+        intake = json.loads(intake_path.read_text())
+        if digest_file(intake_path) != record.get("intake_digest"):
+            raise ValueError("runner intake digest mismatch")
+        for field in (
+            "evidence_class",
+            "measurement_source",
+            "scenario",
+            "arm",
+            "start_id",
+            "repetition",
+            "arm_order",
+            "identity",
+        ):
+            if record[field] != intake[field]:
+                raise ValueError(f"record relabelled outside runner intake: {field}")
+        if command.get("execution_identity") != intake.get("execution_identity"):
+            raise ValueError("execution identity differs from runner intake")
+        if record["evidence_class"] in {"formal-real", "interface-fixture"}:
+            sut = command.get("sut_process", {})
+            observer = command.get("observer_process", {})
+            if (
+                not sut.get("pid")
+                or not observer.get("pid")
+                or sut["pid"] == observer["pid"]
+            ):
+                raise ValueError("formal SUT and observer must be distinct processes")
+            if sut.get("argv") == observer.get("argv"):
+                raise ValueError("formal SUT and observer argv must differ")
+            for role, process in (("SUT", sut), ("observer", observer)):
+                linux_identity = process.get("linux_identity", {})
+                expected_start = (
+                    f"pid:{process.get('pid')}@ticks:"
+                    f"{linux_identity.get('start_ticks')}"
+                )
+                if (
+                    linux_identity.get("pid") != process.get("pid")
+                    or linux_identity.get("argv") != process.get("argv")
+                    or process.get("start_identity") != expected_start
+                ):
+                    raise ValueError(f"{role} PID/start identity mismatch")
+            observer_pipe = safe_path(artifact_root, artifacts["observer_pipe"])
+            if digest_file(observer_pipe) != command.get("observer_pipe_sha256"):
+                raise ValueError("observer pipe bytes digest mismatch")
+            expected_binding = {
+                "pid": observer.get("pid"),
+                "start_identity": observer.get("start_identity"),
+                "argv": observer.get("argv"),
+                **command.get("execution_identity", {}),
+            }
+            if record.get("observer_binding") != expected_binding:
+                raise ValueError("observer result binding mismatch")
+            if record["evidence_class"] == "formal-real":
+                verification = record.get("identity", {}).get("adapter_verification")
+                if (
+                    record.get("identity", {}).get("fixture_only") is not False
+                    or not isinstance(verification, dict)
+                    or verification.get("evidence_owner") != "vllm-hust-host"
+                    or verification.get("evidence_channel") != "host-owned-event-stream"
+                    or verification.get("host_event_schema")
+                    != "ecpa-host-runtime-evidence/v1"
+                ):
+                    raise ValueError(
+                        "formal adapter verification is not registry-owned"
+                    )
+                validate_formal_adapter_verification(record, command)
+            semantic = {
+                name: record["identity"]["semantic_environment"].get(name)
+                for name in SEMANTIC_ENV
+            }
+            if semantic != intake.get("semantic_environment"):
+                raise ValueError("semantic environment differs from runner intake")
+            manifest = json.loads(
+                safe_path(artifact_root, artifacts["environment"]).read_text()
+            )
+            expected_contract = {
+                "vanilla-vllm-entry-points": "entry-points-unmanaged",
+                "manual-integration": "explicit-manual-hooks",
+                "ecpa": "manager-controlled-activation",
+            }[record["arm"]]
+            managed_binding = command.get("managed_binding")
+            if isinstance(managed_binding, dict):
+                manifest_contract_matches = (
+                    record["arm"] == "ecpa"
+                    and "ECPA_ACTIVATION_CONTRACT" not in manifest
+                    and managed_binding.get("activation_contract") == expected_contract
+                )
+            else:
+                manifest_contract_matches = (
+                    manifest.get("ECPA_ACTIVATION_CONTRACT") == expected_contract
+                )
+            if (
+                manifest.get("ECPA_EVALUATION_ARM") != record["arm"]
+                or not manifest_contract_matches
+                or intake.get("activation_contract") != expected_contract
+            ):
+                raise ValueError("adapter contract mismatch")
+        if scenario is None or protocol is None:
+            raise ValueError(
+                "executed record validation requires scenario and protocol"
+            )
+        if digest_bytes(canonical(scenario)) != intake["scenario_digest"]:
+            raise ValueError("scenario digest mismatch")
+        if digest_bytes(canonical(protocol)) != intake["protocol_digest"]:
+            raise ValueError("protocol digest mismatch")
+        observation_path = safe_path(artifact_root, artifacts["observations"])
+        observation_payload = json.loads(observation_path.read_text())
+        raw_observations = observation_payload["events"]
+        if raw_observations != record["observations"]:
+            raise ValueError("raw observations mismatch")
+        if observation_payload.get("observer_binding") != record.get(
+            "observer_binding"
+        ):
+            raise ValueError("raw observer binding mismatch")
+        recomputed = oracle(
+            scenario, {k: v for k, v in record.items() if k != "oracle"}
+        )
+        if recomputed != record.get("oracle"):
+            raise ValueError("independent oracle mismatch")
+        if record["status"] == "complete" and recomputed["verdict"] != "PASS":
+            raise ValueError("complete record has incomplete required observations")
+        command_disk = json.loads(
+            safe_path(artifact_root, artifacts["command"]).read_text()
+        )
+        if command_disk != record["command"]:
+            raise ValueError("disk command differs from record command")
+        oracle_disk = json.loads(
+            safe_path(artifact_root, artifacts["oracle"]).read_text()
+        )
+        if oracle_disk != record["oracle"]:
+            raise ValueError("disk oracle differs from record oracle")
+        receipt_path = safe_path(artifact_root, artifacts.get("receipt", ""))
+        receipt = json.loads(receipt_path.read_text())
+        expected_receipt = {
+            "schema": "ecpa-runner-receipt/v1",
+            "core_digest": digest_bytes(canonical(canonical_record_core(record))),
+            "status": record["status"],
+            "cell_id": record["cell_id"],
+            "command_digest": digest_file(
+                safe_path(artifact_root, artifacts["command"])
+            ),
+            "oracle_digest": digest_file(safe_path(artifact_root, artifacts["oracle"])),
+            "exit_code": record["command"]["exit_code"],
+            "timeout": record["command"]["timeout"],
+            "sut_identity": record["command"]
+            .get("sut_process", {})
+            .get("linux_identity"),
+            "observer_identity": record["command"]
+            .get("observer_process", {})
+            .get("linux_identity"),
+            "observer_argv": record["command"].get("observer_process", {}).get("argv"),
+            "observer_pipe_sha256": record["command"].get("observer_pipe_sha256"),
+            "execution_identity": record["command"].get("execution_identity"),
+            "phase_invocations": record["command"].get("phase_invocations"),
+            "excluded_fields": ["artifact_root", "receipt_digest"],
+        }
+        if receipt != expected_receipt or digest_file(receipt_path) != record.get(
+            "receipt_digest"
+        ):
+            raise ValueError("runner receipt mismatch")
+        should_complete = (
+            command["exit_code"] == 0
+            and not command["timeout"]
+            and recomputed["verdict"] == "PASS"
+        )
+        if record["status"] == "complete" and not should_complete:
+            raise ValueError("failed execution relabelled complete")
+
+
+def validate_cross_arm_scenario_binding(cell: str, rows: list[dict[str, Any]]) -> None:
+    """Require all formal arms to compare the same scenario and plugin identity."""
+    bindings = [
+        row.get("identity", {})
+        .get("adapter_verification", {})
+        .get("scenario_binding", {})
+        for row in rows
+    ]
+    comparison_ids = {binding.get("comparison_binding_id") for binding in bindings}
+    descriptor_digests = {binding.get("descriptor_sha256") for binding in bindings}
+    if (
+        None in comparison_ids
+        or len(comparison_ids) != 1
+        or None in descriptor_digests
+        or len(descriptor_digests) != 1
+    ):
+        raise ValueError(f"cell {cell} arms do not share one scenario entry point")
+
+
+def validate_batch(records: list[dict[str, Any]], root: Path, *, formal: bool) -> None:
+    here = Path(__file__).resolve().parent
+    scenario_map = {
+        item["id"]: item
+        for item in json.loads((here / "scenarios.json").read_text())["scenarios"]
+    }
+    protocol = json.loads((here / "protocol.json").read_text())
+    schema = json.loads((here / "raw-record.schema.json").read_text())
+    ids = [item["start_id"] for item in records]
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate start_id")
+    for record in records:
+        validate_record(
+            record,
+            root,
+            scenario=scenario_map.get(record["scenario"]),
+            protocol=protocol,
+            schema=schema,
+        )
+        if formal and record["evidence_class"] != "formal-real":
+            raise ValueError(
+                "fixture-only or synthetic evidence cannot enter formal aggregate"
+            )
+        if formal and record.get("identity", {}).get("fixture_only"):
+            raise ValueError("fixture-only evidence cannot enter formal aggregate")
+    complete = [item for item in records if item["status"] == "complete"]
+    if formal and complete:
+        execution_identities = [
+            item.get("command", {}).get("execution_identity", {}) for item in complete
+        ]
+        launch_ids = [item.get("launch_id") for item in execution_identities]
+        controllers = [item.get("controller_instance") for item in execution_identities]
+        invocation_ids = [
+            invocation.get("invocation_id")
+            for item in complete
+            for invocation in item.get("command", {}).get("phase_invocations", [])
+        ]
+        process_identities = [
+            (
+                process.get("pid"),
+                process.get("linux_identity", {}).get("start_ticks"),
+            )
+            for item in complete
+            for process in (
+                item.get("command", {}).get("sut_process", {}),
+                item.get("command", {}).get("observer_process", {}),
+            )
+        ]
+        if (
+            None in launch_ids
+            or len(launch_ids) != len(set(launch_ids))
+            or None in controllers
+            or len(controllers) != len(set(controllers))
+            or None in invocation_ids
+            or len(invocation_ids) != len(set(invocation_ids))
+            or any(None in identity for identity in process_identities)
+            or len(process_identities) != len(set(process_identities))
+        ):
+            raise ValueError(
+                "launch/controller/invocation/process identity is not unique"
+            )
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for item in complete:
+            groups.setdefault(item["cell_id"], []).append(item)
+        for cell, rows in groups.items():
+            if len(rows) < 9 or {row["arm"] for row in rows} != set(ARMS):
+                raise ValueError(f"cell {cell} lacks 3 starts x 3 arms")
+            if any(sum(row["arm"] == arm for row in rows) < 3 for arm in ARMS):
+                raise ValueError(f"cell {cell} has fewer than 3 starts per arm")
+            validate_cross_arm_scenario_binding(cell, rows)
+            for arm in ARMS:
+                plan_ids = {
+                    row["command"]["execution_identity"]["plan_id"]
+                    for row in rows
+                    if row["arm"] == arm
+                }
+                if len(plan_ids) != 1:
+                    raise ValueError(f"cell {cell} arm {arm} does not share one plan")
+            identities = [
+                {
+                    k: v
+                    for k, v in row["identity"].items()
+                    if k
+                    not in {
+                        "arm",
+                        "evaluation_arm",
+                        "activation_contract",
+                        "adapter_verification",
+                    }
+                }
+                for row in rows
+            ]
+            if any(value != identities[0] for value in identities[1:]):
+                raise ValueError(f"cell {cell} matched-arm metadata mismatch")
+            orders = {(row["repetition"], row["arm_order"]) for row in rows}
+            if len(orders) != 9:
+                raise ValueError(f"cell {cell} order schedule is unbalanced")
+            actual = {(row["repetition"], row["arm_order"]): row["arm"] for row in rows}
+            expected = {
+                (repetition, order): arm
+                for repetition, arms in enumerate(LATIN_SQUARE, 1)
+                for order, arm in enumerate(arms, 1)
+            }
+            if actual != expected:
+                raise ValueError(f"cell {cell} does not match frozen Latin square")
+
+
+def wilson(numerator: int, denominator: int) -> list[float] | None:
+    if denominator < 3:
+        return None
+    z = 1.959963984540054
+    p = numerator / denominator
+    d = 1 + z * z / denominator
+    center = (p + z * z / (2 * denominator)) / d
+    half = z * math.sqrt(p * (1 - p) / denominator + z * z / (4 * denominator**2)) / d
+    return [center - half, center + half]
+
+
+def conflict_metrics(outcomes: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = [row for row in outcomes if row["conflict_truth"] != "not-applicable"]
+    tp = sum(
+        row["conflict_truth"] == "conflict" and row["conflict_decision"] == "reject"
+        for row in rows
+    )
+    fp = sum(
+        row["conflict_truth"] != "conflict" and row["conflict_decision"] == "reject"
+        for row in rows
+    )
+    fn = sum(
+        row["conflict_truth"] == "conflict" and row["conflict_decision"] != "reject"
+        for row in rows
+    )
+    tn = sum(
+        row["conflict_truth"] != "conflict" and row["conflict_decision"] != "reject"
+        for row in rows
+    )
+    return {
+        "confusion": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
+        "precision": tp / (tp + fp) if tp + fp >= 3 else None,
+        "recall": tp / (tp + fn) if tp + fn >= 3 else None,
+        "null_reason": None
+        if min(tp + fp, tp + fn) >= 3
+        else "fewer than 3 applicable decisions",
+    }
+
+
+def aggregate(
+    records: list[dict[str, Any]], root: Path, *, formal: bool
+) -> dict[str, Any]:
+    validate_batch(records, root, formal=formal)
+    complete = [row for row in records if row["status"] == "complete"]
+    scenario_registry = [
+        item["id"]
+        for item in json.loads(
+            (Path(__file__).resolve().parent / "scenarios.json").read_text()
+        )["scenarios"]
+    ]
+    cells = []
+    for (scenario, arm), rows in sorted(
+        {
+            (scenario, arm): [
+                row
+                for row in records
+                if row["scenario"] == scenario and row["arm"] == arm
+            ]
+            for scenario in scenario_registry
+            for arm in ARMS
+        }.items()
+    ):
+        statuses = {
+            status: sum(row["status"] == status for row in rows)
+            for status in ("planned", "complete", "failed", "excluded")
+        }
+        valid = [row for row in rows if row["status"] == "complete"]
+        outcomes = [row["oracle"]["outcome"] for row in valid]
+        false_count = sum(bool(outcome["false_effective"]) for outcome in outcomes)
+        coverage = [
+            outcome["activation_event_coverage"]
+            for outcome in outcomes
+            if outcome["activation_event_coverage"] is not None
+        ]
+        rollback = [
+            outcome["rollback_success"]
+            for outcome in outcomes
+            if outcome["rollback_success"] is not None
+        ]
+        conflicts = [
+            outcome
+            for outcome in outcomes
+            if outcome["conflict_truth"] != "not-applicable"
+        ]
+        expected_decision = {
+            "conflict": "reject",
+            "compatible": "accept",
+            "conditional": "conditional",
+        }
+        tp = sum(
+            o["conflict_truth"] == "conflict" and o["conflict_decision"] == "reject"
+            for o in conflicts
+        )
+        fp = sum(
+            o["conflict_truth"] != "conflict" and o["conflict_decision"] == "reject"
+            for o in conflicts
+        )
+        fn = sum(
+            o["conflict_truth"] == "conflict" and o["conflict_decision"] != "reject"
+            for o in conflicts
+        )
+        tn = sum(
+            o["conflict_truth"] != "conflict" and o["conflict_decision"] != "reject"
+            for o in conflicts
+        )
+        cells.append(
+            {
+                "scenario": scenario,
+                "arm": arm,
+                "status_counts": statuses,
+                "false_effective": None
+                if statuses["complete"] < 3
+                else {
+                    "numerator": false_count,
+                    "denominator": len(valid),
+                    "rate": false_count / len(valid),
+                    "wilson95": wilson(false_count, len(valid)),
+                },
+                "quality": None
+                if statuses["complete"] < 3
+                else {
+                    "coverage_samples": coverage,
+                    "coverage_mean": sum(coverage) / len(coverage)
+                    if coverage
+                    else None,
+                    "conflict_exact_correct": sum(
+                        outcome["conflict_decision"]
+                        == expected_decision.get(outcome["conflict_truth"])
+                        for outcome in conflicts
+                    ),
+                    "conflict_denominator": len(conflicts),
+                    "conflict_confusion": {"tp": tp, "fp": fp, "fn": fn, "tn": tn},
+                    "conflict_precision": tp / (tp + fp) if tp + fp >= 3 else None,
+                    "conflict_recall": tp / (tp + fn) if tp + fn >= 3 else None,
+                    "conflict_null_reason": None
+                    if min(tp + fp, tp + fn) >= 3
+                    else "fewer than 3 applicable decisions",
+                    "rollback_successes": sum(value is True for value in rollback),
+                    "rollback_denominator": len(rollback),
+                },
+                "cost": None
+                if statuses["complete"] < 3
+                else {
+                    "startup_ms": [outcome["startup_ms"] for outcome in outcomes],
+                    "recovery_ms": [outcome["recovery_ms"] for outcome in outcomes],
+                    "evidence_bytes": [
+                        outcome["evidence_bytes"] for outcome in outcomes
+                    ],
+                    "message_bytes": [outcome["message_bytes"] for outcome in outcomes],
+                },
+                "null_reason": (
+                    "fewer than 3 complete independent starts"
+                    if statuses["complete"] < 3
+                    else None
+                ),
+            }
+        )
+    if not complete:
+        return {
+            "schema": "ecpa-false-effective-aggregate/v1",
+            "formal": formal,
+            "completed_cells": 0,
+            "metrics": None,
+            "cells": cells,
+            "paired_contrasts": None,
+            "conflict_by_arm": {arm: None for arm in ARMS},
+            "failure_missing_modes": {
+                "planned": sum(row["status"] == "planned" for row in records),
+                "failed": sum(row["status"] == "failed" for row in records),
+                "excluded": sum(row["status"] == "excluded" for row in records),
+            },
+            "reason": "no validator-approved complete formal-real cells",
+        }
+    strata = {}
+    for row in complete:
+        key = f"{row['scenario']}::{row['arm']}"
+        strata.setdefault(key, []).append(row["oracle"]["outcome"])
+    paired = []
+    for scenario in sorted({row["scenario"] for row in complete}):
+        for repetition in (1, 2, 3):
+            matched = [
+                row
+                for row in complete
+                if row["scenario"] == scenario and row["repetition"] == repetition
+            ]
+            if len(matched) == 3:
+                values = {
+                    row["arm"]: int(row["oracle"]["outcome"]["false_effective"])
+                    for row in matched
+                }
+                paired.append(
+                    {
+                        "scenario": scenario,
+                        "repetition": repetition,
+                        "false_effective_delta_ecpa_vs_vanilla": values["ecpa"]
+                        - values["vanilla-vllm-entry-points"],
+                        "false_effective_delta_ecpa_vs_manual": values["ecpa"]
+                        - values["manual-integration"],
+                    }
+                )
+    conflict_by_arm = {
+        arm: conflict_metrics(
+            [row["oracle"]["outcome"] for row in complete if row["arm"] == arm]
+        )
+        for arm in ARMS
+    }
+    return {
+        "schema": "ecpa-false-effective-aggregate/v1",
+        "formal": formal,
+        "completed_cells": len({row["cell_id"] for row in complete}),
+        "cells": cells,
+        "strata": strata,
+        "paired_contrasts": paired,
+        "conflict_by_arm": conflict_by_arm,
+        "failure_missing_modes": {
+            "planned": sum(row["status"] == "planned" for row in records),
+            "failed": sum(row["status"] == "failed" for row in records),
+            "excluded": sum(row["status"] == "excluded" for row in records),
+        },
+        "statistic_plan": {
+            "binary_rate_interval": "Wilson score 95%",
+            "continuous_summary": (
+                "median and observed range; range is not a confidence interval"
+            ),
+            "paired_unit": "scenario x repetition",
+        },
+        "metrics": {
+            "scope": "stratified-only; no mixed-arm primary estimate",
+            "n_starts": len(complete),
+            "by_scenario_arm": cells,
+        },
+    }
+
+
+def project_paper_result(
+    record: dict[str, Any], paper_schema: dict[str, Any]
+) -> dict[str, Any]:
+    outcome = record.get("oracle", {}).get("outcome", {})
+    projected = {
+        "schema": "ecpa-result/v1",
+        "status": (
+            "excluded-with-preregistered-reason"
+            if record["status"] == "excluded"
+            else record["status"]
+        ),
+        "cell_id": record["cell_id"],
+        "hypothesis": "H1",
+        "arm": record["arm"],
+        "identity": {
+            "manager_commit": record["identity"].get("runtime_commit"),
+            "host_runtime": record["identity"].get("runtime", "planned-unconfigured"),
+            "host_version": (
+                json.dumps(record["identity"]["software"], sort_keys=True)
+                if "software" in record["identity"]
+                else "planned-unconfigured"
+            ),
+            "plugins": [],
+            "providers": [],
+            "hardware": record["identity"].get("hardware", "planned-unconfigured"),
+            "process_topology": record["identity"].get(
+                "topology", "planned-unconfigured"
+            ),
+            "container_digest": record["identity"].get("container_digest"),
+        },
+        "protocol": {
+            "repetition": record["repetition"],
+            "independent_service_start": True,
+            "arm_order": record["arm_order"],
+            "warm_state": record["identity"].get("warm_state", "cold"),
+            "workload": record["identity"].get("workload", "planned-unconfigured"),
+            "fault": record["scenario"],
+        },
+        "outcome": {
+            "activation_event_coverage": outcome.get("activation_event_coverage"),
+            "false_effective": outcome.get("false_effective"),
+            "conflict_truth": outcome.get("conflict_truth"),
+            "conflict_decision": outcome.get("conflict_decision"),
+            "rollback_success": outcome.get("rollback_success"),
+            "recovery_ms": outcome.get("recovery_ms"),
+            "startup_ms": outcome.get("startup_ms"),
+            "throughput": outcome.get("throughput"),
+            "latency_p99_ms": outcome.get("latency_p99_ms"),
+            "evidence_bytes": outcome.get("evidence_bytes"),
+            "failure_phase": record.get("missing_reason"),
+        },
+        "artifacts": {
+            "raw_log": record["artifacts"].get("raw_log"),
+            "manifest": record["artifacts"].get("intake"),
+            "plan": record["artifacts"].get("protocol"),
+            "evidence": record["artifacts"].get("oracle"),
+        },
+    }
+    Draft7Validator(paper_schema).validate(projected)
+    return projected

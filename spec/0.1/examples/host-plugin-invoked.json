@@ -1,0 +1,33 @@
+{
+  "schema": "vllm-hust-plugin-evidence/0.1",
+  "event_id": "fc7385238ebd42475e3d8303ad373c0ae27f235536e9c59935edbbe27c0ed97f",
+  "event": "invoked",
+  "observation_kind": "loader_lifecycle",
+  "entry_point": {
+    "group": "vllm.general_plugins",
+    "name": "demo",
+    "value": "demo.plugin:register"
+  },
+  "process": {
+    "host": "host-a",
+    "role": "worker",
+    "ordinal": 0,
+    "pid": 4242,
+    "start_identity": "pid:4242:start_ticks:9001",
+    "process_epoch": 7,
+    "assignment_source": "host"
+  },
+  "observed_at_ns": 1800000000000000000,
+  "delivery_attempt": 1,
+  "plan_id": "plan:sha256:replace-at-ingestion-test",
+  "launch_id": "launch-1",
+  "binding_status": "bound",
+  "occurrence_id": null,
+  "controller_instance_id": null,
+  "invocation_seq": null,
+  "dispatch_id": null,
+  "plugin_id": null,
+  "artifact_digest": null,
+  "identity_status": "launch-bound",
+  "detail": null
+}

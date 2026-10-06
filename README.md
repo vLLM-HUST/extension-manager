@@ -1,5 +1,36 @@
 # vLLM-HUST Extension Manager
 
+Project accountability: `ShuhaoZhangTony` (张书豪) is the primary owner,
+project lead, accountable owner, and current executor. ECPA is PI-led and
+self-driven; student participation is optional and non-blocking. `Apei-520`
+is credited only for documented historical contributions and is not an owner
+or critical-path dependency.
+
+## Research charter
+
+The research line **Evidence-Carrying Plugin Architecture for LLM Inference
+Systems / 大模型推理插件体系结构** studies whether plugin activation can remain
+discoverable, composable, verifiable, and reversible under version skew,
+multi-process loading, heterogeneous providers, composition conflicts, lifecycle
+drift, and runtime effects that cannot be proved statically.
+
+- [Research charter](docs/research-charter.md)
+- [Falsifiable evaluation plan](docs/evaluation-plan.md)
+- [Executable ECPA architecture](docs/design/ecpa-architecture.md)
+- [Protocol state machine](docs/design/protocol-state-machine.md)
+- [Threat model](docs/design/threat-model.md)
+- [Failure semantics](docs/design/failure-semantics.md)
+- [Frozen core decisions](docs/adr/0001-ecpa-frozen-core-decisions.md)
+- [Durable coordinator MVP](docs/design/durable-coordinator.md)
+- [Cross-implementation open questions](docs/design/open-questions.md)
+- [ECPA 0.1 candidate specification](spec/0.1/README.md)
+- [ECPA Attestation Profile 0.1 candidate](docs/design/attestation-profile-0.1.md)
+- [Host plugin lifecycle evidence 0.1](docs/design/host-plugin-evidence-0.1.md)
+- [Formal-real lifecycle source profile](docs/design/formal-real-lifecycle-sources.md)
+- [Reference ExposureGate M1](docs/design/reference-exposure-gate.md)
+- [Existing plugin-path inventory and next experiments](docs/research/ecpa-existing-path-inventory.md)
+- [Page-bound 24-MOD audit](docs/corpus/workshop-mods.json)
+
 `vllm-hust-ext` is a provider-neutral control point for discovering, validating,
 configuring, enabling, planning, rendering, and checking vLLM-HUST extensions.
 It is not a vLLM distribution, deployment system, or control plane.
@@ -13,6 +44,13 @@ authority:
   operated Mooncake services;
 - the Production Stack Provider renders Helm/Kubernetes inputs and dry-run
   plans without applying them.
+
+The ECPA 0.1 candidate attestation profile now has a Python producer/verifier,
+a separate Go implementation passing the shared positive/negative corpus, and a
+signed-evidence adapter for the durable coordinator. It uses RFC 8785 JCS,
+detached compact JWS, and Ed25519/EdDSA. This milestone does not supply a real
+vLLM-HUST issuer, production trust root/key management, or formal overhead
+result, and a valid signature alone never implies `runtime_effective`.
 
 A plugin, KV connector, external KV system, and control-plane policy remain
 different kinds. Installing or enabling an adapter never gives this manager

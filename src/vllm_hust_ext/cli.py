@@ -29,6 +29,10 @@ from vllm_hust_ext.discovery import (
     discover_bundle_inventory,
     discover_bundles,
 )
+from vllm_hust_ext.manager_controller import (
+    activation_probe_receipt,
+    launch_managed,
+)
 from vllm_hust_ext.manifest import activation_blocker
 from vllm_hust_ext.process_supervisor import (
     DEFAULT_SHUTDOWN_GRACE_SECONDS,
@@ -623,6 +627,41 @@ def _run_command(args: argparse.Namespace) -> int:
         )
 
 
+def _formal_run_command(args: argparse.Namespace) -> int:
+    if args.ecpa_formal_activation_probe:
+        print(activation_probe_receipt().decode(), end="")
+        return 0
+    missing = [
+        option
+        for option, value in (
+            ("--plan", args.plan),
+            ("--launch-id", args.launch_id),
+            ("--controller-instance", args.controller_instance),
+            ("--host-event-dir", args.host_event_dir),
+            ("--target-executable-device", args.target_executable_device),
+            ("--target-executable-inode", args.target_executable_inode),
+            ("--target-executable-sha256", args.target_executable_sha256),
+        )
+        if value is None
+    ]
+    if missing:
+        raise ValueError("formal-run requires " + ", ".join(missing))
+    command = list(args.command)
+    if command and command[0] == "--":
+        command = command[1:]
+    return launch_managed(
+        plan_path=args.plan,
+        launch_id=args.launch_id,
+        controller_instance=args.controller_instance,
+        host_event_dir=args.host_event_dir,
+        command=command,
+        target_executable_device=args.target_executable_device,
+        target_executable_inode=args.target_executable_inode,
+        target_executable_sha256=args.target_executable_sha256,
+        dry_run=args.dry_run,
+    )
+
+
 def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
     """Merge a Provider's declared vLLM launch capability without name checks."""
 
@@ -793,6 +832,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="seconds to wait before killing a launched process tree (default: 10)",
     )
     run_parser.add_argument("command", nargs=argparse.REMAINDER)
+    formal_run = subcommands.add_parser("formal-run")
+    formal_run.add_argument("--plan")
+    formal_run.add_argument("--launch-id")
+    formal_run.add_argument("--controller-instance")
+    formal_run.add_argument("--host-event-dir")
+    formal_run.add_argument("--target-executable-device", type=int)
+    formal_run.add_argument("--target-executable-inode", type=int)
+    formal_run.add_argument("--target-executable-sha256")
+    formal_run.add_argument("--dry-run", action="store_true")
+    formal_run.add_argument("--ecpa-formal-activation-probe", action="store_true")
+    formal_run.add_argument("command", nargs=argparse.REMAINDER)
     return parser
 
 
@@ -804,6 +854,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _extension_command(args)
         if args.command_name == "catalog":
             return _catalog_command(args)
+        if args.command_name == "formal-run":
+            return _formal_run_command(args)
         return _run_command(args)
     except (OSError, ValueError) as error:
         parser.error(str(error))

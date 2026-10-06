@@ -1,0 +1,1123 @@
+\documentclass[letterpaper,twocolumn,10pt]{article}
+\usepackage{usenix2019_v3}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,fit,positioning,shapes.geometric}
+\newcommand{\system}{\textsc{ECPA}\xspace}
+\newcommand{\code}[1]{\texttt{#1}}
+\definecolor{ecpablue}{HTML}{DCEBFA}
+\definecolor{ecpagreen}{HTML}{DFF1E3}
+\definecolor{ecpaorange}{HTML}{FBE8CF}
+\definecolor{ecpared}{HTML}{F7D8D8}
+\definecolor{ecpagray}{HTML}{ECEFF3}
+\input{generated/evidence-summary.tex}
+\raggedbottom
+\setlength{\emergencystretch}{2em}
+\def\UrlBreaks{\do\/\do-\do\_}
+\sloppy
+\hbadness=10000
+\title{\Large \bf ECPA: Extension Contracts and Transactional Activation for LLM Inference Systems}
+\author{Anonymous Submission}
+\date{}
+
+% Internal accountability (excluded from the anonymized author line):
+% ShuhaoZhangTony / 张书豪 is the PI lead and accountable executor. Student
+% participation is optional and non-blocking.
+
+\begin{document}
+\pagestyle{plain}
+\maketitle
+
+\begin{abstract}
+Modern LLM inference engines continually add KV-cache management, preemption,
+offload, tiered storage, scheduling, observability, and disaggregated serving.
+These extensions increasingly enter through forks, hard-coded hooks, or
+package entry points, which establish discovery and loading but do not show
+that independently developed extensions compose correctly or affect every
+process that can serve a request. This gap creates \emph{false-effective}
+states: deployment state reports success while workers execute a partial,
+stale, inert, or conflicting configuration. We present ECPA, an inference-system
+extension contract and runtime. Contracts declare capabilities, resource and
+lifecycle authority, dependencies, process coverage, failure policy, and
+verifiable effect conditions. A compiler turns multiple contracts into an
+immutable execution plan; a transactional runtime prepares, activates,
+observes, exposes, and rolls back that plan. Authority-owned evidence discharges
+plan obligations, and an ExposureGate makes a generation externally visible
+only after fresh evidence covers its epoch-scoped targets. We derive the model
+from the plugin page's source-bound population of \ECPAWorkshopMods{} MODs,
+spanning scheduling, speculative decoding, KV data paths, model execution,
+communication, and observability.  We implement a host-neutral
+coordinator, a narrow adapter for one vLLM-compatible prototype host, and an
+adversarial evaluation harness covering namespace errors, resource conflicts,
+partial worker coverage, replay, crash recovery, lease expiration, and failed
+compensation.  ECPA provides explicit extension semantics beyond API
+availability while keeping host bindings and optimization-specific algorithms
+outside the contract runtime.
+\end{abstract}
+
+\section{Introduction}
+Plugins are becoming the de facto change boundary for fast-moving inference
+systems.  A scheduler policy may be delivered as a Python entry point; a KV
+connector may depend on an external service; a production-stack adapter may
+translate intent into Kubernetes configuration; and a provider may map a
+portable capability to a host-specific command-line flag.  This modularity is
+valuable, but it creates a gap between packaging facts and runtime facts.
+
+Consider an operator who installs a plugin distribution, sees its configuration
+saved, enables it, and launches an engine with multiple worker processes.  The
+parent process may discover the distribution while one worker imports a
+different version, never invokes the hook, or lacks the provider.  Two plugins
+may independently validate yet both claim the same KV connector option.  An
+external service may fail after intent is persisted.  Conventional loaders
+often collapse these cases into an ``enabled'' bit.  That bit is useful intent,
+but it is not evidence that the plugin changed the running system.
+
+The repository that motivated this work contains a smaller but revealing
+incident.  A one-line ``bugfix'' changed discovery from the host-owned static
+bundle namespace to an upstream-looking namespace.  Sixty-six unit tests still
+passed.  Yet an installed KV-connector provider registered one bundle in the
+declared namespace, the modified manager selected zero entries, and discovery
+returned no bundles.
+Installation succeeded; the code imported; runtime intent could still exist;
+the plugin was nevertheless absent from the activation path.  The incident is
+not important because of the spelling error itself.  It demonstrates that
+tests and static state can agree while authority and runtime effect disagree.
+
+We ask: \emph{how can an inference system make extensions discoverable,
+composable, verifiable, and rollback-safe when runtime effectiveness cannot be
+proved statically?}  We build \system, an extension contract and transactional
+runtime centered on evidence-bound activation.  The Extension Manager is its
+reference implementation; the contract, corpus, and conformance suite define
+what another implementation must reproduce.  A decision is not ``enable plugin $p$'' but an activation plan
+for a concrete host version, provider set, plugin set, process topology, and
+resource-ownership graph.  The plan records evidence obligations.  Each
+obligation must be discharged by its declared authority; a plan-bound process
+invocation can discharge only its corresponding process or invocation
+obligation.  A manager cannot manufacture runtime effectiveness from
+configuration.
+
+Figure~\ref{fig:architecture} summarizes this split: portable contracts and
+transactions stop at a typed adapter, while host and provider authorities send
+effect evidence back across that boundary.  Neither the adapter nor an
+individual plugin can open the traffic gate by self-report.
+
+Our safety property is: \emph{no activation is exposed as effective unless
+every required plan obligation in the current epoch has fresh evidence from
+the authority that can observe its planned effect}.  Process-scoped obligations
+also require coverage of their frozen target set.  ECPA is not the first
+plugin system, a deployment controller, or a software-supply-chain attestation
+scheme.  Its contribution is an evidence-bound activation transaction for
+extensions whose effect spans multiple inference processes and authority
+domains.  Existing plugin APIs, controllers, and provenance systems are inputs
+to that transaction, not components that ECPA replaces.
+
+The contract, compiler, coordinator, and evidence protocol do not name a host
+runtime or plugin package.  We evaluate them through a deep study on one
+vLLM-compatible prototype host, connected only through a typed host adapter.
+Within that host we cover multiple independently implemented extension classes,
+parent/engine/worker process scopes, versions and topologies, authority
+boundaries, and fault modes.  This is single-host evidence, not a claim of
+cross-framework validation; a second runtime is future external-validity work.
+
+This paper makes three contributions, with claim strength bounded by
+the evidence available today:
+\begin{itemize}
+  \item an inference-extension contract that expresses capabilities,
+  resources, lifecycle authority, dependencies, process coverage, and
+  machine-checkable effect obligations rather than only loadable APIs;
+  \item a contract compiler and transactional runtime that produce immutable
+  execution plans and define multi-process prepare, activation, exposure,
+  replacement, failure, and rollback semantics; and
+  \item a host-evidence model and independent evaluation method for detecting
+  false-effective extensions across correctness, conflict, skew, recovery,
+  multi-process consistency, and overhead experiments.
+\end{itemize}
+The contract compiler, reference coordinator, evidence protocol, and
+fail-closed formal harness are implemented.  The source-bound static corpus is
+measured; the matched prototype-host experiment and performance evaluation
+remain incomplete.  We do not present modeled decisions, interface fixtures,
+or provider demonstrations as proof of runtime effectiveness.
+
+\begin{figure*}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  font=\small,
+  node distance=5mm and 7mm,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=8mm,
+    text width=25mm, inner sep=3pt},
+  wide/.style={box, text width=31mm},
+  flow/.style={-{Latex[length=2mm]}, thick},
+  evidence/.style={-{Latex[length=2mm]}, thick, dashed, color=blue!65!black}
+]
+\node[box, fill=ecpablue] (contracts) {Extension contracts\\capability, resource, lifecycle};
+\node[box, fill=ecpablue, right=of contracts] (compiler) {Contract compiler\\conflicts, order, coverage};
+\node[box, fill=ecpagreen, right=of compiler] (plan) {Immutable plan\\IDs, targets, obligations};
+\node[wide, fill=ecpaorange, right=of plan] (runtime) {Transactional runtime\\prepare $\rightarrow$ activate $\rightarrow$ observe};
+\node[wide, fill=ecpagray, right=of runtime] (adapter) {Typed host adapter\\translate plan, never redefine it};
+
+\node[wide, fill=ecpagray, below=10mm of adapter] (paths) {Host execution paths\\scheduler, workers, KV path, router};
+\node[wide, fill=ecpablue, left=of paths] (extensions) {Independent extensions\\policy, connector, tiering, observer};
+\node[wide, fill=ecpagreen, left=of extensions] (verify) {Evidence verifier\\host/provider events; identity, epoch, coverage};
+\node[box, fill=ecpaorange, left=of verify] (gate) {ExposureGate\\admit one generation};
+\node[box, fill=ecpared, left=of gate] (traffic) {External traffic\\or closed route};
+
+\draw[flow] (contracts) -- (compiler);
+\draw[flow] (compiler) -- (plan);
+\draw[flow] (plan) -- (runtime);
+\draw[flow] (runtime) -- (adapter);
+\draw[flow] (adapter) -- (paths);
+\draw[flow] (extensions) -- (paths);
+\draw[evidence] (paths.west) -- ++(-4mm,0) |- ([yshift=5mm]extensions.north) -| (verify.north);
+\draw[evidence] (extensions.west) -- (verify.east);
+\draw[flow] (verify) -- (gate);
+\draw[flow] (gate) -- (traffic);
+
+\node[draw, dashed, rounded corners=2pt, fit=(adapter)(paths), inner sep=4pt,
+  label={[font=\footnotesize]below:host-specific boundary}] {};
+\node[draw, dashed, rounded corners=2pt, fit=(contracts)(compiler)(plan)(runtime)(verify)(gate),
+  inner sep=5pt, label={[font=\footnotesize]above:ECPA host-neutral boundary}] {};
+\end{tikzpicture}
+}
+\caption{ECPA separates portable extension semantics from a narrow host adapter.
+The adapter maps an immutable plan into native execution paths; it cannot
+declare success.  Effect evidence returns from the authority that can observe
+each obligation, and only the ExposureGate can make a generation visible.}
+\label{fig:architecture}
+\end{figure*}
+
+\section{Background and Motivation}
+\subsection{Why Existing State Is Ambiguous}
+A package manager proves that files exist.  Entry-point discovery proves that
+metadata contains a name.  Configuration proves that an operator supplied
+parameters.  An enabled bit proves desired intent.  None proves that the
+selected implementation executed in every process that matters.  Conversely,
+an external service can become unreachable while enabled intent should remain
+for diagnosis and later recovery.  A linear state machine both overclaims
+success and destroys useful failure context.
+
+Vanilla entry points provide a deliberately lightweight extension mechanism
+\cite{vllm-plugin}.  Manual integration can add flags, environment variables,
+and operator checks.  Both are legitimate baselines.  Their limitation is not
+that they can never be made safe; it is that evidence obligations, ownership,
+and rollback are convention rather than a common machine-checkable contract.
+
+\section{Problem and Formal Model}
+\subsection{System Model}
+We model a host runtime $H$, providers $P$, plugins $G$, processes $W$, and
+resources $R$.  A plugin manifest declares required and provided capabilities,
+version predicates, claimed resources, provider needs, and evidence
+obligations.  A provider translates an accepted plan into host-specific
+configuration, but it does not supervise the host or acquire authority over an
+external service.  Each launch has a unique identity $\ell$ and an expected
+process set $W_\ell$.
+
+An activation plan $A=(H,P,G,W,R,V)$ is admissible only if capability
+requirements resolve under a frozen public-PEP-440 comparison profile,
+resource ownership is conflict-free or mediated by a selected claimant, and
+every evidence obligation names an exact role/event/direction/capability
+authority grant and its selected capability provider plus, when applicable, a
+positive quorum threshold.  Let $O_A^{required}$ be the required process,
+resource, provider-operation, and external-authority obligations compiled into
+$A$, and let $E$ be the observed evidence set.  Runtime effectiveness is:
+\begin{equation*}
+effective(A,\ell,E) \iff
+\forall o \in O_A^{required}: complete(o,A,\ell,E).
+\end{equation*}
+Each completion predicate checks the obligation's authority, identity,
+freshness, and value; process obligations additionally check membership or an
+explicit positive quorum.  The manager may not silently remove an obligation
+or weaken its predicate.
+
+ECPA deliberately separates five facts that conventional extension state often
+collapses.  $D(p)$ means a contract declares extension $p$; $P(p,A)$ means an
+admissible immutable plan selects it; $I(p,w,A,\ell)$ means a plan-bound host
+path invoked it in process $w$; $F(A,\ell,E)$ abbreviates the effectiveness
+predicate above; and $X(A,\ell)$ means the ExposureGate admitted the generation
+to external traffic.  Compilation ensures $P\Rightarrow D$, valid invocation
+evidence ensures $I\Rightarrow P$, and the gate enforces $X\Rightarrow F$.
+No reverse implication is assumed, and $F$ does not reduce to $I$: a plan can
+also require resource effects, provider operations, and external-authority
+facts.  Loading is therefore an activation event, not an effectiveness
+verdict.  A false-effective outcome is
+\begin{equation*}
+reported\_effective(A,\ell) \land \neg F(A,\ell,E),
+\end{equation*}
+where the right-hand side is computed from the preregistered target and
+obligation sets together with authority-owned observations, rather than from
+the manager's status bit.
+
+\begin{table}[t]
+\centering\small
+\caption{Extension facts and the authority permitted to establish them.}
+\begin{tabularx}{\columnwidth}{@{}lXX@{}}
+\toprule
+Fact & Evidence & Owning authority \\
+\midrule
+Declared & static manifest and distribution metadata & package registry \\
+Planned & immutable plan and resolved provider graph & contract compiler \\
+Invoked & launch-bound hook or dispatch event & host execution path \\
+Effective & every required obligation completes & obligation authorities \\
+Exposed & generation admitted to external traffic & ExposureGate \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Threat Model}
+We address accidental incompatibility, stale or replayed evidence, conflicting
+ownership, provider ambiguity, parent/worker version mismatch, partial rollout,
+observer loss, process crashes, and interrupted rollback.  Plugins and
+providers may be buggy and may report inconsistent metadata.  We assume the
+host, package database, and process identity channel are administratively
+trusted.  We do \emph{not} sandbox malicious Python, defend a compromised host,
+or claim that signed metadata makes arbitrary plugin code safe.  This boundary
+follows the upstream warning that plugins execute with application authority
+\cite{vllm-security}.
+For the evaluation harness specifically, the experiment host, runner,
+registered lifecycle sources, and registry-pinned generic observer are trusted
+evidence components; the SUT may fail but is not modeled as same-user code
+actively inspecting file descriptors or rewriting artifacts.  Harness records
+are runner-consistent and tamper-evident within this boundary, not
+cryptographically unforgeable evidence against a malicious SUT.
+The runner sends challenge-bound phase commands carrying plan, launch,
+controller-instance, and invocation identities, and binds Linux PID/start-time
+identities, exact argv, and exact source datagram bytes.  An acknowledgement is
+only control-plane progress and is never treated as proof that a workload,
+fault, hook, or policy effect occurred.  Formal lifecycle facts instead come
+from five separately registered commands: a readiness probe, workload driver,
+fault actuator, host observer, and process monitor.  Each source receives its
+own control pipe and kernel-credentialed Unix datagram channel and may emit one
+canonical receipt bound to the current challenge, sequence, execution identity,
+value, time, and observed SUT process.  The host observer owns only effect
+capture from the prototype host's native journal; it does not stand in for
+readiness, workload, fault, or shutdown authority.  A formal observable carrying
+\code{causal\_ack} is rejected.  The generic observer derives activation path,
+effective claim, invocation, and coverage observations from the host-owned
+event stream, but receives no phase message in a formal-real run.  The SUT is
+not given a telemetry path whose self-reported contents can be relabeled as
+trusted observation.
+
+Controlled fixture services are explicitly classified as interface-only and
+cannot produce a formal manifest or enter the paper aggregate.  The production
+adapter registry is empty until the real host seam, sources, and exact command
+fingerprints are reviewed, so no formal-real result is currently claimed.  The
+runner double-reads process start ticks around exact-argv capture to reject
+PID-reuse races, and validates the datagram's kernel PID/UID/GID against the
+registered source before committing its receipt.
+Known fixture artifacts and textual interpreter references are excluded both at
+launch and offline validation; this remains a trusted-registry boundary, not a
+sandbox for malicious registered code.  Manifest ingestion opens every path
+component without following symlinks and hashes the same bytes it parses.
+
+\subsection{Invariants and Failure Semantics}
+\system enforces four invariants.  \textbf{I1, evidence monotonicity:} a stronger
+state requires new evidence and cannot be inferred from a weaker state.
+\textbf{I2, single explicit ownership:} every exclusive resource has one owner
+or a declared mediator.  \textbf{I3, authority locality:} evidence is accepted
+only from the component that can observe the claimed event.  \textbf{I4,
+rollback preservation:} no new plan destroys the last committed valid plan
+before the replacement satisfies its commit gate.
+
+Failures are structured outcomes, not booleans.  A missing provider or
+unsupported version makes a plan inadmissible.  A service outage can preserve
+\emph{enabled} intent while marking health degraded and refusing a new launch.
+A missing worker attestation leaves the activation partial, never globally
+effective.  Stale evidence is rejected by launch, process, host, manifest, and
+runtime-version identity.  Rollback either restores the recorded predecessor
+or reports a bounded operator action; it never invents success.
+
+\subsection{Safety Argument}
+Assume that plan publication and generation compare-and-swap are atomic, each
+evidence source belongs to its declared administrative authority, the channel
+preserves sender identity, and target membership is frozen for one process
+epoch.  Then an ECPA-controlled route
+cannot expose a candidate generation before all of its required obligations
+are satisfied.  The planner fixes the obligations and target set in the plan
+digest.  Evidence validation rejects a different plan, launch, controller,
+process epoch, target identity, or invocation sequence.  The ExposureGate
+opens only for that digest after the validator reports a complete set, and its
+route fence names the same generation.  A delayed validator or controller
+therefore fails the generation compare-and-swap rather than opening a newer
+route.
+
+The argument covers admission safety, not arbitrary functional correctness.
+If any authorized obligation source---host, provider, or external
+authority---emits a semantically false event, or an effect outside the declared
+taxonomy matters, the premises do not hold.  Similarly,
+rollback preserves exposure safety by closing the candidate before restoring a
+predecessor, but cannot guarantee recovery of external state that the manager
+does not own.  These boundaries determine the observer-independence and
+failure-injection experiments rather than being treated as implementation
+details.
+
+We also encode the declared exposure transaction as a finite abstract model.
+Exhaustive fixed-point exploration reaches \ECPATransactionModelStates{} states
+and \ECPATransactionModelEdges{} valid edges, while rejecting
+\ECPATransactionModelRejections{} invalid state-action pairs.  None of the
+reachable states violates its \ECPATransactionModelInvariants{} checked
+invariants, including no candidate admission before a proof-bound open receipt,
+no admission in failed-safe or safety-unknown states, and predecessor-only
+strong rollback.  This is evidence about the stated abstraction under its
+recorded assumptions, not a proof that the implementation refines the model or
+that a real prototype-host deployment recovers correctly.  H3 therefore remains a
+planned formal-real claim.
+
+\subsection{Refinement Boundary}
+The safety claim spans three representations that must not be conflated.  The
+contract compiler produces a canonical plan and obligation set; the durable
+coordinator records an intended state transition; and the traffic authority
+controls the externally observed route.  Let durable coordinator state be
+$S=(g,q,p,c,f,\pi)$, where $g$ is the candidate generation, $q$ the lifecycle
+state, $p$ and $c$ the predecessor and candidate digests, $f$ the route fence,
+and $\pi$ the accepted proof digest.  Let the traffic authority report
+$R=(g_r,f_r,d_r)$ for its observed generation, fence, and route snapshot
+digest.  The abstract predicate \emph{exposed} is represented only when
+\begin{equation*}
+\begin{aligned}
+q &= \textsc{CandidateOpen}, \\
+(g_r,f_r,d_r) &= (g,f,c), \qquad valid(\pi,g,c).
+\end{aligned}
+\end{equation*}
+A database row alone is therefore not an exposure fact, and a route mutation
+alone is not a committed transition.
+
+The reference implementation uses an intent--effect--query--receipt protocol
+at every authority-crossing transition.  It first commits a transition intent,
+invokes the traffic adapter, queries the adapter's actual route, and commits a
+receipt only if generation, fence, and snapshot digest match.  Recovery treats
+an intent without a receipt as an uncertain operation and reconciles it from a
+fresh route query.  A failed or unobservable close enters \textsc{SafetyUnknown}
+rather than manufacturing fail-closed success.  Table~\ref{tab:refinement}
+states the refinement obligations explicitly; passing the finite abstract
+model establishes none of them by itself.
+
+\begin{table}[t]
+\centering\small
+\caption{Refinement obligations between the abstract transaction and the
+reference implementation.}
+\label{tab:refinement}
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+Obligation & Implementation boundary and falsification test \\
+\midrule
+R1: plan immutability & Bind the canonical plan and target digest before
+activation.  Falsify with mutation and mixed-generation inputs. \\
+R2: evidence binding & Insert a receipt only after identity, authority, epoch,
+and coverage checks.  Falsify with replay, source substitution, and PID reuse. \\
+R3: exposure agreement & Query the traffic authority and match the proof-bound
+generation, fence, and snapshot before an open receipt.  Crash at each
+intent/effect/query boundary. \\
+R4: stale-writer exclusion & Bind a lease token and durable revision
+compare-and-swap.  Recreate the manager, expire the lease, and delay a writer. \\
+R5: recovery conservatism & Reconcile unmatched intents from the traffic
+authority and block unknown routes.  Lose the query and fail compensation. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+These obligations separate the theorem we want from the implementation we
+have.  R1--R5 are exercised today only by the single-host reference gate and
+its fault-injection suite.  Establishing them for the prototype host requires the
+registered formal-real adapter, host-owned process evidence, and a real traffic
+authority.  Until then, the artifact supports an abstract safety result and a
+reference-implementation conformance result, not an end-to-end refinement
+claim.
+
+\section{Design}
+\subsection{Typed Static Manifests}
+Discovery reads distribution metadata and a static manifest without importing
+implementation modules.  The schema distinguishes bundle identity, component
+kind, semantic capability, host/API range, provider, required service, resource
+claims, and activation/evidence contracts.  Static discovery avoids executing
+plugin code merely to decide whether it is eligible.  Namespace ownership is
+typed and parameterized by the host profile: a manifest names the owning
+authority and exact registration group; an adapter may delegate to a
+host-native hook but may not mint a group owned by another authority.  No
+namespace or package prefix is built into the ECPA schema.
+
+The namespace incident becomes a schema fixture: package metadata must contain
+exactly the declared group and bundle identity, and a clean installed-package
+probe must observe it.  This closes the test gap that allowed a constant to
+change while mock-based tests continued to pass.
+
+\subsection{Capability Negotiation}
+Capabilities name semantics rather than package names.  A plugin can require a
+versioned preemption-policy interface, a connector contract, or process-owned
+invocation evidence.  The host and providers advertise concrete capabilities
+with provenance.  Negotiation produces a graph whose edges explain which
+authority satisfies each requirement.  Missing, ambiguous, or incompatible
+edges reject activation.  Untested version tuples remain \emph{unverified}, not
+implicitly compatible.
+
+\subsection{Conflict Planning}
+Plugins claim resources such as a command-line/configuration key, hook slot,
+scheduler policy, connector, service endpoint, or deployment field.  The
+planner constructs an ownership graph and detects duplicate exclusive claims,
+incompatible values, and conditional conflicts.  For example, two plugins that
+both write \code{--kv-transfer-config} conflict even if their package names and
+providers differ.  Two plugins sharing a read-only health provider need not
+conflict.  The output is a deterministic, reviewable plan rather than an
+order-dependent sequence of mutations.
+
+\subsection{Contract Compilation and Plan Identity}
+The compiler normalizes version predicates and identifiers, resolves each
+requirement to one selected provider, topologically orders dependencies, and
+checks resource claims against typed ownership modes.  It then expands
+lifecycle declarations into process-specific evidence obligations.  The
+canonical serialization freezes plugin versions, provider choices, host
+compatibility, configuration digests, target roles, ordering, and failure
+policy under one plan ID.  Every launch adds a fresh launch ID and process
+epoch without changing the compiled semantics.
+
+This compilation boundary provides a limited static guarantee: an admitted
+plan has no unresolved requirement, dependency cycle, ghost mediator, or
+multiply owned exclusive resource under the declared taxonomy.  It cannot show
+that a hook executes, that a provider mutates the intended resource, or that
+the taxonomy captures every semantic interaction.  Those are explicit runtime
+or evaluation obligations rather than hidden assumptions of the compiler.
+
+\subsection{Explicit Lifecycle}
+Operator intent is not evidence state.  Its durable vector is:
+\begin{center}
+\code{installed, configured, enabled}.
+\end{center}
+Installed is distribution evidence; configured is validated saved input;
+enabled is durable operator intent.  The separate evidence predicates are
+declared, planned, invoked, effective, and exposed.  In particular,
+runtime-effective means that every required plan obligation is complete, not
+merely that an implementation ran.  Reachability, health, degradation, and
+compatibility are orthogonal projections.  Thus an external outage does not
+erase intent, and saved intent does not certify a running process.
+
+\subsection{Authority- and Host-Owned Runtime Evidence}
+Each activation plan emits obligations keyed by launch identity, authority,
+process role or resource, plugin/component digest, host/runtime version, and
+capability.  A worker (or an observer in its authority domain) records load and
+invocation events; provider and external obligations name their own completion
+sources.  The aggregator verifies identity, freshness, authority, expected
+membership, and every declared completion predicate.  Parent-process import is
+insufficient for a worker-side hook, and invocation alone is insufficient for a
+declared resource or provider effect.  Evidence is compact lifecycle telemetry,
+not prompt content.
+
+In the running example, the static probe rejects the wrong namespace before
+launch.  If static discovery succeeds but one worker never invokes the hook,
+the plan may remain enabled and partially loaded, but cannot become globally
+runtime-effective.  This same distinction covers inert imports and mixed
+worker versions without special-case status strings.
+
+\subsection{Fail-Closed Activation and Deterministic Rollback}
+Planning is side-effect free.  Activation proceeds through prepare, validate,
+activate, observe, expose, and commit; shutdown and rollback are explicit
+terminal or compensating paths (Figure~\ref{fig:transaction}).  Exposure is distinct from activation: a
+candidate may run behind a closed gate while obligations accumulate, but it
+cannot receive external traffic until the gate accepts its complete identity
+and evidence set.  Missing required services, contradictory capabilities, or
+incomplete evidence stop before exposure.  The manager stores the canonical
+predecessor plan, rendered inputs, version identities, and authority owners.
+Rollback re-renders that predecessor and requires its own evidence gate.
+External-service lifecycle remains operator-owned; rollback can restore client
+configuration without pretending to downgrade a service it does not control.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  node distance=3.5mm and 4mm,
+  state/.style={draw, rounded corners=2pt, align=center, minimum height=6mm,
+    text width=14mm, inner sep=1.5pt},
+  flow/.style={-{Latex[length=1.6mm]}, thick},
+  fail/.style={-{Latex[length=1.6mm]}, thick, color=red!65!black}
+]
+\node[state, fill=ecpablue] (prepare) {Prepare};
+\node[state, fill=ecpablue, right=of prepare] (validate) {Validate};
+\node[state, fill=ecpaorange, right=of validate] (activate) {Activate};
+\node[state, fill=ecpaorange, below=of activate] (observe) {Observe};
+\node[state, fill=ecpagreen, left=of observe] (gate) {Gate};
+\node[state, fill=ecpagreen, left=of gate] (expose) {Expose};
+\node[state, fill=ecpagray, below=8mm of gate] (rollback) {Rollback};
+\node[state, fill=ecpagreen, left=of rollback] (restored) {Restored};
+\node[state, fill=ecpared, right=of rollback] (unknown) {FailedSafe / Unknown};
+
+\draw[flow] (prepare) -- (validate);
+\draw[flow] (validate) -- (activate);
+\draw[flow] (activate) -- (observe);
+\draw[flow] (observe) -- (gate);
+\draw[flow] (gate) -- node[above]{proof} (expose);
+\draw[fail] (validate) |- (rollback);
+\draw[fail] (activate) -- (rollback);
+\draw[fail] (observe) -- (rollback);
+\draw[fail] (gate) -- (rollback);
+\draw[flow] (rollback) -- (restored);
+\draw[fail] (rollback) -- (unknown);
+\end{tikzpicture}
+\caption{Activation is a transaction, not a callback list.  External traffic
+remains closed through observation and proof validation.  Any pre-exposure
+failure enters explicit compensation; unverifiable compensation is reported as
+safety-unknown rather than success.}
+\label{fig:transaction}
+\end{figure}
+
+\subsection{Authority Separation}
+Core owns manifests, intent, planning, and evidence validation.  Providers own
+translation and provider-specific checks.  The runtime owns process execution
+and invocation facts.  External operators own services, clusters, drivers, and
+data.  A provider protocol exposing plan/render/check therefore cannot silently
+apply, delete, or restart infrastructure.  This separation limits both failure
+blast radius and the claims that status may make.
+
+\section{Durable Coordinator}
+The reference coordinator is written in Python, but \system is not synonymous
+with its package or prototype host.  It comprises the versioned contract,
+planner/evidence semantics, transactional runtime, adapter interface, corpus,
+and conformance tests.  Core modules
+parse manifests, discover installed bundles, maintain user configuration,
+resolve compatibility, reject duplicate registrations and resource conflicts,
+and dispatch to host providers.  The CLI exposes list, inspect, configure,
+enable, check, and run-oriented paths.  Providers currently cover scheduler
+policies, KV connectors and services, memory/data-path controls, lifecycle
+observers, and rendered production-stack inputs.  The current evaluation uses
+one vLLM-compatible prototype host, but all host-specific command lines,
+namespaces, process-role mappings, and evidence decoders reside behind the
+adapter interface.  This separation is a design property; it is not evidence
+of cross-runtime portability.
+
+The implementation already keeps static bundle discovery separate from
+implementation entry points and distinguishes persistent intent from provider
+health.  It rejects mutating provider plans and documents that only a
+process-owned observer can establish runtime effectiveness.  Existing evidence
+includes provider-specific integration campaigns, but those campaigns were not
+designed as the matched experiment required by this paper.
+
+One major evaluation piece remains incomplete.  The implementation now has a
+pure contract compiler that resolves normalized public-PEP-440 requirements to
+exactly one provider, derives deterministic dependency order, rejects cycles,
+binds typed observation authority and quorum policy, and checks exclusive,
+shared-read, and selected-mediator resource ownership.  A frozen
+machine-readable taxonomy and independently labeled modeled oracle now measure
+the static admission mechanics, with the limitations reported in
+Section~\ref{sec:evaluation}.  Process-owned evidence still needs a completed
+real launch and aggregation experiment across parent/worker topologies.
+Consequently we claim measured modeled L2 admission, not a completed end-to-end
+\system evaluation.
+
+To reduce the remaining host-integration risk without promoting a synthetic
+run into a result, the artifact also includes a cross-repository adapter
+preflight.  Given an exact clean prototype-host commit and tree, it binds the host
+producer's source blobs and native engine/worker rank assignments, freezes
+the checked Git-object bytes against worktree drift, executes that tree's real
+preemption-policy controller, persists its resolution and
+dispatch through the deployment-owned journal, and translates the exact
+dispatch bytes into a Plan-bound invocation statement.  This establishes wire
+and adapter-path compatibility only: it starts no serving engine, proves no
+worker coverage, and is schema-forbidden from claiming a formal-real result.
+
+The coordinator persists an immutable canonical plan before launching work.
+Each plan has a monotonically increasing generation, predecessor, launch ID,
+process epoch, target set, obligations, and deadline.  Generation
+compare-and-swap prevents a delayed actor from committing over a newer plan.
+Append-only intent and receipt records make recovery deterministic: after a
+crash, the coordinator resumes observation, retries an idempotent action, or
+enters fail-safe rollback; it does not infer success from the last attempted
+step.
+
+The \emph{ExposureGate} is the only path from CommitReady to Effective.  It
+checks target-set completeness, evidence identity and freshness, unresolved
+conflicts, and predecessor durability.  Evidence is scoped to the authority
+that observed it: a worker may attest hook invocation, a provider may attest a
+translation or check, and a deployment controller may report rollout status.
+No authority can substitute its acknowledgement for another authority's
+effect.  Epoch changes invalidate old membership evidence, preventing a
+departed worker or replayed receipt from satisfying a new launch.
+
+The current single-manager SQLite implementation exercises WAL recovery,
+receipts, replay fencing, generation CAS, predecessor gating, and explicit
+FailedSafe or SafetyUnknown outcomes.  FailedSafe is claimed only after an
+actual route query proves traffic closed; an unobservable or failed closure is
+SafetyUnknown and blocks admission.  It is a reference for transaction semantics, not a
+distributed consensus service.  A production coordinator must additionally
+measure database contention, multi-host partitions, and high-availability
+failover.
+
+The implementation also includes an ECPA 0.1 candidate attestation profile:
+an encoding-independent statement is serialized with RFC 8785 JCS and signed
+as detached compact JWS using Ed25519/EdDSA.  Shared positive and negative
+vectors are accepted consistently by the Python producer/verifier and a
+separate Go implementation passing the shared corpus.  A coordinator adapter
+verifies signature and binding
+before ingestion, while SQLite retains nonce replay fencing and the coordinator
+retains epoch, obligation, coverage, and commit authority.  This milestone uses
+test keys; a production host issuer, trust root/key lifecycle, and
+formal performance measurements remain future work.
+
+\section{Extension Corpus and Case Studies}
+Our external-validity population is the \ECPAWorkshopMods{} MODs rendered by the
+vLLM-HUST plugin page, frozen by website commit, metadata blob, and SHA-256
+digest.  We resolved every page entry to a repository numeric identity,
+default branch, and exact head, then inspected packaging metadata, manifests,
+registration functions, implementation paths, and repository-local tests.
+Research projects from our own portfolio are not substituted for or appended
+to this population.
+
+Of these MODs, \ECPAWorkshopBundleNamespace{} installable distributions register
+the ECPA static-bundle namespace and are discoverable without importing plugin
+implementations.  DLA exposes a concrete false-effective candidate: it ships a
+static bundle under the near-miss namespace \texttt{vllm.extension\_bundles}, so
+the ECPA manager discovers no DLA bundle.  Other MODs use general entry points,
+direct host integration, or source-patch/scaffold delivery and therefore
+exercise adaptation rather than native bundle discovery.  Isolated
+source/package/CPU checks passed for \ECPAWorkshopTestPass{} MODs; another
+\ECPAWorkshopEnvironmentBlocked{} reached Ascend host dependencies unavailable
+in the audit environment.  These checks establish neither NPU execution nor
+runtime effectiveness.
+
+Separately, a historically reviewed \ECPAPlannerSeedExtensions{}-extension seed
+and \ECPAAdaptationCandidates{} candidates retain a 31-case static planner
+oracle.  That seed includes local provider examples and is used only to keep the
+modeled planner experiment reproducible; it is not cited as page-corpus
+coverage.
+
+The unit of analysis is an extension contract, not a favored optimization.
+The page population crosses scheduler decisions, speculative decoding, MoE
+offload, KV transfer/materialization/compression, graph and communication paths,
+scaling, and lifecycle observability (Figure~\ref{fig:case-coverage}).  BidKV is
+one scheduler-policy instance.  It does
+not define ECPA's contract schema, evidence vocabulary, or evaluation oracle.
+
+\begin{table}[t]
+\centering\small
+\caption{Representative cases selected from the 24-MOD page population.}
+\begin{tabularx}{\columnwidth}{@{}lXX@{}}
+\toprule
+Case & Extension/authority & ECPA obligation \\
+\midrule
+BidKV & scheduler preemption policy & scheduler-owned invocation and decision effect \\
+DiffSpec / vSpec & speculative decoding & bundle discovery, worker coverage, accepted-token effect \\
+LatchMoE & MoE offload & worker invocation, placement effect, and rollback boundary \\
+KVCompress & KV compression & cache-path invocation, representation and ownership evidence \\
+Lifecycle Profiler & general-plugin observer & required roles emit launch-bound lifecycle events \\
+BetterScale & direct worker-class integration & exact host/pins and worker-path effect evidence \\
+TraceLoom & scheduler/native analyzer & capture provenance separated from offline analysis \\
+DLA & bundle plus victim selector & reject the near-miss bundle namespace before activation \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[x=2.85cm,y=0.58cm,font=\footnotesize]
+\foreach \x/\name in {0/{Control / parent},1/{Engine / scheduler},2/{Worker / data path},3/{External authority}}
+  \node[align=center,font=\bfseries\footnotesize] at (\x,1.0) {\name};
+\foreach \y/\name in {0/BidKV, -1/{DiffSpec / vSpec}, -2/LatchMoE, -3/KVCompress, -4/{Lifecycle profiler}, -5/BetterScale, -6/TraceLoom, -7/DLA}
+  \node[anchor=east] at (-0.58,\y) {\name};
+
+\draw[fill=ecpablue] (0.68,-0.27) rectangle (1.32,0.27);
+\draw[fill=ecpablue] (1.68,-1.27) rectangle (2.32,-0.73);
+\draw[fill=ecpablue] (1.68,-2.27) rectangle (2.32,-1.73);
+\draw[fill=ecpablue] (1.68,-3.27) rectangle (2.32,-2.73);
+\draw[fill=ecpablue] (-0.32,-4.27) rectangle (0.32,-3.73);
+\draw[fill=ecpablue] (0.68,-4.27) rectangle (1.32,-3.73);
+\draw[fill=ecpablue] (1.68,-4.27) rectangle (2.32,-3.73);
+\draw[fill=ecpablue] (1.68,-5.27) rectangle (2.32,-4.73);
+\draw[fill=ecpablue] (0.68,-6.27) rectangle (1.32,-5.73);
+\draw[fill=ecpablue] (1.68,-6.27) rectangle (2.32,-5.73);
+\draw[dashed,thick,fill=ecpablue!35] (-0.32,-7.27) rectangle (0.32,-6.73);
+\draw[dashed,thick,fill=ecpablue!35] (0.68,-7.27) rectangle (1.32,-6.73);
+
+\node[anchor=west] at (-0.30,-8.05) {\tikz\draw[fill=ecpablue] (0,0) rectangle (.18,.18); observed integration surface};
+\node[anchor=west] at (1.55,-8.05) {\tikz\draw[dashed,thick,fill=ecpablue!35] (0,0) rectangle (.18,.18); namespace/adaptation gap};
+\end{tikzpicture}
+\caption{Representative integration surfaces in the 24-MOD page population.
+Solid cells are source-observed host/process surfaces; dashed DLA cells mark a
+namespace/adaptation gap, not a successful activation. Empty cells do not imply
+that a MOD was omitted from the audit.}
+\label{fig:case-coverage}
+\end{figure*}
+
+\begin{table*}[t]
+\centering\scriptsize
+\caption{All 24 page MODs were inspected at their frozen repository heads. ``Pass''
+is package or repository-local CPU/source evidence, never an NPU or runtime-effect claim.}
+\begin{tabularx}{\textwidth}{@{}l l l X@{}}
+\toprule
+MOD & Integration surface & Package & Local source/CPU result \\
+\midrule
+BidKV & ECPA bundle & pass & 385 passed, 25 skipped \\
+DiffSpec & ECPA bundle + general plugin & pass & environment-blocked at Ascend/HCCL import \\
+vSpec & ECPA bundle + general plugin & pass & environment-blocked at vLLM Ascend/HCCL import \\
+LatchMoE & ECPA bundle + general plugin & pass & environment-blocked at vLLM Ascend import \\
+Adaptive Quantized KV & ECPA bundle & pass & 36 passed, 2 skipped \\
+Quant Runtime Descriptor & ECPA bundle & pass & 7 passed \\
+KVCompress & ECPA bundle + general plugin & pass & 110 passed, 1 skipped; 4 host/NPU-blocked \\
+KV Tiering & source scaffold & n/a & no automated tests \\
+K-Norm & source scaffold & n/a & no automated tests \\
+PyramidKV & ECPA bundle & pass & 33 passed \\
+Quantized KV Cache & general plugin & pass & 8 passed, 2 skipped \\
+SimLLM & ECPA bundle & pass & 5 passed \\
+Unified Communication & ECPA bundle & pass & 4 passed \\
+Split Batch / Full Graph & ECPA bundle & pass & 4 passed \\
+KV Transfer Observability & ECPA bundle & pass & 125 passed \\
+Layered Prefill & ECPA bundle & pass & 5 passed \\
+Activation Sparsity & ECPA bundle & pass & 4 passed \\
+Pipeline Microbatch & ECPA bundle & pass & 8 passed \\
+QoS Scheduler & ECPA bundle & pass & 4 passed \\
+BetterScale & direct worker class & qualified staging required & 97 passed, 10 subtests \\
+Request Lifecycle Profiler & general plugin & pass & 234 passed, 9 skipped \\
+KV Materialization Control & general plugin & pass & 83 passed; 3 host/HCCL-blocked \\
+DLA & near-miss bundle namespace & pass & 16 passed, 1 skipped \\
+TraceLoom & direct scheduler/analyzer & pass & 50/50 native tests passed \\
+\bottomrule
+\end{tabularx}
+\label{tab:all-workshop-mods}
+\end{table*}
+
+The cases exercise distinct failure semantics.  A speculative-decoding MOD can
+load while never producing an accepted draft token.  An offload, compression,
+or scaling implementation can execute setup code without changing placement,
+representation, or the selected worker path.  A lifecycle observer can run in
+the parent while one worker emits no events.  Trace capture can succeed while
+offline analysis is incorrectly treated as runtime proof.  A scheduler policy,
+including BidKV or DLA, can be selected without ever affecting a scheduling
+decision; DLA additionally demonstrates that a near-miss registration namespace
+can hide an otherwise packaged bundle.  For each MOD, the corpus records source
+identity, integration class, package result, CPU/source result, and evidence
+limit.  None is promoted to ECPA L3 merely because repository-local tests pass.
+
+These cases become fixtures rather than anecdotes: each needs a positive cell,
+an inert-import or missing-process cell, an identity/version mismatch, and a
+conflict or authority-boundary cell.  The corpus therefore supplies generality
+pressure to the contract while the conformance suite prevents the reference
+implementation from defining correctness by itself.
+
+The page population supplies breadth across \ECPAWorkshopMods{} MODs, multiple
+delivery models, plugin classes, and distinct process/authority scopes.
+Historical corpus metadata may mention another supported runtime, but that is
+not a cross-runtime ECPA experiment.  Our generality evidence is therefore the
+combination of corpus diversity, prototype-host process scopes, the fault model, and
+the explicit contract/host boundary---not cross-framework validation.
+
+For the L2 study, we freeze a canonical resource-and-alias taxonomy,
+\ECPAPlannerCases{} modeled
+single/pair/triple compositions, and a separately stored manual candidate
+oracle before implementing the evaluator.  The models cover all
+\ECPAPlannerSeedExtensions{} seed extensions and add explicitly marked
+synthetic controls for otherwise absent
+conflict boundaries; the \ECPAAdaptationCandidates{} adaptation candidates
+remain excluded.  The
+oracle passed independent exact-digest label review.  This preregistration is
+evaluated after review: the reference planner matches all \ECPAPlannerAdmits{}
+admits and \ECPAPlannerRejects{}
+rejects, including reject error codes.  Reject precision, reject recall, and
+admit recall are respectively \ECPAPlannerRejectPrecision{},
+\ECPAPlannerRejectRecall{}, and \ECPAPlannerAdmitRecall{}; a reject-all baseline
+has precision $\ECPAPlannerRejects/\ECPAPlannerCases$ and admit
+recall 0.  This result establishes conformance only to the small modeled static
+corpus.  Every conflict case contains a synthetic boundary control, so the
+result does not establish real-plugin conflict prevalence, runtime
+effectiveness, or external validity.
+
+\section{Evaluation Methodology and Current Evidence}
+\label{sec:evaluation}
+The executable false-effective harness preregisters \ECPAFormalArms{} matched arms:
+vanilla vLLM entry points, manual integration, and ECPA.  Formal cells require
+\ECPAMinimumStarts{} independent service starts per arm under a
+\ECPAScheduleRows{}-by-\ECPAFormalArms{} Latin-square order.  A separate oracle
+derives outcomes from preregistered truth predicates
+and raw runtime observations; implementation decisions are not accepted as
+ground truth.  The current checked matrix has zero completed formal-real cells,
+so activation, rollback, and performance metrics remain null; the modeled L2
+result above is separate.  A \ECPAReferenceStarts{}-start helper-process run tests the
+harness lifecycle and failure classification, but is explicitly
+reference-synthetic and excluded from paper aggregates.  Formal ingestion is
+runner-owned and content-addresses the command, semantic environment, raw
+observations, preregistered scenario/protocol, and independently recomputed
+oracle.  Aggregation is stratified by scenario and arm with the matched
+repetition as the paired unit; failure and missingness remain explicit.  A
+fail-safe closure is reported as a rollback class, not counted as restored
+rollback success.
+The checked claim graph maps \ECPAResearchClaims{} falsifiable claims to their
+counterexamples, authority-owned facts, and non-substitutable experiments.
+The first formal comparison is the partial-worker-coverage scenario across all
+\ECPAFormalArms{} arms and \ECPAFirstStudyStarts{} independent starts.  It
+remains pre-admission while the producer, deployment identity, commands, and
+adapter registry are not all frozen; preregistration is not a result.
+We separate four artifacts that would otherwise collapse into one ``ready''
+bit.  The study preregistration fixes the comparison and falsifier; a
+repository-owned producer receipt records merge and review facts; a deployment
+registration packet binds the matched identities and command fingerprints; and
+the runtime adapter registry is the only artifact that authorizes those
+commands.  The checked deployment packet currently retains
+\ECPADeploymentBlockers{} blockers and has
+\ECPARegisteredDeploymentArms{} of \ECPAFormalArms{} arms registered.  Null
+slots are intentional: neither a developer-machine command nor a candidate PR
+is inherited as deployment identity.  Admission requires all arm and lifecycle
+source registrations in one transition, so a partially frozen comparison
+cannot enter the aggregate.
+The hypotheses are aligned with issues M0--M3.  \textbf{H1:} in preregistered
+failure cells, \system has zero
+false-effective outcomes and at least 99\% required-event coverage.
+\textbf{H2:} conflict precision and recall each reach 0.95 against an
+independent oracle, without rejecting all compositions.  \textbf{H3:} every
+unsupported tested tuple fails before serving and at least 95\% of injected
+upgrade/rollback failures meet the declared recovery objective or bounded
+operator action.  \textbf{H4:} relative to manual integration, added median
+startup cost is at most 5\% or 250\,ms, throughput regression at most 1\%, and
+p99 request-latency regression at most 2\% in every supported formal cell.
+
+\subsection{Baselines and Workloads}
+We compare (1) vanilla vLLM entry-point discovery/loading
+\cite{vllm-plugin,vllm-arch}, (2) manual integration using documented flags,
+configuration, and operator checks, and (3) \system.  Arms pin identical host,
+plugin, provider, model, workload, hardware, process topology, and warm/cold
+state.  Formal cells use at least \ECPAMinimumStarts{} independent service starts and
+alternating arm order.  Agent, repeated-prefix, and online chat workloads cover
+different lifecycle and connector behavior; CPU-only fixtures isolate planner
+correctness.
+
+\subsection{Matrices and Metrics}
+The failure matrix injects missing distributions, malformed manifests,
+unsupported versions, provider ambiguity, parent/worker mismatch, inert hooks,
+service outage, replayed evidence, partial rollout, process crash, and
+interrupted rollback.  The composability matrix covers single plugins,
+compatible and incompatible pairs, and three-plugin sets across flags, hooks,
+schedulers, connectors, services, and provider translations.  The version
+matrix crosses current, previous, and next host versions with below/in/above
+plugin ranges, old manifests, and mixed workers.
+
+Primary metrics are activation-event coverage, false-effective rate, conflict
+precision/recall, rollback success and recovery time, unsupported-tuple
+admission, and cross-process agreement.  Costs include phase-separated startup
+time, throughput, latency quantiles, CPU time, memory, process messages, and
+evidence bytes.  Raw observations follow the checked-in JSON schema; failures
+remain rows rather than being removed from aggregates.
+
+Each experiment also targets a premise of the safety argument.  Worker
+replacement and partial coverage challenge frozen epoch membership.  Replayed
+receipts, cross-source substitution, and SUT self-report challenge identity and
+authority locality.  Crashes before and after route mutation challenge the
+intent--effect--query--receipt refinement.  Lease expiry and controller
+recreation challenge stale-writer exclusion.  Query loss and compensation
+failure challenge conservative recovery.  A cell is informative only if the
+injection is independently observed; asking the SUT whether its own fault
+occurred cannot falsify the corresponding premise.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Current evidence and formal-evaluation status.  No planned value is a
+result.}
+\begin{tabularx}{\columnwidth}{@{}lXl@{}}
+\toprule
+Claim area & Current evidence & Status \\
+\midrule
+Static planning & \ECPAPlannerCases{} labeled cases: \ECPAPlannerAdmits{} admit,
+\ECPAPlannerRejects{} reject & modeled \\
+Page population & \ECPAWorkshopMods{} frozen MOD heads; \ECPAWorkshopBundleNamespace{}
+ECPA bundles & observed \\
+Planner seed binding & \ECPASourceRepositories{} repositories and
+\ECPASourceObjects{} Git objects & observed \\
+Namespace safety & installed entry: expected 1; changed lookup: 0 & negative \\
+Transaction model & \ECPATransactionModelStates{} states,
+\ECPATransactionModelEdges{} valid edges; no abstract counterexample & modeled \\
+Formal-real & \ECPAFormalCompleted{} complete, \ECPAFormalPlanned{} planned;
+\ECPAVerifiedAdapters{} registered adapters & planned \\
+Rollback & reference faults only; real injection pending & planned \\
+Overhead & matched \ECPAFormalArms{}-arm experiment & planned \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\caption{Authority chain for the first formal-real cell.  Each row is a
+different fact; later rows cannot infer earlier ones.}
+\begin{tabularx}{\columnwidth}{@{}lXX@{}}
+\toprule
+Artifact & Establishes & Current state \\
+\midrule
+Study preregistration & arms, order, falsifier, outcomes & frozen; no result \\
+Producer receipt & reviewed evidence seam merged into prototype host & absent \\
+Deployment packet & matched identities and reviewed commands &
+\ECPADeploymentBlockers{} blockers \\
+Runtime registry & exact commands permitted to execute &
+\ECPAVerifiedAdapters{} adapters \\
+Run generation & raw observations for one independent start & 0 of
+\ECPAFirstStudyStarts{} starts \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Reference ExposureGate Artifact}
+The current gate artifact is a deterministic, single-host state machine backed
+by SQLite and an in-process scheduler-admission model.  It exercises
+evidence-gated opening, per-request generation attribution, crash recovery,
+draining, and rollback classification with synthetic signed receipts.  It is
+not a production proxy, Kubernetes readiness evidence, or a production
+performance result.  The checked fault matrix is generated by executing the
+reference scenarios and is not evidence that a real plugin or router obeys the
+same protocol.  Real plugin receipts and an authority-owned traffic adapter are
+still required by the planned evaluation.
+
+\subsection{Preliminary Evidence and Missing Results}
+At the incident's pre-fix baseline, 66 CPU tests pass.  On commit
+\code{3201e133}, those tests also pass despite the namespace change.  A clean
+installed-package probe then observes one Mooncake entry point in the documented
+group, zero in the changed group, and zero discovered bundles.  This is a real
+counterexample to ``unit tests plus installation imply activation,'' and it has
+been retained as the M0 negative fixture rather than merged.
+
+The source-bound modeled L2 corpus additionally contains \ECPAPlannerCases{}
+frozen composition cases over \ECPAPlannerSeedExtensions{} seed extensions.
+The compiler matches all \ECPAPlannerAdmits{} admits and \ECPAPlannerRejects{}
+rejects, including reject classes, after independent oracle review.  Exact
+repository commits, root trees, and \ECPASourceObjects{} cited Git objects
+across \ECPASourceRepositories{} repositories
+bind the corpus to inspected source.  These numbers measure conformance to the
+modeled taxonomy, not real conflict prevalence or runtime effectiveness.
+
+All runtime and performance quantities remain planned.  Table and figure
+generators must refuse to replace missing values with zero.  The final paper
+will include per-cell confidence intervals and raw failure counts.  Until
+H1--H4 are measured, the strongest defensible runtime claim is that the
+architecture makes evidence obligations explicit and the harness fails closed;
+it does not establish production effectiveness.
+
+\section{Related Work}
+\textbf{Inference and module plugins.}  vLLM's Plugin System loads registered
+general plugins during process initialization, while Endpoint Plugins extend
+the API server \cite{vllm-plugin,vllm-endpoint}.  These are the nearest loading
+mechanisms, and ECPA uses rather than replaces them.  Their registration and
+load events do not define a cross-process target set, exclusive resource plan,
+or transaction commit criterion.  OSGi offers mature bundle lifecycles and a
+dynamic service registry \cite{osgi-core}; ECPA differs in binding a selected
+plan to fresh evidence from a finite inference-process epoch.
+
+\textbf{Control-plane reconciliation.}  Envoy xDS separates configuration
+delivery and ACK/NACK \cite{envoy-xds}.  An ACK establishes protocol-level
+acceptance of a resource, not that an application-specific effect occurred in
+every downstream inference worker.  Kubernetes Device Plugins and CSI define
+specialized registration and resource/storage lifecycles
+\cite{k8s-device-plugin,csi-spec}; Kubernetes generations and conditions help
+controllers distinguish desired from observed state \cite{k8s-api-conventions}.
+ECPA borrows that discipline but contributes an activation commit spanning
+plugin, provider, and worker authorities.  It is not a general reconciler.
+
+\textbf{Consistent update and dynamic upgrade.}  Consistent network updates
+use versioned configurations and controlled exposure to prevent packets from
+observing invalid intermediate network states \cite{reitblatt-update}.  ECPA
+shares the concern for externally visible intermediate states, but its unit of
+consistency is an inference-extension plan whose obligations span host
+processes, providers, and external authorities; it does not provide per-packet
+network-update semantics.  Dynamic software update systems such as Kitsune
+make update points and state transformation explicit while preserving a
+running program \cite{kitsune}.  ECPA neither rewrites live code nor proves
+state-transformer correctness.  It coordinates separately installed
+extensions and refuses exposure when their declared cross-process effects lack
+fresh evidence.
+
+\textbf{Runtime hooks and provenance.}  OCI runtime hooks provide ordered
+extension points around container lifecycle \cite{oci-runtime}; they do not
+negotiate semantic capabilities or prove application-level invocation.
+in-toto binds software-supply-chain steps and artifacts to authorized actors
+\cite{in-toto}, while SPIFFE/SPIRE issue workload identities
+\cite{spiffe,spire}.  These systems can authenticate ECPA artifacts and evidence
+producers.  They do not by themselves determine whether a planned extension
+became effective, and ECPA does not claim their cryptographic or identity
+properties.
+
+\section{Limitations and Discussion}
+ECPA 0.1 is a candidate interoperability specification, not an industry
+standard.  Its cumulative levels distinguish static discovery (L0), schema and
+namespace validity (L1), conflict-free negotiated plans (L2), process-owned
+runtime evidence (L3), and injected rollback verification (L4).  Conformance
+is always for a pinned runtime/plugin/process cell; passing L1 cannot be
+advertised as runtime compatibility.
+
+The contract is versioned independently of the Extension Manager.  Reverse-DNS
+capability and resource namespaces identify ownership.  Optional additive
+fields may evolve within a compatible revision, whereas removal, semantic
+change, or tighter accepted values require a major change and a deprecation
+window.  Providers remain translators and observers; adopting the manifest
+does not transfer runtime or external-service authority.
+
+The standardization path is deliberately evidence-gated: stabilize the
+internal contract; validate diverse plugins; obtain maintained adoption in
+independent host and extension repositories; submit an upstream RFC and incorporate public
+feedback; demonstrate interoperability between independently written
+implementations; and only then establish neutral governance and evolution.
+A de-facto-standard claim additionally requires external users, public
+conformance results, compatibility history, and governance beyond one
+repository.  Until then, ``standardizable contract'' is the strongest claim.
+
+\subsection{Evidence and External Validity}
+Evidence has cost and can itself fail.  A synchronous per-request proof would
+be unacceptable; the design therefore targets lifecycle and sampled invocation
+events, but H4 must show that this does not move meaningful work onto the
+request path.  Process membership is also subtle under elastic workers.  The
+plan must declare whether membership is fixed, epoch-based, or quorum-based;
+otherwise a disappearing worker could make success vacuous.
+
+Conflict taxonomies can be incomplete.  Precision and recall are measured
+against an independently labeled oracle, but that oracle may miss semantic
+interactions.  We mitigate this with explicit unknown/unverified outcomes and
+negative cells, not a universal composability claim.  Deterministic rollback
+can restore manager-owned inputs, not external data or services; bounded
+operator action is therefore a first-class outcome.
+
+The current implementation now includes a single-host, single-manager SQLite
+reference coordinator with durable plans, WAL/receipts, process epochs,
+replay-fenced evidence, generation CAS, predecessor gating, crash recovery,
+and fail-safe rollback outcomes.  Deterministic adapters and adversarial traces
+exercise these semantics; no real vLLM host, attestation trust root, traffic
+gate, elastic membership, or external provider is integrated yet.  SQLite is a
+reference implementation choice rather than a protocol requirement.  Earlier
+provider demonstrations establish feasibility in selected cells, not general
+correctness.  The paper should be stopped or reframed as an engineering report
+if runtime intent cannot be separated from process effect, conflict thresholds
+remain unmet after one correction cycle, rollback loses the predecessor plan,
+or overhead exceeds the frozen bounds.
+
+The frozen executable model makes these limits precise.  Intent authority,
+planning authority, host-runtime evidence authority, provider translation,
+and external-service authority are distinct.  Activation proceeds through
+Intent, Resolved, Planned, Preparing, Prepared, Launching, Observing,
+CommitReady, and Effective; failures may enter Degraded, Reconcile, Rollback,
+RolledBack, or FailedSafe.  Append-only WAL intent and receipts support fenced
+logical-once replay, while generation compare-and-swap prevents stale commits.
+Attestations bind plan, launch, artifact, process epoch, obligation, validity,
+and nonce.  Rollback is conditional on manager ownership and may fail safe.
+This pure executable reference model and its adversarial traces are a design
+oracle, not a production control plane, distributed side-effect transaction,
+physical exactly-once guarantee, or completed performance evaluation.
+
+External validity is bounded by this single-runtime study.  Deep validation
+across multiple extension classes, process roles, versions/topologies, and injected
+failures can show that the mechanism is not tied to one plugin, but cannot show
+that an independent inference framework adopts the same abstractions.
+Cross-runtime validation is deferred future work.  Accordingly, neither this
+paper nor the \ECPAWorkshopMods{}-MOD page population
+supports a cross-framework or industry-standard claim.
+
+\section{Conclusion}
+Inference plugin systems need a truth model stronger than successful
+installation or saved enablement.  \system treats activation as a typed,
+conflict-checked plan with explicit authorities and evidence obligations.  It
+separates lifecycle predicates, requires runtime facts from the processes that
+own them, fails closed, and preserves a deterministic rollback target.  A real
+namespace regression already demonstrates the value of installed-package
+evidence over mock-only tests.  The broader systems claim remains contingent on
+the preregistered multi-process, composability, version-skew, recovery, and
+overhead evaluation.  This evidence boundary is intentional: the architecture
+is useful only if its own status claims are as disciplined as those it imposes
+on plugins.
+
+\bibliographystyle{plain}
+\bibliography{references}
+\end{document}
