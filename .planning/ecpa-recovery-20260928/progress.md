@@ -61,4 +61,5 @@
 - [x] Pass local Ruff lint, changed-file format, mypy, 601 pytest tests,
   research/evidence/result validation, Tectonic, package build, and clean-wheel
   CLI validation.
-- [ ] Open the organization PR and verify Python 3.10/3.12 plus wheel CI.
+- [x] Open organization PR #29 from `codex/port-pr53-system-overview`.
+- [ ] Verify Python 3.10/3.12 plus wheel CI and merge into organization `main`.
