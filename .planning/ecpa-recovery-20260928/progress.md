@@ -51,3 +51,15 @@
   and verify main at `efaae1052a672ba4df7f6139ad2d1eabda80abea`.
 - [x] Keep compatibility freeze: no current-head NPU, live observer receipt, or
   performance evidence was produced by this follow-up.
+
+## Research PR #53 migration (2026-10-06)
+
+- [x] Verify organization and archived-research `main` trees are identical and
+  confirm PR #53's two commits were not merged.
+- [x] Preserve the original author commits on an isolated organization branch.
+- [x] Remove `.DS_Store` and correct the evidence-authority diagram and caption.
+- [x] Pass local Ruff lint, changed-file format, mypy, 601 pytest tests,
+  research/evidence/result validation, Tectonic, package build, and clean-wheel
+  CLI validation.
+- [x] Open organization PR #29 from `codex/port-pr53-system-overview`.
+- [x] Verify Python 3.10/3.12 plus wheel CI and mark PR #29 ready to merge.

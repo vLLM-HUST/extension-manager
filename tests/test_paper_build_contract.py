@@ -20,3 +20,19 @@ def test_makefile_exposes_same_source_tectonic_build() -> None:
     assert "TECTONIC ?= tectonic" in makefile
     assert "tectonic: main.tex references.bib" in makefile
     assert "$(TECTONIC) --keep-logs main.tex" in makefile
+
+
+def test_detailed_architecture_preserves_evidence_authority_boundaries() -> None:
+    detail_path = ROOT / "docs/design/ecpa-reference-manager-detailed.md"
+    detail = detail_path.read_text()
+    paper = (ROOT / "paper/main.tex").read_text()
+    normalized_paper = " ".join(paper.split())
+
+    assert (detail_path.parent / "../evaluation-plan.md").resolve().is_file()
+    assert "ecpa_model.py: Plan.obligations" in detail
+    assert "ecpa_model.py: Plan.targets" not in detail
+    assert "not runtime_effective" in detail
+    assert "reference lease interface; fake binding only" in detail
+    assert "return independent effect evidence" not in normalized_paper
+    assert "Only the vLLM host path currently feeds" in normalized_paper
+    assert "they are not process-owned runtime-effect attestations" in normalized_paper
