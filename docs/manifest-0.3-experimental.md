@@ -80,3 +80,18 @@ owns and every Bundle whose carrier must be enabled; absence of a declaration
 is not evidence that a combination is safe.
 
 This schema remains under compatibility freeze. It is not a stable v1 promise.
+
+## Explicit vLLM process carriers
+
+An active component with contract `vllm.worker-class.v1` asks the vLLM Provider
+to project its `module:object` implementation as the native `--worker-cls`
+launch option. Exactly one such component may appear in a Bundle. Core rejects
+a different user-supplied Worker before launch, and an exclusive claim such as
+`vllm.process-carrier.worker` prevents two enabled Bundles from competing for
+the same process carrier.
+
+The contract only describes launch intent. A MOD must still pin a truthful
+host range, keep installation inert, define restart-based rollback, and obtain
+process-owned observer evidence before reporting `runtime_effective`. ECPA does
+not install donor runtimes, choose devices, or qualify performance through the
+presence of `--worker-cls`.

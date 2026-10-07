@@ -485,6 +485,35 @@ def test_vllm_provider_merges_declared_preemption_policy() -> None:
     assert command[-2:] == ["--preemption-policy", implementation]
 
 
+def test_vllm_provider_merges_declared_worker_class() -> None:
+    implementation = "betterscale.worker.Worker"
+    plan = ProviderPlan(
+        "org.vllm-hust.betterscale",
+        "vllm",
+        (),
+        {"vllm_options": {"--worker-cls": implementation}},
+    )
+
+    command = _merge_provider_plan(["vllm", "serve", "model"], plan)
+
+    assert command[-2:] == ["--worker-cls", implementation]
+
+
+def test_vllm_provider_rejects_conflicting_worker_class() -> None:
+    plan = ProviderPlan(
+        "org.vllm-hust.betterscale",
+        "vllm",
+        (),
+        {"vllm_options": {"--worker-cls": "betterscale.worker.Worker"}},
+    )
+
+    with pytest.raises(ValueError, match="conflicts"):
+        _merge_provider_plan(
+            ["vllm", "serve", "model", "--worker-cls=other.Worker"],
+            plan,
+        )
+
+
 def test_vllm_provider_merges_declared_boolean_flag() -> None:
     plan = ProviderPlan(
         "org.vllm-hust.dla",

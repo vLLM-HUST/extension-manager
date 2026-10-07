@@ -133,6 +133,38 @@ benchmark harness, hardware platform, external operator, or unversioned host
 patch into an ECPA-owned runtime. Such candidates need a real carrier and host
 contract or must remain outside activation.
 
+### Final re-audit and direct-carrier coverage (2026-10-07)
+
+Five additional main-branch distributions were validated after the preceding
+matrix. Each publishes one valid Manifest 0.3 registration:
+
+| MOD | Merged evidence | Current ECPA posture |
+| --- | --- | --- |
+| Ascend Distributed Metadata PR #2 / main `462e0750` | Clean-wheel CI passed again on merged main. | Activation-ready intent with an exclusive DP-metadata-sync claim and an exact runtime-qualification profile; no broader host or NPU claim. |
+| Tricard PR #2 / main `1d141da1` | Eleven local tests, Ruff, wheel inspection, clean-wheel lifecycle, and Python 3.10/3.11/3.12 merged-main CI passed. | Activation-ready request-lifecycle sink. Its entry-point name is distinct from the canonical CLM package, the observer claim is shared, and the external controller remains operator-owned. |
+| Cost Pricing Model PR #1 / main `0dbebad7` | Eleven tests, Ruff, wheel, a real pinned private-workload integration run, deterministic CI contract fixture, and Python 3.10/3.12 merged-main clean-wheel CI passed. | Inspect-only `legacy_unregistered` descriptor; the marker-only plugin cannot be enabled. |
+| Quality-Bounded Inference PR #5 / main `3e321aef` | 1,067 CPU tests, focused schema checks, wheel inspection, local lifecycle, and Python 3.10/3.12 merged-main CI passed. | Inspect-only `legacy_unregistered` descriptor; policy import is not a serving hook. |
+| Request Lifecycle Profiler PR #30 / main `63af34ef` | 238 CPU tests with 9 skips, critical Ruff checks, wheel and local lifecycle, existing Python 3.10/3.11 CI, and Python 3.10/3.12 merged-main ECPA CI passed. | Inspect-only `legacy_unregistered` descriptor. Current host main has the native event bus, but this carrier still targets a historical KV-recovery ABI and registers no native sink. |
+
+Starting from the previously co-installed 30-distribution/33-registration
+baseline, these additive clean-wheel results make the current inventory 35
+ECPA distributions, 38 registrations, and 38 valid Bundles. Twenty-one express
+activation intent and seventeen intentionally fail closed as inspect-only.
+This arithmetic is tied to the exact merged commits above; it is not a runtime
+or performance qualification.
+
+The vLLM Provider now understands an explicit `vllm.worker-class.v1` component
+and projects its `module:object` implementation to `--worker-cls`. It rejects
+multiple declarations, a conflicting user argument, and competing exclusive
+process-carrier claims before launch. This closes the Manager-side carrier gap
+found while auditing BetterScale, but BetterScale remains outside the valid
+Bundle count: its public package is pinned to vLLM/vLLM-Ascend 0.25.1, requires
+qualified CANN/aarch64 payloads that are deliberately absent from the source
+tree, has no current-host observer contract, and requires Fletcher's authority
+for a new package release. BetterScale #9 remains the owner gate. FreshKV #1
+also remains open because the repository exposes an engine-independent library
+but no host carrier; ECPA will not invent one.
+
 ## Rollback ownership
 
 - In-process vLLM policies and connectors roll back on the next vLLM process
