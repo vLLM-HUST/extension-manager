@@ -232,7 +232,13 @@ def _http(
         raise LifecycleSourceError(
             "formal HTTP source exceeded its wall-clock deadline"
         ) from exc
-    except (OSError, urllib.error.URLError) as exc:
+    except urllib.error.URLError as exc:
+        if isinstance(exc.reason, TimeoutError):
+            raise LifecycleSourceError(
+                "formal HTTP source exceeded its wall-clock deadline"
+            ) from exc
+        raise LifecycleSourceError("formal HTTP source request failed") from exc
+    except OSError as exc:
         raise LifecycleSourceError("formal HTTP source request failed") from exc
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)

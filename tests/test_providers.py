@@ -651,6 +651,9 @@ def test_mooncake_operation_failures_degrade_an_otherwise_healthy_service(
         return _HTTPResponse(b"ok")
 
     monkeypatch.setattr("vllm_hust_ext.providers.mooncake.urlopen", respond)
+    monkeypatch.setattr(
+        "vllm_hust_ext.providers.mooncake._installed_distributions", lambda: ()
+    )
     check = MooncakeProvider().check(
         value,
         {

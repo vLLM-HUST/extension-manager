@@ -579,7 +579,7 @@ def test_duplicate_start_id_is_rejected(tmp_path):
         validate_batch(records, tmp_path, formal=True)
 
 
-def formal_complete_records(tmp_path):
+def formal_complete_records(tmp_path, *, single=False):
     records = []
     protocol = json.loads((ROOT / "protocol.json").read_text())
     scenario = scenarios()[0]
@@ -595,6 +595,8 @@ def formal_complete_records(tmp_path):
         ("manual-integration", "ecpa", "vanilla-vllm-entry-points"),
         ("ecpa", "vanilla-vllm-entry-points", "manual-integration"),
     )
+    if single:
+        schedule = ((schedule[0][0],),)
     for repetition, order in enumerate(schedule, 1):
         for arm_order, arm in enumerate(order, 1):
             identity = {
@@ -645,6 +647,10 @@ def formal_complete_records(tmp_path):
             record["artifact_root"] = f"{artifact_prefix}/{record['artifact_root']}"
             records.append(record)
     return records
+
+
+def formal_complete_record(tmp_path):
+    return formal_complete_records(tmp_path, single=True)[0]
 
 
 def test_matched_arm_metadata_mismatch_is_rejected(tmp_path):
@@ -879,7 +885,7 @@ def test_disk_command_and_oracle_are_exactly_bound(tmp_path):
 
 
 def test_formal_sut_cannot_write_trusted_result(tmp_path):
-    record = formal_complete_records(tmp_path)[0]
+    record = formal_complete_record(tmp_path)
     run_dir = tmp_path / record["artifact_root"]
     sut_environment = json.loads((run_dir / "sut-environment.json").read_text())
     assert not any(name.startswith("ECPA_OBSERVER_") for name in sut_environment)
@@ -895,7 +901,7 @@ def test_formal_sut_cannot_write_trusted_result(tmp_path):
 
 
 def test_pid_reuse_identity_mutation_is_rejected(tmp_path):
-    record = formal_complete_records(tmp_path)[0]
+    record = formal_complete_record(tmp_path)
     record["command"]["observer_process"]["linux_identity"]["start_ticks"] += 1
     with pytest.raises(ValueError, match="identity"):
         validate_record(
@@ -913,8 +919,7 @@ def test_frozen_registry_is_present_even_for_partial_input(tmp_path):
 
 
 def test_interface_observer_ignores_plain_stdout_and_captures_lifecycle(tmp_path):
-    records = formal_complete_records(tmp_path)
-    record = records[0]
+    record = formal_complete_record(tmp_path)
     assert record["status"] == "complete"
     assert record["evidence_class"] == "interface-fixture"
     assert record["measurement_source"] == "controlled-interface-observer"
@@ -2150,7 +2155,7 @@ def test_interpreter_indirection_cannot_hide_fixture_commands(tmp_path, monkeypa
 
 
 def test_fixture_evidence_is_nonformal_and_execution_identity_is_bound(tmp_path):
-    record = formal_complete_records(tmp_path)[0]
+    record = formal_complete_record(tmp_path)
     run_dir = tmp_path / record["artifact_root"]
     assert record["evidence_class"] == "interface-fixture"
     assert record["identity"]["adapter_verification"] is None
@@ -2558,7 +2563,7 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), json.dumps({'events': events}).enc
 
 
 def test_exact_observer_pipe_bytes_are_bound_independently(tmp_path):
-    record = formal_complete_records(tmp_path)[0]
+    record = formal_complete_record(tmp_path)
     run_dir = tmp_path / record["artifact_root"]
     pipe = run_dir / record["artifacts"]["observer_pipe"]
     pipe.write_bytes(pipe.read_bytes() + b" ")
@@ -2701,7 +2706,7 @@ def test_proc_stat_parser_handles_parentheses_in_comm():
     ],
 )
 def test_formal_oracle_rejects_lifecycle_counterexamples(tmp_path, mutation):
-    record = copy.deepcopy(formal_complete_records(tmp_path)[0])
+    record = copy.deepcopy(formal_complete_record(tmp_path))
     events = record["observations"]
     if mutation == "duplicate":
         events.append(copy.deepcopy(events[0]))
@@ -2763,7 +2768,7 @@ def _effect_identity(
 
 
 def _formal_process_record(tmp_path):
-    record = copy.deepcopy(formal_complete_records(tmp_path)[0])
+    record = copy.deepcopy(formal_complete_record(tmp_path))
     record["evidence_class"] = "formal-real"
     for invocation in record["command"]["phase_invocations"]:
         invocation["fact_collected"] = True
@@ -3069,14 +3074,14 @@ def test_formal_oracle_accepts_same_numeric_identity_on_distinct_hosts(tmp_path)
 
 
 def test_oracle_rejects_duplicate_or_reordered_phase_invocations(tmp_path):
-    record = copy.deepcopy(formal_complete_records(tmp_path)[0])
+    record = copy.deepcopy(formal_complete_record(tmp_path))
     duplicate = copy.deepcopy(record["command"]["phase_invocations"][0])
     duplicate["challenge"] = "different"
     duplicate["invocation_id"] = "different"
     record["command"]["phase_invocations"].append(duplicate)
     assert oracle(scenarios()[0], record)["verdict"] == "INCOMPLETE"
 
-    record = copy.deepcopy(formal_complete_records(tmp_path / "reordered")[0])
+    record = copy.deepcopy(formal_complete_record(tmp_path / "reordered"))
     record["command"]["phase_invocations"].reverse()
     assert oracle(scenarios()[0], record)["verdict"] == "INCOMPLETE"
 
