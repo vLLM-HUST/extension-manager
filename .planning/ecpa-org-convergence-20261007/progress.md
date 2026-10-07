@@ -41,3 +41,8 @@
 - The Core fix passed focused CLI/provider tests (81), the complete suite (602),
   Ruff, strict mypy, and sdist/wheel construction. No cluster, service, or NPU
   operation was performed.
+- KV Tiering clean-wheel validation then demonstrated that a third-party
+  provider could bypass the unknown-host launch gate even though it injects
+  trusted code into the vLLM process. The run gate is now based on
+  `trusted_in_process` isolation rather than a hard-coded provider allowlist;
+  a dedicated third-party-provider regression test passes.

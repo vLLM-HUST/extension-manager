@@ -538,8 +538,7 @@ def _run_command(args: argparse.Namespace) -> int:
                 f"health is not verified ({service_ids}); " + "; ".join(status.evidence)
             )
         if (
-            bundle.manifest.host.provider in {"vllm", "stateaxis"}
-            and bundle.manifest.runtime.isolation == "trusted_in_process"
+            bundle.manifest.runtime.isolation == "trusted_in_process"
             and LifecycleState.COMPATIBLE not in status.states
         ):
             raise ValueError(
