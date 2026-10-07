@@ -12,4 +12,5 @@
 - Enabled environment rendering preserved and de-duplicated the caller's `ascend,user_plugin` selection and appended `pegaflow` deterministically.
 - Disable, forget, runtime-wheel uninstall, and provider-wheel uninstall removed intent, configuration, Bundle discovery, and provider discovery. Ports 50055 and 19091 remained closed and no Pegaflow process existed.
 - This is packaging, compatibility, and fail-closed lifecycle evidence only. It is not runtime-effective, NPU connector, correctness, recovery, device-release, or performance evidence.
+- Manager CI exposed a low-frequency interface-fixture startup race: a transient failed fixture record was consumed by downstream oracle-mutation tests, producing unrelated assertions. The production runner already failed closed; the test factory now retries a failed controlled fixture at most twice in separate artifact roots and still fails after three consecutive incomplete starts.
 
