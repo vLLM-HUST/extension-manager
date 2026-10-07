@@ -54,3 +54,21 @@
   not main, so convergence PR #4 reran three-Python CI and merged to main as
   `03f17227`. The obsolete conflicting vSpec PR #2 was closed with a
   supersession record.
+- Tricard PR #2 merged as `1d141da1`; Python 3.10/3.11/3.12 clean-wheel CI
+  passed on the PR and merged main. Organization issue #42 was closed.
+- Cost Pricing Model PR #1 merged as `0dbebad7`; Quality-Bounded PR #5 merged
+  as `3e321aef`; both passed Python 3.10/3.12 clean-wheel CI again on merged
+  main. Their packaging issues were closed while their marker-only carriers
+  remain inspect-only.
+- Request Lifecycle Profiler PR #30 merged as `63af34ef`; 238 CPU tests passed
+  with 9 skips, and both its existing CPU CI and new ECPA matrix passed on
+  merged main. Issue #29 was closed without claiming native-sink activation.
+- Added typed Worker carrier projection and conflict tests to Manager. Focused
+  Provider/CLI tests passed (86); the complete Manager suite passed (607), as
+  did Ruff, strict mypy, sdist and wheel builds. Documentation now records the
+  exact 35-distribution/38-Bundle inventory and the remaining BetterScale and
+  FreshKV owner gates.
+- A clean synthetic Worker-carrier wheel passed list/inspect/check/enable/
+  plan/render, rendered the exact `--worker-cls` value, rejected an unknown
+  trusted host at `run --dry-run`, and passed disable/forget/pip-uninstall with
+  no residual Bundle discovery.

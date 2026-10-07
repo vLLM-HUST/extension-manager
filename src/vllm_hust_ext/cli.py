@@ -713,6 +713,7 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         if option not in {
             "--batch-admission-policy",
             "--preemption-policy",
+            "--worker-cls",
         } or not isinstance(value, str):
             raise ValueError(f"unsupported provider option {option!r}")
         result = _merge_scalar_option(result, option, value)

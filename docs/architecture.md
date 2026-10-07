@@ -67,6 +67,14 @@ and protocol versions. The vLLM Provider consumes that snapshot rather than
 growing one import probe per MOD. Legacy probes remain a migration path only
 when the registry is absent; a present but malformed registry fails closed.
 
+The vLLM Provider also projects explicit native CLI carriers declared by typed
+components. `vllm.worker-class.v1` maps one `module:object` implementation to
+`--worker-cls`; duplicate declarations and disagreement with an existing
+command-line value fail before process creation. This does not turn a direct
+Worker package into an automatically compatible MOD: host pins, package
+dependencies, resource claims, restart rollback, and observer evidence remain
+the owning repository's responsibility.
+
 ## State projection
 
 State is evidence-based rather than one enabled flag:

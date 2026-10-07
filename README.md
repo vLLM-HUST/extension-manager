@@ -143,6 +143,13 @@ hosts. Source compatibility is currently unverified on the Sage Mate TP4 graph
 target; the older vLLM-HUST 0.23 serving record is retained only as historical
 evidence and is not inherited by this baseline.
 
+Direct Worker MODs can declare one `vllm.worker-class.v1` component. The vLLM
+Provider renders its `module:object` as native `--worker-cls`, preserves an
+identical user value, and rejects a different value before launch. The Bundle
+must also claim its exclusive process-carrier resource. This projection does
+not install the Worker package or establish host, device, runtime-effect, or
+performance qualification.
+
 ```bash
 vllm-hust-ext extension enable org.vllm-hust.bidkv
 vllm-hust-ext run -- vllm serve MODEL

@@ -156,6 +156,24 @@ def test_pipeline_microbatch_uses_batch_admission_policy_contract() -> None:
     }
 
 
+def test_worker_carrier_uses_explicit_worker_class_contract() -> None:
+    value = manifest("worker-class-v0.3.json")
+
+    plan = VllmProvider().plan(value, {}, enabled=True)
+
+    assert plan.generated_config["vllm_options"] == {
+        "--worker-cls": "example_worker.worker.Worker"
+    }
+
+
+def test_worker_carrier_rejects_multiple_worker_classes() -> None:
+    value = manifest("worker-class-v0.3.json")
+    duplicate = replace(value, components=(*value.components, value.components[0]))
+
+    with pytest.raises(ValueError, match="exactly one vllm.worker-class.v1"):
+        VllmProvider().plan(duplicate, {}, enabled=True)
+
+
 def test_vllm_detects_scheduler_policy_only_from_host_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

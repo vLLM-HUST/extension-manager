@@ -26,3 +26,19 @@
   blockers are inspect-only in plan/render and visible as degraded check/status
   evidence, and unknown compatibility rejects every trusted in-process provider
   rather than only hard-coded built-ins.
+- Final re-audit added five valid main-branch distributions: ADM, Tricard,
+  Cost Pricing Model, Quality-Bounded Inference, and Request Lifecycle
+  Profiler. The exact additive inventory is now 35 distributions, 38
+  registrations, and 38 valid Bundles: 21 activation-intent and 17
+  inspect-only.
+- Tricard and canonical CLM previously shared the entry-point name
+  `clm_lifecycle`; co-installation could therefore activate both from one
+  allowlist item. Tricard now owns the distinct `tricard_clm_lifecycle` name.
+- The current request-lifecycle host exports EventBus 1.0, but the profiler
+  still imports a historical KV-recovery ABI and registers no native sink.
+  Its truthful posture is descriptor-only, not runtime-effective.
+- BetterScale exposed a Manager-owned gap: typed Worker carriers were not
+  projected to native `--worker-cls`. The vLLM Provider now supports one
+  `vllm.worker-class.v1` component with pre-launch conflict rejection. The MOD
+  itself remains blocked by old host pins, out-of-tree native release payloads,
+  missing observer evidence, and owner-controlled publication.

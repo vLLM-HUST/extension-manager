@@ -47,7 +47,7 @@ def _qualname_from_implementation_ref(implementation_ref: str) -> str:
     """Convert manifest ``module:object`` syntax to vLLM's Python qualname."""
     module, separator, object_name = implementation_ref.partition(":")
     if not separator or not module or not object_name:
-        raise ValueError("policy implementation_ref must use module:object syntax")
+        raise ValueError("component implementation_ref must use module:object syntax")
     return f"{module}.{object_name}"
 
 
@@ -181,6 +181,21 @@ class VllmProvider:
             generated.setdefault("vllm_options", {})["--batch-admission-policy"] = (
                 _qualname_from_implementation_ref(
                     admission_components[0].implementation_ref
+                )
+            )
+        worker_components = [
+            component
+            for component in manifest.components
+            if "vllm.worker-class.v1" in component.contracts
+        ]
+        if worker_components:
+            if len(worker_components) != 1:
+                raise ValueError(
+                    "exactly one vllm.worker-class.v1 component is required"
+                )
+            generated.setdefault("vllm_options", {})["--worker-cls"] = (
+                _qualname_from_implementation_ref(
+                    worker_components[0].implementation_ref
                 )
             )
         if native_manifest is not None:
