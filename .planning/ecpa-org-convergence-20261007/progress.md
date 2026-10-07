@@ -33,3 +33,11 @@
   pre-existing formatting drifts unchanged from `origin/main`; CI does not
   currently configure that check, so unrelated research files were not
   reformatted in this documentation PR.
+- Prefix Router clean-wheel validation exposed a provider-neutral inconsistency:
+  an `import_only` Production Stack extension could be rejected by `enable`
+  while still rendering Helm-oriented actions. The Manager Core now converts
+  every manifest activation blocker into the same non-mutating `inspect_only`
+  plan and renders only `inspection-plan.json`, independent of provider.
+- The Core fix passed focused CLI/provider tests (81), the complete suite (602),
+  Ruff, strict mypy, and sdist/wheel construction. No cluster, service, or NPU
+  operation was performed.
