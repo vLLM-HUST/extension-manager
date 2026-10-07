@@ -116,12 +116,14 @@ checks, and merged without deleting the authors' branches:
 | Prefix Router PR #2 / main `8115ed50` | Local 49 tests and clean-wheel list/inspect/validate/check/plan/render/native-path checks; remote Python 3.10/3.12/3.14 passed | Manifest 0.3 external service descriptor; user retains lifecycle; `import_only` consistently reports degraded/inspect-only and cannot enable | Operator-owned backend/KV-event service qualification, recovery evidence, and performance remain external gates |
 | KV Tiering PR #3 (`pluginize-v1`), convergence PR #4 / main `03f17227` | Provider imports no longer require vLLM during discovery; local clean-wheel lifecycle and both remote Python 3.10/3.12/3.14 runs passed | Active Manifest 0.3 general plugin and provider with exclusive KV-transfer/secondary-tier claims; unknown hosts fail closed | Frozen-host full suite, real serving/recovery, process-owned observer, device/resource release, and performance evidence |
 | vSpec PR #3 / main `a0bf4203` | Ruff/format, 19 focused tests + 1 host skip, sdist/wheel and clean-wheel lifecycle; remote Python 3.11/3.12 passed | Active Manifest 0.3 plugin with exclusive speculative patchset and Qwen2 EAGLE registry ownership; unknown hosts fail closed | Current-host serving, process-owned observer, rollback/recovery, quality and performance evidence |
-| Manager PRs #30/#31 / main `7bcfe556` | 603 local tests; remote Python 3.10/3.12 and wheel CI passed | Provider-neutral blockers now force inspect-only plan/render and appear as degraded check/status evidence; every trusted in-process provider requires explicit compatibility before run | No new runtime-effectiveness or performance evidence is implied |
+| Pegaflow PR #31 / main `14ca1d46` | Ascend runtime wheel and provider wheel installed with Manager `4be9d2c5`; exactly one valid Bundle passed list/inspect/validate/check/configure/plan/render/enable/status/disable/forget/uninstall. An unreachable external service blocked `run` before process creation; no ports or child processes remained. Remote Python 3.10/3.12 ECPA, Python, Ruff, Rust and Ascend compile CI passed. | The runtime distribution now owns both the Bundle and `vllm.general_plugins:pegaflow`; the provider distribution owns only the Host Provider. The external operator retains service and KV-data lifecycle. | Operator-owned service qualification, current-host connector execution, process-owned observer, recovery, device release and performance evidence |
+| Manager PRs #30/#31/#32 / main `4be9d2c5` | 603 local tests for #30/#31 plus Python 3.10/3.12 and wheel CI; #32 added catalog reconciliation checks with the same remote matrix | Provider-neutral blockers force inspect-only plan/render and appear as degraded check/status evidence; every trusted in-process provider requires explicit compatibility before run | No new runtime-effectiveness or performance evidence is implied |
 
 This changes the current main-branch packaging count to 30 ECPA distributions,
-33 registrations, and 32 valid Bundles; the Pegaflow split remains the sole
-invalid registration. Eighteen valid Bundles express activation intent and
-fourteen intentionally remain inspect-only. These counts are composition and
+33 registrations, and 33 valid Bundles. Nineteen valid Bundles express
+activation intent and fourteen intentionally remain inspect-only. Pegaflow PR
+#31 resolved the last known invalid distribution split by moving Bundle
+ownership beside the runtime entry point. These counts are composition and
 packaging coverage, not a claim that every MOD is runnable or beneficial.
 
 Manifest 0.3 can describe general/platform plugins, native policy components,
