@@ -8,7 +8,7 @@
 - Updated the current support-matrix counts from 32/33 valid to 33/33 valid and added exact Pegaflow evidence without widening runtime or performance claims.
 - Manager full suite passed: 603 tests. Ruff lint, strict mypy, sdist and wheel build passed. A direct latest-Ruff format check reports four pre-existing formatting differences outside this documentation-only change; no unrelated files were rewritten.
 - Added a separate Pegaflow CI change that pins current Manager and builds/installs the actual Ascend runtime wheel before exercising the fail-closed clean-wheel lifecycle; local YAML parsing, nine focused tests and Ruff passed.
-- Manager PR #33 Python 3.10 and wheel CI passed; Python 3.12 exposed the controlled-fixture race. The bounded retry fix passed Ruff and all 117 formal-harness tests locally; a new CI run is pending.
+- Manager PR #33 Python 3.10 and wheel CI passed; Python 3.12 exposed the controlled-fixture race. The bounded retry fix passed Ruff, all 117 formal-harness tests, and the complete 603-test suite locally; a new CI run is pending.
 - Pegaflow PR #32 showed that GitHub-hosted x86 runners cannot link the Ascend wheel without `libascendcl`; the remote job is being narrowed to explicitly metadata-only packaging while the real Ascend wheel evidence remains local to the allocated container.
 - Public catalog PR and deployment verification remain pending.
 
