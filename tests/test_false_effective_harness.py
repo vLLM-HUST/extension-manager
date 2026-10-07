@@ -622,27 +622,23 @@ def formal_complete_records(tmp_path, *, single=False):
                 "runtime": "same",
                 "semantic_environment": "same",
             }
-            for attempt in range(3):
-                artifact_prefix = (
-                    "formal" if attempt == 0 else f"formal-retry-{attempt}"
-                )
-                record = run_formal_start(
-                    tmp_path / artifact_prefix,
-                    scenario,
-                    protocol,
-                    adapters[arm],
-                    repetition,
-                    arm_order,
-                    executable=sys.executable,
-                    arguments=[sut],
-                    observer_executable=sys.executable,
-                    observer_arguments=[observer],
-                    identity=identity,
-                    timeout_s=10,
-                    fixture_mode=True,
-                )
-                if record["status"] == "complete":
-                    break
+            artifact_prefix = "formal"
+            record = run_formal_start(
+                tmp_path / artifact_prefix,
+                scenario,
+                protocol,
+                adapters[arm],
+                repetition,
+                arm_order,
+                executable=sys.executable,
+                arguments=[sut],
+                observer_executable=sys.executable,
+                observer_arguments=[observer],
+                identity=identity,
+                timeout_s=10,
+                fixture_mode=True,
+                fixture_handshake=True,
+            )
             assert record["status"] == "complete", record["missing_reason"]
             record["artifact_root"] = f"{artifact_prefix}/{record['artifact_root']}"
             records.append(record)
