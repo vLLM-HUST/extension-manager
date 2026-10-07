@@ -101,6 +101,32 @@ and research-only repositories are not relabeled as ECPA-managed MODs. ECPA
 does not acquire ownership of their services, devices, KV data, clusters, or
 performance claims.
 
+### Manifest 0.3 convergence update (2026-10-07)
+
+Four owner PRs were updated against Manager
+`98903e416bdb593186b8245fd95180dafde995b9`, passed clean-wheel lifecycle
+checks, and merged without deleting the authors' branches:
+
+| MOD | Merged evidence | ECPA posture after merge | Remaining qualification gate |
+| --- | --- | --- | --- |
+| KNorm PR #4 / main `563173e1` | Local Ruff/format, 80 passed + 1 skipped, sdist/wheel content and clean-wheel Manager checks; remote Python 3.10/3.12/3.14 passed | Manifest 0.3, general-plugin declaration and exclusive `vllm.kv-cache.compression-policy` claim; intentionally `import_only` | Correctness issue #3, then current-host native serving, owning-process observer, rollback/device-release and performance evidence |
+| PyramidKV PR #4 / main `84c7ecb1` | Local Ruff/format, 43 passed + 1 skipped, wheel and clean-wheel dependency/rollback lifecycle; remote Python 3.10/3.11/3.12 passed | Active Manifest 0.3 method Bundle; requires enabled KVCompress `>=0.9,<0.10` and exclusively claims its method registration | Published dependency acceptance, current-head quality/capacity/performance, and process-owned runtime-effective evidence |
+| DLA PR #3 / main `da504dc7` | Local Ruff/format, 24 passed + 2 skipped, sdist/wheel and clean-wheel lifecycle; remote Python 3.10/3.12/3.14 passed | Active native preemption-policy carrier with exclusive scheduler-policy ownership; unknown hosts fail closed | Host candidate must expose `predicted_length`; real scheduling-effect observer, rollback and performance evidence remain pending |
+| SliceGPT PR #2 / main `fc157ab2` | Runtime/toolkit wheels rebuilt, current-Manager clean-wheel script passed; remote runtime Python 3.10/3.12 and toolkit Python 3.11 passed | Active Manifest 0.3 general plugin with exclusive Llama/Qwen2 registry claims and strict no-false-observer behavior | CUDA/Ascend serving, process-owned model-execution observer, quality, memory, recovery and performance gates |
+
+This changes the current main-branch packaging count to 28 ECPA distributions,
+31 registrations, and 30 valid Bundles; the Pegaflow split remains the sole
+invalid registration. Seventeen valid Bundles express activation intent and
+thirteen intentionally remain inspect-only. These counts are composition and
+packaging coverage, not a claim that every MOD is runnable or beneficial.
+
+Manifest 0.3 can describe general/platform plugins, native policy components,
+custom method registrations behind a separately enabled carrier, and
+descriptor-only research work. It deliberately does not turn a source library,
+benchmark harness, hardware platform, external operator, or unversioned host
+patch into an ECPA-owned runtime. Such candidates need a real carrier and host
+contract or must remain outside activation.
+
 ## Rollback ownership
 
 - In-process vLLM policies and connectors roll back on the next vLLM process

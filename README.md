@@ -225,3 +225,10 @@ vllm-hust-ext catalog inspect extension-catalog-v1.json org.vllm-hust.bidkv
 Catalog availability is not runtime state. Workstation and API consumers must
 continue to distinguish `installed`, `configured`, `enabled`, and
 `runtime_effective`; only a process-owned observer may prove the last state.
+
+Manifest 0.3 is broad enough to compose many MOD shapes, but it is not a claim
+that ECPA can activate arbitrary repository contents. A source library or
+benchmark needs a real host carrier; an external operator retains its own
+lifecycle; an unversioned patch remains inspect-only until a host contract
+exists. The current organization counts and per-MOD gates are recorded in the
+[support matrix](docs/support-matrix.md).

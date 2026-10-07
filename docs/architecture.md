@@ -55,6 +55,13 @@ planning or launching. It never auto-enables a dependency, and it prevents a
 dependency from being disabled or forgotten while a dependent remains enabled.
 Dependency satisfaction is not `runtime_effective` evidence.
 
+A Bundle may declare a custom, project-owned method entry point without asking
+Core to inject that name into `VLLM_PLUGINS`. In that composition, a separately
+enabled general/platform-plugin Bundle owns host loading, while the method
+Bundle declares it through `requires_extensions` and claims only its method
+registration resource. ECPA validates the graph and ownership; the shared
+carrier remains responsible for method selection and execution.
+
 vLLM-HUST exposes one host-owned capability snapshot containing its host API
 and protocol versions. The vLLM Provider consumes that snapshot rather than
 growing one import probe per MOD. Legacy probes remain a migration path only
