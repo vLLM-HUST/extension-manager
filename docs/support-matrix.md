@@ -113,11 +113,15 @@ checks, and merged without deleting the authors' branches:
 | PyramidKV PR #4 / main `84c7ecb1` | Local Ruff/format, 43 passed + 1 skipped, wheel and clean-wheel dependency/rollback lifecycle; remote Python 3.10/3.11/3.12 passed | Active Manifest 0.3 method Bundle; requires enabled KVCompress `>=0.9,<0.10` and exclusively claims its method registration | Published dependency acceptance, current-head quality/capacity/performance, and process-owned runtime-effective evidence |
 | DLA PR #3 / main `da504dc7` | Local Ruff/format, 24 passed + 2 skipped, sdist/wheel and clean-wheel lifecycle; remote Python 3.10/3.12/3.14 passed | Active native preemption-policy carrier with exclusive scheduler-policy ownership; unknown hosts fail closed | Host candidate must expose `predicted_length`; real scheduling-effect observer, rollback and performance evidence remain pending |
 | SliceGPT PR #2 / main `fc157ab2` | Runtime/toolkit wheels rebuilt, current-Manager clean-wheel script passed; remote runtime Python 3.10/3.12 and toolkit Python 3.11 passed | Active Manifest 0.3 general plugin with exclusive Llama/Qwen2 registry claims and strict no-false-observer behavior | CUDA/Ascend serving, process-owned model-execution observer, quality, memory, recovery and performance gates |
+| Prefix Router PR #2 / main `8115ed50` | Local 49 tests and clean-wheel list/inspect/validate/check/plan/render/native-path checks; remote Python 3.10/3.12/3.14 passed | Manifest 0.3 external service descriptor; user retains lifecycle; `import_only` consistently reports degraded/inspect-only and cannot enable | Operator-owned backend/KV-event service qualification, recovery evidence, and performance remain external gates |
+| KV Tiering PR #3 (`pluginize-v1`), convergence PR #4 / main `03f17227` | Provider imports no longer require vLLM during discovery; local clean-wheel lifecycle and both remote Python 3.10/3.12/3.14 runs passed | Active Manifest 0.3 general plugin and provider with exclusive KV-transfer/secondary-tier claims; unknown hosts fail closed | Frozen-host full suite, real serving/recovery, process-owned observer, device/resource release, and performance evidence |
+| vSpec PR #3 / main `a0bf4203` | Ruff/format, 19 focused tests + 1 host skip, sdist/wheel and clean-wheel lifecycle; remote Python 3.11/3.12 passed | Active Manifest 0.3 plugin with exclusive speculative patchset and Qwen2 EAGLE registry ownership; unknown hosts fail closed | Current-host serving, process-owned observer, rollback/recovery, quality and performance evidence |
+| Manager PRs #30/#31 / main `7bcfe556` | 603 local tests; remote Python 3.10/3.12 and wheel CI passed | Provider-neutral blockers now force inspect-only plan/render and appear as degraded check/status evidence; every trusted in-process provider requires explicit compatibility before run | No new runtime-effectiveness or performance evidence is implied |
 
-This changes the current main-branch packaging count to 28 ECPA distributions,
-31 registrations, and 30 valid Bundles; the Pegaflow split remains the sole
-invalid registration. Seventeen valid Bundles express activation intent and
-thirteen intentionally remain inspect-only. These counts are composition and
+This changes the current main-branch packaging count to 30 ECPA distributions,
+33 registrations, and 32 valid Bundles; the Pegaflow split remains the sole
+invalid registration. Eighteen valid Bundles express activation intent and
+fourteen intentionally remain inspect-only. These counts are composition and
 packaging coverage, not a claim that every MOD is runnable or beneficial.
 
 Manifest 0.3 can describe general/platform plugins, native policy components,

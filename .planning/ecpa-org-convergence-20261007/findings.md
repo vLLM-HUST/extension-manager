@@ -18,3 +18,11 @@
   ECPA distributions, 31 registrations and 30 valid Bundles. Seventeen are
   activation-ready and thirteen are inspect-only; Pegaflow remains the sole
   invalid split registration.
+- The subsequent Prefix Router and KV Tiering merges raise the current totals
+  to 30 ECPA distributions, 33 registrations and 32 valid Bundles. Eighteen
+  are activation-ready and fourteen are inspect-only. vSpec moved from 0.2 to
+  0.3 without changing the registration count.
+- Manager `7bcfe556` closes two cross-provider gaps found by those real wheels:
+  blockers are inspect-only in plan/render and visible as degraded check/status
+  evidence, and unknown compatibility rejects every trusted in-process provider
+  rather than only hard-coded built-ins.

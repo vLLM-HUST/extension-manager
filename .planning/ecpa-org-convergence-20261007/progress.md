@@ -46,3 +46,11 @@
   trusted code into the vLLM process. The run gate is now based on
   `trusted_in_process` isolation rather than a hard-coded provider allowlist;
   a dedicated third-party-provider regression test passes.
+- Manager PR #30 merged as `00618621` after Python 3.10/3.12 and wheel CI;
+  follow-up PR #31 merged as `7bcfe556` after the same CI and 603 local tests.
+- Prefix Router PR #2 merged to main as `8115ed50`; vSpec PR #3 merged to main
+  as `a0bf4203`. KV Tiering PR #3 first merged to its declared
+  `pluginize-v1` base as `9da2bdbb`; ancestry verification caught that this was
+  not main, so convergence PR #4 reran three-Python CI and merged to main as
+  `03f17227`. The obsolete conflicting vSpec PR #2 was closed with a
+  supersession record.
