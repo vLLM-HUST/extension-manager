@@ -1591,6 +1591,7 @@ def _run_start_impl(
     lifecycle_fact_commands: dict[str, dict[str, Any]] | None = None,
     sut_executable_fingerprint: dict[str, Any] | None = None,
     observer_executable_fingerprint: dict[str, Any] | None = None,
+    fixture_handshake: bool = False,
     _resources: dict[str, Any],
 ) -> dict[str, Any]:
     start_id = f"{scenario['id']}-r{repetition}-{arm}"
@@ -1614,6 +1615,8 @@ def _run_start_impl(
             and not key.startswith("ECPA_RUNNER_")
             and key != "ECPA_FROZEN_SCENARIO"
         }
+        if fixture_handshake:
+            sut_env["ECPA_FIXTURE_HANDSHAKE"] = "1"
         sut_start = time.monotonic_ns()
         sut = popen_pinned(
             argv,
@@ -1638,9 +1641,28 @@ def _run_start_impl(
             "device": sut_identity.pop("executable_device"),
             "inode": sut_identity.pop("executable_inode"),
         }
+        sut_lines: list[str] = []
+
+        def await_fixture_ready(child: subprocess.Popen[Any], expected: str) -> str:
+            ready, _, _ = select.select([child.stdout], [], [], timeout_s)
+            line = child.stdout.readline().strip() if ready and child.stdout else ""
+            try:
+                marker = json.loads(line)
+            except ValueError as exc:
+                raise RuntimeError(
+                    f"controlled fixture {expected} readiness unavailable"
+                ) from exc
+            if marker != {"ecpa_fixture_ready": expected}:
+                raise RuntimeError(f"controlled fixture {expected} readiness mismatch")
+            return line
+
+        if fixture_handshake:
+            sut_lines.append(await_fixture_ready(sut, "sut-v1"))
         read_fd, write_fd = os.pipe()
         _resources["fds"].update((read_fd, write_fd))
         observer_env = dict(env)
+        if fixture_handshake:
+            observer_env["ECPA_FIXTURE_HANDSHAKE"] = "1"
         observer_env["ECPA_OBSERVER_FD"] = str(write_fd)
         observer_env["ECPA_EXPECTED_ARM"] = arm
         observer_env["ECPA_EXPECTED_CONTRACT"] = (
@@ -1677,6 +1699,11 @@ def _run_start_impl(
                 timeout_s,
                 observer_executable_fingerprint,
             )
+            observer_ready_line = (
+                await_fixture_ready(observer, "observer-v1")
+                if fixture_handshake
+                else ""
+            )
         except BaseException:
             for descriptor in (read_fd, write_fd):
                 with contextlib.suppress(OSError):
@@ -1695,7 +1722,6 @@ def _run_start_impl(
         lifecycle_fact_events: list[dict[str, Any]] = []
         lifecycle_fact_processes: dict[str, dict[str, Any]] = {}
         lifecycle_fact_errors: dict[str, str] = {}
-        sut_lines: list[str] = []
 
         def drive(phase: str, instruction: str, sequence: int) -> bool:
             start = time.monotonic_ns()
@@ -1819,6 +1845,8 @@ def _run_start_impl(
             observer.kill()
             observer.wait()
         observed_stdout = observer.stdout.read() if observer.stdout else ""
+        if observer_ready_line:
+            observed_stdout = observer_ready_line + "\n" + observed_stdout
         observed_stderr = observer.stderr.read() if observer.stderr else ""
         observer_end = time.monotonic_ns()
         observer_binding = {
@@ -2145,6 +2173,7 @@ def run_formal_start(
     identity: dict[str, Any],
     timeout_s: float,
     fixture_mode: bool = False,
+    fixture_handshake: bool = False,
     adapter_verification_id: str | None = None,
     manager_executable: str | None = None,
     execution_plan_path: str | Path | None = None,
@@ -2178,6 +2207,8 @@ def run_formal_start(
     if "adapter_contract_verified" in identity:
         raise ValueError("caller-declared adapter verification is not accepted")
     identity["fixture_only"] = fixture_mode
+    if fixture_handshake and not fixture_mode:
+        raise ValueError("controlled fixture handshake requires fixture mode")
     if fixture_mode:
         verification = None
         evidence_class = "interface-fixture"
@@ -2321,6 +2352,7 @@ def run_formal_start(
         observer_executable_fingerprint=(
             verification.get("observer_command") if verification is not None else None
         ),
+        fixture_handshake=fixture_handshake,
     )
 
 

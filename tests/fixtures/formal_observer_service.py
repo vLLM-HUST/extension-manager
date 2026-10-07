@@ -30,6 +30,8 @@ source_role = os.environ["ECPA_OBSERVER_SOURCE_ROLE"]
 target_pid = int(os.environ["ECPA_SUT_PID"])
 target_identity = process_identity(target_pid)
 target_argv = target_identity["argv"]
+if os.environ.get("ECPA_FIXTURE_HANDSHAKE") == "1":
+    print(json.dumps({"ecpa_fixture_ready": "observer-v1"}), flush=True)
 for raw in sys.stdin:
     message = json.loads(raw)
     phase = message["phase"]

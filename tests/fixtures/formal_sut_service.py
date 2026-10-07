@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 
 Path("sut-environment.json").write_text(json.dumps(sorted(os.environ)))
+if os.environ.get("ECPA_FIXTURE_HANDSHAKE") == "1":
+    print(json.dumps({"ecpa_fixture_ready": "sut-v1"}), flush=True)
 for raw in sys.stdin:
     request = json.loads(raw)
     command = request["command"]
