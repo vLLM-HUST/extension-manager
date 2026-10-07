@@ -162,6 +162,10 @@ def runtime_effective_evidence(bundle: InstalledBundle) -> str | None:
         for carrier in bundle.manifest.implementation
         if carrier.type == "python_entry_point"
     }
+    entry_points.update(
+        (entry_point.group, entry_point.name)
+        for entry_point in bundle.manifest.activation.entry_points
+    )
     for event in reversed(_events()):
         entry_point = event.get("entry_point")
         if (
