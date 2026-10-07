@@ -613,6 +613,35 @@ def test_run_refuses_unverified_in_process_scheduler_policy(
         cli._run_command(SimpleNamespace(command=["vllm"], dry_run=True))
 
 
+def test_run_refuses_unverified_third_party_in_process_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extension_id = "org.vllm-hust.kv-tiering"
+    manifest = SimpleNamespace(
+        host=SimpleNamespace(provider="hust-kv-tiering"),
+        kind="kv_service_adapter",
+        runtime=SimpleNamespace(isolation="trusted_in_process"),
+        activation=BundleActivation(),
+    )
+    bundle = SimpleNamespace(bundle_id=extension_id, manifest=manifest)
+    monkeypatch.setattr(
+        cli,
+        "load_config",
+        lambda: UserConfig({extension_id: ExtensionConfig(enabled=True)}),
+    )
+    monkeypatch.setattr(cli, "discover_bundles", lambda *_args: (bundle,))
+    monkeypatch.setattr(
+        cli,
+        "status_for",
+        lambda *_args: SimpleNamespace(
+            states=(), evidence=("host version is unavailable",)
+        ),
+    )
+
+    with pytest.raises(ValueError, match="unverified trusted in-process extension"):
+        cli._run_command(SimpleNamespace(command=["vllm"], dry_run=True))
+
+
 def test_run_refuses_multiple_stateaxis_process_owners(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

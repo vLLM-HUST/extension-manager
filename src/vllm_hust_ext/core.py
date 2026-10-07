@@ -8,8 +8,9 @@ from typing import Any
 
 from vllm_hust_ext.config import ExtensionConfig
 from vllm_hust_ext.discovery import InstalledBundle
+from vllm_hust_ext.manifest import activation_blocker
 from vllm_hust_ext.providers import provider_for
-from vllm_hust_ext.providers.base import ProviderPlan, RenderArtifact
+from vllm_hust_ext.providers.base import PlanAction, ProviderPlan, RenderArtifact
 from vllm_hust_ext.runtime_evidence import runtime_effective_evidence
 
 
@@ -98,6 +99,23 @@ def plan_for(
     *,
     include_external_providers: bool = True,
 ) -> ProviderPlan:
+    blocker = activation_blocker(bundle.manifest)
+    if blocker is not None:
+        return ProviderPlan(
+            bundle.bundle_id,
+            bundle.manifest.host.provider,
+            (
+                PlanAction(
+                    "inspect_only",
+                    bundle.bundle_id,
+                    bundle.manifest.lifecycle_owner,
+                    details={"enabled": False},
+                ),
+            ),
+            {},
+            (blocker,),
+            resource_claims=bundle.manifest.resource_claims,
+        )
     provider = provider_for(
         bundle.manifest.host.provider,
         include_external=include_external_providers,
@@ -119,6 +137,16 @@ def plan_for(
 def render_plan(
     plan: ProviderPlan, *, include_external_providers: bool = True
 ) -> tuple[RenderArtifact, ...]:
+    if len(plan.actions) == 1 and plan.actions[0].operation == "inspect_only":
+        import json
+
+        return (
+            RenderArtifact(
+                "inspection-plan.json",
+                "application/json",
+                json.dumps(plan_dict(plan), indent=2, sort_keys=True) + "\n",
+            ),
+        )
     provider = provider_for(plan.provider, include_external=include_external_providers)
     return provider.render(plan)
 

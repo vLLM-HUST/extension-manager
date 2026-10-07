@@ -17,11 +17,13 @@ from vllm_hust_ext.core import (
     LifecycleState,
     plan_for,
     reject_conflicting_plans,
+    render_plan,
     status_for,
 )
 from vllm_hust_ext.manifest import (
     ActivationEntryPoint,
     BundleManifest,
+    ImplementationCarrier,
     ResourceClaim,
     parse_manifest,
 )
@@ -716,6 +718,30 @@ def test_production_stack_renders_but_never_applies() -> None:
     check = provider.check(value, {"values": {}})
     assert check.compatible is None
     assert check.degraded is True
+
+
+def test_core_keeps_import_only_production_extension_inspect_only() -> None:
+    value = manifest("production-stack-v0.2.json")
+    value = replace(
+        value,
+        implementation=(
+            ImplementationCarrier(
+                "python_module",
+                (("module", "example"), ("status", "import_only")),
+            ),
+        ),
+    )
+
+    plan = plan_for(bundle(value), ExtensionConfig(False, {}))
+    artifacts = render_plan(plan)
+
+    assert [action.operation for action in plan.actions] == ["inspect_only"]
+    assert plan.generated_config == {}
+    assert "descriptor-only" in plan.warnings[0]
+    assert artifacts[0].name == "inspection-plan.json"
+    rendered = json.loads(artifacts[0].content)
+    assert rendered["actions"][0]["operation"] == "inspect_only"
+    assert "helm" not in artifacts[0].content
 
 
 def test_production_stack_refuses_unsubstantiated_healthy_state() -> None:
