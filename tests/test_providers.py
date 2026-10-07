@@ -743,6 +743,10 @@ def test_core_keeps_import_only_production_extension_inspect_only() -> None:
     assert rendered["actions"][0]["operation"] == "inspect_only"
     assert "helm" not in artifacts[0].content
 
+    status = status_for(bundle(value), ExtensionConfig(False, {}))
+    assert LifecycleState.DEGRADED in status.states
+    assert any("descriptor-only" in item for item in status.evidence)
+
 
 def test_production_stack_refuses_unsubstantiated_healthy_state() -> None:
     value = manifest("production-stack-v0.2.json")

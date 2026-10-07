@@ -67,6 +67,13 @@ def status_for(
             tuple(states + [LifecycleState.INCOMPATIBLE]),
             (str(error),),
         )
+    blocker = activation_blocker(bundle.manifest)
+    if blocker is not None:
+        check = replace(
+            check,
+            degraded=True,
+            evidence=check.evidence + (blocker,),
+        )
     if check.compatible is True:
         states.append(LifecycleState.COMPATIBLE)
     elif check.compatible is False:
