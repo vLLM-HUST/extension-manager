@@ -20,7 +20,33 @@ def _bundle() -> SimpleNamespace:
         type="python_entry_point",
         attributes={"group": "vllm.general_plugins", "name": "example"},
     )
-    manifest = SimpleNamespace(bundle_version="1.0", implementation=(carrier,))
+    manifest = SimpleNamespace(
+        bundle_version="1.0",
+        implementation=(carrier,),
+        activation=SimpleNamespace(entry_points=()),
+    )
+    return SimpleNamespace(
+        bundle_id="org.example.extension",
+        manifest=manifest,
+        manifest_path=Path("/example/manifest.json"),
+    )
+
+
+def _manifest_activation_bundle() -> SimpleNamespace:
+    carrier = SimpleNamespace(
+        type="python_module",
+        attributes={
+            "module": "example",
+            "object": "register",
+            "status": "active",
+        },
+    )
+    entry_point = SimpleNamespace(group="vllm.general_plugins", name="example")
+    manifest = SimpleNamespace(
+        bundle_version="1.0",
+        implementation=(carrier,),
+        activation=SimpleNamespace(entry_points=(entry_point,)),
+    )
     return SimpleNamespace(
         bundle_id="org.example.extension",
         manifest=manifest,
@@ -64,6 +90,16 @@ def test_live_runtime_observer_event_is_effective_evidence(
     assert result is not None
     assert "launch_id=launch-1" in result
     assert f"pid={os.getpid()}" in result
+
+
+def test_manifest_activation_entry_point_can_supply_effective_evidence(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    evidence = tmp_path / "evidence.jsonl"
+    monkeypatch.setenv("VLLM_HUST_EXT_EVIDENCE_PATH", str(evidence))
+    record_event(_event())
+
+    assert runtime_effective_evidence(_manifest_activation_bundle()) is not None
 
 
 def test_dead_process_event_is_not_runtime_effective(
