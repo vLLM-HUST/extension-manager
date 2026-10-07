@@ -42,3 +42,9 @@
   `vllm.worker-class.v1` component with pre-launch conflict rejection. The MOD
   itself remains blocked by old host pins, out-of-tree native release payloads,
   missing observer evidence, and owner-controlled publication.
+- Inspect-only convergence PRs then changed two existing registrations without
+  changing the 35-distribution/38-registration total: Request Lifecycle
+  Profiler `7c6155b7` and Quality-Bounded Inference `b2ed0136` now expose narrow
+  active host-contract observers, while Cost Pricing Model `1559df80` remains
+  inspect-only as an explicit offline CLI. The resulting composition count is
+  23 activation-intent and 15 inspect-only Bundles.

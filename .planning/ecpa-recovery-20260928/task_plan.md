@@ -28,3 +28,16 @@ Safety constraints: no unknown service/process mutation; no NPU use unless CPU/f
 - Tracking issue: `vLLM-HUST/extension-manager#25`.
 - Add fail-closed Bundle dependency composition, rerun the full suite and
   clean-wheel organization matrix, merge a narrow PR, and keep release frozen.
+
+## Inspect-only convergence (2026-10-07)
+
+1. Replace the Request Lifecycle Profiler's historical-only carrier with a
+   current-host EventBus v1 sink and callback-owned runtime evidence.
+2. Expose only Quality-Bounded Inference's behavior-preserving request observer;
+   keep adaptive policy mechanisms unqualified and fail closed.
+3. Remove the Cost Pricing Model's misleading in-process marker and serving
+   launcher; classify it as an offline, user-owned CLI.
+4. Re-run repository, host-contract, wheel, ECPA lifecycle and supervised-stop
+   checks; merge only after dual-Python CI and verify merged-main CI.
+5. Reconcile the Manager support matrix and public plugin catalog without
+   claiming NPU execution, quality, performance, or alpha readiness.

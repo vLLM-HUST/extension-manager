@@ -142,14 +142,17 @@ matrix. Each publishes one valid Manifest 0.3 registration:
 | --- | --- | --- |
 | Ascend Distributed Metadata PR #2 / main `462e0750` | Clean-wheel CI passed again on merged main. | Activation-ready intent with an exclusive DP-metadata-sync claim and an exact runtime-qualification profile; no broader host or NPU claim. |
 | Tricard PR #2 / main `1d141da1` | Eleven local tests, Ruff, wheel inspection, clean-wheel lifecycle, and Python 3.10/3.11/3.12 merged-main CI passed. | Activation-ready request-lifecycle sink. Its entry-point name is distinct from the canonical CLM package, the observer claim is shared, and the external controller remains operator-owned. |
-| Cost Pricing Model PR #1 / main `0dbebad7` | Eleven tests, Ruff, wheel, a real pinned private-workload integration run, deterministic CI contract fixture, and Python 3.10/3.12 merged-main clean-wheel CI passed. | Inspect-only `legacy_unregistered` descriptor; the marker-only plugin cannot be enabled. |
-| Quality-Bounded Inference PR #5 / main `3e321aef` | 1,067 CPU tests, focused schema checks, wheel inspection, local lifecycle, and Python 3.10/3.12 merged-main CI passed. | Inspect-only `legacy_unregistered` descriptor; policy import is not a serving hook. |
-| Request Lifecycle Profiler PR #30 / main `63af34ef` | 238 CPU tests with 9 skips, critical Ruff checks, wheel and local lifecycle, existing Python 3.10/3.11 CI, and Python 3.10/3.12 merged-main ECPA CI passed. | Inspect-only `legacy_unregistered` descriptor. Current host main has the native event bus, but this carrier still targets a historical KV-recovery ABI and registers no native sink. |
+| Cost Pricing Model PR #2 / main `1559df80` | Nine tests, Ruff, sdist/wheel, clean-wheel list/inspect/validate/check/plan/render/CLI/uninstall, and Python 3.10/3.12 merged-main CI passed. | Inspect-only, process-isolated offline CLI. The misleading `vllm.general_plugins` load marker and serving launcher were removed; ECPA does not activate it inside vLLM. |
+| Quality-Bounded Inference PR #6 / main `b2ed0136` | 1,069 CPU tests with one skip, focused current-host contract tests, Ruff, wheel, clean-wheel lifecycle, Python 3.10/3.12 CI, and a Manager-supervised callback/stop/disable/forget run passed. | Activation-ready shared request-processing observer. The callback is behavior-preserving and emits process-owned evidence only after an actual request invocation. Adaptive token-budget, admission, and scheduling mechanisms remain unqualified and fail closed. |
+| Request Lifecycle Profiler PR #31 / main `7c6155b7` | 242 CPU tests with nine skips, current-host EventBus contract tests, critical Ruff, wheel, clean-wheel lifecycle, Python 3.10/3.11 and Python 3.10/3.12 package CI, and a Manager-supervised EventBus/stop/disable/forget run passed. | Activation-ready native request-lifecycle EventBus sink with a shared observer claim. Runtime evidence is emitted only by actual finish/preemption/reclaim callbacks; no NPU or performance qualification is implied. |
 
 Starting from the previously co-installed 30-distribution/33-registration
 baseline, these additive clean-wheel results make the current inventory 35
-ECPA distributions, 38 registrations, and 38 valid Bundles. Twenty-one express
-activation intent and seventeen intentionally fail closed as inspect-only.
+ECPA distributions, 38 registrations, and 38 valid Bundles. After the two
+native-carrier follow-ups, twenty-three express activation intent and fifteen
+intentionally fail closed as inspect-only. The Cost Pricing Model remains in
+the latter set as an explicit offline tool rather than a marker-only runtime
+plugin.
 This arithmetic is tied to the exact merged commits above; it is not a runtime
 or performance qualification.
 
