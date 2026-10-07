@@ -92,6 +92,31 @@
   pre-existing files that CI does not format;
   this migration does not rewrite those unrelated sources.
 
+## Inspect-only convergence (2026-10-07)
+
+- The Profiler's blocker was not Manifest 0.3 itself: the package still wired a
+  historical KV-recovery ABI and never registered a sink with the current
+  host's `vllm.request-lifecycle-events` 1.0 EventBus. PR #31 adds that native
+  sink, preserves optional trace export, and emits runtime evidence only after
+  a typed host callback. Request identifiers are hashed before entering the
+  Manager evidence receipt.
+- Quality-Bounded Inference contained extensive research-policy machinery but
+  the stable current host exposes only request-processing v1. PR #6 therefore
+  activates a narrow, behavior-preserving full-fidelity observer that returns
+  no request mutation. Token-budget, admission and scheduling claims remain
+  outside the qualified carrier. A real callback exposed and corrected an
+  initially unrecognized evidence event name before merge.
+- The Cost Pricing Model had no serving action: its general plugin was a load
+  marker and its launcher implied runtime ownership it did not possess. PR #2
+  removes both and publishes an `import_only`, process-isolated offline CLI
+  boundary. It correctly remains inspect-only.
+- A clean-wheel Manager run against vLLM-HUST
+  `ebfcfba6507501c3a359a75eb4911ecc442bc2ff` observed each active plugin only
+  after a real host callback. `runtime_effective` disappeared after the
+  supervised process exited, and no child process remained. This is CPU host-
+  contract and lifecycle evidence, not NPU, model-quality, or performance
+  evidence; compatibility freeze remains in force.
+
 ## ECPA 0.3 follow-through
 
 - Manager PRs #18 and #19 merged as `2694cb11400b324e3a926a5e76b54a6a8710d0a3`

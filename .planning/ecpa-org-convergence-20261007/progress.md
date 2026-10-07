@@ -72,3 +72,9 @@
   plan/render, rendered the exact `--worker-cls` value, rejected an unknown
   trusted host at `run --dry-run`, and passed disable/forget/pip-uninstall with
   no residual Bundle discovery.
+- Manager PR #36 merged as `26511210`, allowing Manifest 0.3 activation entry
+  points to bind verified process-owned runtime evidence. Profiler PR #31,
+  Quality PR #6, and Cost PR #2 then merged as `7c6155b7`, `b2ed0136`, and
+  `1559df80`. The active observers passed real host-callback and supervised-stop
+  checks; Cost was narrowed to an offline CLI. No NPU or performance claim was
+  added.

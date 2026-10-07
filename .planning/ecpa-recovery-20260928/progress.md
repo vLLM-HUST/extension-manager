@@ -63,3 +63,25 @@
   CLI validation.
 - [x] Open organization PR #29 from `codex/port-pr53-system-overview`.
 - [x] Verify Python 3.10/3.12 plus wheel CI and mark PR #29 ready to merge.
+
+## Inspect-only convergence (2026-10-07)
+
+- [x] Manager PR #36 merged as `26511210709ccfa711c6a150acab81771669f49d`;
+  manifest-declared activation entry points are now eligible for verified
+  process-owned runtime evidence. Python 3.10/3.12 and wheel CI passed on PR and
+  merged main.
+- [x] Request Lifecycle Profiler PR #31 merged as
+  `7c6155b75840ee046a9547489628ca31df773334`; its active carrier is a current
+  EventBus v1 sink, not the historical KV-recovery adapter.
+- [x] Quality-Bounded Inference PR #6 merged as
+  `b2ed0136f0a399fa919287fb334946f71d6a9ac7`; only its behavior-preserving
+  full-fidelity request observer is activated.
+- [x] Cost Pricing Model PR #2 merged as
+  `1559df80e40172299231f7cee381f41738720ce2`; it is now explicitly an offline
+  process-isolated CLI with no vLLM activation entry point.
+- [x] Clean-wheel discovery/check/enable/plan/render and supervised runtime
+  evidence were validated for both active carriers. SIGTERM removed each
+  Manager-owned child and live status evidence; disable/forget/uninstall paths
+  passed. No NPU or external service was used.
+- [ ] Verify Profiler and Quality merged-main CI, merge the support-matrix and
+  public-catalog updates, and remove task worktrees and temporary environments.
