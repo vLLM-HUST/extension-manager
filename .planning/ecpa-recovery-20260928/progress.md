@@ -83,5 +83,12 @@
   evidence were validated for both active carriers. SIGTERM removed each
   Manager-owned child and live status evidence; disable/forget/uninstall paths
   passed. No NPU or external service was used.
-- [ ] Verify Profiler and Quality merged-main CI, merge the support-matrix and
-  public-catalog updates, and remove task worktrees and temporary environments.
+- [x] Profiler merged-main CPU/ECPA runs `37615868408`/`37615868432`, Quality
+  run `37615878450`, and Cost run `37615720840` passed. Manager support-matrix
+  PR #37 merged as `907469c2228f5d18ea1141548b79dce1b1571464`; its merged-main
+  Python 3.10/3.12 and wheel run `37617138670` passed.
+- [x] Public catalog PR #364 merged as
+  `83c446d4cdfcaa4b7aa4286662d3109f3e9b730e`; merged-main validation/browser
+  run `37617151581` and Pages deployment `37617150954` passed. Profiler and
+  Quality are listed as experimental observers, while Cost remains an
+  inspect-only offline tool.
