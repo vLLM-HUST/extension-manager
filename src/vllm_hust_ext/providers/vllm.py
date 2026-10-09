@@ -11,6 +11,7 @@ from typing import Any
 from vllm_hust_ext.capabilities import detect_vllm_capabilities
 from vllm_hust_ext.manifest import BundleManifest, activation_blocker
 from vllm_hust_ext.providers.base import (
+    ConfigClaim,
     PlanAction,
     ProviderCheck,
     ProviderPlan,
@@ -54,6 +55,36 @@ def _qualname_from_implementation_ref(implementation_ref: str) -> str:
 def _detect_protocol_versions() -> dict[str, str]:
     """Report only contracts exported by the installed vLLM host."""
     return detect_vllm_capabilities().protocol_versions
+
+
+def _configuration_claims(generated: dict[str, Any]) -> tuple[ConfigClaim, ...]:
+    """Describe shared writes using the same granularity as CLI composition.
+
+    Environment and additional-config entries compose by key. JSON command-line
+    options stay atomic *per option*, matching _merge_json_option. Plugin names
+    and boolean flags are additive; native manifests and user configuration are
+    bundle-local, not competing writes to the host configuration. Unknown fields
+    retain whole-value conflict checking.
+    """
+
+    claims: list[ConfigClaim] = []
+    for key, value in generated.items():
+        if key in {"user_config", "native_extension_manifest"}:
+            continue
+        if key in {
+            "environment",
+            "additional_config",
+            "vllm_options",
+            "vllm_json_options",
+        }:
+            claims.extend(
+                ConfigClaim((key, name), item) for name, item in value.items()
+            )
+        elif key in {"vllm_plugins", "vllm_flags"}:
+            claims.extend(ConfigClaim((key, name), True) for name in value)
+        else:
+            claims.append(ConfigClaim((key,), value))
+    return tuple(claims)
 
 
 class VllmProvider:
@@ -219,6 +250,7 @@ class VllmProvider:
             ),
             generated,
             warnings,
+            config_claims=_configuration_claims(generated),
         )
 
     def render(self, plan: ProviderPlan) -> tuple[RenderArtifact, ...]:

@@ -10,7 +10,12 @@ from vllm_hust_ext.config import ExtensionConfig
 from vllm_hust_ext.discovery import InstalledBundle
 from vllm_hust_ext.manifest import activation_blocker
 from vllm_hust_ext.providers import provider_for
-from vllm_hust_ext.providers.base import PlanAction, ProviderPlan, RenderArtifact
+from vllm_hust_ext.providers.base import (
+    ConfigClaim,
+    PlanAction,
+    ProviderPlan,
+    RenderArtifact,
+)
 from vllm_hust_ext.runtime_evidence import runtime_effective_evidence
 
 
@@ -174,17 +179,43 @@ def reject_conflicting_plans(plans: tuple[ProviderPlan, ...]) -> None:
                 )
             resources[resource_key] = (plan.extension_id, claim.mode)
 
-    claims: dict[tuple[str, str], tuple[str, Any]] = {}
+    # A legacy plan has not declared finer merge boundaries. Preserve its
+    # conservative whole-field comparison even when its peer uses projection.
+    for index, plan in enumerate(plans):
+        for other in plans[:index]:
+            if plan.provider != other.provider:
+                continue
+            if plan.config_claims is not None and other.config_claims is not None:
+                continue
+            for key in plan.generated_config.keys() & other.generated_config.keys():
+                if plan.generated_config[key] != other.generated_config[key]:
+                    raise ValueError(
+                        f"extensions {other.extension_id!r} and {plan.extension_id!r} "
+                        f"conflict on {plan.provider}.{key}"
+                    )
+
+    claims: dict[tuple[str, ...], tuple[str, Any]] = {}
     for plan in plans:
-        for key, value in plan.generated_config.items():
-            config_key = (plan.provider, key)
+        projected = plan.config_claims
+        if projected is None:
+            projected = tuple(
+                ConfigClaim((key,), value)
+                for key, value in plan.generated_config.items()
+            )
+        for config_claim in projected:
+            if not config_claim.path or any(
+                not isinstance(segment, str) or not segment
+                for segment in config_claim.path
+            ):
+                raise ValueError("provider configuration claim needs a nonempty path")
+            config_key = (plan.provider, *config_claim.path)
             previous = claims.get(config_key)
-            if previous is not None and previous[1] != value:
+            if previous is not None and previous[1] != config_claim.value:
                 raise ValueError(
                     f"extensions {previous[0]!r} and {plan.extension_id!r} "
-                    f"conflict on {plan.provider}.{key}"
+                    f"conflict on {'.'.join(config_key)}"
                 )
-            claims[config_key] = (plan.extension_id, value)
+            claims[config_key] = (plan.extension_id, config_claim.value)
 
 
 def plan_dict(plan: ProviderPlan) -> dict[str, Any]:
