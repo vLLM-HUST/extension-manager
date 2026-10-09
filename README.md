@@ -239,3 +239,18 @@ benchmark needs a real host carrier; an external operator retains its own
 lifecycle; an unversioned patch remains inspect-only until a host contract
 exists. The current organization counts and per-MOD gates are recorded in the
 [support matrix](docs/support-matrix.md).
+
+### Composing vLLM bundles
+
+vLLM plans compare shared environment and `additional_config` entries by key,
+CLI values by option, and JSON CLI values as complete objects per option. Thus
+an adapter that declares environment variables can compose with a method bundle
+that declares none. Bundle-local user configuration and native manifests do not
+compete for a shared setting. Different values for the same shared key, exclusive
+resource ownership, and ambiguous plugin ownership still reject activation.
+
+Provider authors can project shared writes with `ProviderPlan.config_claims`
+(`ConfigClaim.path` is a tuple of key segments). Providers that omit this optional
+projection retain conservative whole-field conflict checking, including when
+composed with a projected plan. This is a planning contract, not an activation
+receipt: real host invocation evidence is still required.

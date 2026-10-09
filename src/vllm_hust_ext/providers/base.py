@@ -21,6 +21,14 @@ class PlanAction:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfigClaim:
+    """One provider-owned shared setting; path segments preserve key boundaries."""
+
+    path: tuple[str, ...]
+    value: Any
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderPlan:
     extension_id: str
     provider: str
@@ -28,6 +36,9 @@ class ProviderPlan:
     generated_config: dict[str, Any] = field(default_factory=dict)
     warnings: tuple[str, ...] = ()
     resource_claims: tuple[ResourceClaim, ...] = ()
+    # None preserves the legacy whole-field comparison for other providers.
+    # An explicit projection follows the provider's actual launch merge rules.
+    config_claims: tuple[ConfigClaim, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
