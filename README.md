@@ -119,6 +119,9 @@ blocked.
 The pinned pass/fail combinations and lifecycle rollback owners are summarized
 in [`docs/support-matrix.md`](docs/support-matrix.md). A passing point does not
 implicitly validate the rest of an experimental version range.
+Release qualification and MOD performance recommendation are separated by
+[`docs/qualification-policy.md`](docs/qualification-policy.md); an alpha never
+implies that every integrated MOD is beneficial.
 Configuration migration and rollback rules are documented in
 [`docs/versioning-and-migration.md`](docs/versioning-and-migration.md).
 Capability-registry discovery, composition resource claims, and explicit

@@ -79,3 +79,9 @@ native-runtime, failure, upstream-review, or performance gates below.
 
 Only after these gates pass may the schema be revised and frozen as v1 and an
 alpha package be published.
+
+Performance benefit is deliberately not a universal alpha gate. Functional and
+recovery evidence governs MOD availability; matched performance evidence
+governs only the scoped recommendation. Manager overhead H4 remains a formal
+research and production-readiness gate. See
+[`qualification-policy.md`](qualification-policy.md).

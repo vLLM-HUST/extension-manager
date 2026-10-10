@@ -178,11 +178,12 @@ but no host carrier; ECPA will not invent one.
 - Kubernetes operators own Helm history, apply, rollback, and uninstall.
   Manager only plans, renders, dry-run checks and projects evidence.
 
-Alpha remains **NO-GO** until the remaining version, permission, native-NPU,
-failure-degradation, upstream-review, and performance gates are complete. No
-old 0.23 result qualifies the current native host, and enabled intent, an
-environment variable, or successful import is not runtime-effectiveness
-evidence.
+Alpha remains **NO-GO** until the native-current NPU and upstream host-review
+gates are complete. Manager release qualification is independent from MOD
+performance recommendation under
+[`qualification-policy.md`](qualification-policy.md). No old 0.23 result
+qualifies the current native host, and enabled intent, an environment variable,
+or successful import is not runtime-effectiveness evidence.
 
 The normalized release decision and its exact blocking actions are maintained
 in [`release-readiness.json`](release-readiness.json). Its internal inventory

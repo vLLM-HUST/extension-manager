@@ -47,3 +47,13 @@ def test_evidence_paths_cannot_escape_repository(tmp_path: Path) -> None:
     errors = validate_readiness(ROOT, payload)
 
     assert "unsafe evidence path" in "\n".join(errors)
+
+
+def test_performance_policy_does_not_hide_runtime_release_blockers() -> None:
+    payload = readiness()
+    gates = {gate["id"]: gate["status"] for gate in payload["gates"]}
+
+    assert gates["performance-and-support-claims"] == "passed"
+    assert gates["native-current-host-npu"] == "blocked"
+    assert gates["upstream-host-contract"] == "blocked"
+    assert payload["publication_authorized"] is False
