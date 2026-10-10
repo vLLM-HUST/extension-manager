@@ -1,8 +1,21 @@
 # Versioning and migration
 
-The package remains `0.2.0.dev0`; compatibility is frozen and no alpha release
-is authorized. Passing unit or host-contract tests does not by itself stabilize
-the manifest, Provider, host-hook, or catalog contracts.
+The source package is `0.3.0.dev0`; compatibility remains frozen and no alpha
+release is authorized. The version change identifies the active development
+line and does not stabilize the manifest, Provider, host-hook, or catalog
+contracts. Passing unit or host-contract tests does not authorize publication.
+
+`docs/release-readiness.json` is the machine-readable release decision. Its
+package version must match both `pyproject.toml` and
+`vllm_hust_ext.__version__`; required blocked gates force a `no-go`. A release
+operator must run both of these commands before creating a tag:
+
+```bash
+python scripts/check_release_readiness.py --require-authorized
+vllm-hust-ext --version
+```
+
+The first command intentionally fails while the compatibility freeze remains.
 
 ## Persisted configuration
 
@@ -51,3 +64,7 @@ process-owned runtime observation, failure degradation, stop, disable,
 rollback, forget, and uninstall. Support-matrix entries must cite the exact
 host/plugin commits and must distinguish historical compatibility adapters from
 native-host NPU validation.
+
+Moving from `0.3.0.dev0` to an alpha, release candidate, or stable version is a
+separate reviewed change. It must update the machine-readable decision and all
+version sources in the same commit. A tag alone never changes release status.

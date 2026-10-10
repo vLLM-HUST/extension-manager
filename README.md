@@ -108,6 +108,14 @@ restart/rollback and support-matrix gates.
 > No alpha package will be published until the vLLM, KV-system, and
 > control-plane end-to-end gates pass.
 
+The source tree is now on the `0.3.0.dev0` development line. This aligns the
+package version with the Manifest 0.3 convergence work; it is not a release or
+an authorization to publish. The machine-readable decision in
+[`docs/release-readiness.json`](docs/release-readiness.json) is authoritative
+for release automation. CI rejects inconsistent versions, missing evidence,
+invalid inventory arithmetic, or a `go` decision while any required gate is
+blocked.
+
 The pinned pass/fail combinations and lifecycle rollback owners are summarized
 in [`docs/support-matrix.md`](docs/support-matrix.md). A passing point does not
 implicitly validate the rest of an experimental version range.
@@ -120,10 +128,17 @@ The pinned KV-materialization clean-wheel procedure and its evidence boundary
 are documented in
 [`docs/kv-materialization-runbook.md`](docs/kv-materialization-runbook.md).
 
+There is no published package or supported floating installer during the
+freeze. For source evaluation, pin the reviewed commit explicitly:
+
 ```bash
-pip install vllm-hust-ext
+git clone https://github.com/vLLM-HUST/extension-manager.git
+cd extension-manager
+git checkout "$REVIEWED_ECPA_COMMIT"
+pip install .
 pip install bidkv
 
+vllm-hust-ext --version
 vllm-hust-ext extension list
 vllm-hust-ext extension status org.vllm-hust.bidkv
 vllm-hust-ext extension check org.vllm-hust.bidkv

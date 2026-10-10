@@ -30,6 +30,13 @@ from vllm_hust_ext.manifest import (
 from vllm_hust_ext.providers.base import PlanAction, ProviderPlan
 
 
+def test_cli_reports_candidate_version(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit, match="0"):
+        cli.main(["--version"])
+
+    assert capsys.readouterr().out == "vllm-hust-ext 0.3.0.dev0\n"
+
+
 def test_activation_does_not_replace_vllm_plugin_allowlist() -> None:
     bundle = SimpleNamespace(
         bundle_id="org.vllm-hust.bidkv",

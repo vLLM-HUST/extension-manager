@@ -14,6 +14,7 @@ from pathlib import Path
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
+from vllm_hust_ext import __version__
 from vllm_hust_ext.catalog import load_catalog
 from vllm_hust_ext.config import ExtensionConfig, load_config, save_config
 from vllm_hust_ext.core import (
@@ -789,6 +790,9 @@ def build_parser() -> argparse.ArgumentParser:
             "Inspect extension compatibility and launch explicitly enabled host "
             "plugins without taking ownership of external services."
         ),
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
     )
     subcommands = parser.add_subparsers(dest="command_name", required=True)
     extension = subcommands.add_parser(
