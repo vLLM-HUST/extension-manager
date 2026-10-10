@@ -103,10 +103,10 @@ failures while inference remained available, and recovery restored save/load
 without restarting vLLM. Alpha remains frozen for the remaining online
 restart/rollback and support-matrix gates.
 
-> **Compatibility freeze:** Manifests `0.2-experimental` and
-> `0.3-experimental`, plus the former Bundle v1 prototype, are not stable APIs.
-> No alpha package will be published until the vLLM, KV-system, and
-> control-plane end-to-end gates pass.
+> **Compatibility freeze:** The legacy `0.2-experimental` and
+> `0.3-experimental` identifiers, Provider/host-hook APIs, and former Bundle v1
+> prototype are not stable APIs. Manifest `0.3` now has a frozen data shape,
+> but no alpha package will be published until the remaining runtime gates pass.
 
 The source tree is now on the `0.3.0.dev0` development line. This aligns the
 package version with the Manifest 0.3 convergence work; it is not a release or
@@ -122,8 +122,9 @@ implicitly validate the rest of an experimental version range.
 Configuration migration and rollback rules are documented in
 [`docs/versioning-and-migration.md`](docs/versioning-and-migration.md).
 Capability-registry discovery, composition resource claims, and explicit
-Bundle activation dependencies are documented
-in [`docs/manifest-0.3-experimental.md`](docs/manifest-0.3-experimental.md).
+Bundle activation dependencies are documented in
+[`docs/manifest-0.3.md`](docs/manifest-0.3.md). Existing
+`0.3-experimental` wheels remain readable as a compatibility alias.
 The pinned KV-materialization clean-wheel procedure and its evidence boundary
 are documented in
 [`docs/kv-materialization-runbook.md`](docs/kv-materialization-runbook.md).

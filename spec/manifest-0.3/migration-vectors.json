@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "vectors": [
+    {
+      "name": "explicit-resource-and-dependency-migration",
+      "source": {
+        "schema_version": "0.2-experimental",
+        "extension_id": "org.example.policy",
+        "extension_version": "1.0.0",
+        "kind": "scheduler_policy",
+        "host": {"provider": "vllm", "name": "vllm-hust", "version_range": ">=0.28,<0.29", "api_range": ">=1,<2"},
+        "runtime": {"type": "python", "process_scope": "scheduler", "isolation": "trusted_in_process"},
+        "lifecycle_owner": "vllm",
+        "protocols": [{"name": "vllm.scheduler-policy", "version_range": ">=1,<2"}],
+        "implementation": [{"type": "python_module", "module": "example.policy", "object": "Policy", "status": "active"}],
+        "requires_services": []
+      },
+      "target": {
+        "schema_version": "0.3",
+        "extension_id": "org.example.policy",
+        "extension_version": "1.0.0",
+        "kind": "scheduler_policy",
+        "host": {"provider": "vllm", "name": "vllm-hust", "version_range": ">=0.28,<0.29", "api_range": ">=1,<2"},
+        "runtime": {"type": "python", "process_scope": "scheduler", "isolation": "trusted_in_process"},
+        "lifecycle_owner": "vllm",
+        "protocols": [{"name": "vllm.scheduler-policy", "version_range": ">=1,<2"}],
+        "implementation": [{"type": "python_module", "module": "example.policy", "object": "Policy", "status": "active"}],
+        "requires_services": [],
+        "requires_extensions": [{"extension_id": "org.example.provider", "version_range": ">=1,<2"}],
+        "resource_claims": [{"resource": "vllm.scheduler.policy", "scope": "vllm-process", "mode": "exclusive"}]
+      },
+      "rollback": {
+        "schema_version": "0.2-experimental",
+        "extension_id": "org.example.policy",
+        "extension_version": "1.0.0",
+        "kind": "scheduler_policy",
+        "host": {"provider": "vllm", "name": "vllm-hust", "version_range": ">=0.28,<0.29", "api_range": ">=1,<2"},
+        "runtime": {"type": "python", "process_scope": "scheduler", "isolation": "trusted_in_process"},
+        "lifecycle_owner": "vllm",
+        "protocols": [{"name": "vllm.scheduler-policy", "version_range": ">=1,<2"}],
+        "implementation": [{"type": "python_module", "module": "example.policy", "object": "Policy", "status": "active"}],
+        "requires_services": []
+      }
+    }
+  ]
+}

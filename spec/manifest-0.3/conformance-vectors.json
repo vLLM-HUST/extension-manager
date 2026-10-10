@@ -1,0 +1,165 @@
+{
+  "schema_version": "1.0",
+  "vectors": [
+    {
+      "name": "minimal-active-general-plugin",
+      "valid": true,
+      "manifest": {
+        "schema_version": "0.3",
+        "extension_id": "org.example.general-plugin",
+        "extension_version": "1.0.0",
+        "kind": "in_process_plugin",
+        "host": {
+          "provider": "vllm",
+          "name": "vllm-hust",
+          "version_range": ">=0.28,<0.29",
+          "api_range": ">=1,<2"
+        },
+        "runtime": {
+          "type": "python",
+          "process_scope": "vllm-processes",
+          "isolation": "trusted_in_process"
+        },
+        "lifecycle_owner": "vllm",
+        "protocols": [],
+        "implementation": [
+          {
+            "type": "python_entry_point",
+            "group": "vllm.general_plugins",
+            "name": "example"
+          }
+        ],
+        "requires_services": [],
+        "requires_extensions": [],
+        "resource_claims": [
+          {
+            "resource": "vllm.runtime.observer",
+            "scope": "vllm-process",
+            "mode": "shared"
+          }
+        ],
+        "activation": {
+          "entry_points": [
+            {"group": "vllm.general_plugins", "name": "example"}
+          ],
+          "environment": {},
+          "additional_config": {}
+        }
+      }
+    },
+    {
+      "name": "worker-carrier-with-dependency",
+      "valid": true,
+      "manifest": {
+        "schema_version": "0.3",
+        "extension_id": "org.example.worker",
+        "extension_version": "2.1.0",
+        "kind": "in_process_plugin",
+        "host": {
+          "provider": "vllm",
+          "name": "vllm",
+          "version_range": ">=0.25,<0.26"
+        },
+        "runtime": {
+          "type": "python",
+          "process_scope": "vllm-worker",
+          "isolation": "trusted_in_process"
+        },
+        "lifecycle_owner": "vllm",
+        "protocols": [
+          {"name": "vllm.worker-class", "version_range": ">=1,<2"}
+        ],
+        "implementation": [
+          {
+            "type": "python_module",
+            "module": "example.worker",
+            "object": "Worker",
+            "status": "active"
+          }
+        ],
+        "requires_services": [],
+        "requires_extensions": [
+          {"extension_id": "org.example.provider", "version_range": ">=1,<2"}
+        ],
+        "resource_claims": [
+          {
+            "resource": "vllm.process-carrier.worker",
+            "scope": "vllm-process-tree",
+            "mode": "exclusive"
+          }
+        ],
+        "components": [
+          {
+            "component_id": "worker-carrier",
+            "contracts": ["vllm.worker-class.v1"],
+            "execution_planes": ["worker"],
+            "isolation": "trusted_in_process",
+            "implementation_ref": "example.worker:Worker",
+            "permissions": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-top-level-field",
+      "valid": false,
+      "error_contains": "unknown",
+      "manifest": {
+        "schema_version": "0.3",
+        "extension_id": "org.example.invalid",
+        "extension_version": "1.0.0",
+        "kind": "in_process_plugin",
+        "host": {"provider": "vllm", "name": "vllm", "version_range": ">=0"},
+        "runtime": {"type": "python", "process_scope": "api", "isolation": "trusted_in_process"},
+        "lifecycle_owner": "vllm",
+        "protocols": [],
+        "implementation": [{"type": "python_entry_point", "group": "vllm.general_plugins", "name": "invalid"}],
+        "requires_services": [],
+        "surprise": true
+      }
+    },
+    {
+      "name": "invalid-resource-mode",
+      "valid": false,
+      "error_contains": "unsupported",
+      "manifest": {
+        "schema_version": "0.3",
+        "extension_id": "org.example.invalid-mode",
+        "extension_version": "1.0.0",
+        "kind": "in_process_plugin",
+        "host": {"provider": "vllm", "name": "vllm", "version_range": ">=0"},
+        "runtime": {"type": "python", "process_scope": "api", "isolation": "trusted_in_process"},
+        "lifecycle_owner": "vllm",
+        "protocols": [],
+        "implementation": [{"type": "python_entry_point", "group": "vllm.general_plugins", "name": "invalid"}],
+        "requires_services": [],
+        "resource_claims": [{"resource": "vllm.scheduler", "scope": "process", "mode": "owner"}]
+      }
+    },
+    {
+      "name": "malformed-python-module",
+      "valid": false,
+      "error_contains": "module, object, and status",
+      "manifest": {
+        "schema_version": "0.3",
+        "extension_id": "org.example.invalid-module",
+        "extension_version": "1.0.0",
+        "kind": "in_process_plugin",
+        "host": {"provider": "vllm", "name": "vllm", "version_range": ">=0"},
+        "runtime": {"type": "python", "process_scope": "api", "isolation": "trusted_in_process"},
+        "lifecycle_owner": "vllm",
+        "protocols": [],
+        "implementation": [{"type": "python_module", "module": "example.plugin", "object": "Plugin"}],
+        "requires_services": []
+      }
+    },
+    {
+      "name": "unknown-schema-revision",
+      "valid": false,
+      "error_contains": "unsupported schema_version",
+      "manifest": {
+        "schema_version": "0.3.1"
+      }
+    }
+  ]
+}

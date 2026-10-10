@@ -29,18 +29,21 @@ The first command intentionally fails while the compatibility freeze remains.
 
 ## Manifest 0.2 to 0.3
 
-Manifest `0.3-experimental` is additive at the data-model level but requires an
-explicit schema change because resource ownership and Bundle dependencies
-affect admission. A 0.2 manifest is still readable and has neither resource
-claims nor extension dependencies. It cannot declare `resource_claims` or
-`requires_extensions` until its author audits ownership/dependencies and
-changes the manifest version. There is no automatic inference from flags,
-environment variables, package dependencies, or implementation names.
+Manifest `0.3` freezes the composition data shape first exercised by
+`0.3-experimental`. The experimental identifier remains readable for existing
+wheels, but new migrations emit `0.3`. A 0.2 manifest is still readable and has
+neither resource claims nor extension dependencies. It cannot declare
+`resource_claims` or `requires_extensions` until its author audits ownership
+and dependencies and changes the manifest version. There is no automatic
+inference from flags, environment variables, package dependencies, or
+implementation names.
 
 Downgrading a 0.3 manifest to 0.2 discards conflict and dependency information
 and is not automatic. Operators must first disable dependents, disable the
 dependency, replace the package, inspect the 0.2 plan, and re-enable in
 dependency order. Saved enable intent does not bypass this migration check.
+The normative positive, negative, migration, and exact-rollback vectors are in
+[`spec/manifest-0.3`](../spec/manifest-0.3/README.md) and run in CI.
 
 ## Runtime rollback
 

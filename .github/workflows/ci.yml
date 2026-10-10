@@ -27,6 +27,7 @@ jobs:
       - run: python -m ruff check .
       - run: python -m mypy
       - run: python scripts/check_release_readiness.py
+      - run: python scripts/check_manifest_03_conformance.py
 
   wheel:
     runs-on: ubuntu-latest
