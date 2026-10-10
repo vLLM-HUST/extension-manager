@@ -82,9 +82,12 @@
       "id": "upstream-host-contract",
       "title": "Host contract has completed the required upstream review",
       "required": true,
-      "status": "blocked",
-      "evidence": ["docs/acceptance-gates.md"],
-      "remaining_action": "Record human upstream acceptance of the current typed host contract and its supported version range."
+      "status": "passed",
+      "evidence": [
+        "docs/evidence/host-contract-maintainer-acceptance-2026-10-10.md",
+        "docs/acceptance-gates.md",
+        "docs/support-matrix.md"
+      ]
     },
     {
       "id": "performance-and-support-claims",

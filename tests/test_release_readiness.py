@@ -55,5 +55,5 @@ def test_performance_policy_does_not_hide_runtime_release_blockers() -> None:
 
     assert gates["performance-and-support-claims"] == "passed"
     assert gates["native-current-host-npu"] == "blocked"
-    assert gates["upstream-host-contract"] == "blocked"
+    assert gates["upstream-host-contract"] == "passed"
     assert payload["publication_authorized"] is False
