@@ -112,3 +112,8 @@
   while Ascend main pins torch/torch-npu 2.10, so no device process was started.
   The exact mismatch is recorded in the release evidence and routed to
   vLLM-Ascend-HUST issue #45; compatibility freeze remains in force.
+- [x] Promoted the real KV arrival-control Bundle to stable Manifest 0.3,
+  pinned current Manager/Host main, passed 104 tests plus repository-wide Ruff
+  and Python 3.10/3.12 wheel CI, and merged plugin PR #31 as `e343fc5c`.
+  Clean-wheel launch without a compatible host failed closed before spawning a
+  process; disable, forget, and uninstall restored empty state.
