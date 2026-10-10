@@ -148,14 +148,37 @@ matrix. Each publishes one valid Manifest 0.3 registration:
 | Request Lifecycle Profiler PR #31 / main `7c6155b7` | 242 CPU tests with nine skips, current-host EventBus contract tests, critical Ruff, wheel, clean-wheel lifecycle, Python 3.10/3.11 and Python 3.10/3.12 package CI, and a Manager-supervised EventBus/stop/disable/forget run passed. | Activation-ready native request-lifecycle EventBus sink with a shared observer claim. Runtime evidence is emitted only by actual finish/preemption/reclaim callbacks; no NPU or performance qualification is implied. |
 
 Starting from the previously co-installed 30-distribution/33-registration
-baseline, these additive clean-wheel results make the current inventory 35
+baseline, these additive clean-wheel results made the inventory 35
 ECPA distributions, 38 registrations, and 38 valid Bundles. After the two
-native-carrier follow-ups, twenty-three express activation intent and fifteen
-intentionally fail closed as inspect-only. The Cost Pricing Model remains in
+native-carrier follow-ups, twenty-three expressed activation intent and fifteen
+intentionally failed closed as inspect-only. The Cost Pricing Model remains in
 the latter set as an explicit offline tool rather than a marker-only runtime
 plugin.
 This arithmetic is tied to the exact merged commits above; it is not a runtime
 or performance qualification.
+
+### External control-plane MOD follow-up (2026-10-10)
+
+Request Throttling Controller PR #1 merged as `00a92c0d`. Its clean wheel now
+publishes one stable Manifest 0.3 Bundle and a selected third-party Host
+Provider. The Bundle is an activation-ready `control_plane_extension` with an
+operator-owned `external_service` runtime, one required OpenAI-compatible vLLM
+backend, and an exclusive deployment-scoped
+`vllm.router.program-admission` claim. The Provider emits only non-mutating
+plan/render/check results; it never starts or stops the controller. It validates
+the live `/migration-identity` response against the pinned official
+ThunderAgent core and requested scheduling state, but still does not infer
+`runtime_effective` from configuration or health.
+
+Local evidence was 75 passed and 4 optional skips, 10 focused ECPA tests, Ruff,
+sdist/wheel, and an isolated discover/inspect/check/configure/enable/plan/render/
+status/disable/forget/uninstall lifecycle. Remote ordinary, pinned-upstream,
+and Python 3.11/3.12 ECPA clean-wheel CI passed before merge. This adds one
+distribution, registration, valid Bundle, and activation-intent Bundle: the
+current exact-commit inventory is 36 distributions, 39 registrations, 24 with
+activation intent, and 15 intentionally inspect-only. It is controller
+packaging/composition evidence, not proof that ECPA is a per-request control
+RPC, that a controller is running, or that its measured performance generalizes.
 
 The vLLM Provider now understands an explicit `vllm.worker-class.v1` component
 and projects its `module:object` implementation to `--worker-cls`. It rejects

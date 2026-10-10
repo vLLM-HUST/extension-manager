@@ -7,9 +7,9 @@
   "decision": "no-go",
   "publication_authorized": false,
   "inventory": {
-    "distributions": 35,
-    "registrations": 38,
-    "activation_intent": 23,
+    "distributions": 36,
+    "registrations": 39,
+    "activation_intent": 24,
     "inspect_only": 15
   },
   "gates": [

@@ -92,3 +92,17 @@
   run `37617151581` and Pages deployment `37617150954` passed. Profiler and
   Quality are listed as experimental observers, while Cost remains an
   inspect-only offline tool.
+
+## External controller follow-up (2026-10-10)
+
+- [x] Audited `request-throttling-controller` main `cb4c4e5c` and confirmed it
+  had no ECPA registration despite its repository-local `mod.json`.
+- [x] Added a stable Manifest 0.3 Bundle plus a non-mutating external Host
+  Provider; service lifecycle remains with the operator and no in-process vLLM
+  plugin is claimed.
+- [x] Passed 75 repository tests with 4 optional skips, 10 focused ECPA tests,
+  Ruff, wheel/sdist, and isolated wheel lifecycle validation.
+- [x] Merged controller PR #1 as `00a92c0d6fab20413cef72fed45ba9cf93062e4b`;
+  Python 3.11/3.12 ECPA, ordinary, and pinned-upstream PR CI passed.
+- [x] Updated the exact Manager inventory to 36 distributions, 39 valid
+  registrations, 24 activation-intent Bundles, and 15 inspect-only Bundles.
