@@ -10,6 +10,11 @@ or add `--require-authorized` in a release job. The latter must fail while any
 required gate is blocked. These checks prevent inventory growth from being
 mistaken for runtime qualification.
 
+The Manifest-shape gate is closed independently: `schema_version: "0.3"` is
+frozen by `spec/manifest-0.3/manifest.schema.json`, parser/schema conformance
+vectors, and an exact 0.2 migration/rollback vector. This does not close the
+native-runtime, failure, upstream-review, or performance gates below.
+
 1. vLLM/BidKV: the 0.2 distribution registers no private
    `vllm.victim_selector` entry point. vLLM-HUST `0.28.1rc1.dev319` owns the
    typed `vllm.preemption-policy` v1 loader, validation, observability, and

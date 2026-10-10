@@ -177,6 +177,32 @@ def test_manifest_03_accepts_typed_resource_claims() -> None:
     assert manifest.resource_claims[0].resource == ("vllm.scheduler.preemption-policy")
 
 
+def test_stable_manifest_03_uses_the_frozen_experimental_shape() -> None:
+    payload = json.loads(
+        (Path(__file__).parent / "fixtures" / "worker-class-v0.3.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    payload["schema_version"] = "0.3"
+
+    manifest = parse_manifest(payload)
+
+    assert manifest.schema_version == "0.3"
+    assert manifest.resource_claims[0].resource == "vllm.process-carrier.worker"
+
+
+def test_unknown_manifest_03_revision_fails_closed() -> None:
+    payload = json.loads(
+        (Path(__file__).parent / "fixtures" / "worker-class-v0.3.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    payload["schema_version"] = "0.3.1"
+
+    with pytest.raises(ManifestError, match="unsupported schema_version"):
+        parse_manifest(payload)
+
+
 def test_manifest_03_accepts_extension_dependencies() -> None:
     payload = json.loads(
         (Path(__file__).parent / "fixtures" / "bidkv-v0.2.json").read_text(

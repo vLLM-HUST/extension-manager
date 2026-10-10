@@ -1,4 +1,10 @@
-# Extension Manifest 0.3 — experimental
+# Extension Manifest 0.3 — compatibility alias
+
+The stable Manifest 0.3 shape is now documented in
+[`manifest-0.3.md`](manifest-0.3.md) and uses `"schema_version": "0.3"`.
+`0.3-experimental` remains readable with the same shape for existing wheels but
+must not be used for new migrations. This file is retained as historical design
+context.
 
 Manifest 0.3 is the first composition-oriented ECPA schema. It retains every
 0.2 field and adds `resource_claims` and `requires_extensions` so conflicts and
@@ -74,12 +80,13 @@ Legacy module probes are used only when the registry module is absent.
 
 0.2 manifests remain readable and receive empty resource-claim and extension-
 dependency sets. They must not add `resource_claims` or `requires_extensions`
-without changing `schema_version` to
-`0.3-experimental`. Migrating a MOD requires identifying every resource it
+without changing `schema_version` to `0.3`. Migrating a MOD requires identifying every resource it
 owns and every Bundle whose carrier must be enabled; absence of a declaration
 is not evidence that a combination is safe.
 
-This schema remains under compatibility freeze. It is not a stable v1 promise.
+The `0.3-experimental` identifier is not a stable promise. The stable `0.3`
+identifier is frozen by the schema and conformance vectors; Manager publication
+and MOD runtime qualification remain separate release gates.
 
 ## Explicit vLLM process carriers
 

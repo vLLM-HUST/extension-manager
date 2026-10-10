@@ -571,14 +571,12 @@ def _parse_experimental_manifest(payload: Any) -> BundleManifest:
         }
         components = _parse_legacy_manifest(legacy).components
     schema_version = manifest["schema_version"]
-    if schema_version not in {"0.2-experimental", "0.3-experimental"}:
-        raise ManifestError("unsupported experimental schema_version")
+    if schema_version not in {"0.2-experimental", "0.3-experimental", "0.3"}:
+        raise ManifestError("unsupported schema_version")
     if schema_version == "0.2-experimental" and "resource_claims" in manifest:
-        raise ManifestError("resource_claims requires schema_version 0.3-experimental")
+        raise ManifestError("resource_claims requires schema_version 0.3")
     if schema_version == "0.2-experimental" and "requires_extensions" in manifest:
-        raise ManifestError(
-            "requires_extensions requires schema_version 0.3-experimental"
-        )
+        raise ManifestError("requires_extensions requires schema_version 0.3")
     return BundleManifest(
         extension_id,
         version,
@@ -605,7 +603,7 @@ def parse_manifest(payload: Any) -> BundleManifest:
     schema_version = manifest.get("schema_version")
     if schema_version == "1.0":
         return _parse_legacy_manifest(manifest)
-    if schema_version in {"0.2-experimental", "0.3-experimental"}:
+    if schema_version in {"0.2-experimental", "0.3-experimental", "0.3"}:
         return _parse_experimental_manifest(manifest)
     raise ManifestError("unsupported schema_version")
 

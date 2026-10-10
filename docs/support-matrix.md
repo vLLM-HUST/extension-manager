@@ -189,3 +189,8 @@ in [`release-readiness.json`](release-readiness.json). Its internal inventory
 arithmetic and evidence paths are checked in CI; reviewers must update it with
 the exact-commit matrix above. Changing a prose claim does not authorize
 publication.
+
+Manifest `0.3` now has a stable, fail-closed schema and conformance/migration
+corpus. Existing `0.3-experimental` registrations remain compatible and retain
+their recorded activation or inspect-only posture; schema stability does not
+upgrade any host, NPU, runtime-effectiveness, recovery, or performance result.

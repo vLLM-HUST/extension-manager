@@ -3,7 +3,7 @@
   "schema_version": "1.0",
   "assessed_at": "2026-10-10",
   "package_version": "0.3.0.dev0",
-  "manifest_api": "0.3-experimental",
+  "manifest_api": "0.3",
   "decision": "no-go",
   "publication_authorized": false,
   "inventory": {
@@ -51,12 +51,13 @@
       "id": "stable-schema",
       "title": "Manifest schema and compatibility policy are frozen",
       "required": true,
-      "status": "blocked",
+      "status": "passed",
       "evidence": [
-        "docs/manifest-0.3-experimental.md",
-        "docs/versioning-and-migration.md"
-      ],
-      "remaining_action": "Freeze the reviewed Manifest 0.3 shape, assign its stable API identifier, and publish conformance and migration vectors."
+        "docs/manifest-0.3.md",
+        "spec/manifest-0.3/manifest.schema.json",
+        "spec/manifest-0.3/conformance-vectors.json",
+        "spec/manifest-0.3/migration-vectors.json"
+      ]
     },
     {
       "id": "native-current-host-npu",

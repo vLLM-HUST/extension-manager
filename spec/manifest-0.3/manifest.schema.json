@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vllm-hust.github.io/extension-manager/spec/manifest-0.3/manifest.schema.json",
+  "title": "ECPA Extension Manifest 0.3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "extension_id",
+    "extension_version",
+    "kind",
+    "host",
+    "runtime",
+    "lifecycle_owner",
+    "protocols",
+    "implementation",
+    "requires_services"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.3"},
+    "extension_id": {"$ref": "#/$defs/identifier"},
+    "extension_version": {"type": "string", "minLength": 1},
+    "kind": {
+      "enum": [
+        "in_process_plugin",
+        "scheduler_policy",
+        "kv_connector",
+        "kv_service_adapter",
+        "control_plane_extension",
+        "runtime_bridge"
+      ]
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "name", "version_range"],
+      "properties": {
+        "provider": {"$ref": "#/$defs/identifier"},
+        "name": {"type": "string", "minLength": 1},
+        "version_range": {"type": "string", "minLength": 1},
+        "api_range": {"type": "string", "minLength": 1}
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "process_scope", "isolation"],
+      "properties": {
+        "type": {
+          "enum": ["python", "external_service", "oci", "kubernetes", "composite"]
+        },
+        "process_scope": {"type": "string", "minLength": 1},
+        "isolation": {"type": "string", "minLength": 1}
+      }
+    },
+    "lifecycle_owner": {
+      "enum": ["vllm", "host", "external_operator", "kubernetes", "user"]
+    },
+    "protocols": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version_range"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "version_range": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "implementation": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "module", "object", "status"],
+            "properties": {
+              "type": {"const": "python_module"},
+              "module": {"type": "string", "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*$"},
+              "object": {"type": "string", "pattern": "^[A-Za-z_]\\w*$"},
+              "status": {"enum": ["active", "import_only", "legacy_unregistered"]}
+            }
+          },
+          {
+            "type": "object",
+            "minProperties": 2,
+            "required": ["type"],
+            "properties": {
+              "type": {
+                "enum": [
+                  "host_builtin",
+                  "python_entry_point",
+                  "external_service",
+                  "oci_image",
+                  "helm_values",
+                  "kubernetes_manifest",
+                  "crd",
+                  "controller"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    },
+    "requires_services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["service_id", "protocol", "version_range", "endpoint_config"],
+        "properties": {
+          "service_id": {"type": "string", "minLength": 1},
+          "protocol": {"type": "string", "minLength": 1},
+          "version_range": {"type": ["string", "null"]},
+          "endpoint_config": {"type": "string", "minLength": 1},
+          "optional": {"type": "boolean"}
+        }
+      }
+    },
+    "requires_extensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["extension_id", "version_range"],
+        "properties": {
+          "extension_id": {"$ref": "#/$defs/identifier"},
+          "version_range": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "resource_claims": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["resource", "scope", "mode"],
+        "properties": {
+          "resource": {"$ref": "#/$defs/resource-identifier"},
+          "scope": {"$ref": "#/$defs/resource-identifier"},
+          "mode": {"enum": ["exclusive", "shared"]}
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "component_id",
+          "contracts",
+          "execution_planes",
+          "isolation",
+          "implementation_ref"
+        ],
+        "properties": {
+          "component_id": {"$ref": "#/$defs/identifier"},
+          "contracts": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^vllm\\."}
+          },
+          "execution_planes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"enum": ["api", "scheduler", "worker", "native", "device", "bridge"]}
+          },
+          "isolation": {"enum": ["trusted_in_process", "process_isolated", "sandboxed_process"]},
+          "implementation_ref": {
+            "type": "string",
+            "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*:[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*$"
+          },
+          "permissions": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "device_access",
+                "filesystem_read",
+                "filesystem_write",
+                "ipc",
+                "network_egress",
+                "shared_memory",
+                "subprocess"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["group", "name"],
+            "properties": {
+              "group": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "additional_config": {"type": "object"}
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]*$"
+    },
+    "resource-identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$"
+    }
+  }
+}
