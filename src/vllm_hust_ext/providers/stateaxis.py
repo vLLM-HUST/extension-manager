@@ -115,7 +115,10 @@ class StateAxisProvider:
                     ),
                 ),
                 {
-                    "stateaxis_additional_config": {"experiment_mode": True},
+                    "stateaxis_additional_config": {
+                        "experiment_mode": True,
+                        "stateaxis_mod": binding,
+                    },
                     "stateaxis_mod": binding,
                     "user_config": configuration,
                 },
@@ -144,6 +147,10 @@ class StateAxisProvider:
                 ),
             ),
             {
+                "stateaxis_additional_config": {
+                    "experiment_mode": False,
+                    "stateaxis_mod": binding,
+                },
                 "stateaxis_mod": binding,
                 "runtime_qualification": qualification,
                 "user_config": configuration,
