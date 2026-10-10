@@ -69,6 +69,10 @@ native-runtime, failure, upstream-review, or performance gates below.
 4. Cross-cutting: incompatible host/API ranges, missing required services,
    duplicate registrations, configuration conflicts, rollback, partial health,
    and permission denial have explicit expected results.
+   The Manager CPU contract now binds nine executable negative cells in
+   `docs/failure-permission-matrix.json`, including host/observer failures,
+   permission drift, partial evidence, and Manager-owned process cleanup. This
+   closes the Manager-side matrix, not the native-NPU gate.
 5. Packaging: clean-environment install, disable, forget, and uninstall work on
    112 and 91 without stale enabled intent, replacing `VLLM_PLUGINS`, or
    modifying the vLLM source tree.

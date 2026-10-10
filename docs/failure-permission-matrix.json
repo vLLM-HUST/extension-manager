@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0",
+  "scope": "manager-cpu-contract",
+  "cases": [
+    {
+      "id": "unknown-host-schema",
+      "category": "host_failure",
+      "test_node": "tests/test_providers.py::test_vllm_registry_malformed_snapshot_fails_closed",
+      "expected": "No protocol is inferred and compatibility fails closed.",
+      "resource_leak_assertion": false
+    },
+    {
+      "id": "host-registry-import-failure",
+      "category": "host_failure",
+      "test_node": "tests/test_providers.py::test_vllm_registry_dependency_failure_does_not_use_legacy_probes",
+      "expected": "A broken registry never falls back to optimistic legacy probes.",
+      "resource_leak_assertion": false
+    },
+    {
+      "id": "journal-permission-drift",
+      "category": "permission_denial",
+      "test_node": "tests/test_host_evidence.py::test_sink_and_reader_recheck_directory_permissions_at_use_time",
+      "expected": "Changed directory permissions reject both evidence writes and reads.",
+      "resource_leak_assertion": false
+    },
+    {
+      "id": "journal-symlink-or-partial-record",
+      "category": "permission_denial",
+      "test_node": "tests/test_host_evidence.py::test_deployment_sink_and_reader_reject_symlink_or_partial_journal",
+      "expected": "Unsafe path replacement and partial records cannot become evidence.",
+      "resource_leak_assertion": false
+    },
+    {
+      "id": "partial-worker-coverage",
+      "category": "partial_evidence",
+      "test_node": "tests/test_durable_coordinator.py::test_partial_worker_inventory_cannot_commit",
+      "expected": "A partial process inventory cannot commit runtime effectiveness.",
+      "resource_leak_assertion": false
+    },
+    {
+      "id": "dead-observer-process",
+      "category": "observer_failure",
+      "test_node": "tests/test_runtime_evidence.py::test_dead_process_event_is_not_runtime_effective",
+      "expected": "Evidence from a dead owning process is not projected as runtime effective.",
+      "resource_leak_assertion": false
+    },
+    {
+      "id": "unbound-observer-evidence",
+      "category": "observer_failure",
+      "test_node": "tests/test_runtime_evidence.py::test_sink_rejects_unbound_evidence",
+      "expected": "Unbound evidence is rejected instead of being promoted from import or intent.",
+      "resource_leak_assertion": false
+    },
+    {
+      "id": "manager-termination-reaps-target",
+      "category": "process_cleanup",
+      "test_node": "tests/test_manager_controller.py::test_manager_termination_reaps_signal_ignoring_target",
+      "expected": "Manager termination reaps the exact signal-ignoring process it launched.",
+      "resource_leak_assertion": true
+    },
+    {
+      "id": "supervisor-reaps-descendants",
+      "category": "process_cleanup",
+      "test_node": "tests/test_process_supervisor.py::test_supervisor_escalates_and_removes_stubborn_descendants",
+      "expected": "Grace timeout escalates and leaves no Manager-owned descendant alive.",
+      "resource_leak_assertion": true
+    }
+  ]
+}
