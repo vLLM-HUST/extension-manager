@@ -209,6 +209,14 @@ performance recommendation under
 qualifies the current native host, and enabled intent, an environment variable,
 or successful import is not runtime-effectiveness evidence.
 
+The 2026-10-10 current-head attempt stopped safely before device execution:
+vLLM-HUST is now on the 0.31.1 source line and requires torch 2.13, while
+vLLM-Ascend-HUST main still pins torch/torch-npu 2.10. This exact blocker and
+the reason it cannot be bypassed by a broader Manifest version range are
+recorded in
+[`native-current-npu-blocker-2026-10-10.md`](evidence/native-current-npu-blocker-2026-10-10.md)
+and routed to vLLM-Ascend-HUST issue #45.
+
 The normalized release decision and its exact blocking actions are maintained
 in [`release-readiness.json`](release-readiness.json). Its internal inventory
 arithmetic and evidence paths are checked in CI; reviewers must update it with
