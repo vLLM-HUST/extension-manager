@@ -39,6 +39,22 @@ def _mod_binding(manifest: BundleManifest) -> dict[str, Any]:
     return value
 
 
+def _launch_additional_config(
+    manifest: BundleManifest, *, experiment_mode: bool
+) -> dict[str, Any]:
+    """Forward only configuration declared by the signed MOD manifest."""
+
+    additional = dict(manifest.activation.additional_config)
+    if "experiment_mode" in additional:
+        raise ValueError(
+            "StateAxis manifests cannot declare the manager-owned experiment_mode"
+        )
+    binding = _mod_binding(manifest)
+    if additional.get("stateaxis_mod") != binding:
+        raise ValueError("StateAxis launch binding differs from the manifest")
+    return {**additional, "experiment_mode": experiment_mode}
+
+
 def _verify_manifest_file(
     configuration: dict[str, Any], expected: str
 ) -> tuple[bool | None, str]:
@@ -115,10 +131,9 @@ class StateAxisProvider:
                     ),
                 ),
                 {
-                    "stateaxis_additional_config": {
-                        "experiment_mode": True,
-                        "stateaxis_mod": binding,
-                    },
+                    "stateaxis_additional_config": _launch_additional_config(
+                        manifest, experiment_mode=True
+                    ),
                     "stateaxis_mod": binding,
                     "user_config": configuration,
                 },
@@ -147,10 +162,9 @@ class StateAxisProvider:
                 ),
             ),
             {
-                "stateaxis_additional_config": {
-                    "experiment_mode": False,
-                    "stateaxis_mod": binding,
-                },
+                "stateaxis_additional_config": _launch_additional_config(
+                    manifest, experiment_mode=False
+                ),
                 "stateaxis_mod": binding,
                 "runtime_qualification": qualification,
                 "user_config": configuration,

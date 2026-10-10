@@ -687,10 +687,8 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         )
     if plan.provider == "stateaxis":
         additional = plan.generated_config.get("stateaxis_additional_config", {})
-        if not isinstance(additional, dict) or set(additional) != {
-            "experiment_mode",
-            "stateaxis_mod",
-        }:
+        required = {"experiment_mode", "stateaxis_mod"}
+        if not isinstance(additional, dict) or not required.issubset(additional):
             raise ValueError(
                 "StateAxis provider requires experiment_mode and stateaxis_mod"
             )
