@@ -37,6 +37,11 @@ native-runtime, failure, upstream-review, or performance gates below.
    They do not qualify the new baseline. Official vLLM remains unsupported
    until its upstream contract is released. See
    `docs/evidence/bidkv-vllm-hust-0.23-ascend91-2026-09-01.md`.
+
+The current typed host-contract line has human repository acceptance recorded
+in [`host-contract-maintainer-acceptance-2026-10-10.md`](evidence/host-contract-maintainer-acceptance-2026-10-10.md).
+This is vLLM-HUST maintainer acceptance, not a claim of acceptance by
+`vllm-project/vllm`, and it does not replace the native-current NPU gate.
 2. Mooncake: render both `MooncakeConnector` and `MooncakeStoreConnector`,
    verify a real externally operated service, preserve enabled intent during an
    outage, report degraded evidence, recover without reinstall, and never start

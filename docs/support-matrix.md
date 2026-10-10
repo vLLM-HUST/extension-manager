@@ -178,8 +178,9 @@ but no host carrier; ECPA will not invent one.
 - Kubernetes operators own Helm history, apply, rollback, and uninstall.
   Manager only plans, renders, dry-run checks and projects evidence.
 
-Alpha remains **NO-GO** until the native-current NPU and upstream host-review
-gates are complete. Manager release qualification is independent from MOD
+Alpha remains **NO-GO** until the native-current NPU gate is complete. The
+vLLM-HUST host-contract maintainer acceptance is recorded separately and does
+not imply upstream `vllm-project` adoption. Manager release qualification is independent from MOD
 performance recommendation under
 [`qualification-policy.md`](qualification-policy.md). No old 0.23 result
 qualifies the current native host, and enabled intent, an environment variable,
