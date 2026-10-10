@@ -106,3 +106,9 @@
   Python 3.11/3.12 ECPA, ordinary, and pinned-upstream PR CI passed.
 - [x] Updated the exact Manager inventory to 36 distributions, 39 valid
   registrations, 24 activation-intent Bundles, and 15 inspect-only Bundles.
+- [x] Published the controller on the MOD page through website PR #414; merged
+  main and the public Pages endpoint both expose the external-service boundary.
+- [x] Re-audited the native-current NPU gate. Host main requires torch 2.13,
+  while Ascend main pins torch/torch-npu 2.10, so no device process was started.
+  The exact mismatch is recorded in the release evidence and routed to
+  vLLM-Ascend-HUST issue #45; compatibility freeze remains in force.
