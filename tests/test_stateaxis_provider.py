@@ -11,8 +11,22 @@ from vllm_hust_ext.providers.stateaxis import StateAxisProvider
 
 
 def stateaxis_manifest(
-    digest: str, *, status: str = "import_only", qualified: bool = False
+    digest: str,
+    *,
+    status: str = "import_only",
+    qualified: bool = False,
+    mechanism_config: dict | None = None,
 ):
+    additional_config = {
+        "stateaxis_mod": {
+            "mod_id": "stateaxis.test-mod",
+            "version": "0.1.0",
+            "manifest_sha256": digest,
+            "performance_qualified": qualified,
+        }
+    }
+    if mechanism_config is not None:
+        additional_config["stateaxis_test_mod"] = mechanism_config
     return parse_manifest(
         {
             "schema_version": "0.2-experimental",
@@ -41,16 +55,7 @@ def stateaxis_manifest(
                 }
             ],
             "requires_services": [],
-            "activation": {
-                "additional_config": {
-                    "stateaxis_mod": {
-                        "mod_id": "stateaxis.test-mod",
-                        "version": "0.1.0",
-                        "manifest_sha256": digest,
-                        "performance_qualified": qualified,
-                    }
-                }
-            },
+            "activation": {"additional_config": additional_config},
         }
     )
 
@@ -137,6 +142,35 @@ def test_active_unqualified_candidate_requires_explicit_experiment_mode(
         "version": "0.1.0",
         "manifest_sha256": digest,
         "performance_qualified": False,
+    }
+
+
+def test_experimental_candidate_forwards_manifest_owned_mechanism_config(
+    tmp_path: Path,
+) -> None:
+    research_manifest = tmp_path / "mod.json"
+    research_manifest.write_text("{}\n")
+    digest = hashlib.sha256(research_manifest.read_bytes()).hexdigest()
+    manifest = stateaxis_manifest(
+        digest,
+        status="active",
+        mechanism_config={"chunk_tokens": 1024, "contention_only": True},
+    )
+    plan = StateAxisProvider().plan(
+        manifest,
+        {
+            "experiment_mode": True,
+            "host_version": "0.3.0.dev23",
+            "research_manifest_path": str(research_manifest),
+        },
+        enabled=True,
+    )
+
+    command = _merge_provider_plan(["stateaxis", "serve"], plan)
+    config = json.loads(command[3])
+    assert config["stateaxis_test_mod"] == {
+        "chunk_tokens": 1024,
+        "contention_only": True,
     }
 
 
