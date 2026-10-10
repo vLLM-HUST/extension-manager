@@ -13,11 +13,21 @@ vLLM.
 | StateAxis Provider | Hash-bound StateAxis mod plans; explicit experimental launch for active, unqualified carriers; qualified launch only with matching runtime evidence | descriptor-only candidates, implicit qualification, or production enablement from an experimental result |
 | Mooncake Provider | official connector configuration, transport compatibility, service health, and connector-operation evidence | Mooncake service start/stop/upgrade and internal C++ factories |
 | Production Stack Provider | Helm values, render plan, server-dry-run inputs, rollout checks, and structured real-model Router failure/recovery evidence | Helm apply/uninstall, CRD mutation, controller deployment, model-service lifecycle and cluster credentials |
+| External control-plane Provider | static controller intent, required backend/service checks, exclusive routing/admission ownership, and an operator-executable render artifact | per-request control decisions, controller start/stop/upgrade, backend lifecycle, or performance claims |
 
 Third-party Provider factories use `vllm_hust_ext.providers`. Static extension
 registrations use `vllm_hust.extension_bundles`. A Provider may delegate to an
 official `vllm.*` entry point, but vLLM-HUST does not invent new entry-point
 groups in the upstream namespace.
+
+An external Router or controller is not an in-process vLLM plugin. Its Bundle
+uses `control_plane_extension` plus an `external_service` runtime, declares the
+backend through `requires_services`, and leaves `lifecycle_owner` with the
+external operator. A selected third-party Provider may implement read-only
+`plan`, `render`, and `check`; Core still rejects mutating actions. Enablement
+records composition intent and resource ownership only. The controller owns
+its dynamic request loop, and neither a rendered command nor a healthy endpoint
+establishes `runtime_effective` or a performance benefit.
 
 Provider resolution loads only the factory selected by the Bundle. A broken or
 host-dependent third-party Provider therefore cannot break checks and plans for
