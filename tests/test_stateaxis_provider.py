@@ -132,6 +132,36 @@ def test_active_unqualified_candidate_requires_explicit_experiment_mode(
     assert command[2] == "--additional-config"
     config = json.loads(command[3])
     assert config["experiment_mode"] is True
+    assert config["stateaxis_mod"] == {
+        "mod_id": "stateaxis.test-mod",
+        "version": "0.1.0",
+        "manifest_sha256": digest,
+        "performance_qualified": False,
+    }
+
+
+def test_qualified_candidate_forwards_binding_without_experiment_mode(
+    tmp_path: Path,
+) -> None:
+    research_manifest = tmp_path / "mod.json"
+    research_manifest.write_text("{}\n")
+    digest = hashlib.sha256(research_manifest.read_bytes()).hexdigest()
+    manifest = stateaxis_manifest(digest, status="active", qualified=True)
+    configuration = {
+        "host_version": "0.3.0.dev23",
+        "research_manifest_path": str(research_manifest),
+        "runtime_qualification": {"status": "passed"},
+    }
+    plan = StateAxisProvider().plan(manifest, configuration, enabled=True)
+    command = _merge_provider_plan(["stateaxis", "serve"], plan)
+    config = json.loads(command[3])
+    assert config["experiment_mode"] is False
+    assert config["stateaxis_mod"] == {
+        "mod_id": "stateaxis.test-mod",
+        "version": "0.1.0",
+        "manifest_sha256": digest,
+        "performance_qualified": True,
+    }
 
 
 def test_descriptor_only_candidate_cannot_bypass_with_experiment_mode() -> None:

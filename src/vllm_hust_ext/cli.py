@@ -687,10 +687,27 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         )
     if plan.provider == "stateaxis":
         additional = plan.generated_config.get("stateaxis_additional_config", {})
-        if not isinstance(additional, dict) or set(additional) != {"experiment_mode"}:
-            raise ValueError("StateAxis provider requires explicit experiment_mode")
-        if additional["experiment_mode"] is not True:
-            raise ValueError("StateAxis experimental launch must set experiment_mode")
+        if not isinstance(additional, dict) or set(additional) != {
+            "experiment_mode",
+            "stateaxis_mod",
+        }:
+            raise ValueError(
+                "StateAxis provider requires experiment_mode and stateaxis_mod"
+            )
+        if not isinstance(additional["experiment_mode"], bool):
+            raise ValueError("StateAxis experiment_mode must be boolean")
+        binding = additional["stateaxis_mod"]
+        if not isinstance(binding, dict) or set(binding) != {
+            "mod_id",
+            "version",
+            "manifest_sha256",
+            "performance_qualified",
+        }:
+            raise ValueError(
+                "StateAxis provider emitted an invalid stateaxis_mod binding"
+            )
+        if binding != plan.generated_config.get("stateaxis_mod"):
+            raise ValueError("StateAxis launch binding differs from the provider plan")
         return _merge_command_config(command, additional)
     if plan.provider != "vllm":
         raise ValueError(f"{plan.provider} extensions use plan/render/check, not run")
