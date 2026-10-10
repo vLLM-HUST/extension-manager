@@ -3,6 +3,13 @@
 Alpha publication remains blocked until all gates are repeatable on supported
 hosts.
 
+The current executable decision is
+[`release-readiness.json`](release-readiness.json). Run
+`python scripts/check_release_readiness.py` to validate the recorded evidence,
+or add `--require-authorized` in a release job. The latter must fail while any
+required gate is blocked. These checks prevent inventory growth from being
+mistaken for runtime qualification.
+
 1. vLLM/BidKV: the 0.2 distribution registers no private
    `vllm.victim_selector` entry point. vLLM-HUST `0.28.1rc1.dev319` owns the
    typed `vllm.preemption-policy` v1 loader, validation, observability, and

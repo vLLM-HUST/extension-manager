@@ -26,6 +26,7 @@ jobs:
       - run: python -m pytest -q
       - run: python -m ruff check .
       - run: python -m mypy
+      - run: python scripts/check_release_readiness.py
 
   wheel:
     runs-on: ubuntu-latest
@@ -42,3 +43,4 @@ jobs:
           python -m venv /tmp/vllm-hust-ext-wheel
           /tmp/vllm-hust-ext-wheel/bin/pip install dist/*.whl
           /tmp/vllm-hust-ext-wheel/bin/vllm-hust-ext --help
+          /tmp/vllm-hust-ext-wheel/bin/vllm-hust-ext --version | grep -Fx 'vllm-hust-ext 0.3.0.dev0'

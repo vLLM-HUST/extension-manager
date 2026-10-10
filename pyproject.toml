@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vllm-hust-ext"
-version = "0.2.0.dev0"
+version = "0.3.0.dev0"
 description = "Core and host-provider manager for vLLM-HUST extensions"
 readme = "README.md"
 requires-python = ">=3.10"
