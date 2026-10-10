@@ -71,12 +71,12 @@
       "id": "failure-and-permission-matrix",
       "title": "Failure degradation and permission denial are repeatable",
       "required": true,
-      "status": "blocked",
+      "status": "passed",
       "evidence": [
-        "docs/acceptance-gates.md",
-        "docs/design/failure-semantics.md"
-      ],
-      "remaining_action": "Complete injected observer/host failures and permission-denial cells without false runtime-effective state or leaked Manager-owned resources."
+        "docs/failure-permission-matrix.json",
+        "docs/design/failure-semantics.md",
+        "tests/test_failure_permission_matrix.py"
+      ]
     },
     {
       "id": "upstream-host-contract",
