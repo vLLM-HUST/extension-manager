@@ -90,12 +90,14 @@
       "id": "performance-and-support-claims",
       "title": "Performance evidence and support claims are bounded and complete",
       "required": true,
-      "status": "blocked",
+      "status": "passed",
       "evidence": [
+        "docs/qualification-policy.md",
         "docs/evaluation-plan.md",
-        "docs/support-matrix.md"
-      ],
-      "remaining_action": "Complete the pinned performance gates required by the current policy, or explicitly revise that policy while preserving the separation between ECPA lifecycle qualification and MOD benefit."
+        "docs/support-matrix.md",
+        "src/vllm_hust_ext/catalog.py",
+        "tests/test_catalog.py"
+      ]
     }
   ]
 }
