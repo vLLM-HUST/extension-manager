@@ -361,8 +361,7 @@ def generate(output: Path) -> dict[str, Any]:
         for row in happy_trace
     )
     matrix_text = "".join(
-        json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
-        for row in rows
+        json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n" for row in rows
     )
     summary = {
         "schema": "ecpa-exposure-results/0.2",

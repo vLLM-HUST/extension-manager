@@ -65,5 +65,7 @@ adapter lifecycle operation.
 
 This standalone probe did not observe a vLLM connector hit. That separate gate
 was subsequently completed on Ascend and is recorded in
-`mooncake-store-vllm-ascend-180-2026-09-01.md`. Alpha remains frozen for the
-other host contracts and cross-version matrix, not for this Mooncake hit.
+`mooncake-store-vllm-ascend-180-2026-09-01.md`. At the time, publication
+remained frozen for other host contracts. The later v0.3.0 decision is recorded
+separately in `../release-readiness.json`; it does not broaden this Mooncake
+result beyond the pinned matrix above.

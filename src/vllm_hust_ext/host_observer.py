@@ -243,9 +243,7 @@ def observe_bound_invocations(
                 "scheduler evidence has another controller identity"
             )
         entry = event["entry_point"]
-        effect_binding = by_entry.get(
-            (entry["group"], entry["name"], entry["value"])
-        )
+        effect_binding = by_entry.get((entry["group"], entry["name"], entry["value"]))
         if effect_binding is None or event["event"] != "invoked":
             other_records.append(_evidence_record(record))
             continue
@@ -298,9 +296,7 @@ def observe_bound_invocations(
         plugin = plugins[binding.plugin_id]
         observed_slots = effects[obligation_id]
         targets = targets_by_obligation[obligation_id]
-        observed_processes = [
-            observed_slots[key] for key in sorted(observed_slots)
-        ]
+        observed_processes = [observed_slots[key] for key in sorted(observed_slots)]
         all_effects.update(observed_slots)
         coverage = len(observed_processes) / len(targets)
         obligation_results[obligation_id] = {

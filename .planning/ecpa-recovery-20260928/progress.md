@@ -117,3 +117,20 @@
   and Python 3.10/3.12 wheel CI, and merged plugin PR #31 as `e343fc5c`.
   Clean-wheel launch without a compatible host failed closed before spawning a
   process; disable, forget, and uninstall restored empty state.
+
+## ECPA 0.3.0 release qualification (2026-10-11)
+
+- [x] Revalidated Manager main `00d1b940`, host main `fa6f7d29`, Ascend main
+  `f939ad76`, and KV plugin main `e343fc5c` in isolated worktrees.
+- [x] Repaired current Host/Ascend drift in Ascend PR #46 and passed 441
+  focused tests plus 208 subtests and repository formatting/policy hooks.
+- [x] Completed a clean-wheel Qwen3-0.6B run on allocated Ascend 910B2 NPU 0;
+  two HTTP requests produced process-owned runtime-effective observer receipts.
+- [x] Verified supervised stop removed API/engine PIDs, freed port 8100,
+  returned NPU memory to the idle baseline, and removed live runtime status.
+- [x] Verified disable, restart rollback rendering, forget, and package
+  uninstall restore the native path without touching external services.
+- [x] Merged Ascend PR #46 and verified main at
+  `82f586f8dcb5f92f8f3d55727bc05b3e2887606d`.
+- [ ] Merge the Manager v0.3.0 release PR, tag `v0.3.0`, pass the tag release
+  gate, publish GitHub release assets, and remove temporary branches/worktrees.

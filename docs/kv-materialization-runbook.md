@@ -2,9 +2,11 @@
 
 This runbook covers the pinned native-contract lane only:
 
-- Extension Manager `a78dc3b66a908c588a7ee562edb6a250fa86c9ba` or later main;
-- vLLM-HUST `6baa026f602fd221dc7db64362730305048a8b87`; and
-- arrival-control plugin `6d31843458bf7c75322f60c5715ae598c6ed4cde`.
+- Extension Manager tag `v0.3.0`;
+- vLLM-HUST `fa6f7d29db99d5350e1b2b9c2742c9b621b22b25`;
+- vLLM-Ascend-HUST PR #46 qualification source
+  `95334cc38a3938406fe24caf748030cf4ece5917`; and
+- arrival-control plugin `e343fc5ce6b4c64611a79df5d797b3db12cd6dac`.
 
 Install Manager and plugin wheels into an isolated environment, then run:
 
@@ -47,6 +49,8 @@ python -m pip uninstall vllm-kv-materialization
 ```
 
 The disabled dry-run must omit `kv_materialization` and the bundle ID. After
-uninstall, `extension list` must not discover the bundle. The historical
-vLLM 0.23 Ascend record validates only the version-scoped compatibility
-adapter; it does not qualify this native host on NPU.
+uninstall, `extension list` must not discover the bundle. Exact dependency
+hashes, observer receipts, and resource-release boundaries are recorded in
+[`evidence/native-current-npu-qualification-2026-10-11.md`](evidence/native-current-npu-qualification-2026-10-11.md).
+The historical vLLM 0.23 Ascend record validates only the version-scoped
+compatibility adapter.

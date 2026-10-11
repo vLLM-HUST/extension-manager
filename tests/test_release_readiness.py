@@ -13,18 +13,18 @@ def readiness() -> dict[str, object]:
 
 def test_checked_in_release_decision_is_consistent(capsys) -> None:
     assert main([]) == 0
-    assert "release-readiness: no-go" in capsys.readouterr().out
+    assert "release-readiness: go" in capsys.readouterr().out
 
 
-def test_publication_gate_rejects_current_frozen_state(capsys) -> None:
-    assert main(["--require-authorized"]) == 1
-    assert "publication is not authorized" in capsys.readouterr().out
+def test_publication_gate_accepts_authorized_release(capsys) -> None:
+    assert main(["--require-authorized"]) == 0
+    assert "release-readiness: go" in capsys.readouterr().out
 
 
 def test_go_decision_rejects_blocked_required_gate() -> None:
     payload = copy.deepcopy(readiness())
-    payload["decision"] = "go"
-    payload["publication_authorized"] = True
+    payload["gates"][0]["status"] = "blocked"
+    payload["gates"][0]["remaining_action"] = "repair the required gate"
 
     errors = validate_readiness(ROOT, payload)
 
@@ -54,6 +54,6 @@ def test_performance_policy_does_not_hide_runtime_release_blockers() -> None:
     gates = {gate["id"]: gate["status"] for gate in payload["gates"]}
 
     assert gates["performance-and-support-claims"] == "passed"
-    assert gates["native-current-host-npu"] == "blocked"
+    assert gates["native-current-host-npu"] == "passed"
     assert gates["upstream-host-contract"] == "passed"
-    assert payload["publication_authorized"] is False
+    assert payload["publication_authorized"] is True

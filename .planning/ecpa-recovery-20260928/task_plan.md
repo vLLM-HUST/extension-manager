@@ -41,3 +41,16 @@ Safety constraints: no unknown service/process mutation; no NPU use unless CPU/f
    checks; merge only after dual-Python CI and verify merged-main CI.
 5. Reconcile the Manager support matrix and public plugin catalog without
    claiming NPU execution, quality, performance, or alpha readiness.
+
+## ECPA v0.3.0 release (2026-10-11)
+
+1. Repair and merge the current Host/Ascend compatibility patch with focused
+   tests, repository lint, and real NPU evidence.
+2. Record the exact clean-wheel lifecycle, process-owned observer events,
+   restart rollback, and process/port/device release without performance
+   overclaiming.
+3. Change every Manager version source and the machine-readable readiness
+   decision atomically; run full tests, Ruff, mypy, build, and clean-wheel
+   installation.
+4. Merge the release PR, tag `v0.3.0`, verify tag CI, publish GitHub release
+   assets, then remove task branches, worktrees, and generated artifacts.
