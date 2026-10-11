@@ -45,4 +45,4 @@ jobs:
           python -m venv /tmp/vllm-hust-ext-wheel
           /tmp/vllm-hust-ext-wheel/bin/pip install dist/*.whl
           /tmp/vllm-hust-ext-wheel/bin/vllm-hust-ext --help
-          /tmp/vllm-hust-ext-wheel/bin/vllm-hust-ext --version | grep -Fx 'vllm-hust-ext 0.3.0.dev0'
+          /tmp/vllm-hust-ext-wheel/bin/vllm-hust-ext --version | grep -Fx 'vllm-hust-ext 0.3.0'

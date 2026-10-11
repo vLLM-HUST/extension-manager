@@ -198,3 +198,22 @@
 - The direct host check proves registration semantics only. No Manager-owned
   serving process, controller, port, or NPU was started, and no
   `runtime_effective` observer receipt or performance result was inferred.
+
+## Native-current release qualification (2026-10-11)
+
+- The last release blocker was real Host/Ascend drift, not a Manifest 0.3 or
+  Manager activation defect. Current Host changed Engram/speculator imports,
+  DCP helpers, KV-cache callback signatures, compilation resolver arguments,
+  AttentionGroup construction, PassConfig fields, Mamba modes, and backend
+  block-size queries after the Ascend main pin.
+- Ascend PR #46 repairs those contracts and recognizes the official
+  `triton-ascend` distribution name. Triton 3.6 development wheels sort before
+  `3.6` under PEP 440, so treating them as legacy installed empty Gluon stubs
+  and broke the first real NPU kernel specialization.
+- The pinned Qwen3-0.6B NPU run produced two owning-process observer receipts.
+  `runtime_effective` appeared only while engine PID 1283080 was alive and
+  disappeared after supervised stop. Port 8100 and NPU memory returned to the
+  idle baseline; no external service was touched.
+- This is sufficient for ECPA v0.3.0 lifecycle publication. It is not a
+  performance claim, a floating Triton dependency promise, or a universal MOD
+  support statement.

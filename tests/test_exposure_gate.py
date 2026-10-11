@@ -58,7 +58,12 @@ CANDIDATE_DIGEST = (
     "sha256:33c9a268940fae266a8d90ed2aedbdc43846684ba2bd327fc452fdb5c0ff171b"
 )
 PROOF = OpenProof(
-    "candidate", 1, 1, "sha256:" + "1" * 64, "sha256:" + "2" * 64, GRANT,
+    "candidate",
+    1,
+    1,
+    "sha256:" + "1" * 64,
+    "sha256:" + "2" * 64,
+    GRANT,
     CANDIDATE_DIGEST,
 )
 
@@ -168,7 +173,12 @@ def test_incomplete_proof_stale_generation_and_lease_loss_never_open(tmp_path):
     gate, adapter = make_gate(tmp_path)
     stage_closed(gate)
     partial = OpenProof(
-        "candidate", 1, 0, "sha256:" + "1" * 64, "sha256:" + "2" * 64, GRANT,
+        "candidate",
+        1,
+        0,
+        "sha256:" + "1" * 64,
+        "sha256:" + "2" * 64,
+        GRANT,
         CANDIDATE_DIGEST,
     )
     with pytest.raises(GateError, match="no durable evidence"):
@@ -235,9 +245,7 @@ def test_post_stage_predecessor_snapshot_mutation_fails_closed_before_admission(
         gate.observe(AdmissionRequest("must-not-admit", NOW + 1))
     assert GateState(gate._row()["state"]) is GateState.FAILED_SAFE
     assert adapter.route.generation is None
-    assert (
-        gate.connection.execute("SELECT count(*) FROM admission").fetchone()[0] == 0
-    )
+    assert gate.connection.execute("SELECT count(*) FROM admission").fetchone()[0] == 0
 
 
 def test_close_side_effect_predecessor_mutation_never_reaches_closed_candidate(

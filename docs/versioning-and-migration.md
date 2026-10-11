@@ -1,9 +1,11 @@
 # Versioning and migration
 
-The source package is `0.3.0.dev0`; compatibility remains frozen and no alpha
-release is authorized. The version change identifies the active development
-line and does not stabilize the manifest, Provider, host-hook, or catalog
-contracts. Passing unit or host-contract tests does not authorize publication.
+The source package is `0.3.0`, and publication of tag `v0.3.0` is authorized by
+the checked-in release decision. This stabilizes Manifest 0.3, saved-config
+schema 2, explicit enable intent, composition rejection, and live
+process-owned runtime evidence. It does not turn experimental Providers,
+external operator integrations, or MOD performance results into universal
+support promises.
 
 `docs/release-readiness.json` is the machine-readable release decision. Its
 package version must match both `pyproject.toml` and
@@ -15,7 +17,7 @@ python scripts/check_release_readiness.py --require-authorized
 vllm-hust-ext --version
 ```
 
-The first command intentionally fails while the compatibility freeze remains.
+Both commands must succeed for an authorized release tag.
 
 ## Persisted configuration
 
@@ -61,13 +63,16 @@ back, or delete those resources.
 
 ## Release gate
 
-The freeze remains until the latest vLLM-HUST contract and at least one real
-plugin pass clean-wheel activation, incompatible-version rejection,
+The v0.3.0 gate was satisfied by the latest vLLM-HUST contract and a real
+clean-wheel plugin lifecycle covering incompatible-version rejection,
 process-owned runtime observation, failure degradation, stop, disable,
-rollback, forget, and uninstall. Support-matrix entries must cite the exact
-host/plugin commits and must distinguish historical compatibility adapters from
-native-host NPU validation.
+restart rollback, forget, and package uninstall. The pinned native NPU record
+is in
+[`evidence/native-current-npu-qualification-2026-10-11.md`](evidence/native-current-npu-qualification-2026-10-11.md).
+Support-matrix entries still cite exact host/plugin commits and distinguish
+historical compatibility adapters from native-host NPU validation.
 
-Moving from `0.3.0.dev0` to an alpha, release candidate, or stable version is a
-separate reviewed change. It must update the machine-readable decision and all
-version sources in the same commit. A tag alone never changes release status.
+Future releases must update the machine-readable decision and all version
+sources in the same reviewed change. A tag alone never changes release status;
+if a required gate regresses, publication must return to `no-go` before another
+release is cut.

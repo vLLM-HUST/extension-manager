@@ -100,28 +100,29 @@ on `a100-dev`. A separate Ascend NPU 4 run completed a real
 MooncakeStoreConnector save/load hit: nine keys and 133,191,072 bytes each way,
 with local prefix caching disabled. Master outage produced partial save
 failures while inference remained available, and recovery restored save/load
-without restarting vLLM. Alpha remains frozen for the remaining online
-restart/rollback and support-matrix gates.
+without restarting vLLM. That result remains a pinned experimental integration
+point rather than a general support claim.
 
-> **Compatibility freeze:** The legacy `0.2-experimental` and
-> `0.3-experimental` identifiers, Provider/host-hook APIs, and former Bundle v1
-> prototype are not stable APIs. Manifest `0.3` now has a frozen data shape,
-> but no alpha package will be published until the remaining runtime gates pass.
+> **0.3 release boundary:** Manifest `0.3`, saved-config schema 2, explicit
+> enable intent, composition conflict rejection, and live process-owned runtime
+> evidence are the stable ECPA 0.3 surface. Legacy `0.2-experimental` and
+> `0.3-experimental` identifiers remain migration inputs. Experimental Host
+> Providers, external operator integrations, and individual MOD performance
+> claims are not promoted to universal stable support by this release.
 
-The source tree is now on the `0.3.0.dev0` development line. This aligns the
-package version with the Manifest 0.3 convergence work; it is not a release or
-an authorization to publish. The machine-readable decision in
+The source tree is ECPA `0.3.0`. The machine-readable decision in
 [`docs/release-readiness.json`](docs/release-readiness.json) is authoritative
-for release automation. CI rejects inconsistent versions, missing evidence,
-invalid inventory arithmetic, or a `go` decision while any required gate is
-blocked.
+for release automation and authorizes this release only while all required
+gates remain backed by checked-in evidence. CI rejects inconsistent versions,
+missing evidence, invalid inventory arithmetic, or a `go` decision while any
+required gate is blocked.
 
 The pinned pass/fail combinations and lifecycle rollback owners are summarized
 in [`docs/support-matrix.md`](docs/support-matrix.md). A passing point does not
 implicitly validate the rest of an experimental version range.
 Release qualification and MOD performance recommendation are separated by
-[`docs/qualification-policy.md`](docs/qualification-policy.md); an alpha never
-implies that every integrated MOD is beneficial.
+[`docs/qualification-policy.md`](docs/qualification-policy.md); a Manager
+release never implies that every integrated MOD is beneficial.
 Configuration migration and rollback rules are documented in
 [`docs/versioning-and-migration.md`](docs/versioning-and-migration.md).
 Capability-registry discovery, composition resource claims, and explicit
@@ -132,13 +133,13 @@ The pinned KV-materialization clean-wheel procedure and its evidence boundary
 are documented in
 [`docs/kv-materialization-runbook.md`](docs/kv-materialization-runbook.md).
 
-There is no published package or supported floating installer during the
-freeze. For source evaluation, pin the reviewed commit explicitly:
+Release artifacts are published on the repository's tagged GitHub release.
+For reproducible evaluation, pin the tag or reviewed commit explicitly:
 
 ```bash
 git clone https://github.com/vLLM-HUST/extension-manager.git
 cd extension-manager
-git checkout "$REVIEWED_ECPA_COMMIT"
+git checkout v0.3.0
 pip install .
 pip install bidkv
 

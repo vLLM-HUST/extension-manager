@@ -34,7 +34,7 @@ def test_cli_reports_candidate_version(capsys: pytest.CaptureFixture[str]) -> No
     with pytest.raises(SystemExit, match="0"):
         cli.main(["--version"])
 
-    assert capsys.readouterr().out == "vllm-hust-ext 0.3.0.dev0\n"
+    assert capsys.readouterr().out == "vllm-hust-ext 0.3.0\n"
 
 
 def test_activation_does_not_replace_vllm_plugin_allowlist() -> None:

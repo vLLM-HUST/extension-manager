@@ -1,11 +1,11 @@
 {
   "$schema": "./release-readiness.schema.json",
   "schema_version": "1.0",
-  "assessed_at": "2026-10-10",
-  "package_version": "0.3.0.dev0",
+  "assessed_at": "2026-10-11",
+  "package_version": "0.3.0",
   "manifest_api": "0.3",
-  "decision": "no-go",
-  "publication_authorized": false,
+  "decision": "go",
+  "publication_authorized": true,
   "inventory": {
     "distributions": 36,
     "registrations": 39,
@@ -63,12 +63,11 @@
       "id": "native-current-host-npu",
       "title": "Current native host and NPU lifecycle qualification",
       "required": true,
-      "status": "blocked",
+      "status": "passed",
       "evidence": [
         "docs/support-matrix.md",
-        "docs/evidence/native-current-npu-blocker-2026-10-10.md"
-      ],
-      "remaining_action": "Resolve vLLM-Ascend-HUST issue #45 by publishing a current compatible Host/Ascend/torch/torch-npu matrix, then repeat the qualifying plugin lifecycle and record observer, rollback, process, port, and device-release evidence."
+        "docs/evidence/native-current-npu-qualification-2026-10-11.md"
+      ]
     },
     {
       "id": "failure-and-permission-matrix",

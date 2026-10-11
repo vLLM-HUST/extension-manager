@@ -504,8 +504,7 @@ class ReferenceExposureGate:
                 operation_id=operation_id,
             )
             db.execute(
-                "UPDATE gate_state SET observed_predecessor_digest=? "
-                "WHERE singleton=1",
+                "UPDATE gate_state SET observed_predecessor_digest=? WHERE singleton=1",
                 (observed_digest,),
             )
 
@@ -652,18 +651,14 @@ class ReferenceExposureGate:
             row = self._row()
             if actual.generation is None or actual.fence == "closed":
                 raise GateError("traffic is failed safe")
-            predecessor_mismatch = (
-                gate_state
-                in {
-                    GateState.PREDECESSOR_OPEN,
-                    GateState.CANDIDATE_STAGED,
-                    GateState.CANDIDATE_CLOSED,
-                }
-                and (
-                    actual.generation != row["predecessor_generation"]
-                    or actual.fence != f"fence-{row['predecessor_generation']}"
-                    or self._digest(actual.snapshot) != row["predecessor_digest"]
-                )
+            predecessor_mismatch = gate_state in {
+                GateState.PREDECESSOR_OPEN,
+                GateState.CANDIDATE_STAGED,
+                GateState.CANDIDATE_CLOSED,
+            } and (
+                actual.generation != row["predecessor_generation"]
+                or actual.fence != f"fence-{row['predecessor_generation']}"
+                or self._digest(actual.snapshot) != row["predecessor_digest"]
             )
             if predecessor_mismatch:
                 self.fail_close(
@@ -778,9 +773,7 @@ class ReferenceExposureGate:
             )
             target = GateState.FAILED_SAFE if closed else GateState.SAFETY_UNKNOWN
             classification = (
-                RollbackClass.FAILED_SAFE
-                if closed
-                else RollbackClass.SAFETY_UNKNOWN
+                RollbackClass.FAILED_SAFE if closed else RollbackClass.SAFETY_UNKNOWN
             )
             with self.connection as db:
                 self._transition(
@@ -1323,7 +1316,8 @@ def evaluate_trace(path: str | Path) -> dict[str, Any]:
         state is not None
         and state["state"] == GateState.CANDIDATE_OPEN.value
         and (
-            state["route_generation"] != candidate or state["route_fence"] != open_fence
+            state["route_generation"] != candidate
+            or state["route_fence"] != open_fence
             or state["observed_candidate_digest"] != state["candidate_digest"]
         )
     ):
