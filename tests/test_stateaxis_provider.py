@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from vllm_hust_ext.cli import _merge_provider_plan
@@ -172,6 +173,70 @@ def test_experimental_candidate_forwards_manifest_owned_mechanism_config(
         "chunk_tokens": 1024,
         "contention_only": True,
     }
+
+
+def test_distinct_stateaxis_mods_compose_into_hash_bound_envelope(
+    tmp_path: Path,
+) -> None:
+    plans = []
+    for index in (1, 2):
+        research_manifest = tmp_path / f"mod-{index}.json"
+        research_manifest.write_text(json.dumps({"index": index}) + "\n")
+        digest = hashlib.sha256(research_manifest.read_bytes()).hexdigest()
+        manifest = stateaxis_manifest(
+            digest,
+            status="active",
+            mechanism_config={"index": index},
+        )
+        manifest = replace(
+            manifest,
+            bundle_id=f"org.stateaxis.test-mod-{index}",
+            bundle_version=f"0.{index}.0",
+            activation=replace(
+                manifest.activation,
+                additional_config=tuple(
+                    (
+                        key,
+                        {
+                            **value,
+                            "mod_id": f"stateaxis.test-mod-{index}",
+                            "version": f"0.{index}.0",
+                        },
+                    )
+                    if key == "stateaxis_mod"
+                    else (f"stateaxis_test_mod_{index}", value)
+                    for key, value in manifest.activation.additional_config
+                ),
+            ),
+        )
+        plans.append(
+            StateAxisProvider().plan(
+                manifest,
+                {
+                    "experiment_mode": True,
+                    "host_version": "0.3.0.dev23",
+                    "research_manifest_path": str(research_manifest),
+                },
+                enabled=True,
+            )
+        )
+
+    command = ["stateaxis", "serve"]
+    for plan in plans:
+        command = _merge_provider_plan(command, plan)
+    config = json.loads(command[3])
+    assert "stateaxis_mod" not in config
+    assert "experiment_mode" not in config
+    assert sorted(config["stateaxis_mods"]) == [
+        "stateaxis.test-mod-1",
+        "stateaxis.test-mod-2",
+    ]
+    assert all(
+        binding["experiment_mode"] is True
+        for binding in config["stateaxis_mods"].values()
+    )
+    assert config["stateaxis_test_mod_1"] == {"index": 1}
+    assert config["stateaxis_test_mod_2"] == {"index": 2}
 
 
 def test_qualified_candidate_forwards_binding_without_experiment_mode(

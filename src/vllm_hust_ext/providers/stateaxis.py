@@ -10,12 +10,32 @@ from typing import Any
 
 from vllm_hust_ext.manifest import BundleManifest, activation_blocker
 from vllm_hust_ext.providers.base import (
+    ConfigClaim,
     PlanAction,
     ProviderCheck,
     ProviderPlan,
     RenderArtifact,
     assess_compatibility,
 )
+
+
+def _composition_claims(additional: dict[str, Any]) -> tuple[ConfigClaim, ...]:
+    binding = additional["stateaxis_mod"]
+    assert isinstance(binding, dict)
+    mod_id = binding["mod_id"]
+    assert isinstance(mod_id, str)
+    claims = [
+        ConfigClaim(
+            ("stateaxis_mods", mod_id),
+            {**binding, "experiment_mode": additional["experiment_mode"]},
+        )
+    ]
+    claims.extend(
+        ConfigClaim((key,), value)
+        for key, value in additional.items()
+        if key not in {"experiment_mode", "stateaxis_mod"}
+    )
+    return tuple(claims)
 
 
 def _mod_binding(manifest: BundleManifest) -> dict[str, Any]:
@@ -119,6 +139,7 @@ class StateAxisProvider:
                 tuple(reasons),
             )
         if experiment_mode and not binding["performance_qualified"]:
+            additional = _launch_additional_config(manifest, experiment_mode=True)
             return ProviderPlan(
                 manifest.bundle_id,
                 self.name,
@@ -131,9 +152,7 @@ class StateAxisProvider:
                     ),
                 ),
                 {
-                    "stateaxis_additional_config": _launch_additional_config(
-                        manifest, experiment_mode=True
-                    ),
+                    "stateaxis_additional_config": additional,
                     "stateaxis_mod": binding,
                     "user_config": configuration,
                 },
@@ -141,6 +160,7 @@ class StateAxisProvider:
                     "experimental launch is not performance qualification; "
                     "preserve results with an experimental evidence label",
                 ),
+                config_claims=_composition_claims(additional),
             )
         qualification = configuration.get("runtime_qualification")
         if (
@@ -150,6 +170,7 @@ class StateAxisProvider:
             raise ValueError(
                 "qualified StateAxis mod requires a passed runtime_qualification record"
             )
+        additional = _launch_additional_config(manifest, experiment_mode=False)
         return ProviderPlan(
             manifest.bundle_id,
             self.name,
@@ -162,13 +183,12 @@ class StateAxisProvider:
                 ),
             ),
             {
-                "stateaxis_additional_config": _launch_additional_config(
-                    manifest, experiment_mode=False
-                ),
+                "stateaxis_additional_config": additional,
                 "stateaxis_mod": binding,
                 "runtime_qualification": qualification,
                 "user_config": configuration,
             },
+            config_claims=_composition_claims(additional),
         )
 
     def render(self, plan: ProviderPlan) -> tuple[RenderArtifact, ...]:
