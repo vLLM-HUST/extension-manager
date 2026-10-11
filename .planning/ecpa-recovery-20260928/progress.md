@@ -132,5 +132,12 @@
   uninstall restore the native path without touching external services.
 - [x] Merged Ascend PR #46 and verified main at
   `82f586f8dcb5f92f8f3d55727bc05b3e2887606d`.
-- [ ] Merge the Manager v0.3.0 release PR, tag `v0.3.0`, pass the tag release
-  gate, publish GitHub release assets, and remove temporary branches/worktrees.
+- [x] Merged Manager PR #52 as
+  `4450214cfea81dd3a6356aaaf9598178b40f44cb`, tagged that exact commit as
+  `v0.3.0`, and passed release-gate run `38112889162`.
+- [x] Published the non-draft, non-prerelease GitHub release with its wheel and
+  source archive; website PR #419 and Pages deployment `38113182868` now expose
+  the pinned release wheel and the stable Manifest 0.3 boundary.
+- [x] Removed the release worktrees, build artifacts, test virtual environments,
+  and merged remote branches. Port 8100 is bindable and the allocated NPU 0/7
+  devices report no running processes.
