@@ -20,6 +20,21 @@ from vllm_hust_ext.quarantine_transaction import (
 )
 
 
+def sleeping_process() -> subprocess.Popen[str]:
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import time; print('ready', flush=True); time.sleep(60)",
+        ],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    assert process.stdout is not None
+    assert process.stdout.readline() == "ready\n"
+    return process
+
+
 def request_for(fact: str, *, pid: int | None = None) -> dict[str, object]:
     pid = os.getpid() if pid is None else pid
     return {
@@ -683,7 +698,7 @@ def test_journal_capture_bounds_bytes_before_parsing(tmp_path):
 
 
 def test_shutdown_source_observes_real_process_exit():
-    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    process = sleeping_process()
     request = request_for("service-shutdown", pid=process.pid)
     request["sut_process_identity"] = source._linux_process_identity(process.pid)
     timer = threading.Timer(0.05, process.terminate)
@@ -702,7 +717,7 @@ def test_shutdown_source_observes_real_process_exit():
 
 
 def test_shutdown_source_rejects_target_gone_before_identity_binding():
-    process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    process = sleeping_process()
     identity = source._linux_process_identity(process.pid)
     process.terminate()
     process.wait(timeout=2)
