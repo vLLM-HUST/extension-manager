@@ -187,6 +187,11 @@ def _activation_environment(
 def _activation_config(bundles: Sequence[InstalledBundle]) -> dict[str, object]:
     merged: dict[str, object] = {}
     for bundle in bundles:
+        # StateAxis plans carry a manifest-bound activation envelope.  Merge
+        # those plans below rather than treating the legacy single
+        # ``stateaxis_mod`` discriminator as an ordinary shared host key.
+        if bundle.manifest.host.provider == "stateaxis":
+            continue
         for key, value in bundle.manifest.activation.additional_config:
             if key in merged and merged[key] != value:
                 raise ValueError(
@@ -194,6 +199,95 @@ def _activation_config(bundles: Sequence[InstalledBundle]) -> dict[str, object]:
                 )
             merged[key] = value
     return merged
+
+
+def _merge_stateaxis_plan_config(
+    command: list[str], additional: dict[str, object]
+) -> list[str]:
+    """Compose hash-bound StateAxis MOD envelopes without losing ownership."""
+
+    binding = additional["stateaxis_mod"]
+    assert isinstance(binding, dict)
+    mod_id = binding["mod_id"]
+    assert isinstance(mod_id, str)
+    experiment_mode = additional["experiment_mode"]
+
+    result = list(command)
+    option_index: int | None = None
+    raw: str | None = None
+    for index, argument in enumerate(result):
+        if argument == "--additional-config":
+            if index + 1 >= len(result):
+                raise ValueError("--additional-config requires a JSON object")
+            option_index = index
+            raw = result[index + 1]
+            break
+        if argument.startswith("--additional-config="):
+            option_index = index
+            raw = argument.partition("=")[2]
+            break
+    existing: dict[str, object] = {}
+    if raw is not None:
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            raise ValueError("--additional-config must contain a JSON object")
+        existing = parsed
+
+    legacy = existing.pop("stateaxis_mod", None)
+    legacy_experiment = existing.pop("experiment_mode", None) if legacy else None
+    bindings = existing.pop("stateaxis_mods", None)
+    if bindings is None:
+        bindings = {}
+    if not isinstance(bindings, dict):
+        raise ValueError("stateaxis_mods must be a JSON object")
+    bindings = dict(bindings)
+    if legacy is not None:
+        if not isinstance(legacy, dict) or not isinstance(legacy.get("mod_id"), str):
+            raise ValueError("existing stateaxis_mod binding is invalid")
+        legacy_id = legacy["mod_id"]
+        bindings[legacy_id] = {**legacy, "experiment_mode": legacy_experiment}
+
+    candidate = {**binding, "experiment_mode": experiment_mode}
+    if mod_id in bindings and bindings[mod_id] != candidate:
+        raise ValueError(f"conflicting StateAxis MOD binding for {mod_id!r}")
+    bindings[mod_id] = candidate
+
+    mechanism = {
+        key: value
+        for key, value in additional.items()
+        if key not in {"experiment_mode", "stateaxis_mod"}
+    }
+    conflicts = {
+        key
+        for key, value in mechanism.items()
+        if key in existing and existing[key] != value
+    }
+    if conflicts:
+        raise ValueError(
+            "plugin activation conflicts with additional_config keys: "
+            f"{sorted(conflicts)}"
+        )
+    existing.update(mechanism)
+
+    if len(bindings) == 1:
+        only = next(iter(bindings.values()))
+        assert isinstance(only, dict)
+        mode = only["experiment_mode"]
+        existing["experiment_mode"] = mode
+        existing["stateaxis_mod"] = {
+            key: value for key, value in only.items() if key != "experiment_mode"
+        }
+    else:
+        existing["stateaxis_mods"] = bindings
+
+    encoded = json.dumps(existing, separators=(",", ":"), sort_keys=True)
+    if option_index is None:
+        result.extend(("--additional-config", encoded))
+    elif result[option_index] == "--additional-config":
+        result[option_index + 1] = encoded
+    else:
+        result[option_index] = f"--additional-config={encoded}"
+    return result
 
 
 def _validate_process_ownership(bundles: Sequence[InstalledBundle]) -> None:
@@ -707,7 +801,7 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
             )
         if binding != plan.generated_config.get("stateaxis_mod"):
             raise ValueError("StateAxis launch binding differs from the provider plan")
-        return _merge_command_config(command, additional)
+        return _merge_stateaxis_plan_config(command, additional)
     if plan.provider != "vllm":
         raise ValueError(f"{plan.provider} extensions use plan/render/check, not run")
     json_options = plan.generated_config.get("vllm_json_options", {})
