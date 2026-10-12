@@ -8,9 +8,11 @@ It is not a production reverse proxy or a general deployment controller.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http.client
 import json
 import os
+import re
 import signal
 import socket
 import stat
@@ -32,6 +34,162 @@ from vllm_hust_ext.exposure_gate import (
 
 MAX_MESSAGE = 64 * 1024
 MAX_BODY = 1024 * 1024
+MAX_JOURNAL = 4 * 1024 * 1024
+JOURNAL_SCHEMA = "ecpa-loopback-route-journal/v1"
+SHA256 = re.compile(r"sha256:[0-9a-f]{64}\Z")
+JOURNAL_KINDS = {
+    "authority.start",
+    "authority.stop",
+    "route.close_checked",
+    "route.open.intent",
+    "route.open.applied",
+    "route.restore.intent",
+    "route.restore.applied",
+    "route.close_all",
+    "request.admit",
+    "request.reject",
+}
+
+
+def _canonical(value: dict[str, Any]) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode()
+
+
+class _TrafficJournal:
+    """Traffic-process-owned route/admission trace, not a host-effect receipt."""
+
+    def __init__(self, path: Path):
+        parent = path.parent.stat()
+        if (
+            not stat.S_ISDIR(parent.st_mode)
+            or parent.st_uid != os.getuid()
+            or parent.st_mode & 0o077
+            or os.path.lexists(path)
+        ):
+            raise GateError(
+                "traffic journal requires a new path in a private directory"
+            )
+        stat_fields = Path("/proc/self/stat").read_text().rsplit(")", 1)[1].split()
+        self.start_ticks = int(stat_fields[19])
+        self.pid = os.getpid()
+        self.sequence = 0
+        self.previous = "sha256:" + "0" * 64
+        self.fd = os.open(
+            path,
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | os.O_APPEND
+            | os.O_NOFOLLOW
+            | os.O_CLOEXEC,
+            0o600,
+        )
+
+    def record(self, kind: str, route: RouteState, **detail: Any) -> None:
+        next_sequence = self.sequence + 1
+        event = {
+            "schema": JOURNAL_SCHEMA,
+            "sequence": next_sequence,
+            "previous_sha256": self.previous,
+            "at_ns": time.time_ns(),
+            "proxy_pid": self.pid,
+            "proxy_start_ticks": self.start_ticks,
+            "kind": kind,
+            "route": {
+                "generation": route.generation,
+                "fence": route.fence,
+                "snapshot_sha256": "sha256:"
+                + hashlib.sha256(_canonical({"snapshot": route.snapshot})).hexdigest(),
+            },
+            "detail": detail,
+        }
+        payload = _canonical(event)
+        line = payload + b"\n"
+        if os.fstat(self.fd).st_size + len(line) > MAX_JOURNAL:
+            raise OSError("traffic journal capacity exceeded")
+        written = 0
+        while written < len(line):
+            count = os.write(self.fd, line[written:])
+            if count <= 0:
+                raise OSError("traffic journal write failed")
+            written += count
+        os.fsync(self.fd)
+        self.sequence = next_sequence
+        self.previous = "sha256:" + hashlib.sha256(payload).hexdigest()
+
+    def close(self) -> None:
+        os.close(self.fd)
+
+
+def read_traffic_journal(path: Path) -> list[dict[str, Any]]:
+    """Validate an integration trace without promoting it to formal evidence."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        with os.fdopen(fd, "rb") as source:
+            mode = os.fstat(source.fileno())
+            if (
+                not stat.S_ISREG(mode.st_mode)
+                or mode.st_uid != os.getuid()
+                or mode.st_mode & 0o077
+                or mode.st_size > MAX_JOURNAL
+            ):
+                raise GateError("traffic journal owner, mode, or size invalid")
+            data = source.read(MAX_JOURNAL + 1)
+    except OSError as exc:
+        raise GateError("traffic journal cannot be opened safely") from exc
+    if not data or len(data) > MAX_JOURNAL or not data.endswith(b"\n"):
+        raise GateError("traffic journal is empty, oversized, or incomplete")
+    previous = "sha256:" + "0" * 64
+    events: list[dict[str, Any]] = []
+    identity: tuple[int, int] | None = None
+    for sequence, line in enumerate(data.splitlines(), 1):
+        try:
+            event = json.loads(line)
+            canonical = isinstance(event, dict) and _canonical(event) == line
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise GateError("traffic journal contains invalid JSON") from exc
+        if (
+            not canonical
+            or event.get("schema") != JOURNAL_SCHEMA
+            or event.get("sequence") != sequence
+            or event.get("previous_sha256") != previous
+        ):
+            raise GateError(
+                "traffic journal sequence, chain, or canonical form changed"
+            )
+        route = event.get("route")
+        if (
+            event.get("kind") not in JOURNAL_KINDS
+            or not isinstance(event.get("proxy_pid"), int)
+            or event["proxy_pid"] <= 0
+            or not isinstance(event.get("proxy_start_ticks"), int)
+            or event["proxy_start_ticks"] <= 0
+            or not isinstance(event.get("at_ns"), int)
+            or not isinstance(event.get("detail"), dict)
+            or not isinstance(route, dict)
+            or set(route) != {"generation", "fence", "snapshot_sha256"}
+            or not (route["generation"] is None or isinstance(route["generation"], int))
+            or not isinstance(route["fence"], str)
+            or not isinstance(route["snapshot_sha256"], str)
+            or SHA256.fullmatch(route["snapshot_sha256"]) is None
+        ):
+            raise GateError("traffic journal event shape invalid")
+        observed_identity = (event["proxy_pid"], event["proxy_start_ticks"])
+        if identity is None:
+            identity = observed_identity
+        elif observed_identity != identity:
+            raise GateError("traffic journal process identity changed")
+        if event["kind"] == "request.admit" and route["generation"] is None:
+            raise GateError("traffic journal admitted a closed route")
+        if event["kind"] == "request.reject" and route["generation"] is not None:
+            raise GateError("traffic journal rejected an open route")
+        previous = "sha256:" + hashlib.sha256(line).hexdigest()
+        events.append(event)
+    if events[0]["kind"] != "authority.start":
+        raise GateError("traffic journal has no authority start")
+    return events
 
 
 class LoopbackTrafficAdapter:
@@ -114,12 +272,24 @@ class _Authority:
         grant: LeaseGrant,
         predecessor: tuple[str, int],
         candidate: tuple[str, int],
+        journal: _TrafficJournal,
     ):
         self.route = route
         self.grant = grant
         self.predecessor = predecessor
         self.candidate = candidate
+        self.journal = journal
         self.lock = threading.Lock()
+        self.journal.record("authority.start", route)
+
+    def _record(self, kind: str, route: RouteState, **detail: Any) -> None:
+        try:
+            self.journal.record(kind, route, **detail)
+        except (OSError, TypeError, ValueError) as exc:
+            self.route = RouteState(None, "closed", None)
+            raise GateError(
+                "traffic journal unavailable; routing failed closed"
+            ) from exc
 
     def apply(self, value: dict[str, Any]) -> dict[str, Any]:
         operation = value.get("operation")
@@ -134,6 +304,11 @@ class _Authority:
                     or value.get("generation") != self.route.generation + 1
                 ):
                     raise GateError("candidate generation does not follow predecessor")
+                self._record(
+                    "route.close_checked",
+                    self.route,
+                    candidate_generation=value["generation"],
+                )
                 return {}
             if operation == "open":
                 if not self._valid(value):
@@ -149,10 +324,19 @@ class _Authority:
                     or not isinstance(snapshot, dict)
                 ):
                     raise GateError("invalid candidate route transition")
-                self.route = RouteState(generation, fence, snapshot)
+                candidate_route = RouteState(generation, fence, snapshot)
+                self._record(
+                    "route.open.intent",
+                    self.route,
+                    candidate_generation=generation,
+                    candidate_fence=fence,
+                )
+                self.route = candidate_route
+                self._record("route.open.applied", self.route)
                 return {}
             if operation == "close_all":
                 self.route = RouteState(None, "closed", None)
+                self._record("route.close_all", self.route)
                 return {}
             if operation == "restore":
                 generation = value.get("generation")
@@ -164,7 +348,10 @@ class _Authority:
                     or not isinstance(snapshot, dict)
                 ):
                     raise GateError("invalid predecessor restoration")
-                self.route = RouteState(generation, fence, snapshot)
+                predecessor_route = RouteState(generation, fence, snapshot)
+                self._record("route.restore.intent", self.route, generation=generation)
+                self.route = predecessor_route
+                self._record("route.restore.applied", self.route)
                 return {"route": asdict(self.route)}
         raise GateError("unknown traffic control operation")
 
@@ -191,16 +378,6 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         self._forward()
 
     def _forward(self) -> None:
-        with self.server.authority.lock:
-            route = self.server.authority.route
-        if route.generation is None:
-            self.send_error(503, "traffic gate closed")
-            return
-        backend = (
-            self.server.authority.predecessor
-            if route.fence.startswith("fence-")
-            else self.server.authority.candidate
-        )
         if self.headers.get("Transfer-Encoding") is not None:
             self.send_error(400, "chunked requests unsupported")
             return
@@ -211,6 +388,28 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         except ValueError:
             self.send_error(413, "request body too large")
             return
+        journal_failed = False
+        with self.server.authority.lock:
+            route = self.server.authority.route
+            try:
+                self.server.authority._record(
+                    "request.reject" if route.generation is None else "request.admit",
+                    route,
+                    method=self.command,
+                )
+            except GateError:
+                journal_failed = True
+        if journal_failed:
+            self.send_error(503, "traffic journal unavailable")
+            return
+        if route.generation is None:
+            self.send_error(503, "traffic gate closed")
+            return
+        backend = (
+            self.server.authority.predecessor
+            if route.fence.startswith("fence-")
+            else self.server.authority.candidate
+        )
         body = self.rfile.read(body_size)
         try:
             connection = http.client.HTTPConnection(*backend, timeout=5)
@@ -295,6 +494,7 @@ def _admin(socket_path: Path, authority: _Authority, port: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--socket", type=Path, required=True)
+    parser.add_argument("--journal", type=Path, required=True)
     parser.add_argument("--predecessor-port", type=int, required=True)
     parser.add_argument("--candidate-port", type=int, required=True)
     parser.add_argument("--predecessor-snapshot", required=True)
@@ -307,15 +507,23 @@ def main() -> None:
         predecessor.get("generation"), int
     ):
         raise GateError("predecessor snapshot requires generation")
-    authority = _Authority(
-        RouteState(
-            predecessor["generation"], f"fence-{predecessor['generation']}", predecessor
-        ),
-        LeaseGrant(args.grant_holder, args.grant_token, args.grant_expires_at),
-        ("127.0.0.1", args.predecessor_port),
-        ("127.0.0.1", args.candidate_port),
-    )
-    server = _ProxyServer(authority)
+    journal = _TrafficJournal(args.journal)
+    try:
+        authority = _Authority(
+            RouteState(
+                predecessor["generation"],
+                f"fence-{predecessor['generation']}",
+                predecessor,
+            ),
+            LeaseGrant(args.grant_holder, args.grant_token, args.grant_expires_at),
+            ("127.0.0.1", args.predecessor_port),
+            ("127.0.0.1", args.candidate_port),
+            journal,
+        )
+        server = _ProxyServer(authority)
+    except Exception:
+        journal.close()
+        raise
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
@@ -327,9 +535,14 @@ def main() -> None:
     try:
         _admin(args.socket, authority, server.server_port)
     finally:
+        with authority.lock:
+            authority.route = RouteState(None, "closed", None)
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+        with authority.lock, suppress(GateError):
+            authority._record("authority.stop", authority.route)
+        journal.close()
         args.socket.unlink(missing_ok=True)
 
 
