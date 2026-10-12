@@ -57,7 +57,7 @@ EVIDENCE_INPUTS := \
 	../src/vllm_hust_ext/contract_compiler.py \
 	../src/vllm_hust_ext/formal_lifecycle_source.py
 
-.PHONY: all clean evidence-summary check-evidence-summary check-research-matrix tectonic validate-results
+.PHONY: all clean evidence-summary check-evidence-summary check-research-matrix tectonic audit-pdf validate-results
 all: main.pdf
 
 $(EVIDENCE_SUMMARY): scripts/generate_evidence_summary.py $(EVIDENCE_INPUTS)
@@ -75,6 +75,9 @@ main.pdf: main.tex references.bib $(EVIDENCE_SUMMARY) check-research-matrix
 	$(TECTONIC) --keep-logs main.tex
 
 tectonic: main.pdf
+
+audit-pdf: main.pdf
+	python3 scripts/audit_pdf.py main.pdf
 
 validate-results: check-evidence-summary check-research-matrix
 	python3 scripts/validate_results.py artifacts/results.example.json
