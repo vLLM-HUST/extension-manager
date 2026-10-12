@@ -18,6 +18,11 @@ grace period. The runner waits longer than that manager grace period before
 using its own last-resort kill. An exit code of 128 + SIGTERM is normalized only
 for this runner-requested managed shutdown after all required phase facts and
 the observer have succeeded; premature exit remains a failed start.
+The TP2 deployment candidate pins a 30-second manager grace in the actual
+formal command and offline validation. This exceeds the observed roughly
+12-second idle shutdown with a 20-second host drain and 12-second worker
+grace; it is a bounded candidate for this stack, not a universal default or
+a formal-result claim.
 
 | Command | Owned fact | Independent operation |
 |---|---|---|

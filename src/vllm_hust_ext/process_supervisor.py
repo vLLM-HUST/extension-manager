@@ -11,6 +11,8 @@ from contextlib import suppress
 from types import FrameType
 
 DEFAULT_SHUTDOWN_GRACE_SECONDS = 10.0
+# Bounded first-deployment formal stop budget, pinned in the executed command.
+FORMAL_SHUTDOWN_GRACE_SECONDS = 30
 _POLL_SECONDS = 0.05
 _KILL_SIGNAL = getattr(signal, "SIGKILL", signal.SIGTERM)
 

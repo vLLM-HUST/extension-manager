@@ -56,7 +56,7 @@ from vllm_hust_ext.manager_controller import (
     CONTROLLED_ENVIRONMENT,
 )
 from vllm_hust_ext.plan_artifact import read_plan_artifact
-from vllm_hust_ext.process_supervisor import DEFAULT_SHUTDOWN_GRACE_SECONDS
+from vllm_hust_ext.process_supervisor import FORMAL_SHUTDOWN_GRACE_SECONDS
 from vllm_hust_ext.quarantine_transaction import (
     QuarantineTransactionError,
     finalize_quarantine_transaction,
@@ -78,7 +78,7 @@ ECPA_FORMAL_ACTIVATION_OPTIONS = (
     "formal-run",
 )
 CHILD_TERMINATION_GRACE_S = 2.0
-MANAGED_TERMINATION_GRACE_S = DEFAULT_SHUTDOWN_GRACE_SECONDS + 2.0
+MANAGED_TERMINATION_GRACE_S = FORMAL_SHUTDOWN_GRACE_SECONDS + 2.0
 
 
 def _single_option(arguments: list[str], name: str) -> str:
@@ -1453,6 +1453,8 @@ class ECPAAdapter(FormalArmAdapter):
             controller_instance,
             "--host-event-dir",
             str(event_root),
+            "--shutdown-grace-seconds",
+            str(FORMAL_SHUTDOWN_GRACE_SECONDS),
             "--target-executable-device",
             str(target_command["executable_device"]),
             "--target-executable-inode",
@@ -1477,6 +1479,7 @@ class ECPAAdapter(FormalArmAdapter):
             "plan_id": artifact.plan_id,
             "plan_path": plan,
             "plan_sha256": digest_bytes(frozen_artifact.raw),
+            "shutdown_grace_seconds": FORMAL_SHUTDOWN_GRACE_SECONDS,
             "target_argv": list(target_argv),
             "target_executable": {
                 "device": target_command["executable_device"],
