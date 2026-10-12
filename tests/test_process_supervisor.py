@@ -73,6 +73,80 @@ with open(sys.argv[1], "w", encoding="utf-8") as stream:
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX process-group contract")
+def test_first_signal_lets_entry_process_stop_its_worker(tmp_path: Path) -> None:
+    ready_path = tmp_path / "ready"
+    worker_ready_path = tmp_path / "worker-ready"
+    worker_interrupt_path = tmp_path / "worker-interrupted"
+    graceful_path = tmp_path / "graceful"
+    worker_code = """
+import signal
+import sys
+import time
+from pathlib import Path
+
+signal.signal(signal.SIGINT, lambda *_: Path(sys.argv[1]).write_text("interrupted"))
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+Path(sys.argv[2]).write_text("ready")
+while True:
+    time.sleep(0.1)
+"""
+    child_code = """
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+worker = subprocess.Popen([sys.executable, "-c", sys.argv[5], sys.argv[2], sys.argv[4]])
+
+def stop_children(*_):
+    time.sleep(0.2)
+    worker.terminate()
+    worker.wait(timeout=2)
+    Path(sys.argv[3]).write_text("graceful")
+    raise SystemExit(0)
+
+signal.signal(signal.SIGINT, stop_children)
+while not Path(sys.argv[4]).exists():
+    time.sleep(0.01)
+Path(sys.argv[1]).write_text(str(worker.pid))
+while True:
+    time.sleep(0.1)
+"""
+
+    def interrupt_when_ready() -> None:
+        deadline = time.monotonic() + 5
+        while not ready_path.exists():
+            if time.monotonic() >= deadline:
+                return
+            time.sleep(0.01)
+        os.kill(os.getpid(), signal.SIGINT)
+
+    interrupter = threading.Thread(target=interrupt_when_ready)
+    interrupter.start()
+    result = supervise(
+        [
+            sys.executable,
+            "-c",
+            child_code,
+            str(ready_path),
+            str(worker_interrupt_path),
+            str(graceful_path),
+            str(worker_ready_path),
+            worker_code,
+        ],
+        env=os.environ,
+        shutdown_grace_seconds=2,
+    )
+    interrupter.join(timeout=1)
+
+    assert result == 128 + signal.SIGINT
+    assert graceful_path.read_text(encoding="utf-8") == "graceful"
+    assert not worker_interrupt_path.exists()
+    assert not _proc_is_live(int(ready_path.read_text(encoding="utf-8")))
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX process-group contract")
 def test_supervisor_escalates_and_removes_stubborn_descendants(
     tmp_path: Path,
 ) -> None:
