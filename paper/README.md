@@ -100,3 +100,21 @@ geometry, body/reference boundary, page numbers, embedded fonts, nominal
 submission rendering; the public draft is expected to fail its identity scan.
 Leading, exact text-block dimensions, grayscale legibility, and implication-
 based identity leaks still need human review.
+
+A provisional anonymous review copy can be rendered outside the repository:
+
+```bash
+python3 paper/scripts/render_anonymous.py \
+  --output /absolute/private/review-directory \
+  --alias ExampleOnlyChangeMe \
+  --title 'A New Nonidentifying Paper Title'
+```
+
+Replace the example alias and title with private, unpublished values. The
+command refuses an in-repository or existing output directory, checks the
+generated evidence summary, compiles only with Tectonic, and runs the PDF
+identity audit. Keep the alias and output private. The transform is mechanical:
+it does **not** remove identity by implication from distinctive incidents,
+release numbers, corpus counts, citations, or figure content. Human authors
+must review and edit that private copy before treating it as a submission PDF;
+it must never be committed as a purportedly anonymous artifact.
