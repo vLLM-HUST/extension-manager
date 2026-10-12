@@ -192,6 +192,20 @@ def test_traffic_authority_rechecks_frozen_host_membership(
         and event["detail"].get("reason") == "host observation lost"
         for event in events
     )
+    open_digest = next(
+        event["detail"]["observation_sha256"]
+        for event in events
+        if event["kind"] == "route.open.intent"
+    )
+    assert open_digest.startswith("sha256:") and len(open_digest) == 71
+    candidate_admissions = [
+        event
+        for event in events
+        if event["kind"] == "request.admit"
+        and event["route"]["generation"] == 1
+    ]
+    assert len(candidate_admissions) == 1
+    assert candidate_admissions[0]["detail"]["observation_sha256"] == open_digest
     assert [
         event["route"]["generation"]
         for event in events
