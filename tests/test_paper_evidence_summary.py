@@ -20,6 +20,9 @@ INPUTS = (
     "docs/corpus/source-snapshots.schema.json",
     "docs/research/claims-to-experiment-matrix.json",
     "docs/research/claims-to-experiment-matrix.schema.json",
+    "docs/release-readiness.json",
+    "docs/release-readiness.schema.json",
+    "docs/evidence/native-current-npu-qualification-2026-10-11.md",
     "experiments/contract_planner/cases.json",
     "experiments/contract_planner/cases.schema.json",
     "experiments/contract_planner/decision.schema.json",
@@ -43,6 +46,7 @@ INPUTS = (
     "experiments/transaction_model/explore.py",
     "spec/0.1/contract-taxonomy.json",
     "spec/0.1/contract-taxonomy.schema.json",
+    "spec/manifest-0.3/manifest.schema.json",
     "src/vllm_hust_ext/contract_compiler.py",
 )
 
@@ -59,6 +63,11 @@ def load_generator():
 
 def copy_inputs(destination: Path) -> None:
     for relative in INPUTS:
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / relative, target)
+    readiness = json.loads((ROOT / "docs/release-readiness.json").read_text())
+    for relative in {path for gate in readiness["gates"] for path in gate["evidence"]}:
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, target)
@@ -104,6 +113,14 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "transaction_model_edges": 102,
         "transaction_model_rejections": 522,
         "transaction_model_invariants": 7,
+        "release_version": "0.3.0",
+        "manifest_version": "0.3",
+        "release_distributions": 36,
+        "release_registrations": 39,
+        "release_activation_intent": 24,
+        "release_inspect_only": 15,
+        "release_gates": 9,
+        "native_lifecycle_qualifications": 1,
     }
     assert (
         generator.render(summary)
@@ -162,6 +179,39 @@ def test_generator_rejects_premature_deployment_registration(
     )
 
     with pytest.raises(ValueError, match="not fail closed"):
+        generator.collect_summary(tmp_path)
+
+
+def test_generator_rejects_blocked_release_gate(tmp_path: Path) -> None:
+    generator = load_generator()
+    copy_inputs(tmp_path)
+    readiness = tmp_path / "docs/release-readiness.json"
+
+    def block_gate(value) -> None:
+        value["gates"][0]["status"] = "blocked"
+        value["gates"][0]["remaining_action"] = "repair the release gate"
+
+    rewrite_json(readiness, block_gate)
+
+    with pytest.raises(ValueError, match="release evidence is not closed"):
+        generator.collect_summary(tmp_path)
+
+
+def test_generator_rejects_native_qualification_promoted_to_performance(
+    tmp_path: Path,
+) -> None:
+    generator = load_generator()
+    copy_inputs(tmp_path)
+    qualification = (
+        tmp_path / "docs/evidence/native-current-npu-qualification-2026-10-11.md"
+    )
+    qualification.write_text(
+        qualification.read_text().replace(
+            "it is not a performance result", "it is a performance result"
+        )
+    )
+
+    with pytest.raises(ValueError, match="qualification boundary is incomplete"):
         generator.collect_summary(tmp_path)
 
 

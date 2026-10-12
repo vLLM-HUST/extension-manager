@@ -9,6 +9,16 @@ not claim compliance with an unconfirmed OSDI, SOSP, EuroSys, ACM, or USENIX
 submission year. Adapt the class and anonymity requirements only after the
 venue is fixed.
 
+## Current evidence snapshot
+
+The draft now reflects ECPA 0.3.0 and stable Manifest 0.3. The checked release
+inventory and the pinned Ascend lifecycle qualification are generated from
+`docs/release-readiness.json` and
+`docs/evidence/native-current-npu-qualification-2026-10-11.md`. The lifecycle
+qualification establishes one clean-wheel, process-owned observer and cleanup
+path; it is not inserted into the preregistered formal-real aggregate and makes
+no performance claim. H1--H4 therefore remain unmeasured.
+
 Build:
 
 ```bash
@@ -42,7 +52,8 @@ Evidence rules:
 - Artifact-backed counts and modeled metrics in `main.tex` come from the
   checked-in `generated/evidence-summary.tex`. Regenerate it with `make
   evidence-summary`; `make check-evidence-summary` fails if it is stale or if
-  the corpus, planner, formal-status, and adapter-registry inputs disagree.
+  the corpus, planner, formal-status, adapter-registry, release-readiness, and
+  native-qualification inputs disagree.
 - `../docs/research/claims-to-experiment-matrix.json` separates each paper
   claim from its falsifier, evidence authority, and experiment. The first
   formal-real preregistration is

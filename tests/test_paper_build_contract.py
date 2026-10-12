@@ -36,3 +36,9 @@ def test_detailed_architecture_preserves_evidence_authority_boundaries() -> None
     assert "return independent effect evidence" not in normalized_paper
     assert "Only the vLLM host path currently feeds" in normalized_paper
     assert "they are not process-owned runtime-effect attestations" in normalized_paper
+    assert "Release \\ECPAReleaseVersion{}" in paper
+    assert "Manifest \\ECPAManifestVersion{}" in paper
+    assert "Release Qualification Outside the Formal Aggregate" in paper
+    assert "one pinned vLLM-HUST/Ascend launch" in normalized_paper
+    assert "no real vLLM host" not in normalized_paper
+    assert "All runtime and performance quantities remain planned" not in paper
