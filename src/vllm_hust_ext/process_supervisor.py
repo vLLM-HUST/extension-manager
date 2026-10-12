@@ -33,6 +33,18 @@ def _signal_launch_tree(process: subprocess.Popen[bytes], signum: int) -> None:
         process.terminate()
 
 
+def _signal_launch_leader(process: subprocess.Popen[bytes], signum: int) -> None:
+    """Let the entry process coordinate an orderly shutdown of its children."""
+
+    if process.poll() is not None:
+        return
+    if os.name == "posix":
+        with suppress(ProcessLookupError):
+            os.kill(process.pid, signum)
+        return
+    process.terminate()
+
+
 def _launch_tree_exists(process: subprocess.Popen[bytes]) -> bool:
     if os.name != "posix":
         return process.poll() is None
@@ -73,9 +85,10 @@ def supervise(
     """Run a command and own the lifetime of the process tree it creates.
 
     On POSIX the child becomes a new session leader. Signals received by the
-    Manager are forwarded to that launch group; a second signal or expiration
-    of the grace period escalates to SIGKILL. The direct child is always reaped,
-    and surviving descendants are terminated before the Manager returns.
+    Manager first reach the session leader so it can shut down its own workers.
+    A second signal or expiration of the grace period escalates to group-wide
+    SIGKILL. The direct child is always reaped, and surviving descendants are
+    terminated before the Manager returns.
     """
 
     if shutdown_grace_seconds < 0:
@@ -95,8 +108,10 @@ def supervise(
         if first_signal:
             signal_started_at.append(time.monotonic())
         if child is not None:
-            forwarded = _KILL_SIGNAL if len(received) > 1 else signum
-            _signal_launch_tree(child, forwarded)
+            if len(received) > 1:
+                _signal_launch_tree(child, _KILL_SIGNAL)
+            else:
+                _signal_launch_leader(child, signum)
 
     managed_signals = _managed_signals()
     for managed_signal in managed_signals:
@@ -110,7 +125,10 @@ def supervise(
             start_new_session=os.name == "posix",
         )
         if received:
-            _signal_launch_tree(child, received[0])
+            if len(received) > 1:
+                _signal_launch_tree(child, _KILL_SIGNAL)
+            else:
+                _signal_launch_leader(child, received[0])
 
         escalated = False
         while True:
