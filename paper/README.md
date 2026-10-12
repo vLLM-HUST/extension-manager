@@ -4,10 +4,13 @@ Paper lead and accountable owner: `ShuhaoZhangTony` (张书豪). Research,
 artifact, and submission decisions are PI-led/self-driven; student
 contributions are optional and non-blocking.
 
-This is a venue-neutral, two-column systems-paper draft. It intentionally does
-not claim compliance with an unconfirmed OSDI, SOSP, EuroSys, ACM, or USENIX
-submission year. Adapt the class and anonymity requirements only after the
-venue is fixed.
+This is the public working draft for an OSDI '27 Research-track submission.
+The venue and format contract is recorded in [`venue/osdi.md`](venue/osdi.md).
+The checked-in draft deliberately retains the public ECPA name; it is not the
+double-blind submission artifact. OSDI '27 requires a different anonymized
+system name for a project already public under this name, so the final review
+PDF must be produced from a private, untracked anonymity overlay and audited
+for textual and metadata leaks.
 
 ## Current evidence snapshot
 
