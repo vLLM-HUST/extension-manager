@@ -1,4 +1,3 @@
-LATEXMK ?= latexmk
 TECTONIC ?= tectonic
 EVIDENCE_SUMMARY := generated/evidence-summary.tex
 EVIDENCE_INPUTS := \
@@ -73,13 +72,12 @@ check-research-matrix:
 	python3 ../scripts/validate_research_matrix.py
 
 main.pdf: main.tex references.bib $(EVIDENCE_SUMMARY) check-research-matrix
-	$(LATEXMK) -pdf -interaction=nonstopmode -halt-on-error main.tex
-
-tectonic: main.tex references.bib $(EVIDENCE_SUMMARY) check-research-matrix
 	$(TECTONIC) --keep-logs main.tex
+
+tectonic: main.pdf
 
 validate-results: check-evidence-summary check-research-matrix
 	python3 scripts/validate_results.py artifacts/results.example.json
 
 clean:
-	$(LATEXMK) -C main.tex
+	$(RM) main.pdf main.log main.blg main.aux main.bcf main.run.xml main.synctex.gz
