@@ -105,12 +105,20 @@ def detect_vllm_capabilities() -> HostCapabilities:
                 (f"host capability registry import failed: missing {error.name}",),
             )
         return _detect_legacy_vllm_capabilities()
-    except ImportError:
-        return _detect_legacy_vllm_capabilities()
+    except Exception as error:
+        # A present but broken registry is not a legacy host. In particular,
+        # native dependencies can raise RuntimeError while importing; falling
+        # back to unrelated probes would invent capability evidence.
+        return HostCapabilities(
+            None,
+            {},
+            "vllm.plugins.extension_capabilities",
+            (f"host capability registry import failed: {type(error).__name__}",),
+        )
     try:
         getter = module.get_extension_capabilities
         snapshot = getter()
-    except (AttributeError, TypeError, ValueError) as error:
+    except Exception as error:
         return HostCapabilities(
             None,
             {},
@@ -149,7 +157,9 @@ def _detect_legacy_vllm_capabilities() -> HostCapabilities:
     for module_name, attribute, protocol in probes:
         try:
             value = getattr(import_module(module_name), attribute)
-        except (AttributeError, ImportError):
+        except Exception:
+            # A broken optional legacy module does not establish its protocol
+            # and must not make the entire inspect/check command crash.
             continue
         if parsed := _v1_version(value):
             detected[protocol] = parsed

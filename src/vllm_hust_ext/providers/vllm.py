@@ -280,6 +280,20 @@ class VllmProvider:
         with suppress(PackageNotFoundError):
             detected_version = version(manifest.host.name)
         capabilities = detect_vllm_capabilities()
+        if (
+            capabilities.source == "vllm.plugins.extension_capabilities"
+            and capabilities.host_api_version is None
+        ):
+            # A registry that exists but cannot be imported or parsed is not
+            # a legacy host. Caller-provided protocol versions cannot repair
+            # the broken host-owned authority or authorize launch.
+            return ProviderCheck(
+                compatible=None,
+                configured=False,
+                degraded=True,
+                evidence=capabilities.evidence
+                + ("host capability registry is unavailable; launch is unverified",),
+            )
         compatible, evidence = assess_compatibility(
             manifest,
             configuration,

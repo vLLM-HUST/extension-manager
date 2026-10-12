@@ -195,7 +195,7 @@ def test_vllm_detects_preemption_policy_from_versioned_module(
     def imported(name: str) -> SimpleNamespace:
         if name == "vllm.v1.core.sched.preemption":
             return SimpleNamespace(PREEMPTION_POLICY_API_VERSION="1.0")
-        raise ImportError(name)
+        raise ModuleNotFoundError(name=name)
 
     monkeypatch.setattr(capabilities, "import_module", imported)
 
@@ -210,7 +210,7 @@ def test_vllm_detects_batch_admission_policy_from_versioned_module(
     def imported(name: str) -> SimpleNamespace:
         if name == "vllm.v1.core.sched.batch_admission":
             return SimpleNamespace(BATCH_ADMISSION_POLICY_API_VERSION="1.1")
-        raise ImportError(name)
+        raise ModuleNotFoundError(name=name)
 
     monkeypatch.setattr(capabilities, "import_module", imported)
 
@@ -227,7 +227,7 @@ def test_vllm_detects_request_and_kv_materialization_contracts(
             return SimpleNamespace(REQUEST_PROCESSING_HOOK_API_VERSION="1.0")
         if name == "vllm.v1.core.kv_materialization":
             return SimpleNamespace(KV_MATERIALIZATION_RUNTIME_CONTROL_API_VERSION="1.0")
-        raise ImportError(name)
+        raise ModuleNotFoundError(name=name)
 
     monkeypatch.setattr(capabilities, "import_module", imported)
 
@@ -306,6 +306,95 @@ def test_vllm_registry_dependency_failure_does_not_use_legacy_probes(
 
     assert result.protocol_versions == {}
     assert result.evidence == ("host capability registry import failed: missing torch",)
+
+
+@pytest.mark.parametrize(
+    "failure", [ImportError("broken ABI"), RuntimeError("missing op")]
+)
+def test_vllm_broken_registry_fails_closed_without_legacy_fallback(
+    monkeypatch: pytest.MonkeyPatch, failure: Exception
+) -> None:
+    imported: list[str] = []
+
+    def broken_registry(name: str) -> SimpleNamespace:
+        imported.append(name)
+        raise failure
+
+    monkeypatch.setattr(capabilities, "import_module", broken_registry)
+
+    result = capabilities.detect_vllm_capabilities()
+
+    assert imported == ["vllm.plugins.extension_capabilities"]
+    assert result.host_api_version is None
+    assert result.protocol_versions == {}
+    assert result.evidence == (
+        f"host capability registry import failed: {type(failure).__name__}",
+    )
+
+
+def test_vllm_registry_getter_runtime_failure_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken_getter() -> None:
+        raise RuntimeError("native dependency failed")
+
+    monkeypatch.setattr(
+        capabilities,
+        "import_module",
+        lambda _name: SimpleNamespace(get_extension_capabilities=broken_getter),
+    )
+
+    result = capabilities.detect_vllm_capabilities()
+
+    assert result.protocol_versions == {}
+    assert result.evidence == ("host capability registry failed closed: RuntimeError",)
+
+
+def test_vllm_legacy_probe_runtime_failure_is_not_capability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def imported(name: str) -> SimpleNamespace:
+        if name == "vllm.plugins.extension_capabilities":
+            raise ModuleNotFoundError("registry absent", name=name)
+        if name == "vllm.plugins.request_processing":
+            raise RuntimeError("broken native import")
+        raise ImportError(name)
+
+    monkeypatch.setattr(capabilities, "import_module", imported)
+
+    result = capabilities.detect_vllm_capabilities()
+
+    assert result.source == "legacy-module-probes"
+    assert "vllm.request-processing-hook" not in result.protocol_versions
+
+
+def test_vllm_check_reports_broken_registry_without_crashing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = manifest("bidkv-v0.2.json")
+    monkeypatch.setattr(vllm_provider, "version", lambda _name: "0.28.1rc1.dev319")
+
+    def broken_registry(_name: str) -> SimpleNamespace:
+        raise RuntimeError("torchvision native operator is unavailable")
+
+    monkeypatch.setattr(capabilities, "import_module", broken_registry)
+
+    check = VllmProvider().check(
+        value,
+        {
+            "host_api_version": "1.0",
+            "protocol_versions": {"vllm.preemption-policy": "1.0"},
+        },
+    )
+
+    assert check.compatible is None
+    assert check.configured is False
+    assert check.degraded is True
+    assert any(
+        "host capability registry import failed: RuntimeError" in item
+        for item in check.evidence
+    )
+    assert not any("torchvision native operator" in item for item in check.evidence)
 
 
 def test_resource_claims_reject_two_exclusive_scheduler_owners() -> None:
