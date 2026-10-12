@@ -18,9 +18,11 @@
 - The public draft still reports the matched formal experiment and H1--H4 as
   incomplete. The pinned Ascend run is lifecycle qualification, not the
   formal comparison and not a performance result.
-- The 2026-10-12 Tectonic build produced 14 PDF pages. The body occupies pages
-  1--12 and References starts on page 13, so the current draft exactly meets
-  the OSDI '27 submission page boundary but has no body-page slack.
+- The 2026-10-12 Tectonic build produced 14 PDF pages. A later PDF text-page
+  audit corrected the initial page count: body text extends into page 13 and
+  References begins partway through page 13. The current draft exceeds the
+  OSDI '27 limit of 12 body pages; the final rendering needs a real trim and
+  a page-boundary check.
 - Research-matrix validation reports 4 claims, 5 experiments, a first study in
   pre-admission with 9 planned starts, and an unregistered deployment. This is
   the primary submission blocker.
@@ -47,6 +49,14 @@
   while its tracked `origin/main` is `4f61604bea01ce56afc320e0f0566166fd79a562`.
   The old eight-device observation cannot supply today's frozen topology or
   command fingerprints. No device run was started in this audit.
+- The two visible 910B2 devices satisfy the first study's minimum of two
+  distinct worker slots. The installed `vllm`/`vllm-ascend` are 0.23.0 and
+  `torch`/`torch-npu` are 2.10.0, while current host and accelerator-plugin
+  `main` require torch 2.13.0; a current stack is not yet pinned or runnable.
+- An OSDI related-work audit places AlpaServe as serving-performance context,
+  not as a substitute for the three-arm H1 activation-safety baseline. The
+  paper should add such peer-reviewed context only while fitting the 12-page
+  body and preserving the exact experimental distinction.
 
 Official source:
 <https://www.usenix.org/conference/osdi27/call-for-papers>
