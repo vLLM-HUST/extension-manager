@@ -18,6 +18,8 @@ immutable candidate with a point-in-time observation. It fails closed on:
 - an inaccessible container server, unpinned image, or different image;
 - container binaries built from different source commits than the mounted
   runtime/plugin trees, or a different effective runtime mode;
+- non-container environments without a pinned environment digest, exact
+  installed-source commits, or a matching effective runtime mode;
 - an incomplete or differently versioned model snapshot.
 
 The 2026-09-21 112 candidate bound exact read-only source trees, CANN 9.1, an
@@ -38,6 +40,13 @@ A zero-blocker result has status `ready-for-registration-review`. It still has
 `verified-adapters.json`, fill deployment-registration fields, or support a
 paper result. The exact commands and independent sources still require review,
 and the resulting stack must complete a real service launch and workload.
+For a non-container candidate, `execution.container_required=false` is not a
+waiver: the requirements and observation must agree on a `sha256:` environment
+digest, `environment_source_commits` for both the runtime and accelerator plugin
+must equal the checked source commits, and `runtime_mode` must match. The digest
+must describe the installed environment used by the service, not merely a
+lockfile. This preflight compares a reviewed observation; it does not compute
+or independently attest the digest or authorize a formal run.
 
 `deployment-candidates/ascend-910b2-112.smoke.json` records the successful
 pre-admission smoke without promoting its SUT-owned diagnostic stream to

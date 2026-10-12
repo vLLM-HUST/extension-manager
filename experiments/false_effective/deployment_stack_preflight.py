@@ -64,6 +64,10 @@ def audit_stack(
     ):
         blockers.append("hardware-topology-mismatch")
 
+    expected_sources = {
+        "runtime": runtime["commit"],
+        "accelerator_plugin": plugin["commit"],
+    }
     if execution["container_required"]:
         if not observed_execution["container_server_accessible"]:
             blockers.append("container-server-unavailable")
@@ -71,10 +75,28 @@ def audit_stack(
             blockers.append("container-image-unfrozen")
         elif observed_execution["image_digest"] != execution["image_digest"]:
             blockers.append("container-image-mismatch")
-        if observed_execution.get("image_source_commits") != execution.get(
-            "image_source_commits"
+        if (
+            execution.get("image_source_commits") != expected_sources
+            or observed_execution.get("image_source_commits") != expected_sources
         ):
             blockers.append("container-source-binary-mismatch")
+        if observed_execution.get("runtime_mode") != execution.get("runtime_mode"):
+            blockers.append("runtime-mode-mismatch")
+    else:
+        environment_digest = execution.get("environment_digest")
+        if not isinstance(environment_digest, str) or not (
+            len(environment_digest) == 71
+            and environment_digest.startswith("sha256:")
+            and all(char in "0123456789abcdef" for char in environment_digest[7:])
+        ):
+            blockers.append("environment-unfrozen")
+        elif observed_execution.get("environment_digest") != environment_digest:
+            blockers.append("environment-mismatch")
+        if (
+            execution.get("environment_source_commits") != expected_sources
+            or observed_execution.get("environment_source_commits") != expected_sources
+        ):
+            blockers.append("environment-source-binary-mismatch")
         if observed_execution.get("runtime_mode") != execution.get("runtime_mode"):
             blockers.append("runtime-mode-mismatch")
 

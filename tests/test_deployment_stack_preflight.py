@@ -131,3 +131,72 @@ def test_source_binary_mode_and_model_content_drift_fail_closed() -> None:
     observation["model"]["file_sha256"]["config.json"] = "0" * 64
     blockers = preflight.audit_stack(requirements, observation)["blockers"]
     assert "model-content-mismatch" in blockers
+
+
+def test_noncontainer_environment_requires_pinned_binary_and_mode() -> None:
+    preflight = load_preflight()
+    requirements, observation = inputs()
+    requirements["execution"]["container_required"] = False
+    blockers = preflight.audit_stack(requirements, observation)["blockers"]
+    assert "environment-unfrozen" in blockers
+    assert "environment-source-binary-mismatch" in blockers
+    assert "runtime-mode-mismatch" in blockers
+
+    requirements["execution"]["environment_digest"] = "sha256:" + "a" * 64
+    requirements["execution"]["environment_source_commits"] = {
+        "runtime": requirements["runtime"]["commit"],
+        "accelerator_plugin": requirements["accelerator_plugin"]["commit"],
+    }
+    observation["execution"]["environment_digest"] = "sha256:" + "b" * 64
+    observation["execution"]["environment_source_commits"] = requirements["execution"][
+        "environment_source_commits"
+    ]
+    observation["execution"]["runtime_mode"] = requirements["execution"]["runtime_mode"]
+    blockers = preflight.audit_stack(requirements, observation)["blockers"]
+    assert "environment-mismatch" in blockers
+    assert "environment-source-binary-mismatch" not in blockers
+    assert "runtime-mode-mismatch" not in blockers
+
+    observation["execution"]["environment_digest"] = requirements["execution"][
+        "environment_digest"
+    ]
+    assert (
+        "environment-mismatch"
+        not in preflight.audit_stack(requirements, observation)["blockers"]
+    )
+
+
+def test_matching_noncontainer_stack_is_only_ready_for_review() -> None:
+    preflight = load_preflight()
+    requirements, observation = inputs()
+    observation["runtime"] = {
+        "commit": requirements["runtime"]["commit"],
+        "tree": requirements["runtime"]["tree"],
+    }
+    observation["accelerator_plugin"] = {
+        "commit": requirements["accelerator_plugin"]["commit"],
+        "tree": requirements["accelerator_plugin"]["tree"],
+    }
+    requirements["accelerator_plugin"]["verified_runtime_commit"] = requirements[
+        "runtime"
+    ]["upstream_commit"]
+    requirements["execution"]["container_required"] = False
+    requirements["execution"]["environment_digest"] = "sha256:" + "a" * 64
+    requirements["execution"]["environment_source_commits"] = {
+        "runtime": requirements["runtime"]["commit"],
+        "accelerator_plugin": requirements["accelerator_plugin"]["commit"],
+    }
+    observation["execution"] = {
+        "environment_digest": requirements["execution"]["environment_digest"],
+        "environment_source_commits": requirements["execution"][
+            "environment_source_commits"
+        ],
+        "runtime_mode": requirements["execution"]["runtime_mode"],
+    }
+    observation["model"]["files"] = requirements["model"]["required_files"]
+    observation["model"]["file_sha256"] = requirements["model"]["file_sha256"]
+
+    result = preflight.audit_stack(requirements, observation)
+    assert result["status"] == "ready-for-registration-review"
+    assert result["formal_real_result"] is False
+    assert result["registration_authority"] is False
