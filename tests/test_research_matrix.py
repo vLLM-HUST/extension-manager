@@ -334,8 +334,10 @@ def test_unregistered_formal_experiment_cannot_be_promoted(
         validator.validate(tmp_path)
 
 
+@pytest.mark.parametrize("environment_only", [False, True])
 def test_complete_deployment_registration_matches_runtime_registry(
     tmp_path: Path,
+    environment_only: bool,
 ) -> None:
     validator = load_validator()
     copy_inputs(tmp_path)
@@ -377,12 +379,14 @@ def test_complete_deployment_registration_matches_runtime_registry(
     }
     study_identity = {
         "runtime_commit": "4" * 40,
+        "accelerator_plugin_commit": "c" * 40,
         "manager_commit": "5" * 40,
         "model": "reviewed-model",
         "workload_request_sha256": "sha256:" + "6" * 64,
         "hardware": "reviewed-host",
         "topology": "one-controller-two-workers",
-        "container_digest": "sha256:" + "7" * 64,
+        "container_digest": None if environment_only else "sha256:" + "7" * 64,
+        "environment_digest": "sha256:" + "7" * 64 if environment_only else None,
         "fault_descriptor_sha256": "sha256:" + "8" * 64,
         "plugin_entry_point": {
             "group": "vllm.general_plugins",
@@ -512,6 +516,7 @@ def test_complete_deployment_registration_matches_runtime_registry(
         value["deployment_identity"] = {
             **study_identity,
             "runtime_tree": "9" * 40,
+            "accelerator_plugin_tree": "d" * 40,
             "manager_tree": "a" * 40,
         }
         for row, entry in zip(value["arm_registrations"], entries, strict=True):
@@ -547,6 +552,30 @@ def test_complete_deployment_registration_matches_runtime_registry(
     deployment_path.write_text(json.dumps(deployment, indent=2) + "\n")
 
     assert validator.validate(tmp_path)["deployment_registration"] == "registered"
+
+    execution_field = "environment_digest" if environment_only else "container_digest"
+    other_field = "container_digest" if environment_only else "environment_digest"
+    deployment = json.loads(deployment_path.read_text())
+    deployment["deployment_identity"][other_field] = "sha256:" + "b" * 64
+    deployment_path.write_text(json.dumps(deployment, indent=2) + "\n")
+    with pytest.raises(ValueError, match="registered deployment is not fully admitted"):
+        validator.validate(tmp_path)
+    deployment["deployment_identity"][other_field] = None
+    deployment["deployment_identity"][execution_field] = None
+    deployment_path.write_text(json.dumps(deployment, indent=2) + "\n")
+    with pytest.raises(ValueError, match="registered deployment is not fully admitted"):
+        validator.validate(tmp_path)
+    deployment["deployment_identity"][execution_field] = study_identity[execution_field]
+    deployment_path.write_text(json.dumps(deployment, indent=2) + "\n")
+
+    deployment["deployment_identity"]["accelerator_plugin_commit"] = "e" * 40
+    deployment_path.write_text(json.dumps(deployment, indent=2) + "\n")
+    with pytest.raises(ValueError, match="identity differs from study"):
+        validator.validate(tmp_path)
+    deployment["deployment_identity"]["accelerator_plugin_commit"] = study_identity[
+        "accelerator_plugin_commit"
+    ]
+    deployment_path.write_text(json.dumps(deployment, indent=2) + "\n")
 
     registry_path.write_text(
         json.dumps(json.loads(registry_path.read_text()), indent=2) + "\n"

@@ -418,10 +418,19 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
     else:
         identity = deployment["deployment_identity"]
         admission = deployment["producer_admission_receipt"]
+        execution_digests = (
+            identity["container_digest"],
+            identity["environment_digest"],
+        )
         if (
             deployment["admissible"] is not True
             or deployment["blockers"]
-            or any(value is None for value in identity.values())
+            or sum(value is not None for value in execution_digests) != 1
+            or any(
+                value is None
+                for key, value in identity.items()
+                if key not in {"container_digest", "environment_digest"}
+            )
             or any(row["registration"] is None for row in arm_registrations)
             or any(row["registration"] is None for row in source_registrations)
             or not all(deployment["reviews"].values())

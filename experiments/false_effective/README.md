@@ -15,6 +15,10 @@ three-arm `partial-worker-coverage` comparison. It fixes separate authority for
 all five lifecycle phases, assumes no baseline outcome, and remains
 `pre-admission` until its producer, deployment identity, commands, and adapter
 registry satisfy every recorded blocker.
+The eventual execution identity must freeze exactly one of a container image
+digest or an installed-environment digest. A non-container deployment is not a
+waiver of source/binary or runtime-mode checks; the stack preflight checks those
+separately, and its result never registers a formal adapter by itself.
 
 [`first-formal-real-deployment.json`](first-formal-real-deployment.json) is the
 machine-checked registration packet for that transition. It currently keeps

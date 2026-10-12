@@ -4,7 +4,7 @@
   "registration_state": "unregistered",
   "admissible": false,
   "bindings": {
-    "study_sha256": "2a5c233bb361650636c10c9c30a15c9a25f3f98ade6d40b7547494e0250ff589",
+    "study_sha256": "230cf26c7ebc20f1f4bcb4b7d98db3d3f906c237c8902dbe92b67d99b3b4b98e",
     "protocol_sha256": "c76ac785334273d942723cf26fe840a3d7c0cf6cfb15a0fb0aa04810f9ab70bc",
     "registration_design_base": {
       "repository": "intellistream/vllm-hust-ext-manager",
@@ -27,6 +27,8 @@
   "deployment_identity": {
     "runtime_commit": null,
     "runtime_tree": null,
+    "accelerator_plugin_commit": null,
+    "accelerator_plugin_tree": null,
     "manager_commit": null,
     "manager_tree": null,
     "model": null,
@@ -34,6 +36,7 @@
     "hardware": null,
     "topology": null,
     "container_digest": null,
+    "environment_digest": null,
     "fault_descriptor_sha256": null,
     "plugin_entry_point": null,
     "warm_state": null
