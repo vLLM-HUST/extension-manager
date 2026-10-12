@@ -53,10 +53,24 @@
   distinct worker slots. The installed `vllm`/`vllm-ascend` are 0.23.0 and
   `torch`/`torch-npu` are 2.10.0, while current host and accelerator-plugin
   `main` require torch 2.13.0; a current stack is not yet pinned or runnable.
+- On 2026-10-12 the fetched host `origin/main` is
+  `4f61604bea01ce56afc320e0f0566166fd79a562` and the fetched
+  accelerator-plugin `origin/main` is
+  `e5870e657a2add3182551c70bbad5919fc96d899`. The plugin's checked
+  upstream vLLM pin is `ced6857afa0ea7b2e3f0846a62e1394e90f15607`,
+  which is not an ancestor of the host `main`. The available `torch-npu`
+  2.13.0rc1 wheel does not resolve this source-compatibility mismatch or
+  supply a reviewed deployment image.
 - An OSDI related-work audit places AlpaServe as serving-performance context,
   not as a substitute for the three-arm H1 activation-safety baseline. The
   paper should add such peer-reviewed context only while fitting the 12-page
   body and preserving the exact experimental distinction.
+- The reference ExposureGate previously read the deterministic adapter's
+  in-memory `route` field in stage, observe, and rollback paths. An external
+  route owner cannot supply that field as authoritative state. The loopback
+  integration slice replaces those reads with bounded route queries and adds
+  a separate HTTP authority process. Its current proof remains synthetic and
+  is outside the formal-real aggregate.
 
 Official source:
 <https://www.usenix.org/conference/osdi27/call-for-papers>

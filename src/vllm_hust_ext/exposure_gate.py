@@ -11,7 +11,7 @@ from contextlib import suppress
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 
 class GateState(str, Enum):
@@ -74,6 +74,34 @@ class LeaseAuthority:
 
     def current(self) -> LeaseGrant:
         return self.grant
+
+
+class TrafficAuthorityAdapter(Protocol):
+    """Route authority queried by the gate; no in-process route field required."""
+
+    authority: LeaseAuthority
+    behavioral_restore: bool
+
+    def close(self, generation: int) -> None: ...
+
+    def open(
+        self,
+        generation: int,
+        fence: str,
+        snapshot: dict[str, Any],
+        grant: LeaseGrant,
+        now: int,
+    ) -> None: ...
+
+    def close_all(self) -> None: ...
+
+    def restore(
+        self, generation: int, fence: str, snapshot: dict[str, Any]
+    ) -> RouteState: ...
+
+    def lease_valid(self, grant: LeaseGrant, now: int) -> bool: ...
+
+    def query_route(self) -> RouteState: ...
 
 
 @dataclass(frozen=True)
@@ -224,7 +252,7 @@ class ReferenceExposureGate:
     def __init__(
         self,
         path: str | Path,
-        traffic: DeterministicTrafficAdapter,
+        traffic: TrafficAuthorityAdapter,
         *,
         clock: Callable[[], int],
         authority: LeaseAuthority | None = None,
@@ -299,6 +327,12 @@ class ReferenceExposureGate:
         if point in self.faults:
             self.faults.remove(point)
             raise InjectedCrash(point)
+
+    def _query_route_or_none(self) -> RouteState | None:
+        try:
+            return self.traffic.query_route()
+        except Exception:
+            return None
 
     def _append(
         self,
@@ -392,7 +426,7 @@ class ReferenceExposureGate:
             ):
                 return candidate_generation
             raise GateError("another candidate is already staged")
-        route = self.traffic.route
+        route = self.traffic.query_route()
         if (
             route.generation != predecessor_generation
             or route.fence != f"fence-{predecessor_generation}"
@@ -647,7 +681,7 @@ class ReferenceExposureGate:
                 GateState.SAFETY_UNKNOWN,
             }:
                 raise GateError(f"admission blocked in {gate_state.value}")
-            actual = self.traffic.route
+            actual = self.traffic.query_route()
             row = self._row()
             if actual.generation is None or actual.fence == "closed":
                 raise GateError("traffic is failed safe")
@@ -1091,21 +1125,23 @@ class ReferenceExposureGate:
             )
         self._hit("rollback.after_intent")
         try:
-            actual = self.traffic.restore(
-                predecessor_generation, predecessor_fence, predecessor
-            )
+            self.traffic.restore(predecessor_generation, predecessor_fence, predecessor)
         except Exception:
             with suppress(Exception):
                 self.traffic.close_all()
-            actual = self.traffic.route
+            actual = self._query_route_or_none()
             outcome = (
                 RollbackClass.FAILED_SAFE
-                if actual.generation is None and actual.fence == "closed"
+                if actual is not None
+                and actual.generation is None
+                and actual.fence == "closed"
                 else RollbackClass.SAFETY_UNKNOWN
             )
         else:
+            actual = self._query_route_or_none()
             if (
-                actual.generation == predecessor_generation
+                actual is not None
+                and actual.generation == predecessor_generation
                 and actual.snapshot == predecessor
                 and actual.fence == predecessor_fence
             ):
@@ -1121,10 +1157,12 @@ class ReferenceExposureGate:
             else:
                 with suppress(Exception):
                     self.traffic.close_all()
-                actual = self.traffic.route
+                actual = self._query_route_or_none()
                 outcome = (
                     RollbackClass.FAILED_SAFE
-                    if actual.generation is None and actual.fence == "closed"
+                    if actual is not None
+                    and actual.generation is None
+                    and actual.fence == "closed"
                     else RollbackClass.SAFETY_UNKNOWN
                 )
         self._hit("rollback.after_effect")
@@ -1146,14 +1184,16 @@ class ReferenceExposureGate:
                     "behavioral_oracle": (
                         None if behavioral_oracle is None else asdict(behavioral_oracle)
                     ),
-                    "actual_route": asdict(self.traffic.route),
+                    "actual_route": None if actual is None else asdict(actual),
                 },
             )
-            route = self.traffic.route
             db.execute(
                 "UPDATE gate_state SET route_generation=?,route_fence=? "
                 "WHERE singleton=1",
-                (route.generation, route.fence),
+                (
+                    None if actual is None else actual.generation,
+                    "unknown" if actual is None else actual.fence,
+                ),
             )
         return outcome
 

@@ -37,3 +37,15 @@
   stack. A PDF page audit corrected the earlier body-length statement: the
   draft crosses into page 13 before References. Began a source-linked
   related-work and baseline audit while leaving the paper body unchanged.
+- Began #60's external-traffic slice: introduced a route-query adapter
+  contract, removed direct in-process route reads from gate decisions, and
+  added a separate loopback HTTP authority with a private control socket.
+  The CPU integration test covers external requests through open, rollback,
+  and closure. The proof is still synthetic and cannot satisfy the real
+  ExposureGate or H1 completion gate.
+- Verified this slice with 640 full pytest cases, Ruff, mypy, sdist/wheel
+  build, a clean-wheel CLI/import check, evidence-summary validation, and
+  research-matrix validation. The
+  initial full test attempt used a relative `PYTHONPATH` that broke two
+  subprocess tests after they changed directory; editable installation in
+  the worktree reproduced CI's environment and passed all cases.
