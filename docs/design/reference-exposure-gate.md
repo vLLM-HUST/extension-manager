@@ -103,6 +103,12 @@ summary; a test byte-compares fresh output with checked artifacts. They use a
 fixed clock and request IDs and are explicitly synthetic/reference. This proves
 reference state-machine behavior only. It does not prove a real vLLM data path,
 distributed leases, throughput, latency, or production rollback.
+The separate loopback integration under `experiments/exposure_gate/` owns an
+actual HTTP port in a traffic process and writes a bounded, fsynced route and
+admission journal before making a new route visible or forwarding a request.
+The journal is source-owned by that traffic process and fails closed on write
+loss, but the open proof in this integration remains synthetic; it is not a
+host-worker effect receipt or formal-real result.
 `BEHAVIORAL` rollback in the matrix is also synthetic: it exercises the typed
 oracle boundary but is not an independently measured equivalence result.
 
