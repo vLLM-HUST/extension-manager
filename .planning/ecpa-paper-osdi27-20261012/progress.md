@@ -31,3 +31,9 @@
   the historical eight-device candidate is blocked, and the current container
   exposes two devices with no Docker CLI. Corrected the stale producer wording
   in the formal adapter ADR and lifecycle-source design note.
+- PR #68 merged as `0c56736f7366601b733055472c4263182cef3c32` with Python
+  3.10, Python 3.12, and wheel CI green. A two-card follow-up found enough
+  devices for the first fault scenario but a mismatched installed software
+  stack. A PDF page audit corrected the earlier body-length statement: the
+  draft crosses into page 13 before References. Began a source-linked
+  related-work and baseline audit while leaving the paper body unchanged.

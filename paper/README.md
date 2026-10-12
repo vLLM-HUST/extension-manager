@@ -59,7 +59,8 @@ Evidence rules:
   claim from its falsifier, evidence authority, and experiment. The first
   formal-real preregistration is
   `../experiments/false_effective/first-formal-real-study.json`; validation
-  keeps it pre-admission while the producer and adapter registry are absent.
+  keeps it pre-admission while the adapter registry and frozen deployment
+  registration are absent. The host producer has been reviewed and merged.
 - `../experiments/false_effective/first-formal-real-deployment.json` is the
   separate registration-review packet. It must bind all three arms, all five
   lifecycle sources, producer admission, deployment identity, and review gates
@@ -83,3 +84,7 @@ is a reference implementation rather than the standard itself.
 
 Open scientific and evaluation decisions that must not be silently promoted to
 claims are tracked in [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
+
+The current Tectonic PDF is 14 pages, with body text continuing onto page 13
+before References begins. It does not yet meet the 12-page body limit. Check
+the final PDF's page boundary after every substantive paper edit.
