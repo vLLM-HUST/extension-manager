@@ -128,9 +128,10 @@ must bind the exact repository, numeric and node identities, default branch,
 PR, reviewed head/tree/base, merge commit, observation time, human line review,
 command review, activation-path review, and observer-independence review. The
 receipt is repository-owned review evidence rather than an online GitHub oracle
-or runtime-effect result. vLLM-HUST PR #27 is currently open without the
-repository-required human line review, so it is not admission-eligible and no
-receipt may be registered for it. Durable post-crash reconciliation now has
+or runtime-effect result. vLLM-HUST PR #27 was reviewed and merged; its final
+producer facts are recorded in the formal study. A producer-admission receipt
+still requires separate command, activation-path, and observer-independence
+reviews for the frozen deployment. Durable post-crash reconciliation now has
 an implementation candidate and local kill/collision tests, but remains part of
 the registration review rather than a claimed experiment result. Until then:
 
