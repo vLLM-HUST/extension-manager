@@ -331,8 +331,8 @@ class _Authority:
                     candidate_generation=generation,
                     candidate_fence=fence,
                 )
-                self._record("route.open.applied", candidate_route)
                 self.route = candidate_route
+                self._record("route.open.applied", self.route)
                 return {}
             if operation == "close_all":
                 self.route = RouteState(None, "closed", None)
@@ -350,8 +350,8 @@ class _Authority:
                     raise GateError("invalid predecessor restoration")
                 predecessor_route = RouteState(generation, fence, snapshot)
                 self._record("route.restore.intent", self.route, generation=generation)
-                self._record("route.restore.applied", predecessor_route)
                 self.route = predecessor_route
+                self._record("route.restore.applied", self.route)
                 return {"route": asdict(self.route)}
         raise GateError("unknown traffic control operation")
 
