@@ -13,3 +13,6 @@
   pages and References beginning on page 13.
 - Next critical path: admit and run the matched formal-real study; prose and
   formatting work cannot substitute for those measurements.
+- The paper build policy is now Tectonic-only. Both the default `make` target
+  and the explicit `make tectonic` target resolve to the same Tectonic build;
+  cleanup no longer requires `latexmk`.
