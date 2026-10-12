@@ -1520,9 +1520,8 @@ def test_adapter_probe_cannot_mutate_runner_owned_identity_or_plan(
         captured["managed_binding"]["plan_id"]
         == captured["execution_identity"]["plan_id"]
     )
-    assert captured["argv"][:3] == [
-        str(Path(sys.executable).absolute()),
-        manager,
+    assert captured["argv"][: len(manager_prefix) + 1] == [
+        *manager_prefix,
         "formal-run",
     ]
 
