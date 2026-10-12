@@ -1066,6 +1066,8 @@ def test_ecpa_managed_launch_uses_real_formal_run_and_manager_owned_identity(tmp
 
     assert "--enable-ecpa-manager" not in argv
     assert "--disable-entrypoints" not in argv
+    assert argv[argv.index("--shutdown-grace-seconds") + 1] == "30"
+    assert binding["shutdown_grace_seconds"] == 30
     assert argv[-3:] == [
         str(Path(sys.executable).absolute()),
         "-c",
@@ -1151,7 +1153,8 @@ def test_ecpa_manager_rejects_target_symlink_retarget(tmp_path):
     assert "GOOD" not in completed.stdout
 
 
-def test_runner_allows_manager_to_reap_signal_ignoring_target(tmp_path):
+def test_runner_allows_manager_to_reap_signal_ignoring_target(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner_module, "FORMAL_SHUTDOWN_GRACE_SECONDS", 0.2)
     plan_path = _write_formal_execution_plan(tmp_path)
     event_dir = (tmp_path / "events").resolve()
     event_dir.mkdir(mode=0o700)
@@ -2021,6 +2024,19 @@ def test_ecpa_offline_validator_binds_manager_target_observer_and_plan(
     with pytest.raises(ValueError, match="Plan binding"):
         harness_module.validate_formal_adapter_verification(
             record, changed_event_directory
+        )
+    changed_grace = copy.deepcopy(command)
+    changed_grace["argv"][
+        changed_grace["argv"].index("--shutdown-grace-seconds") + 1
+    ] = "10"
+    changed_grace["sut_process"]["argv"] = changed_grace["argv"]
+    with pytest.raises(ValueError, match="managed ECPA argv"):
+        harness_module.validate_formal_adapter_verification(record, changed_grace)
+    changed_grace_binding = copy.deepcopy(command)
+    changed_grace_binding["managed_binding"]["shutdown_grace_seconds"] = 10
+    with pytest.raises(ValueError, match="Plan binding"):
+        harness_module.validate_formal_adapter_verification(
+            record, changed_grace_binding
         )
 
 

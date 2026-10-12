@@ -18,6 +18,7 @@ from vllm_hust_ext.formal_adapter_admission import (
     validate_formal_adapter_admission,
 )
 from vllm_hust_ext.plan_artifact import read_plan_artifact
+from vllm_hust_ext.process_supervisor import FORMAL_SHUTDOWN_GRACE_SECONDS
 
 ARMS = ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
 LATIN_SQUARE = (
@@ -487,6 +488,7 @@ def validate_formal_adapter_verification(
             "plan_id",
             "plan_path",
             "plan_sha256",
+            "shutdown_grace_seconds",
             "target_argv",
             "target_executable",
         }
@@ -523,6 +525,7 @@ def validate_formal_adapter_verification(
             or binding.get("launch_id") != execution.get("launch_id")
             or binding.get("controller_instance")
             != execution.get("controller_instance")
+            or binding.get("shutdown_grace_seconds") != FORMAL_SHUTDOWN_GRACE_SECONDS
             or event_identity
             != {"device": event_metadata.st_dev, "inode": event_metadata.st_ino}
         ):
@@ -539,7 +542,7 @@ def validate_formal_adapter_verification(
         option_start = len(manager_prefix) + 2
         target_executable = binding.get("target_executable", {})
         if (
-            len(sut_argv) < len(expected_prefix) + 15
+            len(sut_argv) < len(expected_prefix) + 17
             or sut_argv[0] != manager_fingerprint["executable"]
             or sut_argv[: len(expected_prefix)] != expected_prefix
             or sut_argv[option_start] != binding.get("plan_path")
@@ -553,7 +556,9 @@ def validate_formal_adapter_verification(
                 "--host-event-dir",
                 binding.get("host_event_dir"),
             ]
-            or sut_argv[option_start + 7 : option_start + 13]
+            or sut_argv[option_start + 7 : option_start + 9]
+            != ["--shutdown-grace-seconds", str(FORMAL_SHUTDOWN_GRACE_SECONDS)]
+            or sut_argv[option_start + 9 : option_start + 15]
             != [
                 "--target-executable-device",
                 str(target_executable.get("device")),
@@ -568,10 +573,10 @@ def validate_formal_adapter_verification(
                 "inode": target_fingerprint.get("executable_inode"),
                 "sha256": target_fingerprint.get("executable_sha256"),
             }
-            or sut_argv[option_start + 13] != "--"
-            or sut_argv[option_start + 14 :]
+            or sut_argv[option_start + 15] != "--"
+            or sut_argv[option_start + 16 :]
             != [target_fingerprint["executable"], *target_fingerprint["arguments"]]
-            or binding.get("target_argv") != sut_argv[option_start + 14 :]
+            or binding.get("target_argv") != sut_argv[option_start + 16 :]
             or command.get("argv") != sut_argv
         ):
             raise ValueError("executed managed ECPA argv differs from the registry")
