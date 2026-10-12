@@ -19,20 +19,44 @@ than forwarding without a traffic-side record. `read_traffic_journal` checks
 the integration trace's canonical bytes and chain; it is not a formal source
 receipt or protection against a malicious same-UID experiment process.
 
-The integration test exercises real external HTTP requests before close,
+Optional `--observer-config` mode (contract:
+[`host-authorization.schema.json`](host-authorization.schema.json)) freezes
+one canonical execution-plan path,
+host-journal directory identity, launch/controller identity, entry-point
+bindings, and exact required process epochs at proxy startup. The traffic
+process independently reads the host journal and live Linux identities before
+opening a candidate route. It rechecks them on candidate route queries and
+before every external request; loss of coverage or lease closes the route and
+rejects the request. Opening records the observation digest, and every
+candidate admission records the independently refreshed digest. A caller's
+plan ID, environment variables, import success, or fabricated `OpenProof`
+digest alone cannot make this mode admit a request.
+
+The new CPU integration test exercises a real separate proxy and external
+HTTP clients against a live *fixture* process: missing evidence, an old epoch,
+and a cross-launch snapshot keep the predecessor route; a matching fixture
+event permits the candidate; terminating that process closes the route while
+both externally owned backends remain alive. The fixture's event is test-
+generated, **not** a vLLM-HUST worker event or a formal runtime-effective
+receipt. The same-UID experiment threat model still trusts the host journal
+writer; a malicious same-UID actor could forge its bytes. A real host-owned
+issuer and reviewed process membership are necessary for #60.
+
+The original integration test exercises real external HTTP requests before close,
 during candidate preparation, after open, after rollback, and after fail-safe
 closure. It also injects journal loss and proves the route fails closed without
 stopping either separately owned backend. The adapter accepts bounded
 non-streaming GET/POST only. It is not a
 production proxy: the same-UID process boundary follows the repository's
-trusted experiment threat model, and the current open proof is synthetic.
+trusted experiment threat model, and the reference gate's open proof remains
+synthetic.
 Neither the HTTP response nor a controller ACK is evidence that vLLM workers
 executed an extension. The adapter is not registered for the H1 formal-real
 matrix; its test results must not enter the paper aggregate.
 
-To complete issue #60, the traffic authority must be bound to host-owned
-process and invocation evidence, a frozen target-set epoch, an independent
-route observation outside this integration slice, lease/crash cases, and the
-real three-arm runner. Until
-those bindings are registered and reviewed, this slice demonstrates only the
-external request path and cleanup behavior.
+To complete issue #60, the optional observer mode must be exercised against
+real vLLM-HUST parent/engine/worker events and a reviewed target-set epoch,
+with an independent route observation outside this integration slice,
+lease/crash cases, and the real three-arm runner. Until those bindings are
+registered and reviewed, this slice demonstrates the external request path,
+host-journal validation mechanics, and cleanup behavior only.

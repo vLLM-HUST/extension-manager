@@ -31,6 +31,9 @@ from vllm_hust_ext.exposure_gate import (
     LeaseGrant,
     RouteState,
 )
+from vllm_hust_ext.host_evidence import EntryPointBinding
+from vllm_hust_ext.host_observer import observe_bound_invocations
+from vllm_hust_ext.plan_artifact import read_plan_artifact
 
 MAX_MESSAGE = 64 * 1024
 MAX_BODY = 1024 * 1024
@@ -192,6 +195,100 @@ def read_traffic_journal(path: Path) -> list[dict[str, Any]]:
     return events
 
 
+class _HostAuthorization:
+    """Frozen host-observer inputs read by the traffic process, not its caller."""
+
+    def __init__(self, path: Path):
+        if not path.is_absolute() or path.is_symlink():
+            raise GateError("host authorization path must be absolute and real")
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+            with os.fdopen(fd, "rb") as source:
+                metadata = os.fstat(source.fileno())
+                if (
+                    not stat.S_ISREG(metadata.st_mode)
+                    or metadata.st_uid != os.getuid()
+                    or stat.S_IMODE(metadata.st_mode) != 0o600
+                    or metadata.st_size > MAX_MESSAGE
+                ):
+                    raise GateError("host authorization file is not private")
+                raw = source.read(MAX_MESSAGE + 1)
+            value = json.loads(raw)
+        except (OSError, ValueError, UnicodeError) as exc:
+            raise GateError("host authorization cannot be read safely") from exc
+        fields = {
+            "schema",
+            "plan_path",
+            "journal_dir",
+            "journal_device",
+            "journal_inode",
+            "launch_id",
+            "controller_instance",
+            "local_host",
+            "bindings",
+            "required_processes",
+        }
+        if not isinstance(value, dict) or set(value) != fields:
+            raise GateError("host authorization fields do not match schema")
+        if value["schema"] != "ecpa-loopback-host-authorization/v1":
+            raise GateError("unsupported host authorization schema")
+        try:
+            self.plan = read_plan_artifact(value["plan_path"]).plan
+            self.root = Path(value["journal_dir"])
+            self.directory_identity = (
+                value["journal_device"],
+                value["journal_inode"],
+            )
+            self.launch_id = value["launch_id"]
+            self.controller_instance = value["controller_instance"]
+            self.local_host = value["local_host"]
+            self.bindings = tuple(
+                EntryPointBinding(**binding) for binding in value["bindings"]
+            )
+            self.required_processes = tuple(value["required_processes"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise GateError("host authorization values are invalid") from exc
+        if (
+            not isinstance(self.launch_id, str)
+            or not self.launch_id
+            or not isinstance(self.controller_instance, str)
+            or not self.controller_instance
+            or not isinstance(self.local_host, str)
+            or not self.local_host
+            or not self.root.is_absolute()
+            or self.root.is_symlink()
+            or not self.required_processes
+            or not self.bindings
+        ):
+            raise GateError("host authorization identity is incomplete")
+
+    def authorize(self, snapshot: dict[str, Any]) -> str:
+        if (
+            snapshot.get("plan_id") != self.plan.plan_id
+            or snapshot.get("launch_id") != self.launch_id
+            or snapshot.get("controller_instance") != self.controller_instance
+        ):
+            raise GateError("candidate route is not bound to host authorization")
+        try:
+            observation = observe_bound_invocations(
+                self.root,
+                expected_directory_identity=self.directory_identity,
+                plan=self.plan,
+                launch_id=self.launch_id,
+                controller_instance=self.controller_instance,
+                bindings=self.bindings,
+                required_processes=self.required_processes,
+                local_host=self.local_host,
+            )
+        except Exception as exc:
+            raise GateError(
+                "host observation is unavailable for frozen membership"
+            ) from exc
+        if not observation["complete_coverage"]:
+            raise GateError("host observation does not cover frozen membership")
+        return "sha256:" + hashlib.sha256(_canonical(observation)).hexdigest()
+
+
 class LoopbackTrafficAdapter:
     """Control client for a separately running traffic-authority process."""
 
@@ -273,12 +370,14 @@ class _Authority:
         predecessor: tuple[str, int],
         candidate: tuple[str, int],
         journal: _TrafficJournal,
+        observer: _HostAuthorization | None = None,
     ):
         self.route = route
         self.grant = grant
         self.predecessor = predecessor
         self.candidate = candidate
         self.journal = journal
+        self.observer = observer
         self.lock = threading.Lock()
         self.journal.record("authority.start", route)
 
@@ -291,10 +390,31 @@ class _Authority:
                 "traffic journal unavailable; routing failed closed"
             ) from exc
 
+    def _refresh_candidate(self) -> str | None:
+        if (
+            self.observer is None
+            or self.route.generation is None
+            or not self.route.fence.startswith("gate-")
+        ):
+            return None
+        try:
+            if self.grant.expires_at < int(time.time()):
+                raise GateError("traffic lease expired")
+            if not isinstance(self.route.snapshot, dict):
+                raise GateError("candidate route snapshot is unavailable")
+            return self.observer.authorize(self.route.snapshot)
+        except GateError:
+            self.route = RouteState(None, "closed", None)
+            self._record(
+                "route.close_all", self.route, reason="host observation lost"
+            )
+            return None
+
     def apply(self, value: dict[str, Any]) -> dict[str, Any]:
         operation = value.get("operation")
         with self.lock:
             if operation == "query":
+                self._refresh_candidate()
                 return {"route": asdict(self.route)}
             if operation == "lease_valid":
                 return {"valid": self._valid(value)}
@@ -324,12 +444,18 @@ class _Authority:
                     or not isinstance(snapshot, dict)
                 ):
                     raise GateError("invalid candidate route transition")
+                observation_sha256 = (
+                    self.observer.authorize(snapshot)
+                    if self.observer is not None
+                    else None
+                )
                 candidate_route = RouteState(generation, fence, snapshot)
                 self._record(
                     "route.open.intent",
                     self.route,
                     candidate_generation=generation,
                     candidate_fence=fence,
+                    observation_sha256=observation_sha256,
                 )
                 self.route = candidate_route
                 self._record("route.open.applied", self.route)
@@ -390,12 +516,14 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             return
         journal_failed = False
         with self.server.authority.lock:
-            route = self.server.authority.route
             try:
+                observation_sha256 = self.server.authority._refresh_candidate()
+                route = self.server.authority.route
                 self.server.authority._record(
                     "request.reject" if route.generation is None else "request.admit",
                     route,
                     method=self.command,
+                    observation_sha256=observation_sha256,
                 )
             except GateError:
                 journal_failed = True
@@ -501,12 +629,18 @@ def main() -> None:
     parser.add_argument("--grant-holder", required=True)
     parser.add_argument("--grant-token", type=int, required=True)
     parser.add_argument("--grant-expires-at", type=int, required=True)
+    parser.add_argument("--observer-config", type=Path)
     args = parser.parse_args()
     predecessor = json.loads(args.predecessor_snapshot)
     if not isinstance(predecessor, dict) or not isinstance(
         predecessor.get("generation"), int
     ):
         raise GateError("predecessor snapshot requires generation")
+    observer = (
+        _HostAuthorization(args.observer_config)
+        if args.observer_config is not None
+        else None
+    )
     journal = _TrafficJournal(args.journal)
     try:
         authority = _Authority(
@@ -519,6 +653,7 @@ def main() -> None:
             ("127.0.0.1", args.predecessor_port),
             ("127.0.0.1", args.candidate_port),
             journal,
+            observer,
         )
         server = _ProxyServer(authority)
     except Exception:
