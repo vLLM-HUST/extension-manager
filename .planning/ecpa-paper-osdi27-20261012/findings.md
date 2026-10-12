@@ -35,6 +35,18 @@
 - Retiring those two stale producer blockers does not admit the experiment.
   The verified adapter registry is empty, the deployment identity is not
   frozen, and deployment commands have not been reviewed.
+- The 2026-09-21 Ascend deployment candidate captured an eight-device host,
+  old runtime/plugin source commits, an image built from different commits,
+  and batch-invariant mode. Its checked preflight is blocked on runtime/plugin
+  compatibility, binary/source identity, and runtime mode. It remains a
+  historical candidate, not a current deployment registration.
+- On 2026-10-12 this container exposes only `/dev/davinci0` and
+  `/dev/davinci7`, both Ascend 910B2, with no NPU processes shown by
+  `npu-smi info`. CANN 9.1.0 is installed; the Docker CLI is unavailable.
+  The local vLLM-HUST checkout is detached at `d0f22d2bda562156e4dbf433ce645e1769b4f804`,
+  while its tracked `origin/main` is `4f61604bea01ce56afc320e0f0566166fd79a562`.
+  The old eight-device observation cannot supply today's frozen topology or
+  command fingerprints. No device run was started in this audit.
 
 Official source:
 <https://www.usenix.org/conference/osdi27/call-for-papers>

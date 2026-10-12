@@ -102,14 +102,17 @@ reviewed head/tree/base, merge commit, and the completed human line, command,
 activation-path, and observer-independence reviews. Runtime admission checks
 this receipt before it fingerprints or probes commands, and offline validation
 rechecks the same receipt. This receipt is a code-review trust boundary, not a
-live GitHub oracle or proof that a runtime effect occurred. The registry stays
-empty while the producer is open.
+live GitHub oracle or proof that a runtime effect occurred. vLLM-HUST PR #27
+has since been reviewed and merged, but the registry remains empty because no
+deployment commands or independent host observer have been registered.
 
 The remaining gate is to independently associate host-assigned
 EngineCore/worker identities with this same Plan/launch/controller tuple under
 a real workload and fault driver, without treating controller ACKs as effect
-evidence. Registration is forbidden until vLLM-HUST PR #27 is human-reviewed
-and merged and the first real cell is independently reproduced.
+evidence. Registration requires a frozen deployment identity, reviewed command
+and observer bindings, and the producer-admission receipt. A real cell can be
+reproduced only after that registration; its result must then pass the
+independent offline validator before entering the paper aggregate.
 
 BidKV remains an unchanged case-study candidate; this decision neither changes
 its algorithm nor adds a second inference engine.

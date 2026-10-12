@@ -20,9 +20,10 @@ immutable candidate with a point-in-time observation. It fails closed on:
   runtime/plugin trees, or a different effective runtime mode;
 - an incomplete or differently versioned model snapshot.
 
-The refreshed 112 candidate binds exact read-only source trees, CANN 9.1, an
+The 2026-09-21 112 candidate bound exact read-only source trees, CANN 9.1, an
 accessible Docker server, eight visible Ascend 910B2 devices, a content-addressed
-local image, and every required Qwen2.5-0.5B file and digest. A one-device
+local image, and every required Qwen2.5-0.5B file and digest. Those are
+historical observations and cannot freeze a later deployment identity. A one-device
 eager/native smoke completed model load, KV-cache initialization, warmup, one
 request, and shutdown. The checked smoke is separately typed as non-formal and
 non-authoritative. It mounted newer source trees over an image built from older

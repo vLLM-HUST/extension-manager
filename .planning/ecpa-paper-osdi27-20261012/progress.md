@@ -26,3 +26,8 @@
   failure/permission matrix passed; sdist and wheel built; a clean virtualenv
   installed the wheel and ran CLI version/help; the research matrix and paper
   evidence summary passed; Tectonic rebuilt the paper successfully.
+- PR #67 merged as `475830ca62fbbcf440865ededdced2abbf3f307c` with Python
+  3.10, Python 3.12, and wheel CI green. Audited the remaining deployment gate:
+  the historical eight-device candidate is blocked, and the current container
+  exposes two devices with no Docker CLI. Corrected the stale producer wording
+  in the formal adapter ADR and lifecycle-source design note.
