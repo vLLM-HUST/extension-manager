@@ -69,6 +69,40 @@ def test_current_research_matrix_is_pre_admission() -> None:
         "first_study_status": "pre-admission",
         "deployment_registration": "unregistered",
     }
+    study = json.loads(
+        (ROOT / "experiments/false_effective/first-formal-real-study.json").read_text()
+    )
+    assert study["producer_candidate"]["observed_state"] == "merged"
+    assert study["producer_candidate"]["human_line_review"] is True
+    assert study["blockers"] == [
+        "adapter-registry-empty",
+        "deployment-identity-unfrozen",
+        "commands-not-deployment-reviewed",
+    ]
+
+
+def test_pre_admission_blockers_follow_producer_facts(tmp_path: Path) -> None:
+    validator = load_validator()
+    copy_inputs(tmp_path)
+    study = tmp_path / "experiments/false_effective/first-formal-real-study.json"
+    deployment = (
+        tmp_path / "experiments/false_effective/first-formal-real-deployment.json"
+    )
+
+    def reopen_producer(value) -> None:
+        value["producer_candidate"]["observed_state"] = "open"
+        value["producer_candidate"]["merge_commit"] = None
+
+    rewrite_json(study, reopen_producer)
+    rewrite_json(deployment, reopen_producer)
+    deployment_value = json.loads(deployment.read_text())
+    deployment_value["bindings"]["study_sha256"] = validator.file_sha256(
+        tmp_path, "experiments/false_effective/first-formal-real-study.json"
+    )
+    deployment.write_text(json.dumps(deployment_value, indent=2) + "\n")
+
+    with pytest.raises(ValueError, match="truthful blockers"):
+        validator.validate(tmp_path)
 
 
 def test_empty_registry_rejects_completed_study(tmp_path: Path) -> None:
@@ -582,6 +616,23 @@ def test_claim_evidence_class_cannot_cross_experiment_kind(tmp_path: Path) -> No
 def test_open_producer_rejects_fake_registry_entry(tmp_path: Path) -> None:
     validator = load_validator()
     copy_inputs(tmp_path)
+    study = tmp_path / "experiments/false_effective/first-formal-real-study.json"
+    deployment = (
+        tmp_path / "experiments/false_effective/first-formal-real-deployment.json"
+    )
+
+    def reopen_producer(value) -> None:
+        value["producer_candidate"]["observed_state"] = "open"
+        value["producer_candidate"]["merge_commit"] = None
+        value["blockers"].insert(0, "producer-not-merged")
+
+    rewrite_json(study, reopen_producer)
+    rewrite_json(deployment, reopen_producer)
+    deployment_value = json.loads(deployment.read_text())
+    deployment_value["bindings"]["study_sha256"] = validator.file_sha256(
+        tmp_path, "experiments/false_effective/first-formal-real-study.json"
+    )
+    deployment.write_text(json.dumps(deployment_value, indent=2) + "\n")
     registry = tmp_path / "experiments/false_effective/verified-adapters.json"
     value = json.loads(registry.read_text())
     value["adapters"].append({"id": "fake"})

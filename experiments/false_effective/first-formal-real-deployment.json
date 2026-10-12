@@ -4,7 +4,7 @@
   "registration_state": "unregistered",
   "admissible": false,
   "bindings": {
-    "study_sha256": "b18e227347192dc30909d43ba8dc20ba051e0dac0e5ea85af4aaebd12d393513",
+    "study_sha256": "2a5c233bb361650636c10c9c30a15c9a25f3f98ade6d40b7547494e0250ff589",
     "protocol_sha256": "c76ac785334273d942723cf26fe840a3d7c0cf6cfb15a0fb0aa04810f9ab70bc",
     "registration_design_base": {
       "repository": "intellistream/vllm-hust-ext-manager",
@@ -15,13 +15,13 @@
   "producer_candidate": {
     "repository": "vLLM-HUST/vllm-hust",
     "pull_request": 27,
-    "reviewed_head": "c9b6bbff27fc8241ba37abf037560cf2875317a2",
-    "reviewed_tree": "f00d6c0ffef2afd94548a3cfaecf61f65593d0a7",
-    "base": "badce8df2ac489ab55bbbd19e5eb9eea56986f65",
-    "observed_state": "open",
-    "merge_commit": null,
-    "human_line_review": false,
-    "observed_at": "2026-09-21T09:05:00+08:00"
+    "reviewed_head": "f3eb4b09ba91a1720c4e35de41a91e6dc351fd5b",
+    "reviewed_tree": "bcdb8c810b60c11e77cb8af2002bd9039600b808",
+    "base": "fc06902b7dd7aa1610438cd061ccf7f04b31c609",
+    "observed_state": "merged",
+    "merge_commit": "b326fafe5405b9996db9c9f0d7758536148ecc9b",
+    "human_line_review": true,
+    "observed_at": "2026-10-12T20:28:43+08:00"
   },
   "producer_admission_receipt": null,
   "deployment_identity": {
@@ -58,8 +58,6 @@
     "artifact_retention": false
   },
   "blockers": [
-    "producer-not-merged",
-    "human-line-review-absent",
     "adapter-registry-empty",
     "deployment-identity-unfrozen",
     "commands-not-deployment-reviewed"
