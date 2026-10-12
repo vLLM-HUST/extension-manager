@@ -28,12 +28,14 @@
   "blockers": ["adapter-registry-empty", "deployment-identity-unfrozen", "commands-not-deployment-reviewed"],
   "fixed_identity": {
     "runtime_commit": null,
+    "accelerator_plugin_commit": null,
     "manager_commit": null,
     "model": null,
     "workload_request_sha256": null,
     "hardware": null,
     "topology": null,
     "container_digest": null,
+    "environment_digest": null,
     "fault_descriptor_sha256": null,
     "plugin_entry_point": null,
     "warm_state": null

@@ -64,10 +64,12 @@
     "producer_admission_receipt": {"type": ["object", "null"]},
     "deployment_identity": {
       "type": "object",
-      "required": ["runtime_commit", "runtime_tree", "manager_commit", "manager_tree", "model", "workload_request_sha256", "hardware", "topology", "container_digest", "fault_descriptor_sha256", "plugin_entry_point", "warm_state"],
+      "required": ["runtime_commit", "runtime_tree", "accelerator_plugin_commit", "accelerator_plugin_tree", "manager_commit", "manager_tree", "model", "workload_request_sha256", "hardware", "topology", "container_digest", "environment_digest", "fault_descriptor_sha256", "plugin_entry_point", "warm_state"],
       "properties": {
         "runtime_commit": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/sha"}]},
         "runtime_tree": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/sha"}]},
+        "accelerator_plugin_commit": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/sha"}]},
+        "accelerator_plugin_tree": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/sha"}]},
         "manager_commit": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/sha"}]},
         "manager_tree": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/sha"}]},
         "model": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 1}]},
@@ -75,6 +77,7 @@
         "hardware": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 1}]},
         "topology": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 1}]},
         "container_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/commandDigest"}]},
+        "environment_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/commandDigest"}]},
         "fault_descriptor_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/commandDigest"}]},
         "plugin_entry_point": {
           "oneOf": [

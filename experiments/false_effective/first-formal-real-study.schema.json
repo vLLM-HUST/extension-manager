@@ -33,15 +33,17 @@
     "blockers": {"type": "array", "uniqueItems": true, "items": {"enum": ["producer-not-merged", "human-line-review-absent", "adapter-registry-empty", "deployment-identity-unfrozen", "commands-not-deployment-reviewed"]}},
     "fixed_identity": {
       "type": "object",
-      "required": ["runtime_commit", "manager_commit", "model", "workload_request_sha256", "hardware", "topology", "container_digest", "fault_descriptor_sha256", "plugin_entry_point", "warm_state"],
+      "required": ["runtime_commit", "accelerator_plugin_commit", "manager_commit", "model", "workload_request_sha256", "hardware", "topology", "container_digest", "environment_digest", "fault_descriptor_sha256", "plugin_entry_point", "warm_state"],
       "properties": {
         "runtime_commit": {"type": ["string", "null"]},
+        "accelerator_plugin_commit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
         "manager_commit": {"type": ["string", "null"]},
         "model": {"type": ["string", "null"]},
         "workload_request_sha256": {"type": ["string", "null"]},
         "hardware": {"type": ["string", "null"]},
         "topology": {"type": ["string", "null"]},
         "container_digest": {"type": ["string", "null"]},
+        "environment_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
         "fault_descriptor_sha256": {"type": ["string", "null"]},
         "plugin_entry_point": {
           "oneOf": [

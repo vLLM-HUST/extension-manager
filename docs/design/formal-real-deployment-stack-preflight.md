@@ -47,6 +47,14 @@ must equal the checked source commits, and `runtime_mode` must match. The digest
 must describe the installed environment used by the service, not merely a
 lockfile. This preflight compares a reviewed observation; it does not compute
 or independently attest the digest or authorize a formal run.
+The H1 study and deployment registration packets carry this digest as
+`environment_digest` when `container_digest` is null. Registered packets must
+choose exactly one; the current checked packets remain wholly unregistered and
+leave both null. Formal runner command and installed-environment binding still
+require review before any result can be admitted.
+The study also freezes the accelerator plugin commit, and registration pins its
+tree alongside the runtime and Manager trees. Merely matching an entry-point
+name cannot substitute for a reviewed host/plugin source pair.
 
 `deployment-candidates/ascend-910b2-112.smoke.json` records the successful
 pre-admission smoke without promoting its SUT-owned diagnostic stream to
