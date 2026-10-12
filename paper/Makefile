@@ -11,6 +11,23 @@ EVIDENCE_INPUTS := \
 	../docs/corpus/source-snapshots.schema.json \
 	../docs/research/claims-to-experiment-matrix.json \
 	../docs/research/claims-to-experiment-matrix.schema.json \
+	../docs/release-readiness.json \
+	../docs/release-readiness.schema.json \
+	../docs/evidence/native-current-npu-qualification-2026-10-11.md \
+	../.github/workflows/ci.yml \
+	../docs/acceptance-gates.md \
+	../docs/design/failure-semantics.md \
+	../docs/design/host-plugin-evidence-0.1.md \
+	../docs/evaluation-plan.md \
+	../docs/evidence/host-contract-maintainer-acceptance-2026-10-10.md \
+	../docs/failure-permission-matrix.json \
+	../docs/kv-materialization-runbook.md \
+	../docs/manifest-0.3.md \
+	../docs/qualification-policy.md \
+	../docs/support-matrix.md \
+	../src/vllm_hust_ext/catalog.py \
+	../tests/test_catalog.py \
+	../tests/test_failure_permission_matrix.py \
 	../experiments/contract_planner/cases.json \
 	../experiments/contract_planner/cases.schema.json \
 	../experiments/contract_planner/decision.schema.json \
@@ -35,6 +52,9 @@ EVIDENCE_INPUTS := \
 	../experiments/transaction_model/result-summary.schema.json \
 	../spec/0.1/contract-taxonomy.json \
 	../spec/0.1/contract-taxonomy.schema.json \
+	../spec/manifest-0.3/manifest.schema.json \
+	../spec/manifest-0.3/conformance-vectors.json \
+	../spec/manifest-0.3/migration-vectors.json \
 	../src/vllm_hust_ext/contract_compiler.py \
 	../src/vllm_hust_ext/formal_lifecycle_source.py
 

@@ -56,7 +56,12 @@ communication, and observability.  We implement a host-neutral
 coordinator, a narrow adapter for one vLLM-compatible prototype host, and an
 adversarial evaluation harness covering namespace errors, resource conflicts,
 partial worker coverage, replay, crash recovery, lease expiration, and failed
-compensation.  ECPA provides explicit extension semantics beyond API
+compensation.  The released reference manager freezes Manifest
+\ECPAManifestVersion{} and has one pinned clean-wheel Ascend lifecycle
+qualification in which two requests produced process-owned receipts and
+supervised stop reclaimed the owned processes, port, and device allocation.
+That qualification is outside the preregistered matched experiment and makes
+no performance claim.  ECPA provides explicit extension semantics beyond API
 availability while keeping host bindings and optimization-specific algorithms
 outside the contract runtime.
 \end{abstract}
@@ -139,10 +144,13 @@ the evidence available today:
   multi-process consistency, and overhead experiments.
 \end{itemize}
 The contract compiler, reference coordinator, evidence protocol, and
-fail-closed formal harness are implemented.  The source-bound static corpus is
-measured; the matched prototype-host experiment and performance evaluation
-remain incomplete.  We do not present modeled decisions, interface fixtures,
-or provider demonstrations as proof of runtime effectiveness.
+fail-closed formal harness are implemented.  Release \ECPAReleaseVersion{}
+freezes Manifest \ECPAManifestVersion{} and records one pinned native-host
+lifecycle qualification.  The source-bound static corpus is measured; the
+matched prototype-host experiment and performance evaluation remain
+incomplete.  We do not present modeled decisions, interface fixtures, release
+qualification, or provider demonstrations as substitutes for that formal
+comparison.
 
 \begin{figure*}[t]
 \centering
@@ -588,24 +596,28 @@ namespaces, process-role mappings, and evidence decoders reside behind the
 adapter interface.  This separation is a design property; it is not evidence
 of cross-runtime portability.
 
-The implementation already keeps static bundle discovery separate from
+Release \ECPAReleaseVersion{} keeps static bundle discovery separate from
 implementation entry points and distinguishes persistent intent from provider
-health.  It rejects mutating provider plans and documents that only a
-process-owned observer can establish runtime effectiveness.  Existing evidence
-includes provider-specific integration campaigns, but those campaigns were not
-designed as the matched experiment required by this paper.
+health.  Its stable Manifest \ECPAManifestVersion{} adds explicit extension
+dependencies and resource claims so incomplete or conflicting activation
+graphs fail before host launch.  It rejects mutating provider plans and
+documents that only a process-owned observer can establish runtime
+effectiveness.  Post-release main also composes distinct, hash-bound StateAxis
+MOD plans under separate configuration keys and rejects overlapping claims;
+this is contract and test evidence, not a performance or runtime-effect result.
 
-One major evaluation piece remains incomplete.  The implementation now has a
+One major evaluation piece remains incomplete.  The implementation has a
 pure contract compiler that resolves normalized public-PEP-440 requirements to
 exactly one provider, derives deterministic dependency order, rejects cycles,
 binds typed observation authority and quorum policy, and checks exclusive,
 shared-read, and selected-mediator resource ownership.  A frozen
 machine-readable taxonomy and independently labeled modeled oracle now measure
 the static admission mechanics, with the limitations reported in
-Section~\ref{sec:evaluation}.  Process-owned evidence still needs a completed
-real launch and aggregation experiment across parent/worker topologies.
-Consequently we claim measured modeled L2 admission, not a completed end-to-end
-\system evaluation.
+Section~\ref{sec:evaluation}.  One pinned real launch now establishes the
+release lifecycle path and process-owned receipt plumbing, but the matched
+multi-arm aggregation across parent/worker topologies is still empty.
+Consequently we claim measured modeled L2 admission and one bounded lifecycle
+qualification, not a completed end-to-end \system evaluation.
 
 To reduce the remaining host-integration risk without promoting a synthetic
 run into a result, the artifact also includes a cross-repository adapter
@@ -739,6 +751,15 @@ default branch, and exact head, then inspected packaging metadata, manifests,
 registration functions, implementation paths, and repository-local tests.
 Research projects from our own portfolio are not substituted for or appended
 to this population.
+
+The release audit is a separate operational inventory rather than a silent
+replacement for that frozen page population.  At release
+\ECPAReleaseVersion{} it recorded \ECPAReleaseDistributions{} distributions,
+\ECPAReleaseRegistrations{} valid registrations,
+\ECPAReleaseActivationIntent{} activation-intent bundles, and
+\ECPAReleaseInspectOnly{} inspect-only bundles.  Those counts describe Manager
+intake and lifecycle eligibility; they do not establish that every entry ran
+on an NPU, composed with every other entry, or improved performance.
 
 Of these MODs, \ECPAWorkshopBundleNamespace{} installable distributions register
 the ECPA static-bundle namespace and are discoverable without importing plugin
@@ -945,6 +966,26 @@ operator action.  \textbf{H4:} relative to manual integration, added median
 startup cost is at most 5\% or 250\,ms, throughput regression at most 1\%, and
 p99 request-latency regression at most 2\% in every supported formal cell.
 
+\subsection{Release Qualification Outside the Formal Aggregate}
+The release-readiness artifact records \ECPAReleaseGates{} passed gates for
+release \ECPAReleaseVersion{}.  One gate is backed by a clean-wheel run of the
+Manager and KV-materialization plugin on a pinned current vLLM-HUST host,
+vLLM-Ascend compatibility patch, Qwen3-0.6B, and one Ascend 910B2 device.  The
+host served two HTTP requests, and the live engine process emitted two
+plan/launch-bound \code{runtime\_effective} receipts tied to those request
+identities.  After SIGINT to the Manager supervisor, the API and engine exited,
+port 8100 became bindable, device memory returned to the recorded idle
+baseline, and status stopped projecting runtime effectiveness.  Disable,
+forget, and uninstall then removed intent and discovery without stopping an
+external service.
+
+This is \ECPANativeLifecycleQualifications{} lifecycle qualification, not one
+of the \ECPAFormalCompleted{} completed formal cells.  It has no matched vanilla
+or manual arm, repeated-start schedule, injected partial-worker fault, latency
+distribution, or throughput measurement.  We therefore use it to retire the
+claim that no real host path has executed, while leaving H1--H4, rollback fault
+rates, and performance overhead unmeasured.
+
 \subsection{Baselines and Workloads}
 We compare (1) vanilla vLLM entry-point discovery/loading
 \cite{vllm-plugin,vllm-arch}, (2) manual integration using documented flags,
@@ -1000,6 +1041,8 @@ Planner seed binding & \ECPASourceRepositories{} repositories and
 Namespace safety & installed entry: expected 1; changed lookup: 0 & negative \\
 Transaction model & \ECPATransactionModelStates{} states,
 \ECPATransactionModelEdges{} valid edges; no abstract counterexample & modeled \\
+Release lifecycle & \ECPANativeLifecycleQualifications{} pinned NPU cell;
+process-owned receipts and cleanup & observed; excluded \\
 Formal-real & \ECPAFormalCompleted{} complete, \ECPAFormalPlanned{} planned;
 \ECPAVerifiedAdapters{} registered adapters & planned \\
 Rollback & reference faults only; real injection pending & planned \\
@@ -1057,12 +1100,14 @@ across \ECPASourceRepositories{} repositories
 bind the corpus to inspected source.  These numbers measure conformance to the
 modeled taxonomy, not real conflict prevalence or runtime effectiveness.
 
-All runtime and performance quantities remain planned.  Table and figure
-generators must refuse to replace missing values with zero.  The final paper
-will include per-cell confidence intervals and raw failure counts.  Until
-H1--H4 are measured, the strongest defensible runtime claim is that the
-architecture makes evidence obligations explicit and the harness fails closed;
-it does not establish production effectiveness.
+All matched formal-runtime and performance quantities remain planned.  The
+single release qualification is reported separately and cannot populate a
+formal cell.  Table and figure generators must refuse to replace missing values
+with zero.  The final paper will include per-cell confidence intervals and raw
+failure counts.  Until H1--H4 are measured, the strongest defensible runtime
+claim is that one pinned lifecycle produced process-owned evidence and cleaned
+up reversibly while the architecture and harness otherwise fail closed; this
+does not establish production effectiveness.
 
 \section{Related Work}
 \textbf{Inference and module plugins.}  vLLM's Plugin System loads registered
@@ -1146,18 +1191,20 @@ negative cells, not a universal composability claim.  Deterministic rollback
 can restore manager-owned inputs, not external data or services; bounded
 operator action is therefore a first-class outcome.
 
-The current implementation now includes a single-host, single-manager SQLite
+The current implementation includes a single-host, single-manager SQLite
 reference coordinator with durable plans, WAL/receipts, process epochs,
 replay-fenced evidence, generation CAS, predecessor gating, crash recovery,
 and fail-safe rollback outcomes.  Deterministic adapters and adversarial traces
-exercise these semantics; no real vLLM host, attestation trust root, traffic
-gate, elastic membership, or external provider is integrated yet.  SQLite is a
-reference implementation choice rather than a protocol requirement.  Earlier
-provider demonstrations establish feasibility in selected cells, not general
-correctness.  The paper should be stopped or reframed as an engineering report
-if runtime intent cannot be separated from process effect, conflict thresholds
-remain unmet after one correction cycle, rollback loses the predecessor plan,
-or overhead exceeds the frozen bounds.
+exercise these semantics, and one pinned vLLM-HUST/Ascend launch exercises the
+native process-owned observer and reversible supervised lifecycle.  No
+production attestation trust root, authority-owned traffic gate, elastic
+membership, matched fault campaign, or formal external-provider result exists
+yet.  SQLite is a reference implementation choice rather than a protocol
+requirement.  The qualification establishes feasibility in one lifecycle cell,
+not general correctness.  The paper should be stopped or reframed as an
+engineering report if runtime intent cannot be separated from process effect,
+conflict thresholds remain unmet after one correction cycle, rollback loses
+the predecessor plan, or overhead exceeds the frozen bounds.
 
 The frozen executable model makes these limits precise.  Intent authority,
 planning authority, host-runtime evidence authority, provider translation,
@@ -1187,7 +1234,9 @@ conflict-checked plan with explicit authorities and evidence obligations.  It
 separates lifecycle predicates, requires runtime facts from the processes that
 own them, fails closed, and preserves a deterministic rollback target.  A real
 namespace regression already demonstrates the value of installed-package
-evidence over mock-only tests.  The broader systems claim remains contingent on
+evidence over mock-only tests, while a pinned native NPU lifecycle now shows
+that the process-owned evidence and cleanup path can execute end to end.  The
+broader systems claim remains contingent on
 the preregistered multi-process, composability, version-skew, recovery, and
 overhead evaluation.  This evidence boundary is intentional: the architecture
 is useful only if its own status claims are as disciplined as those it imposes
