@@ -76,6 +76,55 @@ def make_gate(tmp_path, **adapter_options):
     return gate, adapter
 
 
+def test_gate_uses_authority_queries_without_an_in_process_route(tmp_path):
+    inner = DeterministicTrafficAdapter(0, PREDECESSOR, authority=LeaseAuthority(GRANT))
+
+    class OpaqueTrafficAuthority:
+        authority = inner.authority
+        behavioral_restore = False
+
+        def close(self, generation):
+            inner.close(generation)
+
+        def open(self, generation, fence, snapshot, grant, now):
+            inner.open(generation, fence, snapshot, grant, now)
+
+        def close_all(self):
+            inner.close_all()
+
+        def restore(self, generation, fence, snapshot):
+            return inner.restore(generation, fence, snapshot)
+
+        def lease_valid(self, grant, now):
+            return inner.lease_valid(grant, now)
+
+        def query_route(self):
+            return inner.query_route()
+
+    gate = ReferenceExposureGate(
+        tmp_path / "external-authority.db", OpaqueTrafficAuthority(), clock=lambda: NOW
+    )
+    assert gate.stage({"plan_id": "candidate"}, PREDECESSOR) == 1
+    gate.close(1)
+    gate.open(1, PROOF)
+    assert gate.observe(AdmissionRequest("candidate-request", NOW)) == 1
+    assert gate.rollback(1) is RollbackClass.RESTORED_STRONG
+    assert inner.query_route().generation == 0
+
+
+def test_unavailable_authority_query_never_admits_request(tmp_path):
+    gate, adapter = make_gate(tmp_path)
+    stage_closed(gate)
+
+    def unavailable_route():
+        raise GateError("authority query unavailable")
+
+    adapter.query_route = unavailable_route
+    with pytest.raises(GateError, match="authority query unavailable"):
+        gate.observe(AdmissionRequest("must-not-admit", NOW))
+    assert gate.connection.execute("SELECT count(*) FROM admission").fetchone()[0] == 0
+
+
 def stage_closed(gate):
     assert gate.stage({"plan_id": "candidate"}, PREDECESSOR) == 1
     gate.close(1)
