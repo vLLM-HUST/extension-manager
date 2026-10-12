@@ -22,6 +22,16 @@ def test_makefile_exposes_same_source_tectonic_build() -> None:
     assert "$(TECTONIC) --keep-logs main.tex" in makefile
 
 
+def test_title_states_the_problem_and_solution_without_relying_on_acronym() -> None:
+    paper = (ROOT / "paper/main.tex").read_text()
+
+    assert (
+        "From Enabled to Effective: Evidence-Bound Activation for LLM Inference "
+        "Extensions" in paper
+    )
+    assert "\\title{\\Large \\bf ECPA:" not in paper
+
+
 def test_detailed_architecture_preserves_evidence_authority_boundaries() -> None:
     detail_path = ROOT / "docs/design/ecpa-reference-manager-detailed.md"
     detail = detail_path.read_text()
