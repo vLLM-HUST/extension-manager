@@ -85,6 +85,18 @@ is a reference implementation rather than the standard itself.
 Open scientific and evaluation decisions that must not be silently promoted to
 claims are tracked in [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
-The current Tectonic PDF is 14 pages, with body text continuing onto page 13
-before References begins. It does not yet meet the 12-page body limit. Check
-the final PDF's page boundary after every substantive paper edit.
+The current Tectonic PDF is 12 pages total, with body text ending on page 11
+before References begins. This fixes the earlier body-page violation by removing
+duplicated corpus inventory and architecture/status visuals while keeping the
+source-bound inventory in `../docs/corpus/`. It is still a working draft: the
+formal H1--H4 results are missing, and the recovered space must be budgeted for
+measured tables and analysis. Recheck the body/reference boundary after every
+substantive edit; page count alone does not certify submission readiness.
+Install the optional `paper` dependency from the repository root, then run
+`make -C paper audit-pdf` after every Tectonic build. The audit checks page
+geometry, body/reference boundary, page numbers, embedded fonts, nominal
+10-point body type, and two-column extraction. Run
+`python3 paper/scripts/audit_pdf.py paper/main.pdf --anonymous` on the private
+submission rendering; the public draft is expected to fail its identity scan.
+Leading, exact text-block dimensions, grayscale legibility, and implication-
+based identity leaks still need human review.
