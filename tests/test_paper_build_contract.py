@@ -14,12 +14,16 @@ def test_vendored_style_has_explicit_pdftex_and_xetex_paths() -> None:
     assert style.count("\\ifPDFTeX") == 3
 
 
-def test_makefile_exposes_same_source_tectonic_build() -> None:
+def test_makefile_uses_tectonic_for_every_paper_build() -> None:
     makefile = (ROOT / "paper/Makefile").read_text()
 
     assert "TECTONIC ?= tectonic" in makefile
-    assert "tectonic: main.tex references.bib" in makefile
+    assert "all: main.pdf" in makefile
+    assert "main.pdf: main.tex references.bib" in makefile
+    assert "tectonic: main.pdf" in makefile
     assert "$(TECTONIC) --keep-logs main.tex" in makefile
+    assert "LATEXMK" not in makefile
+    assert "pdflatex" not in makefile.lower()
 
 
 def test_title_states_the_problem_and_solution_without_relying_on_acronym() -> None:
