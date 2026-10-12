@@ -10,6 +10,15 @@ that process. The source then waits for the runner's challenge-bound commit.
 
 `ecpa-formal-source` implements five production-oriented commands:
 
+The formal runner asks the manager-owned SUT to stop only after the shutdown
+phase has been observed. `formal-run` forwards the first termination signal to
+the target session leader, allowing a vLLM API process to stop its own engine
+and workers; the manager escalates to its owned process group after a bounded
+grace period. The runner waits longer than that manager grace period before
+using its own last-resort kill. An exit code of 128 + SIGTERM is normalized only
+for this runner-requested managed shutdown after all required phase facts and
+the observer have succeeded; premature exit remains a failed start.
+
 | Command | Owned fact | Independent operation |
 |---|---|---|
 | `readiness-http` | service ready | total-wall-clock-bounded GET to an exact `127.0.0.1` or `::1` HTTP endpoint; proxies and redirects are disabled and the exact status is required |

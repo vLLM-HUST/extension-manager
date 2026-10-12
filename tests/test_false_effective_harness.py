@@ -3,6 +3,7 @@ import copy
 import importlib.util
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -1184,7 +1185,9 @@ def test_runner_allows_manager_to_reap_signal_ignoring_target(tmp_path):
         else:
             pytest.fail("target did not start")
         target_pid = int(target_pid_path.read_text())
-        runner_module._terminate_process(process)
+        runner_module._terminate_process(
+            process, grace_seconds=runner_module.MANAGED_TERMINATION_GRACE_S
+        )
         assert process.returncode == 128 + 15
         with pytest.raises(ProcessLookupError):
             os.kill(target_pid, 0)
@@ -2086,6 +2089,8 @@ def test_managed_ecpa_record_validates_without_spoofing_target_contract(
         ),
     )
     assert record["status"] == "complete"
+    assert record["command"]["exit_code"] == 0
+    assert record["command"]["signal"] == signal.SIGTERM
     validate_record(
         record,
         tmp_path / "run",

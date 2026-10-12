@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -275,8 +276,8 @@ def test_invalid_plan_fails_before_target_launch(tmp_path, monkeypatch) -> None:
     journal = (tmp_path / "events").resolve()
     journal.mkdir()
     monkeypatch.setattr(
-        controller.subprocess,
-        "call",
+        controller,
+        "supervise",
         lambda *_args, **_kwargs: pytest.fail("target launched before validation"),
     )
 
@@ -359,6 +360,8 @@ def test_manager_termination_reaps_signal_ignoring_target(tmp_path) -> None:
             str(fingerprint["target_executable_inode"]),
             "--target-executable-sha256",
             str(fingerprint["target_executable_sha256"]),
+            "--shutdown-grace-seconds",
+            "0.2",
             "--",
             sys.executable,
             "-c",
@@ -379,6 +382,94 @@ def test_manager_termination_reaps_signal_ignoring_target(tmp_path) -> None:
         assert process.wait(timeout=4) == 128 + 15
         with pytest.raises(ProcessLookupError):
             os.kill(target_pid, 0)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX process-group contract")
+def test_formal_run_lets_target_stop_its_own_worker(tmp_path) -> None:
+    path = write_plan(tmp_path)
+    journal = (tmp_path / "events").resolve()
+    journal.mkdir(mode=0o700)
+    worker_pid_path = tmp_path / "worker.pid"
+    worker_signal_path = tmp_path / "worker-signal"
+    graceful_path = tmp_path / "graceful"
+    worker = (
+        "import pathlib,signal,sys,time; "
+        "signal.signal(signal.SIGTERM, "
+        "lambda *_: pathlib.Path(sys.argv[1]).write_text('received')); "
+        "time.sleep(60)"
+    )
+    target = """
+import pathlib
+import signal
+import subprocess
+import sys
+import time
+
+worker = subprocess.Popen([sys.executable, "-c", sys.argv[4], sys.argv[2]])
+
+def stop(*_):
+    worker.send_signal(signal.SIGINT)
+    worker.wait(timeout=2)
+    pathlib.Path(sys.argv[3]).write_text("graceful")
+    raise SystemExit(0)
+
+signal.signal(signal.SIGTERM, stop)
+pathlib.Path(sys.argv[1]).write_text(str(worker.pid))
+while True:
+    time.sleep(0.1)
+"""
+    fingerprint = executable_fingerprint(sys.executable)
+    manager = str(Path(sys.executable).with_name("vllm-hust-ext"))
+    process = subprocess.Popen(
+        [
+            manager,
+            "formal-run",
+            "--plan",
+            str(path),
+            "--launch-id",
+            "launch:graceful",
+            "--controller-instance",
+            "controller:graceful",
+            "--host-event-dir",
+            str(journal),
+            "--target-executable-device",
+            str(fingerprint["target_executable_device"]),
+            "--target-executable-inode",
+            str(fingerprint["target_executable_inode"]),
+            "--target-executable-sha256",
+            str(fingerprint["target_executable_sha256"]),
+            "--shutdown-grace-seconds",
+            "2",
+            "--",
+            sys.executable,
+            "-c",
+            target,
+            str(worker_pid_path),
+            str(worker_signal_path),
+            str(graceful_path),
+            worker,
+        ]
+    )
+    try:
+        for _ in range(200):
+            if worker_pid_path.is_file():
+                break
+            if process.poll() is not None:
+                pytest.fail(f"manager exited early with {process.returncode}")
+            time.sleep(0.01)
+        else:
+            pytest.fail("target did not start")
+        worker_pid = int(worker_pid_path.read_text())
+        process.terminate()
+        assert process.wait(timeout=5) == 128 + signal.SIGTERM
+        assert graceful_path.read_text() == "graceful"
+        assert not worker_signal_path.exists()
+        with pytest.raises(ProcessLookupError):
+            os.kill(worker_pid, 0)
     finally:
         if process.poll() is None:
             process.kill()

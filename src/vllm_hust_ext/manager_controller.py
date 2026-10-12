@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import json
 import os
-import signal
 import stat
-import subprocess
 from pathlib import Path
 from typing import Any
 
 from .ecpa_model import canonical_bytes
 from .plan_artifact import ExecutionPlanArtifact, read_plan_artifact
+from .process_supervisor import DEFAULT_SHUTDOWN_GRACE_SECONDS, supervise
 
 ACTIVATION_CONTRACT = "manager-controlled-activation"
 HOST_SINK = "vllm_hust_ext.host_event_sink:append_event"
@@ -29,25 +27,6 @@ CONTROLLED_ENVIRONMENT = {
     "ECPA_CONTROLLER_INSTANCE",
     "ECPA_ACTIVATION_CONTRACT",
 }
-TARGET_TERMINATION_GRACE_S = 0.5
-
-
-class _ManagedTermination(Exception):
-    def __init__(self, signum: int):
-        self.signum = signum
-
-
-def _terminate_process_group(process: subprocess.Popen[Any]) -> None:
-    if process.poll() is not None:
-        return
-    with contextlib.suppress(ProcessLookupError):
-        os.killpg(process.pid, signal.SIGTERM)
-    try:
-        process.wait(timeout=TARGET_TERMINATION_GRACE_S)
-    except subprocess.TimeoutExpired:
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)
-        process.wait()
 
 
 def activation_probe_receipt() -> bytes:
@@ -62,6 +41,7 @@ def activation_probe_receipt() -> bytes:
                     "--host-event-dir",
                     "--launch-id",
                     "--plan",
+                    "--shutdown-grace-seconds",
                     "--target-executable-device",
                     "--target-executable-inode",
                     "--target-executable-sha256",
@@ -143,8 +123,11 @@ def launch_managed(
     target_executable_sha256: str,
     base_environment: dict[str, str] | None = None,
     dry_run: bool = False,
+    shutdown_grace_seconds: float = DEFAULT_SHUTDOWN_GRACE_SECONDS,
 ) -> int:
     """Validate every manager input before starting the target process."""
+    if shutdown_grace_seconds < 0:
+        raise ValueError("shutdown grace period must not be negative")
     if not command or any(not isinstance(item, str) or not item for item in command):
         raise ValueError("formal-run requires a non-empty target after --")
     if (
@@ -212,33 +195,12 @@ def launch_managed(
                 )
             )
             return 0
-        process = subprocess.Popen(
+        return supervise(
             command,
             executable=f"/proc/self/fd/{executable_fd}",
             pass_fds=(executable_fd,),
             env=environment,
-            start_new_session=True,
+            shutdown_grace_seconds=shutdown_grace_seconds,
         )
-        previous_handlers = {
-            signum: signal.getsignal(signum)
-            for signum in (signal.SIGINT, signal.SIGTERM)
-        }
-
-        def forward(signum: int, _frame: Any) -> None:
-            raise _ManagedTermination(signum)
-
-        for signum in previous_handlers:
-            signal.signal(signum, forward)
-        try:
-            return process.wait()
-        except _ManagedTermination as termination:
-            _terminate_process_group(process)
-            return 128 + termination.signum
-        except BaseException:
-            _terminate_process_group(process)
-            raise
-        finally:
-            for signum, handler in previous_handlers.items():
-                signal.signal(signum, handler)
     finally:
         os.close(executable_fd)

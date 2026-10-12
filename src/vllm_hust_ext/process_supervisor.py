@@ -81,6 +81,8 @@ def supervise(
     *,
     env: Mapping[str, str],
     shutdown_grace_seconds: float = DEFAULT_SHUTDOWN_GRACE_SECONDS,
+    executable: str | None = None,
+    pass_fds: Sequence[int] = (),
 ) -> int:
     """Run a command and own the lifetime of the process tree it creates.
 
@@ -123,6 +125,8 @@ def supervise(
             command,
             env=dict(env),
             start_new_session=os.name == "posix",
+            executable=executable,
+            pass_fds=tuple(pass_fds),
         )
         if received:
             if len(received) > 1:
