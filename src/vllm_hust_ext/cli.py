@@ -753,6 +753,7 @@ def _formal_run_command(args: argparse.Namespace) -> int:
         target_executable_inode=args.target_executable_inode,
         target_executable_sha256=args.target_executable_sha256,
         dry_run=args.dry_run,
+        shutdown_grace_seconds=args.shutdown_grace_seconds,
     )
 
 
@@ -953,6 +954,12 @@ def build_parser() -> argparse.ArgumentParser:
     formal_run.add_argument("--target-executable-device", type=int)
     formal_run.add_argument("--target-executable-inode", type=int)
     formal_run.add_argument("--target-executable-sha256")
+    formal_run.add_argument(
+        "--shutdown-grace-seconds",
+        type=float,
+        default=DEFAULT_SHUTDOWN_GRACE_SECONDS,
+        help="seconds to wait before killing the owned process tree (default: 10)",
+    )
     formal_run.add_argument("--dry-run", action="store_true")
     formal_run.add_argument("--ecpa-formal-activation-probe", action="store_true")
     formal_run.add_argument("command", nargs=argparse.REMAINDER)

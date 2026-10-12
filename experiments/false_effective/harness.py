@@ -278,6 +278,7 @@ def validate_formal_adapter_verification(
             "--host-event-dir",
             "--launch-id",
             "--plan",
+            "--shutdown-grace-seconds",
             "--target-executable-device",
             "--target-executable-inode",
             "--target-executable-sha256",

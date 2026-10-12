@@ -56,6 +56,7 @@ from vllm_hust_ext.manager_controller import (
     CONTROLLED_ENVIRONMENT,
 )
 from vllm_hust_ext.plan_artifact import read_plan_artifact
+from vllm_hust_ext.process_supervisor import DEFAULT_SHUTDOWN_GRACE_SECONDS
 from vllm_hust_ext.quarantine_transaction import (
     QuarantineTransactionError,
     finalize_quarantine_transaction,
@@ -70,12 +71,14 @@ ECPA_FORMAL_ACTIVATION_OPTIONS = (
     "--host-event-dir",
     "--launch-id",
     "--plan",
+    "--shutdown-grace-seconds",
     "--target-executable-device",
     "--target-executable-inode",
     "--target-executable-sha256",
     "formal-run",
 )
 CHILD_TERMINATION_GRACE_S = 2.0
+MANAGED_TERMINATION_GRACE_S = DEFAULT_SHUTDOWN_GRACE_SECONDS + 2.0
 
 
 def _single_option(arguments: list[str], name: str) -> str:
@@ -1540,13 +1543,17 @@ def _read_events(path: Path) -> tuple[list[dict[str, Any]], str | None]:
         return [], f"observer result unavailable or invalid: {type(exc).__name__}"
 
 
-def _terminate_process(child: subprocess.Popen[Any] | None) -> None:
+def _terminate_process(
+    child: subprocess.Popen[Any] | None,
+    *,
+    grace_seconds: float = CHILD_TERMINATION_GRACE_S,
+) -> None:
     if child is None:
         return
     with contextlib.suppress(ProcessLookupError):
         child.terminate()
     with contextlib.suppress(subprocess.TimeoutExpired):
-        child.wait(timeout=CHILD_TERMINATION_GRACE_S)
+        child.wait(timeout=grace_seconds)
     if child.poll() is None:
         child.kill()
         child.wait()
@@ -1567,7 +1574,14 @@ def _run_start(*args: Any, **kwargs: Any) -> dict[str, Any]:
                 os.close(descriptor)
         for child in reversed(resources["children"]):
             with contextlib.suppress(Exception):
-                _terminate_process(child)
+                _terminate_process(
+                    child,
+                    grace_seconds=(
+                        MANAGED_TERMINATION_GRACE_S
+                        if child is resources.get("managed_sut")
+                        else CHILD_TERMINATION_GRACE_S
+                    ),
+                )
 
 
 def _run_start_impl(
@@ -1630,12 +1644,21 @@ def _run_start_impl(
             close_fds=True,
         )
         _resources["children"].append(sut)
+        if managed_binding is not None:
+            _resources["managed_sut"] = sut
         try:
             sut_identity = wait_for_linux_process_identity(
                 sut, argv, timeout_s, sut_executable_fingerprint
             )
         except BaseException:
-            _terminate_process(sut)
+            _terminate_process(
+                sut,
+                grace_seconds=(
+                    MANAGED_TERMINATION_GRACE_S
+                    if managed_binding is not None
+                    else CHILD_TERMINATION_GRACE_S
+                ),
+            )
             raise
         sut_executable_identity = {
             "device": sut_identity.pop("executable_device"),
@@ -1861,7 +1884,13 @@ def _run_start_impl(
         if sut.poll() is None:
             sut.terminate()
         try:
-            sut_exit = sut.wait(timeout=timeout_s)
+            sut_exit = sut.wait(
+                timeout=(
+                    max(timeout_s, MANAGED_TERMINATION_GRACE_S)
+                    if managed_binding is not None
+                    else timeout_s
+                )
+            )
         except subprocess.TimeoutExpired:
             sut.kill()
             sut_exit = sut.wait()
@@ -1890,9 +1919,19 @@ def _run_start_impl(
             "monotonic_start_ns": sut_start,
             "monotonic_end_ns": sut_end,
             "exit_code": 0
-            if phase_ok and sut_exit in (0, -15) and observer.returncode == 0
+            if phase_ok
+            and (
+                sut_exit in (0, -signal.SIGTERM)
+                or (managed_binding is not None and sut_exit == 128 + signal.SIGTERM)
+            )
+            and observer.returncode == 0
             else sut_exit,
-            "signal": 15 if sut_exit == -15 else None,
+            "signal": (
+                signal.SIGTERM
+                if sut_exit == -signal.SIGTERM
+                or (managed_binding is not None and sut_exit == 128 + signal.SIGTERM)
+                else None
+            ),
             "timeout": observer_timed_out,
             "premature_exit": premature_exit,
             "exited_before_shutdown_ack": exited_before_shutdown,
