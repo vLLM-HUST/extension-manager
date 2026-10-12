@@ -129,9 +129,9 @@ parsing the production actuator's complete option grammar, canonical fault descr
 point. Runtime and offline validators
 reopen that descriptor, and formal aggregation requires the same derived
 scenario/descriptor/entry-point/actuator comparison identity across all three
-arms. The registry is
-intentionally empty until the vLLM-HUST producer is merged after its required
-human line review and a real adapter and host observer are reviewed. The runner
+arms. The vLLM-HUST producer is now merged after the required human line
+review, but the registry remains intentionally empty until a real adapter,
+host observer, deployment identity, and commands are reviewed. The runner
 gives no SUT-authored telemetry path to the observer. Effectiveness, invocation,
 activation path, and coverage must be emitted by the registry-pinned observer after reading
 host-owned evidence; lifecycle facts come from the separately pinned sources

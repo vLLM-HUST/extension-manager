@@ -16,3 +16,13 @@
 - The paper build policy is now Tectonic-only. Both the default `make` target
   and the explicit `make tectonic` target resolve to the same Tectonic build;
   cleanup no longer requires `latexmk`.
+- Began issue #59 by re-auditing the formal study's producer dependency against
+  vLLM-HUST PR #27. Updated its immutable final head, tree, base, merge commit,
+  and human-review facts in both preregistration artifacts. The experiment
+  remains pre-admission with three truthful blockers; no formal result has been
+  claimed or synthesized.
+- Verification after the producer refresh: 637 pytest cases passed; Ruff and
+  mypy passed; release readiness, manifest 0.3 conformance, and the executable
+  failure/permission matrix passed; sdist and wheel built; a clean virtualenv
+  installed the wheel and ran CLI version/help; the research matrix and paper
+  evidence summary passed; Tectonic rebuilt the paper successfully.

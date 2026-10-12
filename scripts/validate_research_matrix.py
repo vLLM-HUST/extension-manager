@@ -323,7 +323,7 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
         canonical_registry
     ):
         raise ValueError("verified adapter registry must be canonical")
-    pre_admission_blockers = {
+    all_pre_admission_blockers = {
         "producer-not-merged",
         "human-line-review-absent",
         "adapter-registry-empty",
@@ -336,15 +336,26 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
         or producer["merge_commit"] is None
         or producer["human_line_review"] is not True
     )
+    expected_pre_admission_blockers = set(all_pre_admission_blockers)
+    if producer["observed_state"] == "merged" and producer["merge_commit"] is not None:
+        expected_pre_admission_blockers.remove("producer-not-merged")
+    if producer["human_line_review"] is True:
+        expected_pre_admission_blockers.remove("human-line-review-absent")
     if producer_unadmitted and adapters:
         raise ValueError("unadmitted producer cannot have verified adapter entries")
-    if (producer_unadmitted or not adapters) and (
-        study["status"] != "pre-admission"
-        or study["admissible"] is not False
-        or set(study["blockers"]) != pre_admission_blockers
-        or aggregate["completed_cells"] != 0
-    ):
-        raise ValueError("unadmitted study must remain exactly pre-admission")
+    if study["status"] == "pre-admission":
+        if adapters:
+            expected_pre_admission_blockers.remove("adapter-registry-empty")
+        if (
+            study["admissible"] is not False
+            or set(study["blockers"]) != expected_pre_admission_blockers
+            or aggregate["completed_cells"] != 0
+        ):
+            raise ValueError(
+                "pre-admission study must retain truthful blockers and no results"
+            )
+    elif producer_unadmitted or not adapters:
+        raise ValueError("admitted study requires an admitted producer and adapters")
 
     if study["status"] == "pre-admission" and any(
         value is not None for value in study["fixed_identity"].values()
@@ -397,12 +408,12 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
             or any(row["registration"] is not None for row in arm_registrations)
             or any(row["registration"] is not None for row in source_registrations)
             or any(deployment["reviews"].values())
-            or set(deployment["blockers"]) != pre_admission_blockers
+            or set(deployment["blockers"]) != expected_pre_admission_blockers
             or adapters
             or study["status"] != "pre-admission"
         ):
             raise ValueError(
-                "unregistered deployment must retain null slots and every blocker"
+                "unregistered deployment must retain null slots and truthful blockers"
             )
     else:
         identity = deployment["deployment_identity"]

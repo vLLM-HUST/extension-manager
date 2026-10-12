@@ -24,6 +24,17 @@
 - Research-matrix validation reports 4 claims, 5 experiments, a first study in
   pre-admission with 9 planned starts, and an unregistered deployment. This is
   the primary submission blocker.
+- vLLM-HUST PR #27 was merged as
+  `b326fafe5405b9996db9c9f0d7758536148ecc9b`; its final head and tree are
+  `f3eb4b09ba91a1720c4e35de41a91e6dc351fd5b` and
+  `bcdb8c810b60c11e77cb8af2002bd9039600b808`. APei-520 completed an
+  affirmative line review before merge. The historical PR check still records
+  a Buildkite test-tethering failure; current host `main` subsequently wires
+  the evidence test, so this audit records the merge/review facts without
+  describing the historical PR CI as green.
+- Retiring those two stale producer blockers does not admit the experiment.
+  The verified adapter registry is empty, the deployment identity is not
+  frozen, and deployment commands have not been reviewed.
 
 Official source:
 <https://www.usenix.org/conference/osdi27/call-for-papers>

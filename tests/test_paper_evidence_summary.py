@@ -107,7 +107,7 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "schedule_rows": 3,
         "research_claims": 4,
         "first_study_starts": 9,
-        "deployment_blockers": 5,
+        "deployment_blockers": 3,
         "registered_deployment_arms": 0,
         "transaction_model_states": 39,
         "transaction_model_edges": 102,
