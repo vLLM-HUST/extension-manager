@@ -5,15 +5,14 @@
     {
       "id": "vspec-knorm-profiler-vllm-0.23.3",
       "members": ["vspec", "knorm", "lifecycle_profiler"],
-      "host": {"provider": "vllm", "name": "vllm", "version": "0.23.3"}
+      "host": {"provider": "vllm", "versions": {"vllm": "0.23.3"}}
     },
     {
       "id": "bidkv-latchmoe-vllm-0.28.1rc1.dev319",
       "members": ["bidkv", "latchmoe"],
       "host": {
         "provider": "vllm",
-        "name": "vllm",
-        "version": "0.28.1rc1.dev319"
+        "versions": {"vllm": "0.28.1rc1.dev319"}
       }
     },
     {
@@ -21,15 +20,28 @@
       "members": ["lifecycle_profiler", "bidkv"],
       "host": {
         "provider": "vllm",
-        "name": "vllm",
-        "version": "0.28.1rc1.dev319"
+        "versions": {"vllm": "0.28.1rc1.dev319"}
       }
     },
     {
       "id": "diffspec-vspec-vllm-0.25.1rc1",
       "members": ["diffspec", "vspec"],
-      "host": {"provider": "vllm", "name": "vllm", "version": "0.25.1rc1"},
-      "research_question": "Overlapping version ranges and speculative-code patches, but host names and declared resources differ. Physical ownership remains unreviewed."
+      "host": {
+        "provider": "vllm",
+        "versions": {"vllm": "0.25.1rc1", "vllm-ascend": "0.25.1rc1"}
+      },
+      "research_question": "DiffSpec requires vLLM core >=0.28.1rc1.dev319 via its general-plugins protocol; vSpec requires core <0.26. Shared patched symbols are a future porting hazard, not a currently admitted resource conflict."
+    },
+    {
+      "id": "diffspec-vspec-vllm-0.28.1rc1.dev319",
+      "members": ["diffspec", "vspec"],
+      "host": {
+        "provider": "vllm",
+        "versions": {
+          "vllm": "0.28.1rc1.dev319",
+          "vllm-ascend": "0.25.1rc1"
+        }
+      }
     }
   ]
 }

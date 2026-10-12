@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from vllm_hust_ext.providers.base import assess_compatibility
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "experiments" / "real_mod_composition" / "audit.py"
 SPEC = importlib.util.spec_from_file_location("real_mod_composition_audit", SCRIPT)
@@ -30,6 +32,7 @@ def test_preflight_keeps_source_rejects_and_candidates_distinct() -> None:
         "bidkv-latchmoe-vllm-0.28.1rc1.dev319",
         "profiler-bidkv-vllm-0.28.1rc1.dev319",
         "diffspec-vspec-vllm-0.25.1rc1",
+        "diffspec-vspec-vllm-0.28.1rc1.dev319",
     }
     assert results["vspec-knorm-profiler-vllm-0.23.3"]["preflight_result"] == (
         "candidate-only"
@@ -40,10 +43,44 @@ def test_preflight_keeps_source_rejects_and_candidates_distinct() -> None:
     assert results["profiler-bidkv-vllm-0.28.1rc1.dev319"][
         "host_mismatches"
     ] == [{"member": "lifecycle_profiler", "reason": "host-version"}]
-    assert results["diffspec-vspec-vllm-0.25.1rc1"]["host_mismatches"] == [
-        {"member": "diffspec", "reason": "host-identity"}
+    assert results["diffspec-vspec-vllm-0.25.1rc1"]["host_mismatches"] == []
+    assert results["diffspec-vspec-vllm-0.25.1rc1"]["protocol_mismatches"] == [
+        {
+            "member": "diffspec",
+            "protocol": "vllm.general_plugins",
+            "reason": "protocol-version",
+        }
+    ]
+    assert results["diffspec-vspec-vllm-0.28.1rc1.dev319"][
+        "host_mismatches"
+    ] == [
+        {"member": "vspec", "reason": "host-version"}
     ]
     assert all(item["runtime_effective"] == "unmeasured" for item in results.values())
+
+
+def test_manager_rejects_both_sides_of_diffspec_vspec_core_skew() -> None:
+    manifests = audit_module.load_sources()
+    diffspec_result, diffspec_evidence = assess_compatibility(
+        manifests["diffspec"],
+        {
+            "host_version": "0.25.1rc1",
+            "host_api_version": "1",
+            "protocol_versions": {
+                "vllm.general_plugins": "0.25.1rc1",
+                "vllm-ascend.runtime-patch-surface": "0.25.1rc1",
+            },
+        },
+    )
+    assert diffspec_result is False
+    assert "protocol vllm.general_plugins 0.25.1rc1 is outside" in (
+        diffspec_evidence[0]
+    )
+    vspec_result, vspec_evidence = assess_compatibility(
+        manifests["vspec"], {"host_version": "0.28.1rc1.dev319"}
+    )
+    assert vspec_result is False
+    assert "host version 0.28.1rc1.dev319 is outside" in vspec_evidence[0]
 
 
 def test_tampered_snapshot_fails_closed(

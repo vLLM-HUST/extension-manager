@@ -17,6 +17,10 @@ from packaging.version import Version
 from vllm_hust_ext.manifest import BundleManifest, parse_manifest
 
 HERE = Path(__file__).resolve().parent
+KNOWN_PROTOCOL_COMPONENTS = {
+    "vllm.general_plugins": "vllm",
+    "vllm-ascend.runtime-patch-surface": "vllm-ascend",
+}
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -58,19 +62,42 @@ def audit() -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for case in cases:
         host = case["host"]
-        version = Version(host["version"])
+        versions = {name: Version(value) for name, value in host["versions"].items()}
         mismatches = []
+        protocol_mismatches = []
         declared_conflicts = []
         owners: dict[tuple[str, str], tuple[str, str]] = {}
         for member in case["members"]:
             manifest = manifests[member]
             spec = manifest.host
-            if (spec.provider, spec.name) != (host["provider"], host["name"]):
-                mismatches.append({"member": member, "reason": "host-identity"})
+            if spec.provider != host["provider"]:
+                mismatches.append({"member": member, "reason": "host-provider"})
+            elif spec.name not in versions:
+                mismatches.append(
+                    {"member": member, "reason": "host-component-missing"}
+                )
             elif not SpecifierSet(spec.version_range).contains(
-                version, prereleases=True
+                versions[spec.name], prereleases=True
             ):
                 mismatches.append({"member": member, "reason": "host-version"})
+            for protocol in manifest.protocols:
+                component = KNOWN_PROTOCOL_COMPONENTS.get(protocol.name)
+                if (
+                    component is None
+                    or protocol.version_range is None
+                    or component not in versions
+                ):
+                    continue
+                if not SpecifierSet(protocol.version_range).contains(
+                    versions[component], prereleases=True
+                ):
+                    protocol_mismatches.append(
+                        {
+                            "member": member,
+                            "protocol": protocol.name,
+                            "reason": "protocol-version",
+                        }
+                    )
             for claim in manifest.resource_claims:
                 key = (claim.scope, claim.resource)
                 previous = owners.get(key)
@@ -91,10 +118,11 @@ def audit() -> list[dict[str, Any]]:
                 "members": case["members"],
                 "host": host,
                 "host_mismatches": mismatches,
+                "protocol_mismatches": protocol_mismatches,
                 "same_name_resource_conflicts": declared_conflicts,
                 "preflight_result": (
                     "reject-declared"
-                    if mismatches or declared_conflicts
+                    if mismatches or protocol_mismatches or declared_conflicts
                     else "candidate-only"
                 ),
                 "runtime_effective": "unmeasured",
