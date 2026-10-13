@@ -28,5 +28,5 @@
     "result": "PASS"
   },
   "verifier": "experiments/real_mod_composition/verify_h2_process_carrier_oracle.py",
-  "verifier_sha256": "b77d91403ac3a9b698f4e0958ba603133b44d370afd94c877d56078314d13b40"
+  "verifier_sha256": "b28aed8cab938043a64dd2ea3ef8f6d655cbe899f4b7b943de20a978a31b7887"
 }
