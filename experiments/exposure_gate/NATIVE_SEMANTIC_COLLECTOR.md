@@ -69,3 +69,15 @@ Tests use four real processes, real sockets/private files/kernel credentials and
 fsync, with explicitly simulated serving/GPU payloads. They establish transport
 and fail-closed behavior only. The formal guard remains closed, formal H3/H4
 remain zero, and NO-GO remains.
+
+The version-2 collector records its actual startup and per-envelope validation
+monotonic time. A pure predicate in this same source file is shared by live
+intake and portable raw verification, including exact fields, source process,
+NPU device, scope, null quality claims, row/block types, frozen/mapping/barrier/
+accept chronology and age bounds. Offline verification never reads current PIDs
+or invents a receive clock. Historical version-1 source 135a3a9f remains
+readable for static observations, but missing receive clocks leave chronology
+unverified and complete transport qualification null, even with a prefix seal.
+Runtime collector source and later analysis source hashes are reported separately.
+The updated collector bytes require a new clean Host source/wheel; the old
+version-1 wheel/source and sealed observations remain unchanged.
