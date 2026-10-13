@@ -1336,7 +1336,7 @@ def test_real_formal_rejects_caller_assertion_and_empty_registry(tmp_path):
         ],
         "timeout_s": 1,
     }
-    with pytest.raises(ValueError, match="registry verification id"):
+    with pytest.raises(ValueError, match="prelaunch epochs"):
         run_formal_start(identity=_minimal_formal_identity(), **kwargs)
     asserted = _minimal_formal_identity() | {"adapter_contract_verified": True}
     with pytest.raises(ValueError, match="caller-declared"):
@@ -1464,6 +1464,10 @@ def test_adapter_probe_cannot_mutate_runner_owned_identity_or_plan(
     scenario = scenarios()[0]
     adapter = ECPAAdapter()
     caller_identity = _minimal_formal_identity()
+    caller_identity["required_process_slots"] = [
+        {key: row[key] for key in ("host", "role", "ordinal")}
+        for row in caller_identity.pop("required_processes")
+    ]
     declared_before_probe = copy.deepcopy(caller_identity)
     manager = str(Path(sys.executable).with_name("vllm-hust-ext").absolute())
     manager_prefix = runner_module.executable_launch_prefix(manager)
@@ -1475,7 +1479,7 @@ def test_adapter_probe_cannot_mutate_runner_owned_identity_or_plan(
     }
 
     def mutate_caller_during_probe(*args, **kwargs):
-        caller_identity["required_processes"].append(
+        caller_identity["required_process_slots"].append(
             {
                 "host": "host-a",
                 "role": "worker",
@@ -1512,10 +1516,10 @@ def test_adapter_probe_cannot_mutate_runner_owned_identity_or_plan(
         host_event_dir=event_dir,
     )
 
-    assert len(caller_identity["required_processes"]) == 2
+    assert len(caller_identity["required_process_slots"]) == 2
     assert (
-        captured["identity"]["required_processes"]
-        == declared_before_probe["required_processes"]
+        captured["identity"]["required_process_slots"]
+        == declared_before_probe["required_process_slots"]
     )
     assert captured["identity"]["software"] == declared_before_probe["software"]
     assert (
@@ -2198,7 +2202,11 @@ def test_fixture_evidence_is_nonformal_and_execution_identity_is_bound(tmp_path)
         validate_batch([record], tmp_path, formal=True)
 
 
-def test_formal_observer_receives_no_phase_material(tmp_path, monkeypatch):
+@pytest.mark.parametrize("dynamic_membership", [False, True])
+@pytest.mark.parametrize("source_failure", [None, "timeout", "invalid"])
+def test_formal_observer_receives_no_phase_material(
+    tmp_path, monkeypatch, source_failure, dynamic_membership
+):
     observer = tmp_path / "capture_formal_observer.py"
     observer.write_text(
         """import json, os, sys
@@ -2207,7 +2215,15 @@ print(json.dumps(messages), flush=True)
 os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
 """
     )
-    sut = str(Path("tests/fixtures/formal_sut_service.py").resolve())
+    # A real service has no fixture stdin/ACK protocol and may fill both pipes.
+    sut_path = tmp_path / "no_ack_service.py"
+    sut_path.write_text(
+        "import os, time\n"
+        "os.write(1, b'x' * (2 * 1024 * 1024))\n"
+        "os.write(2, b'y' * (2 * 1024 * 1024))\n"
+        "time.sleep(60)\n"
+    )
+    sut = str(sut_path)
     execution = {
         "plan_id": "sha256:" + "1" * 64,
         "launch_id": "launch:formal-message",
@@ -2217,11 +2233,60 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
     identity["required_processes"] = [
         {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 1}
     ]
+    snapshot_context = None
+    if dynamic_membership:
+        import inspect
+
+        from test_host_observer import event_id, host_event
+
+        event_root = (tmp_path / "host-events").resolve()
+        event_root.mkdir(mode=0o700)
+        metadata = event_root.stat()
+        snapshot_context = {
+            "host_event_dir": str(event_root),
+            "device": metadata.st_dev,
+            "inode": metadata.st_ino,
+        }
+        identity["required_process_slots"] = [
+            {k: row[k] for k in ("host", "role", "ordinal")}
+            for row in identity.pop("required_processes")
+        ]
+        template = json.loads(host_event())
+        template["plan_id"] = execution["plan_id"]
+        template["launch_id"] = execution["launch_id"]
+        epoch_emitter = (
+            "import os, time, json, hashlib\nfrom pathlib import Path\n"
+            + inspect.getsource(event_id)
+            + "\npayload = "
+            + repr(template)
+            + "\n"
+            + "pid = os.getpid()\n"
+            + "stat = Path(f'/proc/{pid}/stat').read_text()\n"
+            + "ticks = int(stat[stat.rfind(')') + 2:].split()[19])\n"
+            + "payload['process'].update(pid=pid, process_epoch=time.monotonic_ns(), "
+            "start_identity=f'pid:{pid}:start_ticks:{ticks}')\n"
+            + "payload['event_id'] = event_id(payload)\n"
+            + "Path("
+            + repr(str(event_root / "worker.jsonl"))
+            + ").write_text("
+            "json.dumps(payload, separators=(',', ':')) + '\\n')\n"
+        )
+        sut_path.write_text(epoch_emitter + sut_path.read_text())
     _, lifecycle_commands = lifecycle_registry_fields(tmp_path)
     lifecycle_fingerprints = {
         phase: command_fingerprint(executable, arguments)
         for phase, (executable, arguments) in lifecycle_commands.items()
     }
+    if source_failure is not None:
+        bad_source = tmp_path / "bad_source.py"
+        bad_source.write_text(
+            "import time; time.sleep(60)"
+            if source_failure == "timeout"
+            else "raise SystemExit(7)"
+        )
+        lifecycle_fingerprints["service-ready"] = command_fingerprint(
+            sys.executable, [str(bad_source)]
+        )
     monkeypatch.setattr(runner_module, "validate_record", lambda *args, **kwargs: None)
 
     record = runner_module._run_start(
@@ -2241,6 +2306,7 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
         execution_identity=execution,
         activation_contract="manager-controlled-activation",
         lifecycle_fact_commands=lifecycle_fingerprints,
+        process_snapshot_context=snapshot_context,
         sut_executable_fingerprint=command_fingerprint(sys.executable, [sut]),
         observer_executable_fingerprint=command_fingerprint(
             sys.executable, [str(observer)]
@@ -2250,6 +2316,31 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
     messages = json.loads((run_dir / "observer-stdout.bin").read_text())
 
     assert messages == []
+    if dynamic_membership:
+        transition = record["command"]["process_transition"]
+        assert record["command"]["process_transition_error"] is None
+        assert (
+            transition["processes"][0]["pid"] == record["command"]["sut_process"]["pid"]
+        )
+        assert (
+            record["command"]["prelaunch_snapshot"]["logical_slots"]
+            == identity["required_process_slots"]
+        )
+        assert "process_epoch" not in identity["required_process_slots"][0]
+        assert (
+            transition["frozen_at_ns"]
+            < record["command"]["phase_bounds"]["service-ready"][0]
+        )
+    if source_failure is not None:
+        assert record["status"] == "failed"
+        assert record["command"]["phase_complete"] is False
+        assert "service-ready" in record["command"]["lifecycle_fact_errors"]
+        assert "fault-injected" not in record["command"]["lifecycle_fact_processes"]
+        assert "fault-injected" not in {
+            row["phase"] for row in record["command"]["phase_invocations"]
+        }
+        assert not Path(f"/proc/{record['command']['sut_process']['pid']}").exists()
+        return
     assert set(record["command"]["lifecycle_fact_processes"]) == set(
         runner_module.FORMAL_LIFECYCLE_FACT_SOURCES
     )
@@ -2261,6 +2352,13 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
     }
     assert set(lifecycle_events) == set(runner_module.FORMAL_LIFECYCLE_FACT_SOURCES)
     assert all("causal_ack" not in item for item in lifecycle_events.values())
+
+    assert record["command"]["phase_complete"] is True
+    assert all(
+        not row["acknowledged"] for row in record["command"]["phase_invocations"]
+    )
+    assert (run_dir / "stdout.bin").stat().st_size == 2 * 1024 * 1024
+    assert (run_dir / "stderr.bin").stat().st_size == 2 * 1024 * 1024
 
 
 def test_lifecycle_fact_source_output_is_bounded(tmp_path):
