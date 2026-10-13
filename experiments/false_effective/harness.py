@@ -799,7 +799,7 @@ def run_command(
 def validate_required_process_snapshot(
     required: Any,
 ) -> tuple[tuple[str, str, int, int], ...]:
-    """Validate and freeze the logical target identity before a formal launch."""
+    """Validate the postlaunch target snapshot with exact host-assigned epochs."""
     required_fields = {"host", "role", "ordinal", "process_epoch"}
     if not isinstance(required, list) or not required:
         raise ValueError("formal target process snapshot is missing")

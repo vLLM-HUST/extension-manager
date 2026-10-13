@@ -2368,14 +2368,14 @@ def run_reference_start(
 
 
 def validate_managed_plan_coverage(
-    plan_path: str | Path, frozen_targets: tuple[tuple[str, str, int, int], ...]
+    plan_path: str | Path, frozen_targets: tuple[tuple[str, str, int], ...]
 ) -> None:
     """Fail closed for the first single-host formal-real topology."""
     artifact = read_plan_artifact(plan_path)
-    hosts = {host for host, _, _, _ in frozen_targets}
+    hosts = {host for host, _, _ in frozen_targets}
     if len(hosts) != 1:
         raise ValueError("managed ECPA formal-real currently requires one host")
-    declared = {(role, ordinal) for _, role, ordinal, _ in frozen_targets}
+    declared = {(role, ordinal) for _, role, ordinal in frozen_targets}
     obligated = {
         (obligation.role, ordinal)
         for obligation in artifact.plan.obligations
@@ -2462,7 +2462,7 @@ def run_formal_start(
         logical_slots = validate_slots(identity["required_process_slots"])
         identity["required_process_slots"] = logical_slots
         frozen_targets = tuple(
-            (row["host"], row["role"], row["ordinal"], 0) for row in logical_slots
+            (row["host"], row["role"], row["ordinal"]) for row in logical_slots
         )
         if host_event_dir is None:
             raise ValueError("formal-real requires a host event directory")
