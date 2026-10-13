@@ -51,6 +51,30 @@
         "versions": {"vllm": "0.23.3", "vllm-ascend": "0.23.3"}
       },
       "research_question": "The manifests use different exclusive resource names, but both sources wrap Scheduler.update_from_output. Both installation orders and semantic KV-state interaction require pinned-host execution and independent labeling."
+    },
+    {
+      "id": "kvcompress-knorm-vllm-0.23.0-legacy-0fc695-1cdb8c",
+      "members": ["kvcompress", "knorm"],
+      "host": {
+        "provider": "vllm",
+        "versions": {
+          "vllm": "0.23.0+empty",
+          "vllm-ascend": "0.23.0.post1"
+        }
+      },
+      "research_question": "Exact executed legacy source pair 0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665 / 1cdb8c4db6e50f36f1fb3283b3e3dd618f6821e8. This differs from KVCompress documented validated reference d0f22d2bda562156e4dbf433ce645e1769b4f804 / 03766ac696fde5ab1980d80ca0b8543d3580c989 and therefore remains a non-scoreable runtime preflight."
+    },
+    {
+      "id": "kvcompress-knorm-vllm-0.23.0-d0f22-03766",
+      "members": ["kvcompress", "knorm"],
+      "host": {
+        "provider": "vllm",
+        "versions": {
+          "vllm": "0.23.0+empty",
+          "vllm-ascend": "0.23.0.post1"
+        }
+      },
+      "research_question": "Python import and wrapper registration against KVCompress's documented legacy source pair d0f22d2bda562156e4dbf433ce645e1769b4f804 / 03766ac696fde5ab1980d80ca0b8543d3580c989. Native-extension provenance and serving semantics remain unmeasured."
     }
   ]
 }

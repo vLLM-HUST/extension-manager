@@ -57,3 +57,34 @@ metadata without importing either plugin. Its result is useful packaging and
 order preparation only. It cannot establish static compatibility, activation
 readiness, host execution, runtime effect, or an oracle label, and it is always
 emitted with `score_eligible: false`.
+
+## Executed legacy 0.23.0 source-pair preflight
+
+`artifacts/kvcompress-knorm-legacy-0.23.0-runtime-preflight.json` records a
+separate, exact case for the legacy stack that was available on 2026-10-13:
+vLLM `0.23.0+empty` at `0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665`
+and vLLM-Ascend `0.23.0.post1` at
+`1cdb8c4db6e50f36f1fb3283b3e3dd618f6821e8`. It does not replace or relabel
+the frozen `0.23.3` case. The executed commits also differ from KVCompress's
+documented validated legacy pair (`d0f22d2…` / `03766ac…`), which the artifact
+states explicitly.
+
+Both exact sequential wheel-install orders loaded both plugin entry points.
+Calling the entry points in both orders registered both scheduler wrappers; the
+record preserves which wrapper was outermost. Current Manager `646d175` planned
+KVCompress as active, planned KNorm as `inspect_only`, and rejected KNorm
+activation with exit code 2 because its manifest carrier is `import_only`.
+Consequently, a Manager-controlled two-plugin host launch was ineligible and
+was not attempted. This is real import and wrapper-registration evidence on the
+pinned host process, but it is not a serving start, runtime-effective result,
+semantic compatibility label, independent oracle, performance result, or H2
+score input.
+
+A second artifact,
+`artifacts/kvcompress-knorm-documented-legacy-source-pair-preflight.json`,
+repeats the import, entry-point call, wrapper-order, and Manager checks with
+Python modules loaded from KVCompress's documented legacy source commits
+`d0f22d2…` / `03766ac…`. Both orders again register both wrappers, while the
+Manager gate still rejects KNorm activation. This source override did not start
+the host or load a model and does not establish provenance for native extension
+binaries, so it remains non-scoreable and carries no oracle label.

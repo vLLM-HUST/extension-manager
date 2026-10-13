@@ -42,6 +42,8 @@ def test_preflight_keeps_source_rejects_and_candidates_distinct() -> None:
         "diffspec-vspec-vllm-0.25.1rc1",
         "diffspec-vspec-vllm-0.28.1rc1.dev319",
         "kvcompress-knorm-vllm-0.23.3",
+        "kvcompress-knorm-vllm-0.23.0-legacy-0fc695-1cdb8c",
+        "kvcompress-knorm-vllm-0.23.0-d0f22-03766",
     }
     assert results["vspec-knorm-profiler-vllm-0.23.3"]["preflight_result"] == (
         "candidate-only"
@@ -76,6 +78,14 @@ def test_preflight_keeps_source_rejects_and_candidates_distinct() -> None:
         ["knorm", "kvcompress"],
     ]
     assert all(item["runtime_effective"] == "unmeasured" for item in results.values())
+
+    legacy = results["kvcompress-knorm-vllm-0.23.0-legacy-0fc695-1cdb8c"]
+    assert legacy["preflight_result"] == "candidate-only"
+    assert legacy["host"]["versions"] == {
+        "vllm": "0.23.0+empty",
+        "vllm-ascend": "0.23.0.post1",
+    }
+    assert legacy["physical_ownership_observation"]["oracle_label"] is None
 
 
 def test_manager_rejects_both_sides_of_diffspec_vspec_core_skew() -> None:
@@ -187,4 +197,85 @@ def test_checked_install_order_receipt_is_current_and_non_scoreable() -> None:
     assert all(item["host_started"] is False for item in result["orders"])
     assert all(item["plugin_imported"] is False for item in result["orders"])
     assert result["runtime_effective"] == "unmeasured"
+    assert result["score_eligible"] is False
+
+
+def test_legacy_host_runtime_preflight_is_exact_and_non_scoreable() -> None:
+    result = probe_module._load(
+        SCRIPT.parent
+        / "artifacts"
+        / "kvcompress-knorm-legacy-0.23.0-runtime-preflight.json"
+    )
+    assert result["classification"] == (
+        "legacy-host-install-import-registration-and-manager-static-preflight-"
+        "not-host-start-or-oracle"
+    )
+    assert result["host"]["components"] == {
+        "vllm": {
+            "commit": "0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665",
+            "repository_path": "/vllm-workspace/vllm",
+            "tree": "e18d76eec620cdfc6559d7152f9911b7e91f84f8",
+            "version": "0.23.0+empty",
+            "worktree_clean": True,
+        },
+        "vllm-ascend": {
+            "commit": "1cdb8c4db6e50f36f1fb3283b3e3dd618f6821e8",
+            "repository_path": "/vllm-workspace/vllm-ascend",
+            "tree": "9b99e39406e60a86e277e2a302b08485861e5522",
+            "version": "0.23.0.post1",
+            "worktree_clean": True,
+        },
+    }
+    assert (
+        result["host"]["kvcompress_documented_validated_reference"][
+            "matches_executed_source_pair"
+        ]
+        is False
+    )
+    assert [order["members"] for order in result["orders"]] == [
+        ["kvcompress", "knorm"],
+        ["knorm", "kvcompress"],
+    ]
+    assert all(
+        all(entry["loaded"] for entry in order["install_and_import"]["entries"])
+        for order in result["orders"]
+    )
+    assert all(
+        all(call["called"] for call in order["entrypoint_call"]["results"])
+        for order in result["orders"]
+    )
+    assert all(
+        order["manager_static"]["kvcompress_enable"]["returncode"] == 0
+        and order["manager_static"]["knorm_enable_after_kvcompress"]["returncode"] == 2
+        for order in result["orders"]
+    )
+    assert result["host_started"] is False
+    assert result["oracle"] == {"label": None, "status": "unreviewed"}
+    assert result["score_eligible"] is False
+
+
+def test_documented_legacy_source_pair_preflight_preserves_limits() -> None:
+    result = probe_module._load(
+        SCRIPT.parent
+        / "artifacts"
+        / "kvcompress-knorm-documented-legacy-source-pair-preflight.json"
+    )
+    assert result["host"]["components"]["vllm"]["commit"] == (
+        "d0f22d2bda562156e4dbf433ce645e1769b4f804"
+    )
+    assert result["host"]["components"]["vllm-ascend"]["commit"] == (
+        "03766ac696fde5ab1980d80ca0b8543d3580c989"
+    )
+    assert result["host"]["matches_kvcompress_documented_validated_source_pair"]
+    assert result["host"]["python_source_override"] is True
+    assert result["host"]["native_extension_artifacts_exercised"] is False
+    assert all(
+        all(call["called"] for call in order["entrypoint_call"]["results"])
+        and order["manager_static"]["kvcompress_enable"]["returncode"] == 0
+        and order["manager_static"]["knorm_enable_after_kvcompress"]["returncode"] == 2
+        for order in result["orders"]
+    )
+    assert result["host_started"] is False
+    assert result["runtime_effective"] == "unmeasured"
+    assert result["oracle"]["label"] is None
     assert result["score_eligible"] is False
