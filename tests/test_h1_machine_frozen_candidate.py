@@ -40,6 +40,12 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert SHA256.fullmatch(candidate["container"]["image_id"])
     assert candidate["container"]["authority"] == "kubernetes-pod-status"
     assert SHA256.fullmatch(candidate["activation_probe"]["artifact_sha256"])
+    observer = candidate["production_observer"]
+    assert observer["console_script"] == "ecpa-formal-observer"
+    assert observer["authority"] == "host-observer"
+    assert observer["accepts_sut_truth"] is False
+    assert observer["accepts_sut_causal_ack"] is False
+    assert observer["formal_h1_start"] is False
 
 
 def test_machine_candidate_does_not_admit_the_formal_study() -> None:
