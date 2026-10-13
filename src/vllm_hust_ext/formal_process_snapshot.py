@@ -82,7 +82,6 @@ def derive_snapshot(
             event["plan_id"] != execution["plan_id"]
             or event["launch_id"] != execution["launch_id"]
             or event["binding_status"] != "bound"
-            or process.get("assignment_source") != "host"
             or (
                 event["observation_kind"] != "loader_lifecycle"
                 and event["controller_instance_id"] != execution["controller_instance"]
@@ -92,6 +91,8 @@ def derive_snapshot(
         key = (process["host"], process["role"], process["ordinal"])
         if key not in expected:
             continue
+        if process.get("assignment_source") != "host":
+            raise ValueError("snapshot required process identity is not host-assigned")
         prefix = f"pid:{process['pid']}:start_ticks:"
         if not process["start_identity"].startswith(prefix):
             raise ValueError("snapshot host start identity is malformed")

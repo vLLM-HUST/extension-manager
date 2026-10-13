@@ -63,6 +63,19 @@ def test_transition_reconstructs_exact_host_epoch_and_rejects_offline_edits():
         validate_slots([{**SLOTS[0], "process_epoch": 7}])
 
 
+def test_snapshot_accepts_same_launch_preassignment_loader_events():
+    preliminary = mutated(
+        host_event(assignment_source="environment"),
+        lambda v: v["process"].update(role="unknown"),
+    )
+    required = receipt(host_event())
+    rows = derive_snapshot(SLOTS, EXECUTION, [receipt(preliminary), required])
+    assert len(rows) == 1
+    crossed = mutated(preliminary, lambda v: v.update(launch_id="launch:old"))
+    with pytest.raises(ValueError, match="cross-launch"):
+        derive_snapshot(SLOTS, EXECUTION, [receipt(crossed), required])
+
+
 @pytest.mark.parametrize(
     "kind",
     [
