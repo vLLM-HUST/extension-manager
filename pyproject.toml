@@ -35,6 +35,9 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 88
+extend-exclude = [
+  "experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/**/*.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
