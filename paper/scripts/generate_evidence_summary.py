@@ -792,6 +792,36 @@ def validate_real_invocation_gate(root: Path) -> dict[str, int | str]:
     }
 
 
+def validate_h3_native_support(root: Path) -> dict[str, int]:
+    """Bind source-only native-phase counts without asserting runtime recovery."""
+    prefix = "experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013"
+    if digest(root, f"{prefix}/oracle.json") != (
+        "719ac55dc13ffb18e342f46529aed067dc05c3c08f04b31f9451a9dea861ab8f"
+    ):
+        raise ValueError("H3 frozen native support oracle changed")
+    oracle = load_json(root, f"{prefix}/oracle.json")
+    require_schema(oracle, "ecpa-h3-native-support-oracle/v1", "H3 native support")
+    sources = oracle["sources"]
+    if len(sources) != 5 or len({row["snapshot"] for row in sources}) != 5:
+        raise ValueError("H3 native support source inventory changed")
+    for row in sources:
+        if digest(root, f"{prefix}/{row['snapshot']}") != row["sha256"]:
+            raise ValueError("H3 native support source bytes changed")
+    if (
+        oracle["evidence_class"] != "source-bound-nonformal"
+        or [(a["arm"], a["support"]) for a in oracle["arms"]] != [
+            ("vanilla-vllm-entry-points", "not-applicable"),
+            ("manual-integration", "not-applicable"),
+            ("ecpa", "supported"),
+        ]
+        or oracle["original_cell"]["completion"] != "incomplete"
+        or oracle["original_cell"]["metrics"] is not None
+        or oracle["additive_cell"]["formal_starts"] != 0
+    ):
+        raise ValueError("H3 source-only boundary changed")
+    return {"h3_native_sources": len(sources), "h3_prepare_na_baselines": 2}
+
+
 def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     workshop = load_json(root, "docs/corpus/workshop-mods.json")
     workshop_metadata = load_json(
@@ -832,6 +862,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     h2 = validate_h2_real_source_subset(root)
     h2_compression = validate_h2_compression_transaction(root)
     real_gate = validate_real_invocation_gate(root)
+    h3_native = validate_h3_native_support(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -1316,6 +1347,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         **h2,
         **h2_compression,
         **real_gate,
+        **h3_native,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -1390,6 +1422,8 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPARealGateCompletions", "real_gate_completions"),
         ("ECPARealGateBlockedRequests", "real_gate_blocked_requests"),
         ("ECPARealGateRawFiles", "real_gate_raw_files"),
+        ("ECPAHThreeNativeSources", "h3_native_sources"),
+        ("ECPAHThreePrepareNABaselines", "h3_prepare_na_baselines"),
         ("ECPARealGateFailedAttempts", "real_gate_failed_attempts"),
         ("ECPARealGateCompleteCoverage", "real_gate_complete_coverage"),
         ("ECPARealGatePartialCoverage", "real_gate_partial_coverage"),
