@@ -18,6 +18,8 @@ import pytest
 
 from experiments.exposure_gate.loopback_traffic import (
     LoopbackTrafficAdapter,
+    frozen_target_set_sha256,
+    observe_gate_transitions,
     read_traffic_journal,
 )
 from tests.test_host_observer import BINDING, PLAN, host_event
@@ -52,6 +54,9 @@ def test_traffic_authority_rechecks_frozen_host_membership(
         "journal_inode": identity.st_ino,
         "launch_id": "launch:one",
         "controller_instance": "controller:one",
+        "candidate_generation": 1,
+        "membership_epoch": 7,
+        "target_set_sha256": "pending",
         "local_host": "host-a",
         "bindings": [asdict(BINDING)],
         "required_processes": [
@@ -63,6 +68,9 @@ def test_traffic_authority_rechecks_frozen_host_membership(
             }
         ],
     }
+    configuration["target_set_sha256"] = frozen_target_set_sha256(
+        configuration["required_processes"]
+    )
     schema_path = (
         Path(__file__).resolve().parents[1]
         / "experiments/exposure_gate/host-authorization.schema.json"
@@ -109,6 +117,7 @@ def test_traffic_authority_rechecks_frozen_host_membership(
         env={**os.environ, "PYTHONPATH": "src"},
     )
     worker: subprocess.Popen[str] | None = None
+    replacement: subprocess.Popen[str] | None = None
     port: int | None = None
     try:
         assert process.stdout is not None
@@ -120,6 +129,9 @@ def test_traffic_authority_rechecks_frozen_host_membership(
             "plan_id": PLAN.plan_id,
             "launch_id": "launch:one",
             "controller_instance": "controller:one",
+            "candidate_generation": 1,
+            "membership_epoch": 7,
+            "target_set_sha256": configuration["target_set_sha256"],
         }
         assert _get(port) == "old"
         with pytest.raises(GateError, match="frozen membership"):
@@ -133,6 +145,19 @@ def test_traffic_authority_rechecks_frozen_host_membership(
                 grant,
                 int(time.time()),
             )
+        for changed in (
+            {"candidate_generation": 2},
+            {"membership_epoch": 8},
+            {"target_set_sha256": "sha256:" + "0" * 64},
+        ):
+            with pytest.raises(GateError, match="not bound"):
+                adapter.open(
+                    1,
+                    "gate-1-test",
+                    {**snapshot, **changed},
+                    grant,
+                    int(time.time()),
+                )
         with pytest.raises(GateError, match="not bound"):
             adapter.open(
                 1,
@@ -158,20 +183,30 @@ def test_traffic_authority_rechecks_frozen_host_membership(
         assert _get(port) == "new"
         worker.terminate()
         worker.wait(timeout=5)
+        replacement = subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(60)"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+        journal.write_bytes(host_event(pid=replacement.pid, epoch=8) + b"\n")
         with pytest.raises(urllib.error.HTTPError) as closed:
             _get(port)
         assert closed.value.code == 503
         assert adapter.query_route().generation is None
         assert _get(predecessor.server_port) == "old"
         assert _get(candidate.server_port) == "new"
+        assert replacement.poll() is None
     finally:
-        if worker is not None and worker.poll() is None:
-            worker.terminate()
+        for child in (worker, replacement):
+            if child is None or child.poll() is not None:
+                continue
+            child.terminate()
             try:
-                worker.wait(timeout=5)
+                child.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                worker.kill()
-                worker.wait(timeout=5)
+                child.kill()
+                child.wait(timeout=5)
         process.terminate()
         try:
             process.communicate(timeout=10)
@@ -211,3 +246,23 @@ def test_traffic_authority_rechecks_frozen_host_membership(
         for event in events
         if event["kind"] == "request.admit"
     ] == [0, 0, 0, 1]
+    observed = observe_gate_transitions(journal_path)
+    assert observed["classification"] == "real-loopback-integration-preflight"
+    assert observed["formal_result"] is False
+    assert observed["performance_result"] is False
+    assert [fact["event"] for fact in observed["facts"]] == [
+        "gate-open",
+        "gate-close",
+    ]
+    opened = observed["facts"][0]
+    assert opened["authorization"] == {
+        key: snapshot[key]
+        for key in (
+            "plan_id",
+            "launch_id",
+            "controller_instance",
+            "candidate_generation",
+            "membership_epoch",
+            "target_set_sha256",
+        )
+    }

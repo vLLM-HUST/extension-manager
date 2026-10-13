@@ -272,3 +272,42 @@ def test_journal_loss_rejects_external_request_and_closes_route(
     assert [
         event["kind"] for event in read_traffic_journal(tmp_path / "authority.jsonl")
     ] == ["authority.start"]
+
+
+def test_observer_exception_cannot_open_and_query_fails_closed(tmp_path: Path) -> None:
+    class BrokenObserver:
+        def authorize(self, _snapshot: dict[str, object]) -> str:
+            raise RuntimeError("observer unavailable")
+
+        def binding(self) -> dict[str, object]:
+            return {}
+
+    journal = _TrafficJournal(tmp_path / "authority.jsonl")
+    grant = LeaseGrant("gate-test", 7, int(time.time()) + 60)
+    authority = _Authority(
+        RouteState(0, "fence-0", PREDECESSOR),
+        grant,
+        ("127.0.0.1", 1),
+        ("127.0.0.1", 2),
+        journal,
+        BrokenObserver(),  # type: ignore[arg-type]
+    )
+    with pytest.raises(GateError, match="host observation is unavailable"):
+        authority.apply(
+            {
+                "operation": "open",
+                "generation": 1,
+                "fence": "gate-1-test",
+                "snapshot": {"plan_id": "candidate"},
+                "grant": grant.__dict__,
+                "now": int(time.time()),
+            }
+        )
+    assert authority.route.generation == 0
+
+    authority.route = RouteState(1, "gate-1-test", {"plan_id": "candidate"})
+    assert authority.apply({"operation": "query"})["route"]["generation"] is None
+    journal.close()
+    events = read_traffic_journal(tmp_path / "authority.jsonl")
+    assert events[-1]["kind"] == "route.close_all"
+    assert events[-1]["detail"]["reason"] == "host observation lost"
