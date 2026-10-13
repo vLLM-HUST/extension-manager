@@ -220,13 +220,21 @@ def verify_window(
     validate_spec(spec)
     from experiments.exposure_gate.loopback_traffic import read_traffic_journal
 
-    client = read_client_trace(client_path)
     unknown = {
         "coverage": "incomplete",
         "lost_requests": None,
         "duplicated_requests": None,
         "backend_execution_duplicates": None,
+        "formal_result": False,
     }
+    for path, label in ((client_path, "client"), (authority_path, "authority")):
+        try:
+            data = path.read_bytes()
+        except FileNotFoundError:
+            return unknown | {"reason": label + "-trace-missing"}
+        if not data or not data.endswith(b"\n"):
+            return unknown | {"reason": label + "-trace-empty-or-incomplete"}
+    client = read_client_trace(client_path)
     if not client or client[0]["kind"] != "client.start":
         return unknown
     begin = client[0]
@@ -241,7 +249,10 @@ def verify_window(
         or sum(e["kind"] == "client.stop" for e in client) > 1
     ):
         raise ValueError("client trace repeats lifecycle markers")
-    if client[-1]["kind"] != "client.stop":
+    if (
+        client[-1]["kind"] != "client.stop"
+        or client[-1]["detail"].get("request_count") != spec["request_count"]
+    ):
         return unknown
     sends = [e for e in client if e["kind"] == "request.start"]
     finishes = [e for e in client if e["kind"] == "request.finish"]
@@ -275,7 +286,15 @@ def verify_window(
         fault_ns <= t <= recovery_ns for t in times
     ):
         return unknown
+    first_authority = json.loads(authority_path.read_bytes().splitlines()[0])
+    if (
+        not isinstance(first_authority, dict)
+        or first_authority.get("kind") != "authority.start"
+    ):
+        return unknown | {"reason": "authority-start-marker-missing"}
     authority = read_traffic_journal(authority_path)
+    if sum(e["kind"] == "authority.start" for e in authority) != 1:
+        raise ValueError("authority trace repeats lifecycle start markers")
     expected_authority = spec.get("authority_process_identity")
     if not isinstance(expected_authority, dict):
         return unknown
