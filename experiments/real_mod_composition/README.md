@@ -108,6 +108,45 @@ and, for an admitted composition, carry host start, model load, workload,
 process-owned observation, and cleanup evidence. This gate does not promote or
 reinterpret any existing artifact.
 
+## Formal compatible-pair runtime record
+
+`artifacts/h2-profiler-kvcompress-formal-20261013/` preserves a separately
+frozen, source-bound campaign for the lifecycle-profiler/KVCompress pair and
+both real Qwen2.5-14B TP2 installation-order runs. The independent oracle and
+Manager planner receipt were frozen before launch. The score gate rehashes the
+planner command outputs, Manager configuration, every raw runtime artifact,
+runtime receipt, and formal record. It then independently reconstructs the
+unique EngineCore identity, profiler process-start and request-finished
+binding, same-PID KVCompress scheduler binding, nonempty response, EngineCore
+shutdown, and empty process tables for both allocated NPUs. Booleans copied
+into the formal record cannot establish admission without those raw bindings.
+
+Run the checked-in case with:
+
+```bash
+python experiments/real_mod_composition/score_admission.py \
+  --campaign experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/campaign.json \
+  --oracle experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/oracle.json \
+  --planner-receipt experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/planner/planner-receipt.json \
+  --record experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/profiler-then-kvcompress/formal-runtime-record.json \
+  --receipt experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/profiler-then-kvcompress/formal-runtime-receipt.json \
+  --record experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/kvcompress-then-profiler/formal-runtime-record.json \
+  --receipt experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/kvcompress-then-profiler/formal-runtime-receipt.json
+```
+
+This command currently fails closed. The r1 planner receipt lacks an explicit
+campaign digest, and the frozen served-name template is
+`ecpa-h2-formal-{order_id}` while both captured requests used
+`ecpa-h2-{order_id}`. These defects were found only after the runs; the frozen
+campaign and planner receipt are intentionally not rewritten. A replacement
+campaign and campaign-bound planner receipt must be frozen before rerunning
+both orders. The captured workload also has maximum
+model length 2048 while the compression threshold is 9216, so even a corrected
+rerun would establish neither a compression transaction nor correctness or
+performance benefit. One admitted case could not establish H2 corpus
+precision/recall; rejected real cases and the remaining corpus would still be
+required.
+
 ## Exact-wheel installation-order campaign
 
 `runtime_campaign.json` freezes source commits, trees, the two locally built
