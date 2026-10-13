@@ -67,6 +67,8 @@ EVIDENCE_INPUTS := \
 	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/oracle.json \
 	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/review-receipt.json \
 	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/manager-prediction.json \
+	../experiments/real_mod_composition/verify_h2_scheduler_pair.py \
+	$(shell find ../experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013 -type f | sort) \
 	../experiments/real_mod_composition/verify_h2_compression_transaction.py \
 	$(shell find ../experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013 -type f | sort) \
 	../experiments/transaction_model/explore.py \
