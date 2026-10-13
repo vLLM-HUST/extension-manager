@@ -1,0 +1,19 @@
+{
+  "schema": "ecpa-native-request-id-source-oracle/v1",
+  "classification": "SOURCE_AUDIT_ONLY",
+  "formal_result": false,
+  "hardware_result": false,
+  "host_revision": "34f6c3241a0a409ce0d302c5d53d9ea752feff95",
+  "host_checkout_clean_at_audit": true,
+  "sources": [
+    {"path": "vllm/entrypoints/serve/engine/serving.py", "sha256": "e46693a37e9a8b1087c8cee8a1e2cb9a2ce3d052772e3771755ef59de0885cf4", "anchor": "OpenAIServing._base_request_id", "line": 133, "rule": "X-Request-Id header takes precedence; otherwise supplied request.request_id; absent default generates UUID"},
+    {"path": "vllm/entrypoints/openai/chat_completion/protocol.py", "sha256": "055d3bd6f023ec17e8f25e9a324222faad67612f86e7d063717424ccf580a606", "anchor": "ChatCompletionRequest.request_id", "line": 396, "rule": "request_id is accepted; default_factory generates random UUID when not supplied"},
+    {"path": "vllm/entrypoints/openai/chat_completion/serving.py", "sha256": "dabae194cfc044ff6613081a0f037e5c6d4739ebc97abf553291ffe019a614ae", "anchor": "OpenAIServingChat._create_chat_completion", "line": 314, "rule": "external response ID is chatcmpl- followed by base request ID; multiple engine inputs add per-input sub-request suffix"},
+    {"path": "vllm/v1/engine/input_processor.py", "sha256": "960d57f5a91b6856f64f13a1bae1444c58b2226a5f976ad7a264517368d6d8e7", "anchor": "InputProcessor.assign_request_id", "line": 354, "rule": "preserves external_req_id then adds actual native 8-character random suffix by default; native mapper runs after assignment"}
+  ],
+  "frozen_client_policy": {"header_and_body_same_client_id": true, "single_text_prompt": true, "n": 1, "stream": false, "disable_request_id_randomization": false},
+  "planned_external_response_id": "chatcmpl-<client_request_id>",
+  "actual_internal_id_requires_native_mapping": true,
+  "suffix_guessing_is_qualification": false,
+  "qualified_client_to_worker_map": false
+}
