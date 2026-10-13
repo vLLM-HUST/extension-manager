@@ -1,0 +1,41 @@
+{
+  "classification": "CPU_VALIDATED_NATIVE_PATCH_CANDIDATE",
+  "hardware_result": false,
+  "formal_result": false,
+  "sources": [
+    {
+      "repository_path": "/root/ecpa-vllm-formal-parent-role",
+      "revision": "379a0ad35e9de6928e3481d375692204b0dee6e4",
+      "path": "vllm/v1/engine/input_processor.py",
+      "source_sha256": "97f66659814177d3f7b72b959f09201cbdd1794de21ec1542fe8970f18a1a2b6",
+      "patch": "host.patch"
+    },
+    {
+      "repository_path": "/root/vllm-ascend-hust-h1",
+      "revision": "873584026f8a683ac73523f15127569e9f6ab34b",
+      "path": "vllm_ascend/worker/model_runner_v1.py",
+      "source_sha256": "d5dce1d132b78da19c5d22c7474801a5e839993c5b280c12239feacc3ff9faac",
+      "patch": "ascend.patch"
+    }
+  ],
+  "kv_revision": "00cc78dc7f3491eecbc79c5068e29aed9f59afc3",
+  "native_observer_sha256": "532b72ee9ad8cde1d3a8be31150ca4faab4d6dd8a8be19a663820cafffb0fc9a",
+  "patch_sha256": {
+    "host.patch": "017375b1b7338af75e505fe399d870cfe3ccb6f6a2efc1b2c41f6a729fcf7618",
+    "ascend.patch": "e7c98eba51342dd9403b3148222d44254d8ce40036c84b894b9f29e88f1bf210"
+  },
+  "prepared_clean_candidates": [
+    {
+      "path": "/root/ecpa-host-upload-hook-candidate379",
+      "commit": "bb5218f7ca7ebca5eba8cbf7255335c7e425acbd",
+      "tree": "ca24bc687a8e0fefe367f5089903fab625116066",
+      "dirty": ""
+    },
+    {
+      "path": "/root/ecpa-ascend-upload-hook-candidate873",
+      "commit": "fcbb827af84f793939bf03d01a1dfe0338a0164c",
+      "tree": "34174d744cb5d02c115b67ca5979238f4f3f5856",
+      "dirty": ""
+    }
+  ]
+}
