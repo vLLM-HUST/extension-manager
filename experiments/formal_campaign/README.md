@@ -15,8 +15,10 @@ python3 experiments/formal_campaign/analyze.py \
 ```
 
 Each JSONL record must be `formal-real`, bind a registered deployment receipt,
-use the frozen Latin-square order, and provide SHA-256 bindings for the raw
-log, request results, process snapshot, and cleanup report.  Records from
+use the frozen Latin-square order, and provide SHA-256 bindings for the
+registered deployment receipt, raw log, request results, process snapshot, and
+cleanup report. The receipt bytes must match the digest in the record and must
+contain an admissible, registered deployment. Records from
 preflight, simulation, fixtures, or an unregistered deployment are rejected.
 The analyzer verifies artifact bytes and exact cross-arm identity equality. It
 retains failed starts and refuses to emit metrics for an incomplete campaign.

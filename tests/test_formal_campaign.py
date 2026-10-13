@@ -28,6 +28,22 @@ def artifact_bindings(root: Path) -> dict[str, dict[str, str]]:
         path.write_text(json.dumps({"artifact": name}) + "\n")
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         bindings[name] = {"path": path.name, "sha256": f"sha256:{digest}"}
+    receipt = root / "deployment_receipt.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "ecpa-formal-real-deployment-registration/v1",
+                "registration_state": "registered",
+                "admissible": True,
+            }
+        )
+        + "\n"
+    )
+    digest = hashlib.sha256(receipt.read_bytes()).hexdigest()
+    bindings["deployment_receipt"] = {
+        "path": receipt.name,
+        "sha256": f"sha256:{digest}",
+    }
     return bindings
 
 
@@ -104,7 +120,7 @@ def record(
         "evidence_class": "formal-real",
         "deployment": {
             "registration_state": "registered",
-            "receipt_sha256": "sha256:" + "8" * 64,
+            "receipt_sha256": artifacts["deployment_receipt"]["sha256"],
         },
         "cell_id": cell,
         "start_id": f"{cell}-r{repetition}-{arm}",
@@ -146,7 +162,7 @@ def h3_records(module, artifacts):
                         "evidence_class": "formal-real",
                         "deployment": {
                             "registration_state": "registered",
-                            "receipt_sha256": "sha256:" + "8" * 64,
+                            "receipt_sha256": artifacts["deployment_receipt"]["sha256"],
                         },
                         "cell_id": cell,
                         "start_id": f"{cell}-r{repetition}-{arm}",
@@ -314,6 +330,54 @@ def test_intake_rejects_missing_or_modified_raw_artifact(tmp_path: Path) -> None
 
     with pytest.raises(ValueError, match="digest differs"):
         analyzer.analyze_h4(protocol, rows, tmp_path)
+
+
+def test_intake_binds_the_deployment_receipt_bytes_to_the_record(
+    tmp_path: Path,
+) -> None:
+    analyzer = load_analyzer()
+    artifacts = artifact_bindings(tmp_path)
+    protocol = analyzer.load_protocol()
+    row = record(
+        protocol,
+        artifacts,
+        protocol["h4"]["required_cells"][0],
+        1,
+        "ecpa",
+    )
+    row["deployment"]["receipt_sha256"] = "sha256:" + "8" * 64
+
+    with pytest.raises(ValueError, match="digest differs from record"):
+        analyzer.analyze_h4(protocol, [row], tmp_path)
+
+
+def test_intake_rejects_a_hash_bound_unregistered_receipt(tmp_path: Path) -> None:
+    analyzer = load_analyzer()
+    artifacts = artifact_bindings(tmp_path)
+    receipt = tmp_path / artifacts["deployment_receipt"]["path"]
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "ecpa-formal-real-deployment-registration/v1",
+                "registration_state": "unregistered",
+                "admissible": False,
+            }
+        )
+        + "\n"
+    )
+    digest = "sha256:" + hashlib.sha256(receipt.read_bytes()).hexdigest()
+    artifacts["deployment_receipt"]["sha256"] = digest
+    protocol = analyzer.load_protocol()
+    row = record(
+        protocol,
+        artifacts,
+        protocol["h4"]["required_cells"][0],
+        1,
+        "ecpa",
+    )
+
+    with pytest.raises(ValueError, match="not an admissible registration"):
+        analyzer.analyze_h4(protocol, [row], tmp_path)
 
 
 def test_schema_rejects_preflight_and_unregistered_records(tmp_path: Path) -> None:

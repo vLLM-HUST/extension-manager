@@ -42,9 +42,10 @@
     },
     "artifacts": {
       "type": "object",
-      "required": ["raw_log", "request_results", "process_snapshot", "cleanup_report"],
+      "required": ["deployment_receipt", "raw_log", "request_results", "process_snapshot", "cleanup_report"],
       "additionalProperties": false,
       "properties": {
+        "deployment_receipt": {"$ref": "#/definitions/artifact"},
         "raw_log": {"$ref": "#/definitions/artifact"},
         "request_results": {"$ref": "#/definitions/artifact"},
         "process_snapshot": {"$ref": "#/definitions/artifact"},

@@ -64,6 +64,7 @@ def load_records(path: Path, root: Path = ROOT) -> list[dict[str, Any]]:
 
 def _verify_artifacts(record: dict[str, Any], artifact_root: Path) -> None:
     root = artifact_root.resolve()
+    resolved: dict[str, Path] = {}
     for label, binding in record["artifacts"].items():
         path = (root / binding["path"]).resolve()
         if not path.is_relative_to(root) or not path.is_file():
@@ -73,6 +74,38 @@ def _verify_artifacts(record: dict[str, Any], artifact_root: Path) -> None:
         actual = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
         if actual != binding["sha256"]:
             raise ValueError(f"{record['start_id']} {label} digest differs")
+        resolved[label] = path
+
+    receipt_binding = record["artifacts"]["deployment_receipt"]
+    if receipt_binding["sha256"] != record["deployment"]["receipt_sha256"]:
+        raise ValueError(
+            f"{record['start_id']} deployment receipt digest differs from record"
+        )
+    try:
+        receipt = _load_object(resolved["deployment_receipt"])
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(
+            f"{record['start_id']} deployment receipt is not valid JSON"
+        ) from exc
+    documents = receipt.get("documents")
+    if documents is None:
+        deployment = receipt
+    elif isinstance(documents, dict):
+        deployment = documents.get("deployment")
+    else:
+        deployment = None
+    if (
+        not isinstance(deployment, dict)
+        or deployment.get("registration_state") != "registered"
+        or deployment.get("admissible") is not True
+        or (
+            receipt.get("schema") == "ecpa-h1-atomic-formal-registration/v1"
+            and receipt.get("ready") is not True
+        )
+    ):
+        raise ValueError(
+            f"{record['start_id']} deployment receipt is not an admissible registration"
+        )
 
 
 def _validate_intake(
