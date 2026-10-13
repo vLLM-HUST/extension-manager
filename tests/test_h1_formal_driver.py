@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -88,9 +89,39 @@ def _campaign(tmp_path: Path):
     )
 
 
-def test_current_pre_admission_files_cannot_launch():
+def test_current_registered_files_validate_for_launch():
+    campaign = driver.validate_registration()
+    assert campaign.study["status"] == "admitted"
+    assert campaign.study["admissible"] is True
+    assert campaign.deployment["registration_state"] == "registered"
+    assert set(campaign.arms) == set(campaign.study["arms"])
+    assert len(campaign.schedule) == 9
+
+
+def test_explicit_pre_admission_fixture_cannot_launch(tmp_path):
+    study_path = tmp_path / "first-formal-real-study.json"
+    deployment_path = tmp_path / "first-formal-real-deployment.json"
+    registry_path = tmp_path / "verified-adapters.json"
+    matrix_path = tmp_path / "claims-to-experiment-matrix.json"
+    for source, target in (
+        (driver.STUDY_PATH, study_path),
+        (driver.DEPLOYMENT_PATH, deployment_path),
+        (driver.REGISTRY_PATH, registry_path),
+        (driver.MATRIX_PATH, matrix_path),
+    ):
+        shutil.copy2(source, target)
+    study = json.loads(study_path.read_text())
+    study["status"] = "pre-admission"
+    study["admissible"] = False
+    study_path.write_bytes(canonical(study) + b"\n")
+
     with pytest.raises(ValueError, match="not admitted"):
-        driver.validate_registration()
+        driver.validate_registration(
+            study_path=study_path,
+            deployment_path=deployment_path,
+            registry_path=registry_path,
+            matrix_path=matrix_path,
+        )
 
 
 def test_workspace_cleanup_preserves_directory_inodes_and_rejects_unknown(tmp_path):

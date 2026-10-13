@@ -63,26 +63,80 @@ def write_canonical_json(path: Path, value) -> None:
     )
 
 
-def test_current_research_matrix_is_pre_admission() -> None:
+def reset_h1_to_pre_admission(root: Path, validator) -> None:
+    """Turn the copied registered packet into a coherent pre-admission fixture."""
+    study_path = root / "experiments/false_effective/first-formal-real-study.json"
+    deployment_path = (
+        root / "experiments/false_effective/first-formal-real-deployment.json"
+    )
+    matrix_path = root / "docs/research/claims-to-experiment-matrix.json"
+    registry_path = root / "experiments/false_effective/verified-adapters.json"
+    blockers = [
+        "adapter-registry-empty",
+        "deployment-identity-unfrozen",
+        "commands-not-deployment-reviewed",
+    ]
+
+    def reset_study(value) -> None:
+        value["status"] = "pre-admission"
+        value["admissible"] = False
+        value["blockers"] = blockers
+        value["fixed_identity"] = {
+            key: None for key in value["fixed_identity"]
+        }
+
+    def reset_deployment(value) -> None:
+        value["registration_state"] = "unregistered"
+        value["admissible"] = False
+        value["producer_admission_receipt"] = None
+        value["deployment_identity"] = {
+            key: None for key in value["deployment_identity"]
+        }
+        for row in value["arm_registrations"]:
+            row["registration"] = None
+        for row in value["source_registrations"]:
+            row["registration"] = None
+        value["reviews"] = {key: False for key in value["reviews"]}
+        value["blockers"] = blockers
+
+    rewrite_json(study_path, reset_study)
+    rewrite_json(
+        matrix_path,
+        lambda value: next(
+            row
+            for row in value["experiments"]
+            if row["id"] == "EXP-FE-PARTIAL-WORKER"
+        ).__setitem__("status", "pre-admission"),
+    )
+    rewrite_json(deployment_path, reset_deployment)
+    write_canonical_json(
+        registry_path,
+        {"schema": "ecpa-formal-adapter-registry/v2", "adapters": []},
+    )
+    deployment = json.loads(deployment_path.read_text())
+    deployment["bindings"]["study_sha256"] = validator.file_sha256(
+        root, "experiments/false_effective/first-formal-real-study.json"
+    )
+    deployment_path.write_text(json.dumps(deployment, indent=2) + "\n")
+
+
+def test_current_research_matrix_is_registered() -> None:
     validator = load_validator()
 
     assert validator.validate(ROOT) == {
         "claims": 4,
         "experiments": 5,
         "first_study_starts": 9,
-        "first_study_status": "pre-admission",
-        "deployment_registration": "unregistered",
+        "first_study_status": "admitted",
+        "deployment_registration": "registered",
     }
     study = json.loads(
         (ROOT / "experiments/false_effective/first-formal-real-study.json").read_text()
     )
     assert study["producer_candidate"]["observed_state"] == "merged"
     assert study["producer_candidate"]["human_line_review"] is True
-    assert study["blockers"] == [
-        "adapter-registry-empty",
-        "deployment-identity-unfrozen",
-        "commands-not-deployment-reviewed",
-    ]
+    assert study["admissible"] is True
+    assert study["blockers"] == []
 
 
 def test_pre_admission_blockers_follow_producer_facts(tmp_path: Path) -> None:
@@ -92,6 +146,7 @@ def test_pre_admission_blockers_follow_producer_facts(tmp_path: Path) -> None:
     deployment = (
         tmp_path / "experiments/false_effective/first-formal-real-deployment.json"
     )
+    reset_h1_to_pre_admission(tmp_path, validator)
 
     def reopen_producer(value) -> None:
         value["producer_candidate"]["observed_state"] = "open"
@@ -112,6 +167,7 @@ def test_pre_admission_blockers_follow_producer_facts(tmp_path: Path) -> None:
 def test_empty_registry_rejects_completed_study(tmp_path: Path) -> None:
     validator = load_validator()
     copy_inputs(tmp_path)
+    reset_h1_to_pre_admission(tmp_path, validator)
     study = tmp_path / "experiments/false_effective/first-formal-real-study.json"
     rewrite_json(
         study,
@@ -184,6 +240,7 @@ def test_unknown_scenario_is_rejected(tmp_path: Path) -> None:
 def test_pre_admission_rejects_partially_frozen_identity(tmp_path: Path) -> None:
     validator = load_validator()
     copy_inputs(tmp_path)
+    reset_h1_to_pre_admission(tmp_path, validator)
     study = tmp_path / "experiments/false_effective/first-formal-real-study.json"
     rewrite_json(
         study,
@@ -201,6 +258,7 @@ def test_unregistered_deployment_rejects_partially_frozen_command(
 ) -> None:
     validator = load_validator()
     copy_inputs(tmp_path)
+    reset_h1_to_pre_admission(tmp_path, validator)
     deployment = (
         tmp_path / "experiments/false_effective/first-formal-real-deployment.json"
     )
@@ -298,6 +356,7 @@ def test_deployment_registration_rejects_source_authority_drift(
 def test_deployment_registration_rejects_premature_admission(tmp_path: Path) -> None:
     validator = load_validator()
     copy_inputs(tmp_path)
+    reset_h1_to_pre_admission(tmp_path, validator)
     deployment = (
         tmp_path / "experiments/false_effective/first-formal-real-deployment.json"
     )

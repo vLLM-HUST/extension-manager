@@ -47,7 +47,67 @@ def _repository_copy(tmp_path: Path) -> Path:
         target = tmp_path / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(REPOSITORY / relative, target)
+    _write_pre_admission_fixture(tmp_path)
     return tmp_path
+
+
+def _write_pre_admission_fixture(root: Path) -> None:
+    """Reconstruct the exact gate state consumed by the registration transaction."""
+    study_path = root / transaction.STUDY_RELATIVE
+    study = json.loads(study_path.read_text())
+    study.update(
+        {
+            "status": "pre-admission",
+            "admissible": False,
+            "blockers": [
+                "adapter-registry-empty",
+                "deployment-identity-unfrozen",
+                "commands-not-deployment-reviewed",
+            ],
+            "fixed_identity": {key: None for key in study["fixed_identity"]},
+        }
+    )
+    study_path.write_bytes(canonical(study) + b"\n")
+
+    deployment_path = root / transaction.DEPLOYMENT_RELATIVE
+    deployment = json.loads(deployment_path.read_text())
+    deployment.update(
+        {
+            "registration_state": "unregistered",
+            "admissible": False,
+            "producer_admission_receipt": None,
+            "deployment_identity": {
+                key: None for key in deployment["deployment_identity"]
+            },
+            "reviews": {key: False for key in deployment["reviews"]},
+            "blockers": [
+                "adapter-registry-empty",
+                "deployment-identity-unfrozen",
+                "commands-not-deployment-reviewed",
+            ],
+        }
+    )
+    deployment["bindings"]["study_sha256"] = transaction._hex_digest(
+        canonical(study) + b"\n"
+    )
+    for row in deployment["arm_registrations"]:
+        row["registration"] = None
+    for row in deployment["source_registrations"]:
+        row["registration"] = None
+    deployment_path.write_bytes(canonical(deployment) + b"\n")
+
+    registry = {"schema": "ecpa-formal-adapter-registry/v2", "adapters": []}
+    (root / transaction.REGISTRY_RELATIVE).write_bytes(canonical(registry) + b"\n")
+
+    matrix_path = root / transaction.MATRIX_RELATIVE
+    matrix = json.loads(matrix_path.read_text())
+    experiment = next(
+        row
+        for row in matrix["experiments"]
+        if row["id"] == study["experiment_id"]
+    )
+    experiment["status"] = "pre-admission"
+    matrix_path.write_bytes(canonical(matrix) + b"\n")
 
 
 def test_transition_binds_three_arms_five_sources_and_nine_start_schedule(
@@ -88,6 +148,21 @@ def test_transition_binds_three_arms_five_sources_and_nine_start_schedule(
         canonical(study) + b"\n"
     )
     assert packet["write_set_digest"] == digest_bytes(canonical(packet["write_set"]))
+
+
+def test_transition_reproduces_current_official_registration(tmp_path: Path) -> None:
+    root = _repository_copy(tmp_path)
+    candidate_raw, issuance_raw = _current_inputs()
+    packet = transaction.build_transition(
+        candidate_raw=candidate_raw,
+        issuance_raw=issuance_raw,
+        repository_root=root,
+    )
+
+    for role, relative in transaction.WRITE_SET:
+        assert canonical(packet["documents"][role]) + b"\n" == (
+            REPOSITORY / relative
+        ).read_bytes()
 
 
 def test_commit_rejects_changed_preimage_without_writing(tmp_path: Path) -> None:

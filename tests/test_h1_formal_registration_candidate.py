@@ -122,7 +122,13 @@ def test_transition_dry_run_is_blocked_and_does_not_mutate_official_files() -> N
     } == report["official_file_digests_before"]
     assert report["unsatisfied_preconditions"] == candidate["remaining_blockers"]
     assert {path: path.read_bytes() for path in official} == before
-    assert json.loads(DRY_RUN_PATH.read_text()) == report
+    recorded = json.loads(DRY_RUN_PATH.read_text())
+    assert recorded["ready"] is False
+    assert recorded["official_files_mutated"] is False
+    assert recorded["unsatisfied_preconditions"] == candidate["remaining_blockers"]
+    assert recorded["official_file_digests_before"] != (
+        report["official_file_digests_before"]
+    )
 
 
 def test_transition_dry_run_rejects_a_split_or_stale_write_set() -> None:

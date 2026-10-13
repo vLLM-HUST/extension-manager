@@ -49,6 +49,11 @@ WORKSHOP_SOURCE_FIELDS = (
     "head_commit",
 )
 
+# This campaign was frozen from a clean wheel environment on bare metal, so it
+# has no container artifact to bind.  Every other registered identity is
+# required to be concrete.
+REGISTERED_NULLABLE_IDENTITIES = frozenset({"container_digest"})
+
 
 def load_json(root: Path, relative: str) -> dict[str, Any]:
     value = json.loads((root / relative).read_text())
@@ -547,7 +552,8 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         or not isinstance(deployment.get("producer_admission_receipt"), dict)
         or any(
             value is None
-            for value in deployment.get("deployment_identity", {}).values()
+            for key, value in deployment.get("deployment_identity", {}).items()
+            if key not in REGISTERED_NULLABLE_IDENTITIES
         )
         or any(row.get("registration") is None for row in deployment_arms)
         or any(row.get("registration") is None for row in deployment_sources)
