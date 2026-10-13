@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import select
+import socket
 import subprocess
 import sys
 import threading
@@ -19,6 +20,7 @@ import pytest
 from experiments.exposure_gate.loopback_traffic import (
     LoopbackTrafficAdapter,
     _Authority,
+    _ProxyHandler,
     _ProxyServer,
     _TrafficJournal,
     read_traffic_journal,
@@ -311,3 +313,111 @@ def test_observer_exception_cannot_open_and_query_fails_closed(tmp_path: Path) -
     events = read_traffic_journal(tmp_path / "authority.jsonl")
     assert events[-1]["kind"] == "route.close_all"
     assert events[-1]["detail"]["reason"] == "host observation lost"
+
+
+@pytest.mark.parametrize(
+    "withdrawal", ["coverage", "close_all", "lease", "truncated", "none"]
+)
+def test_slow_post_rechecks_authority_after_complete_body(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, withdrawal: str
+) -> None:
+    """Real HTTP upload pauses before admission; withdrawal wins deterministically."""
+    reading = threading.Event()
+    received: list[bytes] = []
+    coverage = threading.Event()
+    coverage.set()
+
+    class Observer:
+        def authorize(self, _snapshot: dict[str, object]) -> str:
+            if not coverage.is_set():
+                raise GateError("coverage withdrawn")
+            return "a" * 64
+
+    class CandidateHandler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            received.append(self.rfile.read(int(self.headers["Content-Length"])))
+            self.send_response(200)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, _format: str, *_args: object) -> None:
+            pass
+
+    original_setup = _ProxyHandler.setup
+
+    def observed_setup(handler: _ProxyHandler) -> None:
+        original_setup(handler)
+        stream = handler.rfile
+
+        class ObservedReader:
+            def read1(self, size: int) -> bytes:
+                reading.set()
+                return stream.read1(size)
+
+            def read(self, size: int) -> bytes:
+                reading.set()
+                return stream.read(size)
+
+            def __getattr__(self, name: str) -> object:
+                return getattr(stream, name)
+
+        handler.rfile = ObservedReader()  # type: ignore[assignment]
+
+    monkeypatch.setattr(_ProxyHandler, "setup", observed_setup)
+    candidate = ThreadingHTTPServer(("127.0.0.1", 0), CandidateHandler)
+    journal_path = tmp_path / "authority.jsonl"
+    journal = _TrafficJournal(journal_path)
+    grant = LeaseGrant("slow-upload", 7, int(time.time()) + 60)
+    authority = _Authority(
+        RouteState(1, "gate-1-test", {"plan_id": "candidate"}),
+        grant,
+        ("127.0.0.1", 1),
+        ("127.0.0.1", candidate.server_port),
+        journal,
+        Observer(),  # type: ignore[arg-type]
+    )
+    proxy = _ProxyServer(authority)
+    servers = (candidate, proxy)
+    threads = [
+        threading.Thread(target=server.serve_forever, daemon=True) for server in servers
+    ]
+    for thread in threads:
+        thread.start()
+    try:
+        address = ("127.0.0.1", proxy.server_port)
+        with socket.create_connection(address, timeout=5) as client:
+            client.sendall(
+                b"POST /infer HTTP/1.0\r\nHost: localhost\r\n"
+                b"Content-Length: 6\r\n\r\nabc"
+            )
+            assert reading.wait(5), "proxy never began receiving the partial body"
+            if withdrawal == "coverage":
+                coverage.clear()
+            elif withdrawal == "close_all":
+                authority.apply({"operation": "close_all"})
+            elif withdrawal == "lease":
+                with authority.lock:
+                    authority.grant = LeaseGrant("slow-upload", 7, int(time.time()) - 1)
+            if withdrawal == "truncated":
+                client.shutdown(socket.SHUT_WR)
+            else:
+                client.sendall(b"def")
+            response = bytearray()
+            while chunk := client.recv(4096):
+                response.extend(chunk)
+            expected = {"truncated": b"400", "none": b"200"}.get(withdrawal, b"503")
+            assert bytes(response).split(b" ", 2)[1] == expected
+        expected_bodies = [b"abcdef"] if withdrawal == "none" else []
+        assert received == expected_bodies
+    finally:
+        for server in servers:
+            server.shutdown()
+            server.server_close()
+        for thread in threads:
+            thread.join(timeout=5)
+        journal.close()
+    events = read_traffic_journal(journal_path)
+    admissions = [event for event in events if event["kind"] == "request.admit"]
+    assert len(admissions) == (1 if withdrawal == "none" else 0)
+    if withdrawal not in {"truncated", "none"}:
+        assert events[-1]["kind"] == "request.reject"

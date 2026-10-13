@@ -867,6 +867,33 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         except ValueError:
             self.send_error(413, "request body too large")
             return
+        # Uploads can block while the authority revokes coverage or the lease
+        # expires. Only admit after the complete, bounded body has arrived.
+        previous_timeout = self.connection.gettimeout()
+        try:
+            deadline = time.monotonic() + 5
+            chunks = bytearray()
+            while len(chunks) < body_size:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError
+                self.connection.settimeout(remaining)
+                chunk = self.rfile.read1(body_size - len(chunks))
+                if not chunk:
+                    break
+                chunks.extend(chunk)
+            body = bytes(chunks)
+        except TimeoutError:
+            self.send_error(408, "request body timed out")
+            return
+        except OSError:
+            self.send_error(400, "request body unavailable")
+            return
+        finally:
+            self.connection.settimeout(previous_timeout)
+        if len(body) != body_size:
+            self.send_error(400, "request body truncated")
+            return
         journal_failed = False
         with self.server.authority.lock:
             try:
@@ -891,7 +918,6 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             if route.fence.startswith("fence-")
             else self.server.authority.candidate
         )
-        body = self.rfile.read(body_size)
         try:
             connection = http.client.HTTPConnection(*backend, timeout=5)
             try:
