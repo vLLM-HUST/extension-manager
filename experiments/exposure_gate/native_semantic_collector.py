@@ -27,6 +27,108 @@ MAPPING = "ecpa-native-request-id-mapping/v1"
 UPLOAD = "ecpa-native-block-table-upload/v1"
 SPEC = "ecpa-native-semantic-collector-prereg/v1"
 ACK = "ecpa-native-semantic-collector-ack/v1"
+KV_SPEC = "ecpa-native-kv-semantic-collector-prereg/v1"
+PROJECTION = "ecpa-native-kv-blocktable-projection/v1"
+PROJECTION_OPERATION = "KVCompress-worker-host-blocktable-projection-applied"
+PROJECTION_SCOPE = "compression-host-metadata-and-uploaded-destination-binding-only"
+
+
+def projection_predicate(fact, requirement):
+    transaction_keys = {
+        "runtime_request_id",
+        "attention_group",
+        "semantic_anchor",
+        "physical_anchor",
+        "destination_block_ids",
+        "host_cpu_block_ids",
+        "allocation_block_size",
+        "compression_threshold_tokens",
+    }
+    exact = transaction_keys | {
+        "schema",
+        "process",
+        "launch_id",
+        "plan_id",
+        "monotonic_ns",
+        "metadata_row",
+        "transaction_id",
+        "operation",
+        "scope",
+        "host_mapping",
+        "kv_tensor_equivalence",
+        "attention_consumed_observed_tensor",
+        "full_generation_quality",
+    }
+    if set(fact) != exact:
+        raise ValueError("KV projection fields are unsupported")
+    blocks = fact["destination_block_ids"]
+    integer_keys = [
+        "attention_group",
+        "semantic_anchor",
+        "physical_anchor",
+        "allocation_block_size",
+        "compression_threshold_tokens",
+        "metadata_row",
+    ]
+    if (
+        any(type(fact[k]) is not int or fact[k] < 0 for k in integer_keys)
+        or not isinstance(blocks, list)
+        or not blocks
+        or any(type(x) is not int or x < 0 for x in blocks)
+        or len(set(blocks)) != len(blocks)
+        or fact["host_cpu_block_ids"] != blocks
+        or not 0
+        < fact["physical_anchor"]
+        < fact["compression_threshold_tokens"]
+        <= fact["semantic_anchor"]
+        or fact["allocation_block_size"] <= 0
+        or fact["physical_anchor"] != len(blocks) * fact["allocation_block_size"]
+        or any(
+            fact[k] != requirement[k]
+            for k in [
+                "attention_group",
+                "semantic_anchor",
+                "physical_anchor",
+                "allocation_block_size",
+                "compression_threshold_tokens",
+            ]
+        )
+        or len(blocks) != requirement["destination_block_count"]
+        or fact["operation"] != PROJECTION_OPERATION
+        or fact["scope"] != PROJECTION_SCOPE
+        or fact["host_mapping"] != "identity-host-block-id-projection"
+        or any(
+            fact[k] is not None
+            for k in [
+                "kv_tensor_equivalence",
+                "attention_consumed_observed_tensor",
+                "full_generation_quality",
+            ]
+        )
+        or fact["transaction_id"]
+        != sha(canonical({k: fact[k] for k in transaction_keys}))
+    ):
+        raise ValueError("KV projection lacks frozen actual destination/anchor binding")
+
+
+def projection_upload_match(projection, upload):
+    """Only later same-worker destination-prefix binding; no tensor equivalence."""
+    if (
+        projection["process"] != upload["process"]
+        or any(
+            projection[k] != upload[k]
+            for k in ["runtime_request_id", "launch_id", "plan_id"]
+        )
+        or upload["monotonic_ns"] < projection["monotonic_ns"]
+        or upload["observed_after_barrier_monotonic_ns"] < projection["monotonic_ns"]
+    ):
+        return False
+    destination = projection["host_cpu_block_ids"]
+    return any(
+        row["group"] == projection["attention_group"]
+        and row["blocks"][: len(destination)] == destination
+        for row in upload["uploaded_rows"]
+    )
 
 
 def canonical(value: Any) -> bytes:
@@ -140,7 +242,9 @@ def native_fact_predicate(
         "full_generation_quality",
     }
     if set(fact) != (
-        mapping_fields if fact.get("schema") == MAPPING else upload_fields
+        mapping_fields
+        if fact.get("schema") == MAPPING
+        else (set(fact) if fact.get("schema") == PROJECTION else upload_fields)
     ):
         raise ValueError("native fact fields do not match a supported source schema")
     if set(fact.get("process", {})) != set(sender["process"]):
@@ -177,6 +281,24 @@ def native_fact_predicate(
         ):
             raise ValueError("actual native API mapping is unknown or repeated")
         update = ("mapping", runtime)
+    elif fact.get("schema") == PROJECTION:
+        if (
+            spec.get("schema") != KV_SPEC
+            or sender["process"]["role"] != "worker"
+            or runtime not in mappings
+        ):
+            raise ValueError(
+                "KV projection lacks opt-in scope/native API mapping/worker source"
+            )
+        phase = mappings[runtime]
+        if stamp < mapping_stamps[runtime]:
+            raise ValueError("KV projection predates actual native API mapping")
+        if upload_counts.get(("projection", runtime, sender["process"]["ordinal"]), 0):
+            raise ValueError(
+                "KV phase permits one actual projection per registered rank"
+            )
+        projection_predicate(fact, spec["kv_requirements"][phase["phase_id"]])
+        update = ("projection", sender["process"]["ordinal"])
     elif fact.get("schema") == UPLOAD:
         if sender["process"]["role"] != "worker" or runtime not in mappings:
             raise ValueError("GPU upload lacks native API mapping or worker source")
@@ -237,7 +359,7 @@ class Collector:
     def __init__(self, spec_path: Path, journal_path: Path):
         raw, _ = read_private(spec_path, 0o600)
         self.spec = json.loads(raw)
-        if set(self.spec) != {
+        fields = {
             "schema",
             "classification",
             "formal_producer_registration",
@@ -248,13 +370,16 @@ class Collector:
             "max_uploads_per_rank",
             "senders",
             "phases",
-        }:
+        }
+        if self.spec.get("schema") == KV_SPEC:
+            fields.add("kv_requirements")
+        if set(self.spec) != fields:
             raise ValueError("collector prereg fields are unsupported")
         self.spec_sha256 = sha(raw)
         self.source_sha256 = sha(Path(__file__).read_bytes())
         self.failed = False
         if (
-            self.spec.get("schema") != SPEC
+            self.spec.get("schema") not in {SPEC, KV_SPEC}
             or self.spec.get("classification") != "CPU_REVIEW_CANDIDATE_ONLY"
             or self.spec.get("formal_producer_registration") is not False
             or not self.spec.get("native_plan_id")
@@ -266,6 +391,32 @@ class Collector:
             or not 0 < self.spec["max_uploads_per_rank"] <= 4096
         ):
             raise ValueError("collector scope is incomplete or promoted")
+        if self.spec["schema"] == KV_SPEC:
+            requirements = self.spec["kv_requirements"]
+            if set(requirements) != {p["phase_id"] for p in self.spec["phases"]}:
+                raise ValueError("KV projection phase preregistration is incomplete")
+            for requirement in requirements.values():
+                if set(requirement) != {
+                    "attention_group",
+                    "semantic_anchor",
+                    "physical_anchor",
+                    "allocation_block_size",
+                    "compression_threshold_tokens",
+                    "destination_block_count",
+                } or any(type(v) is not int or v < 0 for v in requirement.values()):
+                    raise ValueError("KV preregistration predicate is malformed")
+                if (
+                    not 0
+                    < requirement["physical_anchor"]
+                    < requirement["compression_threshold_tokens"]
+                    <= requirement["semantic_anchor"]
+                    or requirement["allocation_block_size"] <= 0
+                    or requirement["destination_block_count"] <= 0
+                    or requirement["physical_anchor"]
+                    != requirement["destination_block_count"]
+                    * requirement["allocation_block_size"]
+                ):
+                    raise ValueError("KV preregistration anchors are inconsistent")
         self.senders = {x["process"]["pid"]: x for x in self.spec["senders"]}
         if len(self.senders) != len(self.spec["senders"]):
             raise ValueError("sender PID is repeated")
@@ -472,7 +623,9 @@ class Collector:
             if update[0] == "mapping":
                 self.maps[runtime] = phase
                 self.mapping_stamps[runtime] = stamp
-            else:
+            elif update[0] == "projection":
+                self.upload_counts[("projection", runtime, update[1])] = 1
+            elif update[0] == "upload":
                 self.ranks.setdefault(runtime, set()).add(update[1])
                 self.upload_stamps[(runtime, update[1])] = fact[
                     "observed_after_barrier_monotonic_ns"
@@ -682,6 +835,8 @@ def verify_journal(
         raise ValueError("authority raw chain source or frozen spec differs")
     previous = "0" * 64
     seen_raw = set()
+    projections = {}
+    kv_ranks = {}
     mappings = {}
     mapping_stamps = {}
     chronology_complete = (
@@ -752,14 +907,23 @@ def verify_journal(
         if update[0] == "mapping":
             mappings[runtime] = phase
             mapping_stamps[runtime] = fact["monotonic_ns"]
+        elif update[0] == "projection":
+            projections.setdefault((runtime, update[1]), []).append(fact)
+            counts[("projection", runtime, update[1])] = 1
         else:
             rank = update[1]
+            if any(
+                projection_upload_match(p, fact)
+                for p in projections.get((runtime, rank), [])
+            ):
+                kv_ranks.setdefault(runtime, set()).add(rank)
             ranks.setdefault(runtime, set()).add(rank)
             upload_stamps[(runtime, rank)] = fact["observed_after_barrier_monotonic_ns"]
             counts[(runtime, rank)] = counts.get((runtime, rank), 0) + 1
         if phase != event["phase"] or runtime != event["runtime_request_id"]:
             raise ValueError("authority raw challenge join differs")
     complete = sum(ranks.get(runtime) == {0, 1} for runtime in mappings)
+    kv_complete = sum(kv_ranks.get(runtime) == {0, 1} for runtime in mappings)
     if acknowledged_prefix is not None and acknowledged_prefix != {
         "next_sequence": len(events),
         "last_event_sha256": previous,
@@ -786,6 +950,14 @@ def verify_journal(
         "expected_phase_count": len(expected_phases),
         "formal_producer_registration": False,
         "formal_result": False,
+        "complete_two_rank_KV_projection_upload_phases": kv_complete
+        if spec.get("schema") == KV_SPEC
+        and acknowledged_prefix is not None
+        and chronology_complete
+        else None,
+        "KV_projection_scope": PROJECTION_SCOPE
+        if spec.get("schema") == KV_SPEC
+        else None,
         "GPU_semantic_qualification": None,
         "full_objective_satisfied": None,
         "journal_sha256": sha(journal_path.read_bytes()),

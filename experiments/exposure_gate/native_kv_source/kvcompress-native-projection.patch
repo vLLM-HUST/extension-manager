@@ -1,0 +1,16 @@
+--- a/src/vllm_ascend_kvcompress/provider.py
++++ b/src/vllm_ascend_kvcompress/provider.py
+@@ -360,6 +360,13 @@
+                 pending.physical_anchor,
+                 pending.per_layer_physical_num_tokens,
+             )
++            # Source-owned actual metadata fact, after the completed mutation.
++            # Observer registration is opt-in; ACK failure propagates.
++            from vllm.plugins.native_kv_projection_observer import (
++                observe_kv_projection,
++            )
++
++            observe_kv_projection(self, scheduler_output, request_id, pending)
+             logger.info(
+                 "KV compression worker commit acknowledged request_id=%s "
+                 "semantic_tokens=%d physical_tokens=%d destination_blocks=%d",
