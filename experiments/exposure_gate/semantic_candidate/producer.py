@@ -14,6 +14,7 @@ import json
 import os
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,17 @@ SCOPE_FIELDS = {
     "source_provider_sha256",
     "source_host_sha256",
 }
+
+
+@dataclass(frozen=True)
+class PublicationAck:
+    """Local writer ACK after file+directory fsync, not formal source authority."""
+
+    raw_sha256: str
+    filename: str
+    directory_device: int
+    directory_inode: int
+    source_pid: int
 
 
 def canonical(value: Any) -> bytes:
@@ -149,11 +161,11 @@ def emit_worker_projection(
     *,
     scope: dict,
     host_scope: dict,
-    durable_sink: Callable[[bytes], bool],
+    durable_sink: Callable[[bytes], PublicationAck | None],
 ) -> bool:
     """No successful receipt on failed predicate, write, or explicit sink NACK.
 
-    The callback contract is true only after exact bytes are fsynced plus any
+    The callback contract ACKs only after exact bytes are fsynced plus any
     creating-directory metadata is fsynced. A callback claiming true is not
     independently trusted or a formal producer registration.
     """
@@ -161,7 +173,14 @@ def emit_worker_projection(
         receipt = projection_receipt(
             provider, scheduler_output, request_id, pending, scope, host_scope
         )
-        return durable_sink(canonical(receipt)) is True
+        raw = canonical(receipt)
+        acknowledgement = durable_sink(raw)
+        return (
+            isinstance(acknowledgement, PublicationAck)
+            and acknowledgement.raw_sha256 == digest(raw)
+            and acknowledgement.source_pid == os.getpid()
+            and acknowledgement.filename == digest(raw) + ".json"
+        )
     except Exception:  # noqa: BLE001 - observation failure never grants evidence.
         return False
 
@@ -173,7 +192,18 @@ def verify_receipt(
     expected_process: dict,
     expected_transaction: dict,
     expected_producer_sha256: str,
+    expected_directory_identity: tuple[int, int],
+    publication_ack: PublicationAck | None = None,
 ) -> dict:
+    if (
+        not isinstance(publication_ack, PublicationAck)
+        or publication_ack.raw_sha256 != digest(raw)
+        or publication_ack.filename != digest(raw) + ".json"
+        or publication_ack.source_pid != expected_process["pid"]
+        or (publication_ack.directory_device, publication_ack.directory_inode)
+        != expected_directory_identity
+    ):
+        raise ValueError("typed publication acknowledgement is unavailable")
     receipt = json.loads(raw)
     expected_fields = {
         "schema",
@@ -219,17 +249,19 @@ def verify_receipt(
 
 def write_durable_receipt(
     root: Path, raw: bytes, expected_directory_identity: tuple[int, int]
-) -> bool:
-    """Write one exclusive private receipt and fsync file plus directory.
+) -> PublicationAck | None:
+    """Publish file-fsynced bytes, then ACK only after directory fsync.
 
-    The authority must still read raw bytes independently; this writer's return
-    value, filesystem success and CPU tests confer no formal source authority.
+    Publication can be visible before directory fsync. Readers MUST reject raw
+    presence without a matching trusted writer ACK. This local candidate has
+    no authenticated source-owned ACK channel or formal registration.
     """
     import stat
 
     directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    created = False
+    pending_created = published = False
     name = digest(raw) + ".json"
+    pending = ".pending-" + digest(raw)
     try:
         metadata = os.fstat(directory)
         if (
@@ -239,12 +271,12 @@ def write_durable_receipt(
         ):
             raise ValueError("semantic receipt directory changed or is not private")
         fd = os.open(
-            name,
+            pending,
             os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
             0o600,
             dir_fd=directory,
         )
-        created = True
+        pending_created = True
         try:
             data = memoryview(raw)
             while data:
@@ -255,11 +287,25 @@ def write_durable_receipt(
             os.fsync(fd)
         finally:
             os.close(fd)
+        os.link(
+            pending,
+            name,
+            src_dir_fd=directory,
+            dst_dir_fd=directory,
+            follow_symlinks=False,
+        )
+        published = True
+        os.unlink(pending, dir_fd=directory)
+        pending_created = False
         os.fsync(directory)
-        return True
+        return PublicationAck(
+            digest(raw), name, metadata.st_dev, metadata.st_ino, os.getpid()
+        )
     except (OSError, ValueError):
-        if created:
+        if published:
             os.unlink(name, dir_fd=directory)
-        return False
+        if pending_created:
+            os.unlink(pending, dir_fd=directory)
+        return None
     finally:
         os.close(directory)

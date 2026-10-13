@@ -19,7 +19,8 @@
     "Host-frozen-context-installer-and-independent-live-reader",
     "exact-source-wheel-build-and-registration",
     "authority-probe-to-runtime-request-binding",
-    "semantic-threshold-real-model-qualification"
+    "semantic-threshold-real-model-qualification",
+    "authenticated-source-owned-publication-ACK-channel"
   ],
   "no_claims": [
     "GPU-blocktable-upload",

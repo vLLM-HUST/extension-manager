@@ -10,6 +10,7 @@ import pytest
 
 import experiments.exposure_gate.semantic_candidate.producer as producer_module
 from experiments.exposure_gate.semantic_candidate.producer import (
+    PublicationAck,
     canonical,
     current_process,
     digest,
@@ -79,8 +80,12 @@ def test_cpu_receipt_written_durably_and_independently_checked(tmp_path):
     tmp_path.chmod(0o700)
     stat = tmp_path.stat()
 
+    acknowledgements = []
+
     def sink(raw):
-        return write_durable_receipt(tmp_path, raw, (stat.st_dev, stat.st_ino))
+        ack = write_durable_receipt(tmp_path, raw, (stat.st_dev, stat.st_ino))
+        acknowledgements.append(ack)
+        return ack
 
     assert emit_worker_projection(
         provider, output, "r", pending, scope=scope, host_scope=host, durable_sink=sink
@@ -99,6 +104,8 @@ def test_cpu_receipt_written_durably_and_independently_checked(tmp_path):
         expected_process=current_process(host),
         expected_transaction=transaction,
         expected_producer_sha256=digest(Path(producer_module.__file__).read_bytes()),
+        publication_ack=acknowledgements[0],
+        expected_directory_identity=(stat.st_dev, stat.st_ino),
     )
     assert receipt["formal_producer_registration"] is False
     assert receipt["kv_tensor_equivalence"] is None
@@ -182,6 +189,14 @@ def test_consumer_refuses_rehashed_crossbinding_or_promotion(field):
             expected_process=current_process(host),
             expected_transaction=original["transaction"],
             expected_producer_sha256=original["producer_sha256"],
+            expected_directory_identity=(1, 2),
+            publication_ack=PublicationAck(
+                digest(canonical(receipt)),
+                digest(canonical(receipt)) + ".json",
+                1,
+                2,
+                os.getpid(),
+            ),
         )
 
 
@@ -211,7 +226,7 @@ def test_source_hook_applies_to_exact_frozen_bytes(tmp_path):
     ast.parse(target.read_text())
 
 
-@pytest.mark.parametrize("ack", [False, None, 1, "true"])
+@pytest.mark.parametrize("ack", [True, False, None, 1, "true"])
 def test_sink_nack_or_nonboolean_does_not_grant_evidence(ack):
     provider, output, pending, scope, host, _ = fixture()
     assert not emit_worker_projection(
@@ -240,3 +255,54 @@ def test_sink_exception_does_not_change_serving_operation():
         host_scope=host,
         durable_sink=broken,
     )
+
+
+def test_concurrent_raw_visibility_before_directory_fsync_is_not_admissible(
+    tmp_path, monkeypatch
+):
+    import json
+    import stat as stat_module
+    import threading
+
+    provider, output, pending, scope, host, _ = fixture()
+    raw = canonical(projection_receipt(provider, output, "r", pending, scope, host))
+    tmp_path.chmod(0o700)
+    stat = tmp_path.stat()
+    identity = (stat.st_dev, stat.st_ino)
+    published = threading.Event()
+    release = threading.Event()
+    real_fsync = os.fsync
+
+    def controlled_fsync(fd):
+        if stat_module.S_ISDIR(os.fstat(fd).st_mode):
+            published.set()
+            assert release.wait(3)
+            raise OSError("directory fsync failed after reader saw raw")
+        real_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", controlled_fsync)
+    results = []
+    thread = threading.Thread(
+        target=lambda: results.append(write_durable_receipt(tmp_path, raw, identity))
+    )
+    thread.start()
+    try:
+        assert published.wait(3)
+        visible = next(tmp_path.glob("*.json")).read_bytes()
+        assert visible == raw
+        with pytest.raises(ValueError, match="publication acknowledgement"):
+            verify_receipt(
+                visible,
+                expected_scope=scope,
+                expected_process=current_process(host),
+                expected_transaction=json.loads(raw)["transaction"],
+                expected_producer_sha256=digest(
+                    Path(producer_module.__file__).read_bytes()
+                ),
+                expected_directory_identity=identity,
+            )
+    finally:
+        release.set()
+        thread.join(3)
+    assert results == [None]
+    assert not list(tmp_path.iterdir())

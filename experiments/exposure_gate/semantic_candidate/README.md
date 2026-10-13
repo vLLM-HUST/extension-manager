@@ -24,14 +24,21 @@ receipt does not establish GPU table upload, KV tensor content or semantic
 equivalence, model quality, or completion correctness. CPU tests use explicitly
 fixture metadata; current PID/start/boot and file/fsync calls are real CPU acts.
 
-`emit_worker_projection` returns true only for a writer callback returning the
-literal boolean true. The callback contract requires completed exact-byte write,
-file fsync, and creating-directory fsync. `write_durable_receipt` implements that
-contract with exclusive private files and directory identity checks; injected
-fsync failure returns false and removes the incomplete receipt. A callback
-claiming true alone is not independently trusted evidence. The authority must
-read bytes and compare frozen scope, request transaction, worker identity and
-producer source itself. This local verifier accepts no formal/quality promotion.
+`emit_worker_projection` succeeds only with a matching typed `PublicationAck`
+returned by the configured writer after exact-byte file fsync and directory
+fsync. A boolean or raw-file presence is insufficient. The private writer first
+writes a pending file and fsyncs it, publishes without replacing an existing
+file, then fsyncs the directory before returning its ACK. Published raw bytes
+can be visible before directory fsync: this is explicitly **not** an atomic
+visibility/durability guarantee. The independent candidate reader requires a
+matching publication ACK and frozen directory identity. A concurrent-read test
+observes published bytes, rejects them without an ACK, then injects directory
+fsync failure and checks that no ACK was returned.
+
+The local typed ACK is an interface contract, not an authenticated source-owned
+channel. Copying or forging it must never become formal evidence. A future live
+source-owned channel/registration and independent authority reader remain
+unimplemented. Neither the receipt nor ACK grants any formal capability.
 
 The patch imports the candidate from a future Host
 `vllm.plugins.semantic_evidence_candidate` module only if a Host worker has a
