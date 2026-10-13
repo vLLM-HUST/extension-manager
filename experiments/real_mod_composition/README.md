@@ -278,3 +278,27 @@ Run the portable checks with:
 python experiments/real_mod_composition/verify_h2_remaining_surfaces_oracle.py
 python experiments/real_mod_composition/verify_h2_remaining_surface_prediction.py
 ```
+
+## Source-bound conditional scheduler pair
+
+`artifacts/h2-pipeline-bidkv-oracle-20261013/` adds a fifth definite case from
+two independently developed active bundles.  The independent oracle was
+committed before the Manager collector existed.  It binds Pipeline
+Microbatch, BidKV, and vLLM-HUST `3e57b2f75c…`; that exact Host source exports
+batch-admission API 1.1 and preemption-policy API 1.0 through separate
+controllers and scheduler configuration fields.  The later Manager prediction
+admits the pair and projects distinct `--batch-admission-policy` and
+`--preemption-policy` options without a composition conflict.
+
+The definite source-bound subset is now n=5 (TP=2, TN=3, FP=0, FN=0).  It is
+still too small and surface-incomplete to finish H2.  This case stops at the
+pre-launch boundary: the exact Pipeline Microbatch qualification cell is
+PP2+TP2 on four devices while this allocation has two.  No host was launched,
+neither policy was observed running, and no runtime or performance result is
+claimed.
+
+Run the portable check with:
+
+```bash
+python experiments/real_mod_composition/verify_h2_scheduler_pair.py
+```
