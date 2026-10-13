@@ -100,15 +100,15 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "source_objects": 41,
         "formal_completed": 0,
         "formal_planned": 30,
-        "verified_adapters": 0,
+        "verified_adapters": 3,
         "reference_starts": 45,
         "formal_arms": 3,
         "minimum_starts": 3,
         "schedule_rows": 3,
         "research_claims": 4,
         "first_study_starts": 9,
-        "deployment_blockers": 3,
-        "registered_deployment_arms": 0,
+        "deployment_blockers": 0,
+        "registered_deployment_arms": 3,
         "transaction_model_states": 39,
         "transaction_model_edges": 102,
         "transaction_model_rejections": 522,
@@ -160,6 +160,8 @@ def test_generator_rejects_unregistered_formal_completion(tmp_path: Path) -> Non
         tmp_path / "experiments/false_effective/artifacts/formal-aggregate-summary.json"
     )
     rewrite_json(aggregate, lambda value: value.__setitem__("completed_cells", 1))
+    registry = tmp_path / "experiments/false_effective/verified-adapters.json"
+    rewrite_json(registry, lambda value: value.__setitem__("adapters", []))
 
     with pytest.raises(ValueError, match="require a verified adapter"):
         generator.collect_summary(tmp_path)
@@ -175,7 +177,26 @@ def test_generator_rejects_premature_deployment_registration(
     )
     rewrite_json(
         deployment,
-        lambda value: value.__setitem__("registration_state", "registered"),
+        lambda value: value.__setitem__("producer_admission_receipt", None),
+    )
+
+    with pytest.raises(ValueError, match="not fail closed"):
+        generator.collect_summary(tmp_path)
+
+
+def test_generator_rejects_incomplete_registered_deployment_identity(
+    tmp_path: Path,
+) -> None:
+    generator = load_generator()
+    copy_inputs(tmp_path)
+    deployment = (
+        tmp_path / "experiments/false_effective/first-formal-real-deployment.json"
+    )
+    rewrite_json(
+        deployment,
+        lambda value: value["deployment_identity"].__setitem__(
+            "environment_digest", None
+        ),
     )
 
     with pytest.raises(ValueError, match="not fail closed"):

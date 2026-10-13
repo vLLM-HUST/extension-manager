@@ -128,7 +128,7 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     )
 
 
-def test_machine_candidate_does_not_admit_the_formal_study() -> None:
+def test_machine_candidate_remains_qualification_after_official_admission() -> None:
     candidate = _load(CANDIDATE)
     study = _load(ROOT / "first-formal-real-study.json")
     deployment = _load(ROOT / "first-formal-real-deployment.json")
@@ -136,10 +136,14 @@ def test_machine_candidate_does_not_admit_the_formal_study() -> None:
 
     assert candidate["qualification"]["registration_state"] == "unregistered"
     assert candidate["qualification"]["formal_h1_starts"] == 0
-    assert study["status"] == "pre-admission"
-    assert study["admissible"] is False
-    assert all(value is None for value in study["fixed_identity"].values())
-    assert deployment["registration_state"] == "unregistered"
-    assert deployment["admissible"] is False
-    assert all(value is None for value in deployment["deployment_identity"].values())
-    assert registry == {"adapters": [], "schema": "ecpa-formal-adapter-registry/v2"}
+    assert study["status"] == "admitted"
+    assert study["admissible"] is True
+    assert all(
+        value is not None
+        for key, value in study["fixed_identity"].items()
+        if key != "container_digest"
+    )
+    assert deployment["registration_state"] == "registered"
+    assert deployment["admissible"] is True
+    assert deployment["blockers"] == []
+    assert [entry["arm"] for entry in registry["adapters"]] == study["arms"]
