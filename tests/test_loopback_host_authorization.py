@@ -48,6 +48,7 @@ def test_traffic_authority_rechecks_frozen_host_membership(
     observer_path = tmp_path / "observer.json"
     configuration = {
         "schema": "ecpa-loopback-host-authorization/v1",
+        "authorization_path": str(observer_path),
         "plan_path": str(plan_path),
         "journal_dir": str(event_dir),
         "journal_device": identity.st_dev,

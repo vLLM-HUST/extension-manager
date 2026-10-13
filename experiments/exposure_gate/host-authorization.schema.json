@@ -5,6 +5,7 @@
   "additionalProperties": false,
   "required": [
     "schema",
+    "authorization_path",
     "plan_path",
     "journal_dir",
     "journal_device",
@@ -20,6 +21,7 @@
   ],
   "properties": {
     "schema": {"const": "ecpa-loopback-host-authorization/v1"},
+    "authorization_path": {"type": "string", "pattern": "^/"},
     "plan_path": {"type": "string", "pattern": "^/"},
     "journal_dir": {"type": "string", "pattern": "^/"},
     "journal_device": {"type": "integer", "minimum": 0},

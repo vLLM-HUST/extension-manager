@@ -24,6 +24,7 @@ from experiments.false_effective.formal_proxy import (
     prepare_formal_proxy_authorization,
     validate_formal_proxy_registration,
 )
+from vllm_hust_ext.exposure_gate import GateError
 from vllm_hust_ext.formal_process_snapshot import make_transition
 from vllm_hust_ext.formal_proxy_membership import derive_formal_proxy_membership
 from vllm_hust_ext.plan_artifact import plan_artifact_bytes
@@ -149,6 +150,17 @@ def test_preparation_binds_membership_and_reviewed_proxy_command(tmp_path: Path)
     assert authority.binding()["registration_sha256"] == prepared[
         "registration_sha256"
     ]
+    claim = json.loads(output.with_name(output.name + ".claim").read_text())
+    assert claim["authorization_path"] == str(output)
+    assert claim["authorization_sha256"].startswith("sha256:")
+    with pytest.raises(GateError, match="already claimed"):
+        _HostAuthorization(output)
+
+    copied = (tmp_path / "copied-authority.json").resolve()
+    copied.write_bytes(output.read_bytes())
+    copied.chmod(0o600)
+    with pytest.raises(GateError, match="identity is incomplete"):
+        _HostAuthorization(copied)
     with pytest.raises(FileExistsError):
         prepare_formal_proxy_authorization(
             output,

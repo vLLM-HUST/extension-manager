@@ -33,6 +33,14 @@ candidate admission records the independently refreshed digest. A caller's
 plan ID, environment variables, import success, or fabricated `OpenProof`
 digest alone cannot make this mode admit a request.
 
+Each authorization is also bound to its absolute input path. The authority
+atomically creates and fsyncs a private claim containing the authorization
+digest, file identity, and its own PID/start ticks before opening any socket.
+An existing claim rejects a second authority, while copying the authorization
+to another path fails the path binding. This makes missing, stale, replayed,
+cross-launch, and partial-coverage inputs fail closed within the declared
+same-UID experiment trust boundary.
+
 `observe_gate_transitions` is an offline reader for the authority-owned hash
 chain. It emits gate-open only when a durable applied record immediately
 follows an intent bound to plan, launch, controller, generation, membership
