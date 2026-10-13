@@ -73,3 +73,21 @@ with an independent route observation outside this integration slice,
 lease/crash cases, and the real three-arm runner. Until those bindings are
 registered and reviewed, this slice demonstrates the external request path,
 host-journal validation mechanics, and cleanup behavior only.
+
+`formal_proxy.py` now provides the fail-closed preparation step for that run.
+It consumes the runner's post-launch process transition and will write a new
+`ecpa-loopback-formal-host-authorization/v1` input only when retained host
+bytes contain canonical, host-assigned `api-server`, `engine-core-scheduler`,
+and `worker` identities. The independent proxy re-reads those journal bytes
+and live Linux identities before each candidate admission. Its route binding
+also includes the full-membership digest and an automated-independent review
+receipt for the exact proxy command. This code is an enabling path, not a new
+formal result: the proxy command and changed backend/client ports still need a
+reviewed deployment registration before a runner may use them.
+
+An audit of the retained H1 r5 process transitions finds real host-assigned
+engine and worker identities, but no host-assigned `api-server` identity. All
+nine therefore fail this new gate with `formal proxy membership lacks
+host-owned roles: api-server`; none may be relabeled as an exposure result.
+The host must bind the serve parent before parser-time general plugin loading,
+then the exact Host wheel and proxy command must be requalified and registered.
