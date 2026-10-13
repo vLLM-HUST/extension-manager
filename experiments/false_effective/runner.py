@@ -1773,6 +1773,7 @@ def _run_start_impl(
     run_dir = root / "starts" / start_id
     result_path = run_dir / "observer-result.json"
     observer_binding = None
+    retained_plan_name: str | None = None
     if observer_argv is None:
         command = run_command(run_dir, argv, env=dict(env), timeout_s=timeout_s)
         command_digest = command.pop("command_sha256")
@@ -1780,7 +1781,7 @@ def _run_start_impl(
         if execution_identity is None:
             raise ValueError("observed execution requires plan and launch identity")
 
-        run_dir.mkdir(parents=True, exist_ok=False)
+        run_dir.mkdir(parents=True, mode=0o700, exist_ok=False)
         manifest = __import__("harness").sanitized_env(env)
         (run_dir / "environment.json").write_bytes(canonical(manifest) + b"\n")
         sut_env = {
@@ -1811,6 +1812,41 @@ def _run_start_impl(
                 "plan_raw_base64": process_snapshot_context["plan_raw_base64"],
                 "plan_raw_sha256": process_snapshot_context["plan_raw_sha256"],
             }
+        if formal_sources and managed_binding is not None:
+            if prelaunch_snapshot is None:
+                raise ValueError("managed launch lacks retained Plan bytes")
+            retained_plan = base64.b64decode(
+                prelaunch_snapshot["plan_raw_base64"], validate=True
+            )
+            if digest_bytes(retained_plan) != managed_binding.get("plan_sha256"):
+                raise ValueError("managed launch Plan bytes differ from binding")
+            retained_plan_name = "execution-plan.json"
+            retained_plan_path = (run_dir / retained_plan_name).resolve()
+            retained_fd = os.open(
+                retained_plan_path,
+                os.O_WRONLY
+                | os.O_CREAT
+                | os.O_EXCL
+                | os.O_NOFOLLOW
+                | os.O_CLOEXEC,
+                0o400,
+            )
+            try:
+                with os.fdopen(retained_fd, "wb", closefd=False) as retained_file:
+                    retained_file.write(retained_plan)
+                    retained_file.flush()
+                    os.fsync(retained_file.fileno())
+            finally:
+                os.close(retained_fd)
+            old_plan_path = managed_binding.get("plan_path")
+            if not isinstance(old_plan_path, str) or argv.count(old_plan_path) != 1:
+                raise ValueError("managed launch argv lacks exactly one Plan path")
+            argv = [
+                str(retained_plan_path) if value == old_plan_path else value
+                for value in argv
+            ]
+            managed_binding = dict(managed_binding)
+            managed_binding["plan_path"] = str(retained_plan_path)
         wall_start = time.time_ns()
         sut_start = time.monotonic_ns()
         sut = popen_pinned(
@@ -2356,6 +2392,8 @@ def _run_start_impl(
         "message_bytes": len(canonical(observations)),
         "digests": {},
     }
+    if retained_plan_name is not None:
+        artifacts["execution_plan"] = retained_plan_name
     for name in (
         command["stdout"],
         command["stderr"],
@@ -2368,6 +2406,10 @@ def _run_start_impl(
         "intake.json",
     ):
         artifacts["digests"][name] = digest_file(run_dir / name)
+    if retained_plan_name is not None:
+        artifacts["digests"][retained_plan_name] = digest_file(
+            run_dir / retained_plan_name
+        )
     for name in ("observer-stdout.bin", "observer-stderr.bin"):
         if (run_dir / name).is_file():
             artifacts["digests"][name] = digest_file(run_dir / name)

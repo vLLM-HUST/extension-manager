@@ -21,7 +21,7 @@ from vllm_hust_ext.formal_process_snapshot import (
     validate_runner_snapshots,
     validate_transition,
 )
-from vllm_hust_ext.plan_artifact import read_plan_artifact
+from vllm_hust_ext.plan_artifact import parse_plan_artifact
 from vllm_hust_ext.process_supervisor import FORMAL_SHUTDOWN_GRACE_SECONDS
 
 ARMS = ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
@@ -181,7 +181,9 @@ def safe_path(root: Path, relative: str) -> Path:
 
 
 def validate_formal_adapter_verification(
-    record: dict[str, Any], command: dict[str, Any]
+    record: dict[str, Any],
+    command: dict[str, Any],
+    artifact_root: Path | None = None,
 ) -> None:
     """Recheck formal provenance against the repository-owned adapter registry."""
     registry_bytes = VERIFIED_ADAPTER_REGISTRY.read_bytes()
@@ -523,28 +525,62 @@ def validate_formal_adapter_verification(
             or event_path.is_symlink()
         ):
             raise ValueError("managed ECPA binding is malformed")
+        snapshot = command.get("prelaunch_snapshot")
+        if not isinstance(snapshot, dict):
+            raise ValueError("managed ECPA retained Plan snapshot is missing")
         try:
-            if plan_path.resolve(strict=True) != plan_path:
-                raise ValueError("managed ECPA Plan path is not canonical")
-            plan_artifact = read_plan_artifact(plan_path)
-            if event_path.resolve(strict=True) != event_path:
-                raise ValueError("managed ECPA event path is not canonical")
-            event_metadata = event_path.stat()
-        except (OSError, ValueError) as exc:
+            retained_name = record.get("artifacts", {}).get("execution_plan")
+            if retained_name is not None:
+                if artifact_root is None or not isinstance(retained_name, str):
+                    raise ValueError("retained Plan artifact root is unavailable")
+                retained_path = safe_path(artifact_root, retained_name)
+                if not retained_path.is_file() or retained_path.is_symlink():
+                    raise ValueError("retained Plan artifact is unavailable")
+                retained_plan = retained_path.read_bytes()
+                if plan_path != retained_path:
+                    raise ValueError(
+                        "executed Plan path differs from retained artifact"
+                    )
+            else:
+                # Compatibility for completed starts whose command.json retained
+                # the exact bytes before a later start cleared the shared snapshot.
+                encoded_plan = snapshot.get("plan_raw_base64")
+                if not isinstance(encoded_plan, str):
+                    raise ValueError("retained Plan bytes are unavailable")
+                retained_plan = base64.b64decode(encoded_plan, validate=True)
+            plan = parse_plan_artifact(retained_plan)
+        except (ValueError, TypeError) as exc:
             raise ValueError(
-                "managed ECPA Plan or event directory is unavailable"
+                "managed ECPA retained Plan snapshot is malformed"
             ) from exc
+        retained_digest = digest_bytes(retained_plan)
+        # The executed path is retained as command evidence, but it belongs to a
+        # launch workspace that is deliberately cleared between starts.  Offline
+        # validation therefore binds the canonical Plan bytes captured before
+        # launch instead of reopening mutable launch-side state.
+        if (
+            any(part in {".", ".."} for part in plan_path.parts)
+            or any(part in {".", ".."} for part in event_path.parts)
+            or snapshot.get("plan_raw_sha256") != retained_digest
+            or snapshot.get("execution_identity") != execution
+        ):
+            raise ValueError("managed ECPA retained Plan snapshot is malformed")
         event_identity = binding.get("host_event_directory")
         if (
             binding.get("activation_contract") != expected_contract
-            or binding.get("plan_id") != plan_artifact.plan_id
-            or binding.get("plan_sha256") != digest_bytes(plan_artifact.raw)
+            or binding.get("plan_id") != plan.plan_id
+            or binding.get("plan_sha256") != retained_digest
             or binding.get("launch_id") != execution.get("launch_id")
             or binding.get("controller_instance")
             != execution.get("controller_instance")
             or binding.get("shutdown_grace_seconds") != FORMAL_SHUTDOWN_GRACE_SECONDS
-            or event_identity
-            != {"device": event_metadata.st_dev, "inode": event_metadata.st_ino}
+            or not isinstance(event_identity, dict)
+            or set(event_identity) != {"device", "inode"}
+            or any(
+                not isinstance(event_identity.get(field), int)
+                or event_identity[field] < 0
+                for field in ("device", "inode")
+            )
         ):
             raise ValueError("managed ECPA Plan binding differs from execution")
         manager_prefix = [
@@ -1417,7 +1453,7 @@ def validate_record(
                     raise ValueError(
                         "formal adapter verification is not registry-owned"
                     )
-                validate_formal_adapter_verification(record, command)
+                validate_formal_adapter_verification(record, command, artifact_root)
                 if record["status"] == "complete":
                     validate_runner_snapshots(record["identity"], command)
 
@@ -1543,6 +1579,31 @@ def validate_cross_arm_scenario_binding(cell: str, rows: list[dict[str, Any]]) -
         raise ValueError(f"cell {cell} arms do not share one scenario entry point")
 
 
+def matched_identity_metadata(identity: dict[str, Any]) -> dict[str, Any]:
+    """Return static matched-arm metadata, excluding measured process epochs."""
+    result = {
+        key: value
+        for key, value in identity.items()
+        if key
+        not in {
+            "arm",
+            "evaluation_arm",
+            "activation_contract",
+            "adapter_verification",
+            "required_processes",
+        }
+    }
+    processes = identity.get("required_processes")
+    if processes is not None:
+        # Each record's snapshot validator checks its epochs. Cross-start matching
+        # compares the frozen logical slots because epochs are launch-local.
+        result["required_process_slots"] = [
+            {key: row.get(key) for key in ("host", "role", "ordinal")}
+            for row in processes
+        ]
+    return result
+
+
 def validate_batch(records: list[dict[str, Any]], root: Path, *, formal: bool) -> None:
     here = Path(__file__).resolve().parent
     scenario_map = {
@@ -1621,20 +1682,7 @@ def validate_batch(records: list[dict[str, Any]], root: Path, *, formal: bool) -
                 }
                 if len(plan_ids) != 1:
                     raise ValueError(f"cell {cell} arm {arm} does not share one plan")
-            identities = [
-                {
-                    k: v
-                    for k, v in row["identity"].items()
-                    if k
-                    not in {
-                        "arm",
-                        "evaluation_arm",
-                        "activation_contract",
-                        "adapter_verification",
-                    }
-                }
-                for row in rows
-            ]
+            identities = [matched_identity_metadata(row["identity"]) for row in rows]
             if any(value != identities[0] for value in identities[1:]):
                 raise ValueError(f"cell {cell} matched-arm metadata mismatch")
             orders = {(row["repetition"], row["arm_order"]) for row in rows}
