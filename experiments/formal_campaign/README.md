@@ -110,3 +110,20 @@ H3 evaluates every injected failure, including failed runs.  Unsupported
 tuples serving traffic or loss of the predecessor plan falsifies H3 directly;
 otherwise at least 95% of injections must meet the preregistered automatic
 recovery or bounded-operator-action objective.
+
+H3 HTTP probes use a frozen JSON POST `request_payload` and a
+`response_expectation.text_equals` task oracle. The runner retains the request
+payload digest and complete response body; the analyzer independently checks
+model, choice index, finish reason, exact text, and response digest. A nonempty
+body or a caller-provided correctness boolean is insufficient. Fault PIDs must
+belong to the current launcher's process session. These checks do not establish
+a transaction prepare barrier: `manager-crash-after-prepare` still requires an
+actual coordinator journal and a verified barrier before the signal is sent.
+
+H4 arm definitions may freeze `unset_environment` for inherited variables that
+must be absent. It is applied before all phase and server commands; assigning
+and unsetting the same variable is rejected. In a container exposing physical
+NPU nodes 3 and 6 as logical devices 0 and 1, do not set
+`ASCEND_RT_VISIBLE_DEVICES=3,6`: first record a real initialization/allocation
+probe and freeze the successful environment. A prelaunch dry-run cannot prove
+that device initialization succeeds.

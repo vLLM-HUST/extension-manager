@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
-from analyze import _recompute_h3_metrics
+from analyze import _recompute_h3_metrics, h3_response_correctness
 from h3_registration import canonical, command_digest
 
 ROOT = Path(__file__).resolve().parent
@@ -72,27 +72,65 @@ def wait_ready(url: str, timeout: float) -> None:
     raise TimeoutError(f"health endpoint did not become ready: {url}")
 
 
-def request_event(url: str, request_id: str, timeout: float) -> dict[str, Any]:
+def request_event(
+    url: str,
+    request_id: str,
+    timeout: float,
+    payload: dict[str, Any],
+    expected: dict[str, Any],
+) -> dict[str, Any]:
+    request_raw = canonical(payload)
+    detail = {
+        "request_id": request_id,
+        "request_method": "POST",
+        "request_payload_sha256": "sha256:" + hashlib.sha256(request_raw).hexdigest(),
+        "outcome": "lost",
+        "tuple_supported": False,
+        "functional_correctness": False,
+        "status_code": 0,
+        "response_body": "",
+        "response_sha256": "sha256:" + hashlib.sha256(b"").hexdigest(),
+    }
+    request = urllib.request.Request(
+        url,
+        data=request_raw,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "X-ECPA-Request-ID": request_id,
+        },
+    )
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
-            body = response.read()
-            supported = response.headers.get("x-ecpa-tuple-supported", "true")
-            return {
-                "request_id": request_id,
-                "outcome": "served" if 200 <= response.status < 300 else "lost",
-                "tuple_supported": supported.lower() == "true",
-                "functional_correctness": bool(body),
-                "status_code": response.status,
-                "response_sha256": "sha256:" + hashlib.sha256(body).hexdigest(),
-            }
-    except (OSError, urllib.error.URLError) as exc:
-        return {
-            "request_id": request_id,
-            "outcome": "lost",
-            "tuple_supported": True,
-            "functional_correctness": False,
-            "error": type(exc).__name__,
-        }
+        try:
+            response = urllib.request.urlopen(request, timeout=timeout)
+        except urllib.error.HTTPError as exc:
+            response = exc
+        with response:
+            body = response.read().decode("utf-8")
+            detail.update(
+                {
+                    "outcome": "served" if response.status == 200 else "lost",
+                    "tuple_supported": response.headers.get(
+                        "x-ecpa-tuple-supported", "false"
+                    ).lower()
+                    == "true",
+                    "status_code": response.status,
+                    "response_body": body,
+                    "response_sha256": "sha256:"
+                    + hashlib.sha256(body.encode()).hexdigest(),
+                }
+            )
+            try:
+                parsed = json.loads(body)
+            except ValueError:
+                parsed = None
+            detail["functional_correctness"] = (
+                response.status == 200
+                and h3_response_correctness(parsed, payload, expected)
+            )
+    except (OSError, urllib.error.URLError, UnicodeError) as exc:
+        detail["error"] = type(exc).__name__
+    return detail
 
 
 def main() -> int:
@@ -196,6 +234,8 @@ def main() -> int:
             subprocess.check_output(campaign["probe"]["state_command"], text=True)
         )
         target_pid = int(Path(arm["fault_target_pid_file"]).read_text().strip())
+        if launcher.poll() is not None or os.getsid(target_pid) != launcher.pid:
+            raise ValueError("fault target is not owned by this launcher session")
         target = process_identity(target_pid) | {
             "role": campaign["fault"]["target_role"]
         }
@@ -226,6 +266,8 @@ def main() -> int:
                 campaign["probe"]["request_url"],
                 f"request-{index:04d}",
                 campaign["probe"]["request_timeout_s"],
+                campaign["probe"]["request_payload"],
+                campaign["probe"]["response_expectation"],
             )
             request_details.append(detail)
             event("request-result", detail)

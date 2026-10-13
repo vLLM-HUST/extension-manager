@@ -435,6 +435,14 @@ def h3_campaign(cell: str) -> dict[str, object]:
             "health_url": "http://127.0.0.1:8187/health",
             "request_url": "http://127.0.0.1:8187/request",
             "request_count": 1,
+            "request_payload": {
+                "model": "test-model",
+                "prompt": "Reply ECPA",
+                "max_tokens": 8,
+                "temperature": 0,
+                "stream": False,
+            },
+            "response_expectation": {"text_equals": "ECPA"},
             "state_command": ["state"],
             "cleanup_command": ["cleanup"],
             "ready_timeout_s": 5,
@@ -639,6 +647,30 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
                     "outcome": "served",
                     "tuple_supported": True,
                     "functional_correctness": True,
+                    "request_method": "POST",
+                    "request_payload_sha256": "sha256:"
+                    + hashlib.sha256(
+                        json.dumps(
+                            {
+                                "model": "test-model",
+                                "prompt": "Reply ECPA",
+                                "max_tokens": 8,
+                                "temperature": 0,
+                                "stream": False,
+                            },
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode()
+                    ).hexdigest(),
+                    "status_code": 200,
+                    "response_body": (
+                        '{"model":"test-model","choices":['
+                        '{"index":0,"text":"ECPA","finish_reason":"stop"}]}'
+                    ),
+                    "response_sha256": "sha256:"
+                    + hashlib.sha256(
+                        b'{"model":"test-model","choices":[{"index":0,"text":"ECPA","finish_reason":"stop"}]}'
+                    ).hexdigest(),
                 },
             },
             {
@@ -740,3 +772,29 @@ def test_h3_rejects_unbound_fault_target(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="fault target start_ticks is not bound"):
         analyzer.analyze_h3(analyzer.load_protocol(), [row], tmp_path, campaign)
+
+
+@pytest.mark.parametrize(
+    "mutation", ["wrong-method", "payload-replay", "body-forgery", "response-forgery"]
+)
+def test_h3_recomputes_frozen_request_oracle(tmp_path: Path, mutation: str) -> None:
+    analyzer = load_analyzer()
+    row, campaign, raw = h3_record(analyzer, tmp_path)
+    detail = next(
+        event["detail"] for event in raw["events"] if event["kind"] == "request-result"
+    )
+    if mutation == "wrong-method":
+        detail["request_method"] = "GET"
+    elif mutation == "payload-replay":
+        detail["request_payload_sha256"] = "sha256:" + "f" * 64
+    elif mutation == "body-forgery":
+        detail["response_body"] = "nonempty fake completion"
+    else:
+        value = json.loads(detail["response_body"])
+        value["choices"][0]["text"] = "wrong answer"
+        detail["response_body"] = json.dumps(value)
+        detail["response_sha256"] = (
+            "sha256:" + hashlib.sha256(detail["response_body"].encode()).hexdigest()
+        )
+    with pytest.raises(ValueError, match="frozen POST|response digest|frozen oracle"):
+        analyzer._recompute_h3_metrics(row, raw, campaign)
