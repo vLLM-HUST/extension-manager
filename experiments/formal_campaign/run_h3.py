@@ -17,6 +17,7 @@ from typing import Any
 
 import jsonschema
 from analyze import _recompute_h3_metrics, h3_response_correctness
+from h3_phase_barrier import wait_native_prepare
 from h3_registration import canonical, command_digest
 
 ROOT = Path(__file__).resolve().parent
@@ -57,6 +58,46 @@ def process_identity(pid: int) -> dict[str, Any]:
         "start_ticks": start_ticks(pid),
         "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
     }
+
+
+def terminate_owned_session(
+    process: subprocess.Popen[bytes], owner: dict[str, Any]
+) -> None:
+    """Reclaim descendants even when SIGKILL already removed the leader."""
+    leader = Path(f"/proc/{owner['pid']}/stat")
+    if leader.exists() and start_ticks(owner["pid"]) != owner["start_ticks"]:
+        raise RuntimeError("launcher PID reused; refuse group cleanup")
+    if Path("/proc/sys/kernel/random/boot_id").read_text().strip() != owner["boot_id"]:
+        raise RuntimeError("boot identity changed; refuse group cleanup")
+
+    def members() -> list[int]:
+        result = []
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                fields = (entry / "stat").read_text().rsplit(")", 1)[1].split()
+                if (
+                    fields[0] != "Z"
+                    and int(fields[2]) == owner["pid"]
+                    and int(fields[3]) == owner["pid"]
+                ):
+                    if int(fields[19]) < owner["start_ticks"]:
+                        raise RuntimeError("session member predates launcher")
+                    result.append(int(entry.name))
+            except FileNotFoundError:
+                continue
+        return result
+
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        if members():
+            os.killpg(owner["pid"], sig)
+        deadline = time.monotonic() + 5
+        while members() and time.monotonic() < deadline:
+            time.sleep(0.05)
+    process.wait(timeout=5)
+    if members():
+        raise RuntimeError("owned launcher session survived cleanup")
 
 
 def wait_ready(url: str, timeout: float) -> None:
@@ -219,7 +260,92 @@ def main() -> int:
             }
         )
 
+    owned_launches: list[tuple[subprocess.Popen[bytes], dict[str, Any]]] = []
+
+    def retain_failure() -> None:
+        failure = load(out / "failure.json")
+        try:
+            report = json.loads(
+                subprocess.check_output(
+                    campaign["probe"]["cleanup_command"], text=True, timeout=30
+                )
+            )
+        except Exception as cleanup_exc:
+            report = {"error": str(cleanup_exc)}
+        cleanup_binding = write(out / "cleanup-report.json", report)
+        snapshot_binding = write(
+            out / "process-snapshot.json",
+            {
+                "start_id": start_id,
+                "failure": failure,
+                "owned_launches": [p for _, p in owned_launches],
+            },
+        )
+        request_binding = write(
+            out / "request-results.json",
+            {
+                "start_id": start_id,
+                "requests": [
+                    e["detail"] for e in events if e["kind"] == "request-result"
+                ],
+            },
+        )
+        write(
+            out / "record.json",
+            {
+                "schema": "ecpa-formal-campaign-record/v1",
+                "campaign_id": campaign["campaign_id"],
+                "evidence_class": "formal-real",
+                "cell_id": campaign["cell_id"],
+                "start_id": start_id,
+                "status": "failed",
+                "arm": args.arm,
+                "repetition": args.repetition,
+                "arm_order": args.arm_order,
+                "identity": campaign["fixed_identity"],
+                "metrics": {},
+                "deployment": {
+                    "registration_state": "registered",
+                    "receipt_sha256": digest(receipt_copy),
+                },
+                "artifacts": {
+                    "deployment_receipt": {
+                        "path": receipt_copy.name,
+                        "sha256": digest(receipt_copy),
+                    },
+                    "authority_registration": {
+                        "path": authority_copy.name,
+                        "sha256": digest(authority_copy),
+                    },
+                    "raw_log": {"path": log_path.name, "sha256": digest(log_path)},
+                    "request_results": request_binding,
+                    "process_snapshot": snapshot_binding,
+                    "cleanup_report": cleanup_binding,
+                },
+                "cleanup": {
+                    k: report.get(k) is True
+                    for k in (
+                        "processes_reclaimed",
+                        "ports_reclaimed",
+                        "devices_reclaimed",
+                    )
+                },
+                "failure": {
+                    "phase": "prepare-fault-recovery",
+                    "class": failure["error"],
+                },
+            },
+        )
+
     try:
+        phase = arm.get("phase_barrier")
+        if "prepare" in campaign["cell_id"] and (
+            not phase or phase["support"] != "supported"
+        ):
+            raise ValueError(
+                "arm lacks its own durable prepare protocol; no fault injected"
+            )
+        launched_ns = time.monotonic_ns()
         launcher = subprocess.Popen(
             arm["launch_command"],
             stdout=log_file,
@@ -227,6 +353,7 @@ def main() -> int:
             start_new_session=True,
         )
         launcher_identity = process_identity(launcher.pid)
+        owned_launches.append((launcher, launcher_identity))
         wait_ready(
             campaign["probe"]["health_url"], campaign["probe"]["ready_timeout_s"]
         )
@@ -240,8 +367,26 @@ def main() -> int:
             "role": campaign["fault"]["target_role"]
         }
         fault_detail = {"fault_id": campaign["fault"]["id"], **target}
-        event("fault-triggered", fault_detail)
+        if phase and phase["support"] == "supported":
+            if args.arm != "ecpa":
+                raise ValueError(
+                    "ECPA native prepare/recovery cannot be injected into a baseline"
+                )
+            proof = wait_native_prepare(
+                phase,
+                target=target,
+                launcher_pid=launcher.pid,
+                launch_id=start_id,
+                launched_ns=launched_ns,
+                state_before=state_before,
+            )
+            write(out / "prepare-proof.json", proof)
+            fault_detail["prepare_proof"] = proof
+            fault_detail["prepare_proof_sha256"] = digest(out / "prepare-proof.json")
+        if not same_live_process(target_pid, target["start_ticks"]):
+            raise ValueError("fault target changed after prepare validation")
         os.kill(target_pid, getattr(signal, campaign["fault"]["signal"]))
+        event("fault-triggered", fault_detail)
         deadline = time.monotonic() + campaign["fault"]["target_exit_timeout_s"]
         while time.monotonic() < deadline:
             if not same_live_process(target_pid, target["start_ticks"]):
@@ -257,6 +402,7 @@ def main() -> int:
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
+        owned_launches.append((restarted, process_identity(restarted.pid)))
         wait_ready(
             campaign["probe"]["health_url"], campaign["probe"]["ready_timeout_s"]
         )
@@ -275,26 +421,60 @@ def main() -> int:
             subprocess.check_output(campaign["probe"]["state_command"], text=True)
         )
         event("recovery-complete", state_after)
+    except Exception as exc:
+        write(
+            out / "failure.json",
+            {
+                "schema": "ecpa-h3-incomplete-start/v1",
+                "start_id": start_id,
+                "arm": args.arm,
+                "status": "failed",
+                "formal_result": False,
+                "error": str(exc),
+                "fault_injected": any(e["kind"] == "fault-triggered" for e in events),
+                "events": events,
+                "phase_barrier": arm.get("phase_barrier"),
+            },
+        )
+        raise
     finally:
-        for process in (restarted, launcher):
-            if process is not None and process.poll() is None:
-                os.killpg(process.pid, signal.SIGTERM)
-                try:
-                    process.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-                    process.wait(timeout=10)
+        for process, owner in reversed(owned_launches):
+            try:
+                terminate_owned_session(process, owner)
+            except Exception as exc:
+                write(
+                    out / "failure.json",
+                    {
+                        "start_id": start_id,
+                        "error": "owned-session-cleanup: " + str(exc),
+                        "events": events,
+                        "owner": owner,
+                    },
+                )
         log_file.close()
+        if (out / "failure.json").exists():
+            retain_failure()
 
-    cleanup = json.loads(
-        subprocess.check_output(campaign["probe"]["cleanup_command"], text=True)
-    )
-    if set(cleanup) != {
-        "processes_reclaimed",
-        "ports_reclaimed",
-        "devices_reclaimed",
-    } or not all(value is True for value in cleanup.values()):
-        raise RuntimeError("authority cleanup probe did not prove full reclamation")
+    if (out / "failure.json").exists():
+        raise RuntimeError("H3 cleanup failed; failed record retained")
+
+    try:
+        cleanup = json.loads(
+            subprocess.check_output(campaign["probe"]["cleanup_command"], text=True)
+        )
+        if set(cleanup) != {
+            "processes_reclaimed",
+            "ports_reclaimed",
+            "devices_reclaimed",
+        } or not all(value is True for value in cleanup.values()):
+            raise RuntimeError("authority cleanup probe did not prove full reclamation")
+    except Exception as exc:
+        write(
+            out / "failure.json",
+            {"start_id": start_id, "error": str(exc), "events": events},
+        )
+        retain_failure()
+        raise
     process_record = {
         "launcher_pid": launcher_identity["pid"],
         "launcher_start_ticks": launcher_identity["start_ticks"],

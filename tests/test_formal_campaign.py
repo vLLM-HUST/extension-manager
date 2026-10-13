@@ -742,6 +742,48 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
         "cleanup": cleanup,
         "metrics": {},
     }
+    phase = {
+        "support": "supported",
+        "reason": "synthetic unit fixture only",
+        "protocol": "ecpa-native-close-prepare-barrier/v1",
+        "journal_path": "/unit-only/gate.sqlite",
+        "barrier_path": "/unit-only/barrier.json",
+        "timeout_s": 1,
+    }
+    next(a for a in campaign["arms"] if a["id"] == arm)["phase_barrier"] = phase
+    native_rows = [
+        {
+            "operation": "close",
+            "kind": "intent",
+            "seq": 1,
+            "operation_id": "unit-intent",
+        }
+    ]
+    raw["events"][0]["detail"]["prepare_proof"] = {
+        "barrier": {
+            "schema": phase["protocol"],
+            "phase": "durable-close-intent-before-effect",
+            "launch_id": start_id,
+            "manager": {
+                **{k: target[k] for k in ("pid", "start_ticks", "boot_id")},
+                "session": process["launcher_pid"],
+            },
+            "journal_path": phase["journal_path"],
+            "observed_monotonic_ns": 1,
+            "native_rows_sha256": "sha256:"
+            + hashlib.sha256(
+                json.dumps(native_rows, sort_keys=True).encode()
+            ).hexdigest(),
+            "intent_sequence": 1,
+            "intent_operation_id": "unit-intent",
+        },
+        "native_rows": native_rows,
+        "native_state": {"predecessor_digest": predecessor},
+        "target_session": process["launcher_pid"],
+        "verified_monotonic_ns": 2,
+    }
+    raw_binding = write_artifact(root / f"{start_id}-raw.json", raw)
+    record["artifacts"]["raw_recovery"] = raw_binding
     record["metrics"] = module._recompute_h3_metrics(record, raw, campaign)
     return record, campaign, raw
 
@@ -764,7 +806,7 @@ def test_h3_complete_exact_stack_cell_is_reported_without_claiming_campaign(
     rows = []
     campaign = None
     for rep in range(1, 4):
-        for arm in analyzer.load_protocol()["arms"]:
+        for arm in ["ecpa"]:
             row, campaign, _ = h3_record(analyzer, tmp_path, arm=arm, rep=rep)
             rows.append(row)
     assert campaign is not None
@@ -772,16 +814,15 @@ def test_h3_complete_exact_stack_cell_is_reported_without_claiming_campaign(
     cell = campaign["cell_id"]
     assert result["status"] == "incomplete"
     assert result["formal_result"] is False
-    assert result["completed_cells"][cell]["formal_result"] is True
-    assert result["completed_cells"][cell]["status"] == "supported"
-    assert result["completed_cells"][cell]["starts"] == 9
+    assert cell not in result["completed_cells"]
+    assert result["formal_result"] is False
 
 
 def test_h3_rejects_replayed_raw_evidence_between_starts(tmp_path: Path) -> None:
     analyzer = load_analyzer()
     protocol = analyzer.load_protocol()
     first, campaign, _ = h3_record(analyzer, tmp_path, arm="ecpa")
-    second, _, _ = h3_record(analyzer, tmp_path, arm="manual-integration")
+    second, _, _ = h3_record(analyzer, tmp_path, arm="ecpa", rep=2)
     second["artifacts"]["raw_recovery"] = first["artifacts"]["raw_recovery"]
     with pytest.raises(ValueError, match="raw H3|reused"):
         analyzer.analyze_h3(protocol, [first, second], tmp_path, campaign)

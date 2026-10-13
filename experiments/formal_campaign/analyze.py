@@ -359,6 +359,67 @@ def _recompute_h3_metrics(
     for key in ("pid", "start_ticks", "boot_id"):
         if fault["detail"].get(key) != target[key]:
             raise ValueError(f"{start_id} fault target {key} is not bound")
+    if "prepare" in campaign_spec["cell_id"]:
+        phase = next(a for a in campaign_spec["arms"] if a["id"] == record["arm"]).get(
+            "phase_barrier"
+        )
+        if not phase or phase["support"] != "supported" or record["arm"] != "ecpa":
+            raise ValueError(
+                f"{start_id} lacks an arm-native supported prepare protocol"
+            )
+        proof = fault["detail"].get("prepare_proof", {})
+        barrier = proof.get("barrier", {})
+        rows = proof.get("native_rows", [])
+        state = proof.get("native_state", {})
+        manager = barrier.get("manager", {})
+        if (
+            barrier.get("schema") != phase["protocol"]
+            or barrier.get("phase") != "durable-close-intent-before-effect"
+        ):
+            raise ValueError(f"{start_id} lacks durable before-effect prepare evidence")
+        if barrier.get("launch_id") != start_id or any(
+            manager.get(k) != target[k] for k in ("pid", "start_ticks", "boot_id")
+        ):
+            raise ValueError(f"{start_id} prepare barrier identity differs")
+        if (
+            manager.get("session") != raw["process_identity"]["launcher_pid"]
+            or proof.get("target_session") != manager["session"]
+        ):
+            raise ValueError(f"{start_id} prepare barrier session differs")
+        if barrier.get("journal_path") != phase["journal_path"]:
+            raise ValueError(f"{start_id} prepare journal differs from frozen campaign")
+        if (
+            not 0
+            < barrier.get("observed_monotonic_ns", 0)
+            <= proof.get("verified_monotonic_ns", 0)
+            <= fault["monotonic_ns"]
+        ):
+            raise ValueError(f"{start_id} prepare/fault order differs")
+        native_digest = (
+            "sha256:"
+            + hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+        )
+        if native_digest != barrier.get("native_rows_sha256"):
+            raise ValueError(f"{start_id} prepare native journal hash differs")
+        intents = [
+            r
+            for r in rows
+            if r.get("operation") == "close" and r.get("kind") == "intent"
+        ]
+        receipts = [
+            r
+            for r in rows
+            if r.get("operation") == "close" and r.get("kind") == "receipt"
+        ]
+        if (
+            len(intents) != 1
+            or receipts
+            or intents[0].get("seq") != barrier.get("intent_sequence")
+            or intents[0].get("operation_id") != barrier.get("intent_operation_id")
+        ):
+            raise ValueError(f"{start_id} prepare native intent identity differs")
+        if state.get("predecessor_digest") != raw["pre_fault"]["predecessor_digest"]:
+            raise ValueError(f"{start_id} prepare predecessor differs")
     observed = kinds.get("fault-observed", [])
     if len(observed) != 1 or any(
         observed[0]["detail"].get(key) != target[key]
@@ -466,22 +527,10 @@ def _recompute_h3_metrics(
     }
 
 
-def _verify_h3_raw_artifact(
+def _verify_h3_registration(
     record: dict[str, Any], artifact_root: Path, campaign_spec: dict[str, Any]
-) -> None:
+) -> tuple[dict[str, str], str]:
     root = artifact_root.resolve()
-    binding = record["artifacts"].get("raw_recovery")
-    if not isinstance(binding, dict):
-        raise ValueError(f"{record['start_id']} lacks raw H3 recovery evidence")
-    path = (root / binding["path"]).resolve()
-    if not path.is_relative_to(root) or not path.is_file():
-        raise ValueError(f"{record['start_id']} raw H3 recovery evidence is missing")
-    if _digest_bytes(path) != binding["sha256"]:
-        raise ValueError(f"{record['start_id']} raw H3 recovery digest differs")
-    raw = _load_object(path)
-    errors = _schema_errors(raw, "h3-raw-artifact.schema.json")
-    if errors:
-        raise ValueError(f"{record['start_id']} raw H3 evidence: {errors[0].message}")
     receipt_path = (root / record["artifacts"]["deployment_receipt"]["path"]).resolve()
     receipt = _verify_h3_receipt(record, receipt_path, campaign_spec)
     authority_binding = record["artifacts"].get("authority_registration")
@@ -520,6 +569,30 @@ def _verify_h3_raw_artifact(
         raise ValueError(
             f"{record['start_id']} proxy registration is not receipt-bound"
         )
+    if authority["campaign_sha256"] != campaign_spec["_sha256"]:
+        raise ValueError("H3 authority campaign digest differs")
+    return authority_binding, proxy_sha
+
+
+def _verify_h3_raw_artifact(
+    record: dict[str, Any], artifact_root: Path, campaign_spec: dict[str, Any]
+) -> None:
+    root = artifact_root.resolve()
+    binding = record["artifacts"].get("raw_recovery")
+    if not isinstance(binding, dict):
+        raise ValueError(f"{record['start_id']} lacks raw H3 recovery evidence")
+    path = (root / binding["path"]).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise ValueError(f"{record['start_id']} raw H3 recovery evidence is missing")
+    if _digest_bytes(path) != binding["sha256"]:
+        raise ValueError(f"{record['start_id']} raw H3 recovery digest differs")
+    raw = _load_object(path)
+    errors = _schema_errors(raw, "h3-raw-artifact.schema.json")
+    if errors:
+        raise ValueError(f"{record['start_id']} raw H3 evidence: {errors[0].message}")
+    authority_binding, proxy_sha = _verify_h3_registration(
+        record, artifact_root, campaign_spec
+    )
     if (
         raw["authority_registration_sha256"] != authority_binding["sha256"]
         or raw["proxy_registration_sha256"] != proxy_sha
@@ -847,7 +920,12 @@ def _validate_intake(
                 raise ValueError(f"{row['start_id']} differs from frozen H3 cell")
             if row["identity"] != campaign_spec["fixed_identity"]:
                 raise ValueError(f"{row['start_id']} differs from frozen H3 identity")
-            _verify_h3_raw_artifact(row, artifact_root, campaign_spec)
+            if row["status"] == "complete":
+                _verify_h3_raw_artifact(row, artifact_root, campaign_spec)
+            else:
+                _verify_h3_registration(row, artifact_root, campaign_spec)
+                if row["metrics"]:
+                    raise ValueError("failed H3 start must not fabricate metrics")
         elif campaign == "h4":
             if campaign_spec is None:
                 raise ValueError("H4 intake requires the frozen campaign spec")
@@ -864,6 +942,10 @@ def _validate_intake(
         for repetition in range(1, protocol["minimum_starts"] + 1)
         for arm in protocol["arms"]
         if (cell, repetition, arm) not in indexed
+        or (
+            campaign == "h3"
+            and indexed[(cell, repetition, arm)]["status"] != "complete"
+        )
     ]
 
     for cell in definition["required_cells"]:
@@ -885,7 +967,11 @@ def _validate_intake(
             "process_snapshot",
             "cleanup_report",
         ):
-            digests = [row["artifacts"][label]["sha256"] for row in records]
+            digests = [
+                row["artifacts"][label]["sha256"]
+                for row in records
+                if row["status"] == "complete"
+            ]
             if len(digests) != len(set(digests)):
                 raise ValueError(
                     f"{campaign.upper()} {label} artifacts are reused across starts"
@@ -1100,6 +1186,9 @@ def analyze_h3(
             "missing": missing,
             "metrics": None,
             "completed_cells": completed_cell,
+            "failed_starts": [
+                r["start_id"] for r in indexed.values() if r["status"] == "failed"
+            ],
         }
     rows = list(indexed.values())
     injected = [row for row in rows if row["metrics"]["injected_failure"]]

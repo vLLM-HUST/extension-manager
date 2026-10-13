@@ -76,7 +76,7 @@
   },
   "allOf": [
     {"if": {"properties": {"status": {"const": "failed"}}}, "then": {"required": ["failure"], "properties": {"failure": {"type": "object"}}}},
-    {"if": {"properties": {"campaign_id": {"const": "H3-transactional-recovery-v1"}}}, "then": {"required": ["process_identity"], "properties": {"process_identity": {"$ref": "#/definitions/h3ProcessIdentity"}, "artifacts": {"required": ["raw_recovery", "authority_registration"]}, "metrics": {"$ref": "#/definitions/h3metrics"}}}},
+    {"if": {"properties": {"campaign_id": {"const": "H3-transactional-recovery-v1"}, "status": {"const": "complete"}}}, "then": {"required": ["process_identity"], "properties": {"process_identity": {"$ref": "#/definitions/h3ProcessIdentity"}, "artifacts": {"required": ["raw_recovery", "authority_registration"]}, "metrics": {"$ref": "#/definitions/h3metrics"}}}},
     {"if": {"properties": {"campaign_id": {"const": "H4-matched-cost-v1"}}}, "then": {"required": ["process_identity"], "properties": {"artifacts": {"required": ["raw_measurement"]}}}},
     {"if": {"properties": {"campaign_id": {"const": "H4-matched-cost-v1"}, "status": {"const": "complete"}}}, "then": {"properties": {"metrics": {"$ref": "#/definitions/h4metrics"}}}}
   ],

@@ -23,6 +23,8 @@ PROTOCOL_FILES = {
     name: f"experiments/formal_campaign/{name}"
     for name in (
         "analyze.py",
+        "h3_phase_barrier.py",
+        "h3_native_prepare.py",
         "h3-authority-registration.schema.json",
         "h3-campaign.schema.json",
         "h3-deployment-receipt.schema.json",
@@ -107,6 +109,17 @@ def _validate_campaign(campaign: dict[str, Any]) -> None:
     ).validate(campaign)
     if tuple(row["id"] for row in campaign["arms"]) != ARMS:
         raise ValueError("campaign arms must retain the frozen order")
+    if "prepare" in campaign["cell_id"]:
+        for arm in campaign["arms"]:
+            if "phase_barrier" not in arm:
+                raise ValueError(
+                    "prepare campaign must retain every arm support declaration"
+                )
+            phase = arm["phase_barrier"]
+            if phase["support"] == "supported" and arm["id"] != "ecpa":
+                raise ValueError(
+                    "baseline requires its own native protocol; ECPA adapter forbidden"
+                )
     fixed = campaign["fixed_identity"]
     required = {
         "manager_commit",
