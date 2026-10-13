@@ -50,6 +50,21 @@ def _artifact(directory: Path, declared_path: str) -> Path:
     return path
 
 
+def _bound_artifact(directory: Path, declared_path: str) -> Path:
+    """Open only a controlled archive copy of a formerly absolute path."""
+    original = Path(declared_path)
+    archive = directory / original.parent.name / original.name
+    relocated = directory / original.name
+    for candidate in (archive, relocated):
+        if candidate.is_file():
+            return candidate
+    raise ValueError(f"bound artifact is missing: {declared_path}")
+
+
+def _bare_sha256(path: Path) -> str:
+    return _sha256(path).removeprefix("sha256:")
+
+
 def _expected_orders(campaign: dict[str, Any]) -> set[str]:
     orders = campaign.get("installation_orders")
     if not isinstance(orders, list):
@@ -124,7 +139,7 @@ def _validate_planner(
             artifact = _artifact(path.parent, command[f"{stream}_path"])
             if _sha256(artifact) != command[f"{stream}_sha256"]:
                 raise ValueError(f"planner {stream} artifact digest mismatch")
-    config = _artifact(path.parent, planner["config_path"])
+    config = _bound_artifact(path.parent, planner["config_path"])
     if _sha256(config) != planner.get("config_sha256"):
         raise ValueError("planner configuration digest mismatch")
     if planner.get("all_exit_zero") is not all_zero or not all_zero:
@@ -139,6 +154,148 @@ def _validate_planner(
     if not {item["entry_point"] for item in campaign["members"]} <= plugins:
         raise ValueError("planner dry run does not activate every frozen member")
     return planner, _sha256(path)
+
+
+def _validate_v2_source_bindings(
+    oracle: dict[str, Any], campaign: dict[str, Any]
+) -> None:
+    sources = oracle.get("sources")
+    if not isinstance(sources, dict):
+        raise ValueError("v2 oracle omits frozen source bindings")
+    required = {"lifecycle_profiler", "kvcompress", "host_core", "host_ascend"}
+    if set(sources) != required:
+        raise ValueError("v2 oracle source set does not match the formal case")
+    for name, source in sources.items():
+        if not isinstance(source, dict):
+            raise ValueError(f"v2 oracle source {name} is invalid")
+        for key in ("commit", "tree"):
+            if not re.fullmatch(r"[0-9a-f]{40}", str(source.get(key, ""))):
+                raise ValueError(f"v2 oracle source {name} has invalid {key}")
+        files = source.get("files")
+        if (
+            not isinstance(files, dict)
+            or not files
+            or any(
+                not isinstance(file_name, str)
+                or not re.fullmatch(r"[0-9a-f]{40}", str(blob))
+                for file_name, blob in files.items()
+            )
+        ):
+            raise ValueError(f"v2 oracle source {name} has invalid blob bindings")
+    members = {item["id"]: item for item in campaign["members"]}
+    for member_id, source_id in (
+        ("lifecycle_profiler", "lifecycle_profiler"),
+        ("kvcompress", "kvcompress"),
+    ):
+        if any(
+            members[member_id].get(key) != sources[source_id].get(key)
+            for key in ("commit", "tree")
+        ):
+            raise ValueError(f"v2 oracle does not bind campaign member {member_id}")
+    if campaign["host"]["core"].get("commit") != sources["host_core"].get(
+        "commit"
+    ) or campaign["host"]["ascend"].get("commit") != sources["host_ascend"].get(
+        "commit"
+    ):
+        raise ValueError("v2 oracle does not bind the frozen host commits")
+
+
+def _validate_v2_oracle(
+    path: Path,
+    oracle: dict[str, Any],
+    campaign: dict[str, Any],
+    campaign_digest: str,
+) -> str:
+    bare_campaign = campaign_digest.removeprefix("sha256:")
+    verdict = oracle.get("verdict")
+    if verdict not in {"admit", "reject"}:
+        raise ValueError("v2 oracle verdict must be admit or reject")
+    assert isinstance(verdict, str)
+    campaign_binding = oracle.get("campaign", {})
+    if (
+        campaign_binding.get("sha256") != bare_campaign
+        or campaign_binding.get("revision") != campaign.get("campaign_revision")
+        or oracle.get("case_id") != campaign.get("case_id")
+    ):
+        raise ValueError("v2 oracle does not bind the frozen campaign and case")
+
+    receipt_path = path.parent / "oracle-receipt.json"
+    receipt = _load(receipt_path)
+    verifier = _artifact(path.parent, receipt.get("verifier", ""))
+    if (
+        receipt.get("schema") != "ecpa-h2-independent-source-oracle-receipt/v2"
+        or receipt.get("campaign_sha256") != bare_campaign
+        or Path(str(receipt.get("oracle", ""))).name != path.name
+        or receipt.get("oracle_sha256") != _bare_sha256(path)
+        or receipt.get("verdict") != verdict
+        or receipt.get("verifier_sha256") != _bare_sha256(verifier)
+        or receipt.get("verification", {}).get("result") != "PASS"
+    ):
+        raise ValueError("v2 independent oracle receipt is invalid")
+
+    prior_binding = oracle.get("prior_independent_receipt", {})
+    prior_path = _bound_artifact(path.parent, str(prior_binding.get("path", "")))
+    prior = _load(prior_path)
+    prior_review = _bound_artifact(prior_path.parent, str(prior.get("review", "")))
+    prior_verifier = _bound_artifact(prior_path.parent, str(prior.get("verifier", "")))
+    predecessor = campaign.get("predecessor_campaign", {})
+    if (
+        prior.get("schema") != "ecpa-h2-independent-ownership-oracle-receipt/v1"
+        or prior_binding.get("sha256") != _bare_sha256(prior_path)
+        or prior_binding.get("review_sha256") != prior.get("review_sha256")
+        or prior.get("review_sha256") != _bare_sha256(prior_review)
+        or prior.get("verifier_sha256") != _bare_sha256(prior_verifier)
+        or prior_binding.get("prior_campaign_sha256") != prior.get("campaign_sha256")
+        or predecessor.get("sha256") != prior.get("campaign_sha256")
+        or predecessor.get("status") != "excluded-fail-closed"
+        or prior.get("verdict") != verdict
+        or prior.get("last_verification", {}).get("result") != "PASS"
+    ):
+        raise ValueError("v2 oracle prior independent source receipt is invalid")
+
+    frozen = oracle.get("frozen_runtime_inputs", {})
+    if (
+        frozen.get("model") != campaign.get("model")
+        or frozen.get("workload") != campaign.get("workload")
+        or frozen.get("tensor_parallel_size")
+        != campaign.get("host", {}).get("tensor_parallel_size")
+        or frozen.get("compression_threshold_tokens")
+        != campaign.get("kvcompress", {}).get("compression_threshold_tokens")
+        or oracle.get("revision_2_assessment", {}).get("source_ownership_changed")
+        is not False
+    ):
+        raise ValueError("v2 oracle frozen runtime/source assessment drifted")
+    _validate_v2_source_bindings(oracle, campaign)
+    conflict = oracle.get("ownership_decision", {}).get("conflict")
+    if conflict is not (verdict == "reject"):
+        raise ValueError("v2 oracle verdict disagrees with its ownership decision")
+    return verdict
+
+
+def _validate_oracle(
+    path: Path, campaign: dict[str, Any], campaign_digest: str
+) -> tuple[str, str]:
+    oracle = _load(path)
+    digest = _sha256(path)
+    if oracle.get("schema") == "ecpa-h2-real-mod-oracle/v1":
+        if (
+            oracle.get("status") != "automated-independent-reviewed"
+            or oracle.get("campaign_sha256") != campaign_digest
+            or oracle.get("review", {}).get("verdict") != "PASS"
+            or oracle.get("review", {}).get("kind") != "automated-independent"
+        ):
+            raise ValueError("v1 independent oracle is invalid")
+        labels = [
+            item
+            for item in oracle.get("labels", [])
+            if item.get("case_id") == campaign["case_id"]
+        ]
+        if len(labels) != 1 or labels[0].get("decision") not in {"admit", "reject"}:
+            raise ValueError("v1 independent oracle case label is invalid")
+        return labels[0]["decision"], digest
+    if oracle.get("schema") == "ecpa-h2-independent-source-oracle/v2":
+        return _validate_v2_oracle(path, oracle, campaign, campaign_digest), digest
+    raise ValueError("unsupported independent oracle schema")
 
 
 def _validate_manifest(run_dir: Path, receipt: dict[str, Any]) -> dict[str, str]:
@@ -413,20 +570,14 @@ def assess(
             }
         )
 
-    oracle = None
     oracle_digest = None
+    oracle_decision = None
     if oracle_path is None:
         blockers.add("independent-oracle-missing")
     else:
-        oracle, oracle_digest = _load(oracle_path), _sha256(oracle_path)
-        if (
-            oracle.get("schema") != "ecpa-h2-real-mod-oracle/v1"
-            or oracle.get("status") != "automated-independent-reviewed"
-            or oracle.get("campaign_sha256") != campaign_digest
-            or oracle.get("review", {}).get("verdict") != "PASS"
-            or oracle.get("review", {}).get("kind") != "automated-independent"
-        ):
-            blockers.add("independent-oracle-invalid")
+        oracle_decision, oracle_digest = _validate_oracle(
+            oracle_path, campaign, campaign_digest
+        )
     planner = None
     planner_digest = None
     if schema_name == SOURCE_BOUND_CAMPAIGN_SCHEMA:
@@ -436,18 +587,6 @@ def assess(
             planner, planner_digest = _validate_planner(
                 planner_path, campaign, campaign_digest
             )
-    oracle_decision = None
-    if oracle is not None and "independent-oracle-invalid" not in blockers:
-        labels = [
-            item
-            for item in oracle.get("labels", [])
-            if item.get("case_id") == campaign["case_id"]
-        ]
-        if len(labels) != 1 or labels[0].get("decision") not in {"admit", "reject"}:
-            blockers.add("oracle-case-label-missing")
-        else:
-            oracle_decision = labels[0]["decision"]
-
     if len(record_paths) != len(receipt_paths) and (record_paths or receipt_paths):
         raise ValueError("each formal record requires one explicit runtime receipt")
     accepted: list[dict[str, Any]] = []
