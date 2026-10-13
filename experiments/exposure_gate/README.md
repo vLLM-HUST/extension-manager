@@ -74,23 +74,38 @@ lease/crash cases, and the real three-arm runner. Until those bindings are
 registered and reviewed, this slice demonstrates the external request path,
 host-journal validation mechanics, and cleanup behavior only.
 
-`formal_proxy.py` now provides the fail-closed preparation step for that run.
-It consumes the runner's post-launch process transition and will write a new
+`formal_proxy.py` and the formal runner now provide the fail-closed execution
+path for that run. The runner rewrites the registered SUT endpoint from public
+port 8187 to its separately registered backend port, freezes the post-launch
+process transition, and only then writes a new
 `ecpa-loopback-formal-host-authorization/v1` input only when retained host
 bytes contain canonical, host-assigned `api-server`, `engine-core-scheduler`,
-and `worker` identities. The independent proxy re-reads those journal bytes
-and live Linux identities before each candidate admission. Its route binding
-also includes the full-membership digest and an automated-independent review
-receipt for the exact proxy command. This code is an enabling path, not a new
-formal result: the proxy command and changed backend/client ports still need a
-reviewed deployment registration before a runner may use them.
+and `worker` identities. It checks an automated-independent registration of
+the exact proxy source, argv, public/backend/predecessor ports, lease, and
+review receipt. The independently launched proxy re-reads journal bytes and
+live Linux identities before opening and before each phase; loss of the proxy,
+observer, route, or membership fails the start. Its authorization, journal,
+offline observation, stdout/stderr, process identity, and cleanup outcome are
+bound into the runner command and receipt. Readiness and workload sources keep
+their registered port 8187 URLs, so successful requests necessarily cross the
+proxy rather than reaching the backend directly.
+
+This is an enabling path, not a new formal result. A candidate must add a
+`formal_proxy_registrations` map to each arm's runner arguments after
+regenerating the backend-port SUT command fingerprints. The map has one entry
+per deterministic start ID because private authorization, socket, and journal
+paths differ across starts. `formal_proxy_command_material` produces each
+exact argv digest for independent review. A requested map with a missing start
+entry fails before launch. Fixture and same-UID tests cover only fail-closed
+mechanics and remain ineligible.
 
 An audit of the retained H1 r5 process transitions finds real host-assigned
 engine and worker identities, but no host-assigned `api-server` identity. All
 nine therefore fail this new gate with `formal proxy membership lacks
 host-owned roles: api-server`; none may be relabeled as an exposure result.
-The host must bind the serve parent before parser-time general plugin loading,
-then the exact Host wheel and proxy command must be requalified and registered.
+The latest Host preflight binds all three process layers, but that Host commit
+and the exact backend-port/proxy commands still need upstream qualification and
+deployment registration before any run can enter the formal aggregate.
 
 The source-bound
 [`proxy-parent-membership-preflight-20261013.json`](artifacts/proxy-parent-membership-preflight-20261013.json)

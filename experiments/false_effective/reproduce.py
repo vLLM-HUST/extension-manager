@@ -13,6 +13,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parents[1]))
 
 from harness import ARMS, aggregate, canonical, project_paper_result  # noqa: E402
 from runner import (  # noqa: E402

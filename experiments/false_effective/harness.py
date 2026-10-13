@@ -1547,6 +1547,8 @@ def validate_record(
             "phase_invocations": record["command"].get("phase_invocations"),
             "excluded_fields": ["artifact_root", "receipt_digest"],
         }
+        if record["command"].get("formal_proxy") is not None:
+            expected_receipt["formal_proxy"] = record["command"]["formal_proxy"]
         if receipt != expected_receipt or digest_file(receipt_path) != record.get(
             "receipt_digest"
         ):
