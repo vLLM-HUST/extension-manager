@@ -223,3 +223,81 @@ def test_supervisor_nested_session_is_owned_and_reclaimed(tmp_path):
     assert all(len(e["ownership_sessions"]) == 2 for e in targets)
     assert result["cleanup_errors"] == []
     assert not any(runner.live(s) for e in targets for s in e["ownership_sessions"])
+
+
+@pytest.mark.parametrize(
+    "content,finish,passes",
+    [
+        ("ECPA-WORKER-READY", "stop", True),
+        (" ECPA-WORKER-READY\n", "stop", True),
+        ("ECPA-WORKER-READY", "length", False),
+        ("10 repeated junk", "length", False),
+        (None, "stop", False),
+    ],
+)
+def test_frozen_response_oracle_rejects_rpc_success_with_wrong_content(
+    tmp_path, content, finish, passes
+):
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(
+                json.dumps(
+                    {
+                        "model": "cpu-http-fixture",
+                        "usage": {"completion_tokens": 24},
+                        "choices": [
+                            {"message": {"content": content}, "finish_reason": finish}
+                        ],
+                    }
+                ).encode()
+            )
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    arm = {
+        "probe": {
+            "url": f"http://127.0.0.1:{server.server_port}/",
+            "payload": {"model": "cpu-http-fixture"},
+            "response_oracle": {
+                "type": "exact-message-content",
+                "expected": "ECPA-WORKER-READY",
+                "strip_outer_whitespace": True,
+                "finish_reason": "stop",
+            },
+        },
+        "request_timeout_s": 1,
+        "probe_poll_s": 0.01,
+    }
+    try:
+        if passes:
+            runner.probe(arm, "CPU_PREFLIGHT_ONLY", tmp_path, 0, 1)
+        else:
+            with pytest.raises(ValueError, match="task_oracle_failed"):
+                runner.probe(arm, "CPU_PREFLIGHT_ONLY", tmp_path, 0, 1)
+        attempts = json.loads((tmp_path / "phase0.probe-attempts.json").read_text())
+        assert len(attempts) == 1
+        assert attempts[0]["rpc_lifecycle_ready"] is True
+        assert attempts[0]["accepted"] is passes
+        assert attempts[0]["task_oracle_status"] == (
+            "passed" if passes else "task_oracle_failed"
+        )
+        assert (
+            json.loads((tmp_path / "phase0.response0.bin").read_bytes())["choices"][0][
+                "message"
+            ]["content"]
+            == content
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

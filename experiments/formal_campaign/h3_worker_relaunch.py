@@ -255,6 +255,18 @@ def validate(campaign: dict[str, Any]) -> None:
             if s["role"] == "launcher"
         ):
             raise ValueError("launcher source does not bind executed argv")
+        oracle = arm.get("probe", {}).get("response_oracle")
+        if oracle is not None and (
+            not isinstance(oracle, dict)
+            or set(oracle)
+            != {"type", "expected", "strip_outer_whitespace", "finish_reason"}
+            or oracle["type"] != "exact-message-content"
+            or oracle["finish_reason"] != "stop"
+            or not isinstance(oracle["expected"], str)
+            or not oracle["expected"]
+            or type(oracle["strip_outer_whitespace"]) is not bool
+        ):
+            raise ValueError("invalid frozen response oracle")
         if campaign["classification"] == "QUALIFIED_NONFORMAL":
             if not arm["probe"]["url"].startswith("http://127.0.0.1:"):
                 raise ValueError("direct loopback model completion probe required")
@@ -357,7 +369,7 @@ def worker(arm, phase, owner, launched_wall_ns):
 
 def probe(arm, classification, output, phase_index, timeout):
     """Retain actual direct-backend completion bytes; no authority claim."""
-    if classification == "CPU_PREFLIGHT_ONLY":
+    if classification == "CPU_PREFLIGHT_ONLY" and "probe_command" in arm:
         result = subprocess.run(
             arm["probe_command"],
             capture_output=True,
@@ -381,7 +393,11 @@ def probe(arm, classification, output, phase_index, timeout):
         request = urllib.request.Request(
             spec["url"], data=raw_request, headers={"Content-Type": "application/json"}
         )
-        item = {"attempt": len(attempts), "monotonic_ns": time.monotonic_ns()}
+        item = {
+            "attempt": len(attempts),
+            "monotonic_ns": time.monotonic_ns(),
+            "task_oracle_status": "semantic_unverified",
+        }
         try:
             with urllib.request.urlopen(
                 request,
@@ -401,6 +417,27 @@ def probe(arm, classification, output, phase_index, timeout):
                 and data["usage"]["completion_tokens"] > 0
                 and bool(data["choices"])
             )
+            item["rpc_lifecycle_ready"] = accepted
+            oracle = spec.get("response_oracle")
+            if accepted and oracle is not None:
+                content = data["choices"][0].get("message", {}).get("content")
+                observed = (
+                    content.strip()
+                    if isinstance(content, str) and oracle["strip_outer_whitespace"]
+                    else content
+                )
+                task_ok = (
+                    observed == oracle["expected"]
+                    and data["choices"][0].get("finish_reason")
+                    == oracle["finish_reason"]
+                )
+                item["task_oracle_status"] = (
+                    "passed" if task_ok else "task_oracle_failed"
+                )
+                item["response_oracle"] = oracle
+                item["observed_message_content"] = content
+                item["observed_finish_reason"] = data["choices"][0].get("finish_reason")
+                accepted = task_ok
         except urllib.error.HTTPError as exc:
             item["status"] = exc.code
             name = f"phase{phase_index}.response{len(attempts)}.bin"
@@ -416,6 +453,10 @@ def probe(arm, classification, output, phase_index, timeout):
         (output / f"phase{phase_index}.probe-attempts.json").write_text(
             json.dumps(attempts, indent=2) + "\n"
         )
+        if item["task_oracle_status"] == "task_oracle_failed":
+            raise ValueError(
+                "task_oracle_failed: completed RPC violated frozen exact response"
+            )
         if accepted:
             return
         time.sleep(arm["probe_poll_s"])

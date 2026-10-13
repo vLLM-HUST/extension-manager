@@ -35,7 +35,43 @@ if "--worker" in sys.argv:
     temp = target.with_suffix(".tmp")
     temp.write_text(json.dumps(row) + "\n")
     temp.replace(target)
-    time.sleep(60)
+    if os.environ.get("FIXTURE_HTTP_PORT"):
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                request = json.loads(
+                    self.rfile.read(int(self.headers["Content-Length"]))
+                )
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(
+                    json.dumps(
+                        {
+                            "model": request["model"],
+                            "usage": {"completion_tokens": 1},
+                            "choices": [
+                                {
+                                    "message": {
+                                        "content": os.environ.get(
+                                            "FIXTURE_HTTP_CONTENT", "ECPA-WORKER-READY"
+                                        )
+                                    },
+                                    "finish_reason": "stop",
+                                }
+                            ],
+                        }
+                    ).encode()
+                )
+
+            def log_message(self, *args):
+                pass
+
+        ThreadingHTTPServer(
+            ("127.0.0.1", int(os.environ["FIXTURE_HTTP_PORT"])), Handler
+        ).serve_forever()
+    else:
+        time.sleep(60)
 else:
     process = subprocess.Popen(
         [sys.executable, __file__, "--worker", *sys.argv[1:]],
