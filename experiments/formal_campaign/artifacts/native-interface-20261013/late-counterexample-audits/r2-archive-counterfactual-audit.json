@@ -1,6 +1,6 @@
 {
-  "capture_wall_ns": 1791934650212142057,
-  "verifier_source_sha256": "a54c1c99233c4edfd71307d1c543e55a5db7320f3281c09baba0f490688ba331",
+  "capture_wall_ns": 1791935220256917510,
+  "verifier_source_sha256": "092a86cd3a0de66531a798f0a9d850496ff0969bbde9bb0d183b96c60126b828",
   "original_archive_sha256": "b04787939bd54931e34e05beb2ca71e0a2df5df55846ecf78917783d654acf73",
   "fully_rehashed_archive_inventory": true,
   "results": [
@@ -48,6 +48,11 @@
       "case": "parsed-status-prefix-diverges-from-raw-status",
       "rejected": true,
       "reason": "authenticated raw status divergence"
+    },
+    {
+      "case": "R1-foreign-workers-and-matching-cleanup-with-original-spec-Host-journal",
+      "rejected": true,
+      "reason": "original source registration/native scope"
     }
   ],
   "formal_result": false

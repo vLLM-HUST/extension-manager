@@ -247,31 +247,80 @@ def inspect(files):
     )
     journal_name = "r2/" + Path(native["VLLM_HUST_EXT_EVIDENCE_PATH"]).name
     host_events = [json.loads(line) for line in raw(journal_name).splitlines()]
-    for peer in peers:
-        p = peer["process"]
+
+    def validate_registered_peers(
+        attempt,
+        config,
+        binding,
+        registered,
+        actual_peers,
+        original_events,
+        actual_owner,
+    ):
         need(
-            peer["source_files"] == native_sources
-            and p["assignment_source"] == "host"
-            and p["start_identity"] == f"pid:{p['pid']}:start_ticks:{p['start_ticks']}"
-            and p["boot_id"] == owner["boot_id"]
-            and p["start_ticks"] >= owner["start_ticks"],
-            "native peer source/kernel epoch",
+            binding["publisher"] == actual_owner
+            and binding["manager_source_sha256"] == config["manager_source_sha256"],
+            "actual Manager source/kernel binding",
         )
         need(
-            any(
-                r.get("event") == "invoked"
-                and r.get("entry_point", {}).get("name") == "kv_materialization"
-                and r.get("plan_id") == spec["native_plan_id"]
-                and r.get("launch_id") == spec["native_launch_id"]
-                and all(
-                    r.get("process", {}).get(k) == v
-                    for k, v in p.items()
-                    if k not in {"boot_id", "session", "start_ticks"}
-                )
-                for r in host_events
+            actual_peers == registered["senders"]
+            and registered["native_plan_id"]
+            == binding["environment"]["VLLM_ECPA_PLAN_ID"]
+            and registered["native_launch_id"]
+            == binding["environment"]["VLLM_ECPA_LAUNCH_ID"],
+            "original source registration/native scope",
+        )
+        need(
+            len(actual_peers) == 3
+            and len({x["process"]["pid"] for x in actual_peers}) == 3
+            and {(x["process"]["role"], x["process"]["ordinal"]) for x in actual_peers}
+            == {("api-server", 0), ("worker", 0), ("worker", 1)},
+            "original API/two-worker role set",
+        )
+        snapshots = obj(attempt + "/source-snapshot-map.json")
+        need(len(snapshots) == len(config["sources"]), "source closure incomplete")
+        for snapshot, original in zip(snapshots, config["sources"], strict=True):
+            need(
+                {k: snapshot[k] for k in original} == original
+                and sha(raw(snapshot["archived_path"])) == original["sha256"],
+                "original source snapshot binding",
+            )
+        frozen_sources = {x["path"]: x["sha256"] for x in config["sources"]}
+        need(
+            all(
+                frozen_sources.get(x["path"]) == x["sha256"]
+                for x in config["native_source_files"]
             ),
-            "registered peer lacks original Host source event",
+            "original native source closure",
         )
+        for peer in actual_peers:
+            p = peer["process"]
+            need(
+                peer["source_files"] == config["native_source_files"]
+                and p["assignment_source"] == "host"
+                and p["start_identity"]
+                == f"pid:{p['pid']}:start_ticks:{p['start_ticks']}"
+                and p["boot_id"] == actual_owner["boot_id"]
+                and p["start_ticks"] >= actual_owner["start_ticks"],
+                "native peer source/kernel epoch",
+            )
+            need(
+                any(
+                    r.get("event") == "invoked"
+                    and r.get("entry_point", {}).get("name") == "kv_materialization"
+                    and r.get("plan_id") == registered["native_plan_id"]
+                    and r.get("launch_id") == registered["native_launch_id"]
+                    and all(
+                        r.get("process", {}).get(k) == v
+                        for k, v in p.items()
+                        if k not in {"boot_id", "session", "start_ticks"}
+                    )
+                    for r in original_events
+                ),
+                "registered peer lacks original Host source event",
+            )
+
+    validate_registered_peers("r2", cfg, receipt, spec, peers, host_events, owner)
 
     descriptor = obj("r2/run/collector-launcher-descriptor.json")
     ready = obj("r2/run/collector-ready.bin")
@@ -446,6 +495,16 @@ def inspect(files):
             "r1/" + Path(r1_binding["environment"]["VLLM_HUST_EXT_EVIDENCE_PATH"]).name
         ).splitlines()
     ]
+    r1_spec = obj("r1/run/collector-spec.json")
+    validate_registered_peers(
+        "r1",
+        obj("r1/owner-config.json"),
+        r1_binding,
+        r1_spec,
+        r1_peers,
+        r1_events,
+        r1_owner,
+    )
     cleanup("r1", r1_owner, r1_peers, r1_events)
     need(
         terminal["wall_ns"] > max(r["observed_at_ns"] for r in host_events)

@@ -96,6 +96,7 @@ def test_real_finite_native_transport_archive():
         "foreign-session",
         "r1-cleanup-omitted",
         "r1-npu-live",
+        "r1-retargeted-worker",
         "legacy-source",
         "missing-accept-clock",
         "missing-ACK",
@@ -123,6 +124,16 @@ def test_fully_rehashed_semantic_and_ownership_negatives(tmp_path, case):
         )
     elif case == "r1-cleanup-omitted":
         del files["r1/run/terminal-process-audit.json"]
+    elif case == "r1-retargeted-worker":
+        peers = json.loads(files["r1/run/actual-owned-source-peers.json"])
+        p = peers[2]["process"]
+        p["pid"] += 1000000
+        p["start_identity"] = f"pid:{p['pid']}:start_ticks:{p['start_ticks']}"
+        files["r1/run/actual-owned-source-peers.json"] = verify.canonical(peers)
+        terminal = json.loads(files["r1/run/terminal-process-audit.json"])
+        terminal["source_peers"][2]["source_process"] = p
+        terminal["source_peers"][2]["expected_kernel"]["pid"] = p["pid"]
+        files["r1/run/terminal-process-audit.json"] = verify.canonical(terminal)
     elif case in {"legacy-source", "missing-accept-clock"}:
         path = "r2/run/native-raw.jsonl"
         rows = [json.loads(x) for x in files[path].splitlines()]
