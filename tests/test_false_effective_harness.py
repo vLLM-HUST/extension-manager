@@ -314,13 +314,12 @@ assert commit == {
     descriptor.write_bytes(
         canonical(
             {
-                "schema": "ecpa-evidence-quarantine-fault/v1",
+                "schema": "ecpa-evidence-quarantine-fault/v2",
                 "scenario": "partial-worker-coverage",
                 "target": {
                     "host": "host-a",
                     "role": "worker",
                     "ordinal": 0,
-                    "process_epoch": 7,
                 },
                 "entry_point": entry_point,
             }
@@ -430,10 +429,17 @@ def test_scenario_binding_pins_descriptor_and_cross_arm_entry_point(tmp_path):
     subcommand_index = fault["arguments"].index("partial-coverage-quarantine")
     parsed = build_parser().parse_args(fault["arguments"][subcommand_index:])
     assert parsed.source == "partial-coverage-quarantine"
+    descriptor_index = fault["arguments"].index("--descriptor") + 1
+    descriptor = Path(fault["arguments"][descriptor_index])
 
     verified = runner_module.verified_scenario_binding(
         entry, "partial-worker-coverage", fault
     )
+    assert json.loads(descriptor.read_text())["target"] == {
+        "host": "host-a",
+        "role": "worker",
+        "ordinal": 0,
+    }
     assert verified["scenario"] == "partial-worker-coverage"
     assert verified["entry_point"] == {
         "group": "vllm.general_plugins",
@@ -453,6 +459,27 @@ def test_scenario_binding_pins_descriptor_and_cross_arm_entry_point(tmp_path):
 
     with pytest.raises(ValueError, match="does not bind"):
         runner_module.verified_scenario_binding(entry, "worker-replacement", fault)
+
+    legacy = json.loads(descriptor.read_text())
+    legacy["schema"] = "ecpa-evidence-quarantine-fault/v1"
+    legacy["target"]["process_epoch"] = 7
+    descriptor.write_bytes(canonical(legacy) + b"\n")
+    legacy_entry = copy.deepcopy(entry)
+    legacy_entry["scenario_bindings"]["partial-worker-coverage"][
+        "descriptor_sha256"
+    ] = digest_file(descriptor)
+    legacy_fault = copy.deepcopy(fault)
+    digest_index = legacy_fault["arguments"].index("--descriptor-sha256") + 1
+    legacy_fault["arguments"][digest_index] = digest_file(descriptor)
+    with pytest.raises(ValueError, match="differs from scenario binding"):
+        runner_module.verified_scenario_binding(
+            legacy_entry, "partial-worker-coverage", legacy_fault
+        )
+    fields, commands = lifecycle_registry_fields(tmp_path)
+    entry = {"scenario_bindings": fields["scenario_bindings"]}
+    fault = command_fingerprint(*commands["fault-injected"])
+    descriptor_index = fault["arguments"].index("--descriptor") + 1
+    descriptor = Path(fault["arguments"][descriptor_index])
 
     wrong_subcommand = copy.deepcopy(fault)
     index = wrong_subcommand["arguments"].index("partial-coverage-quarantine")
@@ -482,8 +509,6 @@ def test_scenario_binding_pins_descriptor_and_cross_arm_entry_point(tmp_path):
                 malformed, "partial-worker-coverage", fault["arguments"]
             )
 
-    descriptor_index = fault["arguments"].index("--descriptor") + 1
-    descriptor = Path(fault["arguments"][descriptor_index])
     altered = json.loads(descriptor.read_text())
     altered["entry_point"]["name"] = "another-plugin"
     descriptor.write_bytes(canonical(altered) + b"\n")

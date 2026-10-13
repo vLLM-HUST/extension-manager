@@ -437,11 +437,11 @@ def verified_scenario_binding(
         not isinstance(descriptor, dict)
         or raw != canonical(descriptor) + b"\n"
         or set(descriptor) != {"schema", "scenario", "target", "entry_point"}
-        or descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v1"
+        or descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v2"
         or descriptor.get("scenario") != scenario_id
         or descriptor.get("entry_point") != entry_point
         or not isinstance(target, dict)
-        or set(target) != {"host", "role", "ordinal", "process_epoch"}
+        or set(target) != {"host", "role", "ordinal"}
         or target.get("role") != "worker"
         or not isinstance(target.get("host"), str)
         or not target["host"]
@@ -450,7 +450,7 @@ def verified_scenario_binding(
             isinstance(target.get(field), bool)
             or not isinstance(target.get(field), int)
             or target[field] < 0
-            for field in ("ordinal", "process_epoch")
+            for field in ("ordinal",)
         )
         or descriptor_digest != actual_digest
         or binding.get("descriptor_sha256") != actual_digest
