@@ -56,6 +56,15 @@
       "manifest_path": "vllm_moe_offload_ascend/manifests/vllm-hust-extension-v0.3.json",
       "manifest_blob": "66e58b8a70a7bc147f4de296238ffe376524c803",
       "snapshot_path": "source_manifests/latchmoe.json"
+    },
+    {
+      "id": "kvcompress",
+      "repository": "vLLM-HUST/vllm-ascend-kvcompress-hust",
+      "commit": "00cc78dc7f3491eecbc79c5068e29aed9f59afc3",
+      "tree": "8661770207782c912316ad9e5529bf3dbfcce563",
+      "manifest_path": "src/vllm_ascend_kvcompress/manifests/vllm-hust-extension-v0.3.json",
+      "manifest_blob": "fd6b1b703ba7eec7587c16d27370c5b75801c89d",
+      "snapshot_path": "source_manifests/kvcompress.json"
     }
   ]
 }

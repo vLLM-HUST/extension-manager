@@ -42,6 +42,15 @@
           "vllm-ascend": "0.25.1rc1"
         }
       }
+    },
+    {
+      "id": "kvcompress-knorm-vllm-0.23.3",
+      "members": ["kvcompress", "knorm"],
+      "host": {
+        "provider": "vllm",
+        "versions": {"vllm": "0.23.3", "vllm-ascend": "0.23.3"}
+      },
+      "research_question": "The manifests use different exclusive resource names, but both sources wrap Scheduler.update_from_output. Both installation orders and semantic KV-state interaction require pinned-host execution and independent labeling."
     }
   ]
 }
