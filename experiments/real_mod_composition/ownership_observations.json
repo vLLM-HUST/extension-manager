@@ -53,6 +53,112 @@
         }
       ],
       "status": "unknown"
+    },
+    {
+      "case_id": "kvcompress-knorm-vllm-0.23.0-legacy-0fc695-1cdb8c",
+      "declared_resources": [
+        "vllm-ascend.kv-cache.mutation",
+        "vllm.kv-cache.compression-policy"
+      ],
+      "installation_orders_required": [
+        [
+          "kvcompress",
+          "knorm"
+        ],
+        [
+          "knorm",
+          "kvcompress"
+        ]
+      ],
+      "members": [
+        "kvcompress",
+        "knorm"
+      ],
+      "oracle_label": null,
+      "physical_resource": "vllm.v1.core.sched.scheduler.Scheduler.update_from_output",
+      "reason": "The exact plugin wrappers still preserve their captured predecessors on the executed 0.23.0+empty / 0.23.0.post1 source pair. Successful registration in both orders does not establish semantic KV-state compatibility; host execution with an independently assigned label remains required.",
+      "sources": [
+        {
+          "commit": "00cc78dc7f3491eecbc79c5068e29aed9f59afc3",
+          "end": 618,
+          "excerpt": "    marker = f\"{_PATCH_MARKER}_scheduler\"\n    if scheduler_cls.__dict__.get(marker, False):\n        return\n    original_init = scheduler_cls.__init__\n    original_schedule = scheduler_cls.schedule\n    original_update_from_output = scheduler_cls.update_from_output\n\n    def initialize(scheduler: Any, *args: Any, **kwargs: Any) -> None:\n        original_init(scheduler, *args, **kwargs)\n        setattr(\n            scheduler, _STATE_ATTRIBUTE, SchedulerCompressionState(scheduler, selection)\n        )\n\n    def schedule(scheduler: Any, *args: Any, **kwargs: Any) -> Any:\n        state = getattr(scheduler, _STATE_ATTRIBUTE)\n        state.before_schedule()\n        output = original_schedule(scheduler, *args, **kwargs)\n        state.after_schedule(output)\n        return output\n\n    def update_from_output(\n        scheduler: Any, scheduler_output: Any, *args: Any, **kwargs: Any\n    ) -> Any:\n        result = original_update_from_output(\n            scheduler, scheduler_output, *args, **kwargs\n        )\n        getattr(scheduler, _STATE_ATTRIBUTE).after_output(scheduler_output)\n        return result\n\n    setattr(scheduler_cls, f\"{marker}_original_init\", original_init)\n    setattr(scheduler_cls, f\"{marker}_original_schedule\", original_schedule)\n    setattr(\n        scheduler_cls,\n        f\"{marker}_original_update_from_output\",\n        original_update_from_output,\n    )\n    scheduler_cls.__init__ = initialize\n    scheduler_cls.schedule = schedule\n    scheduler_cls.update_from_output = update_from_output\n",
+          "excerpt_sha256": "sha256:97db91e1209ba21d072f70aeeb951c53671eb5b09480820a2b3149c1ebdeadb7",
+          "file_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+          "member": "kvcompress",
+          "path": "src/vllm_ascend_kvcompress/stateful.py",
+          "repository": "vLLM-HUST/vllm-ascend-kvcompress-hust",
+          "start": 580,
+          "tree": "8661770207782c912316ad9e5529bf3dbfcce563",
+          "wrapper_semantics": "calls captured predecessor, then advances compression state"
+        },
+        {
+          "commit": "c490cfbfd2372635e8e874c8d7ba866ca5c476fb",
+          "end": 310,
+          "excerpt": "\n\ndef _install_scheduler_score_routing(scheduler_cls: type) -> bool:\n    \"\"\"P4: route ``knorm_block_scores`` into the manager bridge.\"\"\"\n    from ...knorm.manager import submit_block_scores\n\n    def build(original: Callable[..., Any]) -> Callable[..., Any]:\n        @functools.wraps(original)\n        def update_from_output(\n            self: Any, scheduler_output: Any, model_runner_output: Any\n        ) -> Any:\n            knorm_scores = getattr(model_runner_output, \"knorm_block_scores\", None)\n            if knorm_scores:\n                submit_block_scores(knorm_scores)\n            return original(self, scheduler_output, model_runner_output)\n\n        return update_from_output\n\n    return _wrap(scheduler_cls, \"update_from_output\", build)\n",
+          "excerpt_sha256": "sha256:c1d60ac77de2caf993a7269796fa11bb7636a6cbd9d67750fe55c53d4a1997a9",
+          "file_blob": "3c5808bb2551f562baafa37bbc10a73247051c31",
+          "member": "knorm",
+          "path": "src/vllm_hust_knorm/adapters/vllm_hust/patches.py",
+          "repository": "vLLM-HUST/vllm-hust-knorm",
+          "start": 292,
+          "tree": "3cf0928f202a0d9c5111333fd7ad4be5f13d97aa",
+          "wrapper_semantics": "routes knorm block scores, then calls captured predecessor"
+        }
+      ],
+      "status": "unknown"
+    },
+    {
+      "case_id": "kvcompress-knorm-vllm-0.23.0-d0f22-03766",
+      "declared_resources": [
+        "vllm-ascend.kv-cache.mutation",
+        "vllm.kv-cache.compression-policy"
+      ],
+      "installation_orders_required": [
+        [
+          "kvcompress",
+          "knorm"
+        ],
+        [
+          "knorm",
+          "kvcompress"
+        ]
+      ],
+      "members": [
+        "kvcompress",
+        "knorm"
+      ],
+      "oracle_label": null,
+      "physical_resource": "vllm.v1.core.sched.scheduler.Scheduler.update_from_output",
+      "reason": "The exact plugin wrappers preserve their captured predecessors against KVCompress's documented legacy Python source pair. Successful registration in both orders does not establish native-runtime or semantic KV-state compatibility; host execution with an independently assigned label remains required.",
+      "sources": [
+        {
+          "commit": "00cc78dc7f3491eecbc79c5068e29aed9f59afc3",
+          "end": 618,
+          "excerpt": "    marker = f\"{_PATCH_MARKER}_scheduler\"\n    if scheduler_cls.__dict__.get(marker, False):\n        return\n    original_init = scheduler_cls.__init__\n    original_schedule = scheduler_cls.schedule\n    original_update_from_output = scheduler_cls.update_from_output\n\n    def initialize(scheduler: Any, *args: Any, **kwargs: Any) -> None:\n        original_init(scheduler, *args, **kwargs)\n        setattr(\n            scheduler, _STATE_ATTRIBUTE, SchedulerCompressionState(scheduler, selection)\n        )\n\n    def schedule(scheduler: Any, *args: Any, **kwargs: Any) -> Any:\n        state = getattr(scheduler, _STATE_ATTRIBUTE)\n        state.before_schedule()\n        output = original_schedule(scheduler, *args, **kwargs)\n        state.after_schedule(output)\n        return output\n\n    def update_from_output(\n        scheduler: Any, scheduler_output: Any, *args: Any, **kwargs: Any\n    ) -> Any:\n        result = original_update_from_output(\n            scheduler, scheduler_output, *args, **kwargs\n        )\n        getattr(scheduler, _STATE_ATTRIBUTE).after_output(scheduler_output)\n        return result\n\n    setattr(scheduler_cls, f\"{marker}_original_init\", original_init)\n    setattr(scheduler_cls, f\"{marker}_original_schedule\", original_schedule)\n    setattr(\n        scheduler_cls,\n        f\"{marker}_original_update_from_output\",\n        original_update_from_output,\n    )\n    scheduler_cls.__init__ = initialize\n    scheduler_cls.schedule = schedule\n    scheduler_cls.update_from_output = update_from_output\n",
+          "excerpt_sha256": "sha256:97db91e1209ba21d072f70aeeb951c53671eb5b09480820a2b3149c1ebdeadb7",
+          "file_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+          "member": "kvcompress",
+          "path": "src/vllm_ascend_kvcompress/stateful.py",
+          "repository": "vLLM-HUST/vllm-ascend-kvcompress-hust",
+          "start": 580,
+          "tree": "8661770207782c912316ad9e5529bf3dbfcce563",
+          "wrapper_semantics": "calls captured predecessor, then advances compression state"
+        },
+        {
+          "commit": "c490cfbfd2372635e8e874c8d7ba866ca5c476fb",
+          "end": 310,
+          "excerpt": "\n\ndef _install_scheduler_score_routing(scheduler_cls: type) -> bool:\n    \"\"\"P4: route ``knorm_block_scores`` into the manager bridge.\"\"\"\n    from ...knorm.manager import submit_block_scores\n\n    def build(original: Callable[..., Any]) -> Callable[..., Any]:\n        @functools.wraps(original)\n        def update_from_output(\n            self: Any, scheduler_output: Any, model_runner_output: Any\n        ) -> Any:\n            knorm_scores = getattr(model_runner_output, \"knorm_block_scores\", None)\n            if knorm_scores:\n                submit_block_scores(knorm_scores)\n            return original(self, scheduler_output, model_runner_output)\n\n        return update_from_output\n\n    return _wrap(scheduler_cls, \"update_from_output\", build)\n",
+          "excerpt_sha256": "sha256:c1d60ac77de2caf993a7269796fa11bb7636a6cbd9d67750fe55c53d4a1997a9",
+          "file_blob": "3c5808bb2551f562baafa37bbc10a73247051c31",
+          "member": "knorm",
+          "path": "src/vllm_hust_knorm/adapters/vllm_hust/patches.py",
+          "repository": "vLLM-HUST/vllm-hust-knorm",
+          "start": 292,
+          "tree": "3cf0928f202a0d9c5111333fd7ad4be5f13d97aa",
+          "wrapper_semantics": "routes knorm block scores, then calls captured predecessor"
+        }
+      ],
+      "status": "unknown"
     }
   ],
   "schema": "ecpa-h2-physical-ownership-observations/0.1"
