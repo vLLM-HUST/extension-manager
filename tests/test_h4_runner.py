@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import socket
@@ -9,7 +10,6 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-CAMPAIGN = Path("/root/ecpa-h4-minimal-cell-20261013/campaign.json")
 SCRIPT_DIR = ROOT / "experiments/formal_campaign"
 
 
@@ -21,6 +21,85 @@ def load_runner():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def campaign_file(root: Path) -> Path:
+    workload = root / "workload.json"
+    workload.write_text(
+        json.dumps(
+            {
+                "prompt": "fixture",
+                "max_tokens": 2,
+                "temperature": 0.0,
+                "seed": 12012,
+                "warmup_requests": 1,
+                "measured_requests": 4,
+                "min_successful_measured_requests": 4,
+                "concurrency": 2,
+                "request_timeout_seconds": 5,
+                "success_status": 200,
+                "require_nonempty_completion": True,
+            }
+        )
+        + "\n"
+    )
+    digest = "sha256:" + hashlib.sha256(workload.read_bytes()).hexdigest()
+    campaign = root / "campaign.json"
+    campaign.write_text(
+        json.dumps(
+            {
+                "schema": "ecpa-h4-minimal-matched-cell-campaign/v1",
+                "campaign_id": "H4-matched-cost-v1",
+                "cell_id": "compatible-resource-pair.sampled-invocation",
+                "arms": [
+                    {"id": arm}
+                    for arm in (
+                        "vanilla-vllm-entry-points",
+                        "manual-integration",
+                        "ecpa",
+                    )
+                ],
+                "schedule": [
+                    {
+                        "order": [
+                            "vanilla-vllm-entry-points",
+                            "manual-integration",
+                            "ecpa",
+                        ]
+                    },
+                    {
+                        "order": [
+                            "manual-integration",
+                            "ecpa",
+                            "vanilla-vllm-entry-points",
+                        ]
+                    },
+                    {
+                        "order": [
+                            "ecpa",
+                            "vanilla-vllm-entry-points",
+                            "manual-integration",
+                        ]
+                    },
+                ],
+                "fixed_identity": {
+                    "manager_commit": "1" * 40,
+                    "host_commit": "2" * 40,
+                    "accelerator_commit": "3" * 40,
+                    "plugins": {"fixture": {"commit": "4" * 40}},
+                    "model_digest": "sha256:" + "5" * 64,
+                    "hardware": "fixture hardware",
+                    "topology": "fixture TP2",
+                    "host_version": "fixture-host",
+                    "accelerator_version": "fixture-accelerator",
+                    "warm_state": "cold",
+                },
+                "workload": {"path": workload.name, "sha256": digest},
+            }
+        )
+        + "\n"
+    )
+    return campaign
 
 
 def exact_receipt(runner, campaign, launch):
@@ -79,7 +158,7 @@ def launch_spec():
 
 def test_validate_only_inputs_bind_frozen_campaign_and_all_arms(tmp_path: Path):
     runner = load_runner()
-    campaign = runner.load_h4_campaign(CAMPAIGN)
+    campaign = runner.load_h4_campaign(campaign_file(tmp_path))
     launch = launch_spec()
     receipt = exact_receipt(runner, campaign, launch)
     path = tmp_path / "receipt.json"
@@ -90,7 +169,7 @@ def test_validate_only_inputs_bind_frozen_campaign_and_all_arms(tmp_path: Path):
 
 def test_launch_spec_mutation_after_registration_is_rejected(tmp_path: Path):
     runner = load_runner()
-    campaign = runner.load_h4_campaign(CAMPAIGN)
+    campaign = runner.load_h4_campaign(campaign_file(tmp_path))
     launch = launch_spec()
     receipt = exact_receipt(runner, campaign, launch)
     launch["arms"]["ecpa"]["environment"]["UNREGISTERED"] = "1"
@@ -100,15 +179,7 @@ def test_launch_spec_mutation_after_registration_is_rejected(tmp_path: Path):
 
 def test_runner_executes_requests_and_reclaims_fixture_process(tmp_path: Path):
     runner = load_runner()
-    campaign = runner.load_h4_campaign(CAMPAIGN)
-    campaign["workload"] = {
-        **campaign["workload"],
-        "warmup_requests": 1,
-        "measured_requests": 4,
-        "min_successful_measured_requests": 4,
-        "concurrency": 2,
-        "request_timeout_seconds": 5,
-    }
+    campaign = runner.load_h4_campaign(campaign_file(tmp_path))
     with socket.socket() as reservation:
         reservation.bind(("127.0.0.1", 0))
         port = reservation.getsockname()[1]
