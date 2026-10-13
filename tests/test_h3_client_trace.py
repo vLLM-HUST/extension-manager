@@ -265,10 +265,20 @@ def test_real_continuous_http_stop_resume_backend_and_unknown_execution(tmp_path
             with pytest.raises(ValueError, match="frozen/start/process"):
                 verify_window(changed, client_trace, authority_journal, **kwargs)
             changed = copy.deepcopy(original)
+            deadlines = {
+                e["detail"]["request_id"]: e["detail"]["deadline_ns"]
+                for e in original
+                if e["kind"] == "request.start"
+            }
+            # A late HTTP 200 is a deadline loss, not an observed delivery.
+            # Bind this tamper negative to a real on-time delivered response.
             served = next(
                 e
                 for e in changed
-                if e["kind"] == "request.finish" and e["detail"]["status"] == 200
+                if e["kind"] == "request.finish"
+                and e["detail"]["status"] == 200
+                and e["detail"]["finished_ns"]
+                <= deadlines[e["detail"]["request_id"]]
             )
             served["detail"]["admission_id"] = "replayed-admission"
             fake = tmp_path / "fake.jsonl"
