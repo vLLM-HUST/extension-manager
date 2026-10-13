@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import random
@@ -550,6 +551,100 @@ def _duration_ms(interval: dict[str, int]) -> float:
     return (interval["end_ns"] - interval["start_ns"]) / 1_000_000
 
 
+def h4_request_payload(workload: dict[str, Any], served_model: str) -> bytes:
+    """Exact bytes sent by every arm, bound to workload and admitted launch."""
+    return json.dumps(
+        {
+            "model": served_model,
+            **{
+                key: workload[key]
+                for key in ("prompt", "max_tokens", "temperature", "seed")
+            },
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+
+
+def h4_body_binding(body: bytes) -> dict[str, str]:
+    return {
+        "body_base64": base64.b64encode(body).decode("ascii"),
+        "body_sha256": ("sha256:" + hashlib.sha256(body).hexdigest()),
+    }
+
+
+def h4_decode_body(binding: dict[str, Any]) -> bytes:
+    try:
+        body = base64.b64decode(binding["body_base64"], validate=True)
+    except (ValueError, KeyError) as exc:
+        raise ValueError("H4 raw HTTP body is missing or invalid") from exc
+    if ("sha256:" + hashlib.sha256(body).hexdigest()) != binding.get("body_sha256"):
+        raise ValueError("H4 raw HTTP body hash differs")
+    return body
+
+
+def h4_response_summary(response: dict[str, Any] | None) -> dict[str, Any]:
+    """Recompute summaries from retained transport status and response bytes."""
+    result = {
+        "status_code": 0,
+        "response_nonempty": False,
+        "output_tokens": 0,
+        "response_model": None,
+    }
+    if response is None:
+        return result
+    status = response["status_code"]
+    if type(status) is not int or not 100 <= status <= 599:
+        raise ValueError("H4 transport status is invalid")
+    result["status_code"] = status
+    body = h4_decode_body(response)
+    if status != 200:
+        return result
+    try:
+        parsed = json.loads(body)
+        choices = parsed["choices"]
+        text = choices[0]["text"]
+        tokens = parsed["usage"]["completion_tokens"]
+        model = parsed["model"]
+        if (
+            len(choices) != 1
+            or not isinstance(text, str)
+            or type(tokens) is not int
+            or tokens < 0
+            or not isinstance(model, str)
+            or not model
+        ):
+            raise ValueError("invalid completion response")
+    except (ValueError, KeyError, TypeError, IndexError):
+        return result
+    result.update(
+        response_nonempty=bool(text), output_tokens=tokens, response_model=model
+    )
+    return result
+
+
+def _verify_h4_requests(raw: dict[str, Any], workload: dict[str, Any]) -> None:
+    definition = raw.get("launch_definition")
+    if not isinstance(definition, dict) or not definition.get("served_model"):
+        raise ValueError("H4 raw admitted launch definition missing; unverified")
+    model = definition["served_model"]
+    expected = h4_request_payload(workload, model)
+    for item in raw["requests"]:
+        if h4_decode_body(item.get("http_request", {})) != expected:
+            raise ValueError("H4 request bytes differ from frozen workload")
+        if "http_response" not in item:
+            raise ValueError("H4 raw HTTP response missing; unverified")
+        summary = h4_response_summary(item["http_response"])
+        if any(item.get(key) != value for key, value in summary.items()):
+            raise ValueError("H4 response summary differs from raw HTTP evidence")
+        if summary["status_code"] == 200 and summary["response_model"] != model:
+            raise ValueError("H4 successful HTTP response has invalid or wrong model")
+        if summary["output_tokens"] > workload["max_tokens"]:
+            raise ValueError("H4 response completion_tokens exceeds frozen max_tokens")
+        if item["http_response"] is None and not item.get("error"):
+            raise ValueError("H4 absent HTTP response lacks transport error")
+
+
 def _recompute_h4_metrics(
     record: dict[str, Any], raw: dict[str, Any], campaign_spec: dict[str, Any]
 ) -> dict[str, Any]:
@@ -603,6 +698,7 @@ def _recompute_h4_metrics(
     phase_ms["total"] = total_ms
 
     workload = campaign_spec["workload"]
+    _verify_h4_requests(raw, workload)
     requests = raw["requests"]
     warmups = [item for item in requests if item["kind"] == "warmup"]
     measured = [item for item in requests if item["kind"] == "measured"]
@@ -619,7 +715,8 @@ def _recompute_h4_metrics(
     successful = [
         item
         for item in measured
-        if item["status_code"] == workload["success_status"]
+        if item["error"] is None
+        and item["status_code"] == workload["success_status"]
         and (item["response_nonempty"] or not workload["require_nonempty_completion"])
     ]
     if len(successful) < workload["min_successful_measured_requests"]:
@@ -677,6 +774,16 @@ def _verify_h4_raw_artifact(
         (root / record["artifacts"]["deployment_receipt"]["path"]).resolve(),
         campaign_spec,
     )
+    receipt = _load_object(
+        (root / record["artifacts"]["deployment_receipt"]["path"]).resolve()
+    )
+    if (
+        _canonical_digest(raw["launch_definition"])
+        != receipt["arm_command_digests"][record["arm"]]
+    ):
+        raise ValueError("H4 raw launch definition differs from admitted arm")
+    # Failed starts also retain and verify every request that was actually sent.
+    _verify_h4_requests(raw, campaign_spec["workload"])
     request_path = (root / record["artifacts"]["request_results"]["path"]).resolve()
     process_path = (root / record["artifacts"]["process_snapshot"]["path"]).resolve()
     cleanup_path = (root / record["artifacts"]["cleanup_report"]["path"]).resolve()
