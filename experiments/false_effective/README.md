@@ -46,6 +46,14 @@ its classification to pre-admission: source overrides, an older binary image,
 disabled custom ops, one device, and SUT-owned diagnostics cannot become a
 formal cell.
 
+The current two-card wheel-stack candidate is recorded in
+[`deployment-candidates/ascend-910b2-2card-wheel-20261013.md`](deployment-candidates/ascend-910b2-2card-wheel-20261013.md).
+Its installed venv bytes are fingerprinted by
+[`installed_environment.py`](installed_environment.py); the stack audit now
+isolates one concrete provenance blocker, an accelerator plugin verified
+against a different upstream vLLM commit. This does not register a formal
+adapter or promote the successful wheel-only serving pilot to H1 data.
+
 ```bash
 PYTHONPATH=src python3 experiments/false_effective/reproduce.py --output /tmp/false-effective
 # Or ingest the runner-owned manifest (hand-written JSONL is rejected):

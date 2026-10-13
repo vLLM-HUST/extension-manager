@@ -63,6 +63,25 @@ def test_checked_candidate_is_recomputed_and_schema_valid() -> None:
         jsonschema.Draft7Validator(schema).validate(contradictory)
 
 
+def test_current_two_card_wheel_candidate_has_exact_stack_blocker() -> None:
+    preflight = load_preflight()
+    stem = "ascend-910b2-2card-wheel-20261013"
+    requirements = json.loads((CANDIDATES / f"{stem}.requirements.json").read_text())
+    observation = json.loads((CANDIDATES / f"{stem}.observation.json").read_text())
+    checked = json.loads((CANDIDATES / f"{stem}.preflight.json").read_text())
+    assert preflight.audit_stack(requirements, observation) == checked
+    assert checked["blockers"] == ["accelerator-plugin-runtime-unverified"]
+    assert checked["formal_real_result"] is False
+    schema = json.loads(
+        (
+            ROOT / "experiments/false_effective/formal-real-stack-preflight.schema.json"
+        ).read_text()
+    )
+    jsonschema.Draft7Validator(
+        schema, format_checker=jsonschema.FormatChecker()
+    ).validate(checked)
+
+
 def test_fully_matching_stack_is_only_ready_for_registration_review() -> None:
     preflight = load_preflight()
     requirements, observation = inputs()
