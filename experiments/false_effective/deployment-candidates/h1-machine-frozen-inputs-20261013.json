@@ -1,7 +1,7 @@
 {
   "schema": "ecpa-h1-machine-frozen-input-candidate/v1",
   "classification": "unregistered-machine-facts-not-formal-real",
-  "captured_at": "2026-10-13T08:40:00Z",
+  "captured_at": "2026-10-13T09:22:00Z",
   "sources": {
     "runtime": {
       "repository": "vLLM-HUST/vllm-hust",
@@ -15,9 +15,9 @@
     },
     "manager": {
       "repository": "vLLM-HUST/extension-manager",
-      "commit": "52922dec6b67db1825404d0bfd0d68305f6dcfd1",
-      "tree": "eaa9df581a01e8c1c734105612bdd8fd1cbb88b7",
-      "wheel_sha256": "sha256:2e0ab6c766fe875f518be309123fb4571cd6737559c6bd7948d7074d04ddb382"
+      "commit": "e2962ba7eec2e3210241cf73ec77e78d82fa6017",
+      "tree": "e9dacac99ff883713d2d30d9644f5f0ec734872c",
+      "wheel_sha256": "sha256:70a31c15716aa0a32d69a6369ca66ded0f3d09a9eacbc320a0545c7c1351f8ba"
     },
     "mod": {
       "repository": "vLLM-HUST/vllm-hust-kv-materialization-arrival-control",
@@ -28,7 +28,7 @@
   "installed_environment": {
     "distribution_count": 196,
     "uv_pip_check": "pass",
-    "digest": "sha256:9aabf5ce2e4022724770ab56f75ded0c1005e82994ae5c70b8abd7186ddb6013",
+    "digest": "sha256:a67e1f40ae49b859df14ed785552979b1afb1c333979b960da639be0ce787df1",
     "scope": "venv-installed-bytes-only; excludes CANN, driver, model and host OS"
   },
   "container": {
@@ -59,11 +59,14 @@
   "activation_probe": {
     "formal_h1_start": false,
     "all_three_arms_passed": true,
-    "artifact_sha256": "sha256:66cfa7121e0e95f4b9a8f4ce4d5ef59769a5176a31a4c0e9f78bc74c36c5cb23"
+    "artifact_sha256": "sha256:dafd3863fe4b17144c544b14bc212e74783c76d4171dbc33dc06db4783ea69ee"
   },
   "hardware": {
     "device_family": "Ascend 910B2",
-    "physical_device_ids": [3, 6],
+    "physical_device_ids": [
+      3,
+      6
+    ],
     "process_tables_empty": true,
     "topology": "single-host TP2 eager",
     "warm_state": "cold"
@@ -78,5 +81,25 @@
       "adapter-registry-empty",
       "commands-and-independent-reviews-absent"
     ]
+  },
+  "production_observer": {
+    "console_script": "ecpa-formal-observer",
+    "module": "vllm_hust_ext.formal_host_observer",
+    "capture_schema": "ecpa-formal-observer-capture/v1",
+    "authority": "host-observer",
+    "derives_from": [
+      "immutable-process-transition",
+      "deployment-owned-host-journal",
+      "live-linux-process-identities"
+    ],
+    "accepts_sut_truth": false,
+    "accepts_sut_causal_ack": false,
+    "validation": {
+      "targeted_harness_tests": 125,
+      "full_repository_tests": 704,
+      "ci_run": 151,
+      "ci_conclusion": "success"
+    },
+    "formal_h1_start": false
   }
 }

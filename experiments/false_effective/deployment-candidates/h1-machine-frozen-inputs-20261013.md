@@ -11,15 +11,17 @@ producer, observer, or cross-arm reviews required for admission.
 | --- | --- | --- |
 | vLLM-HUST | `b093ae0096a4ee801064f7a3673d42383e89f5c7` | tree `dd66f7b4b1844a19211894706786832aef63d5ff` |
 | vLLM-Ascend-HUST | `fd70a5c818363ee4357604e637e36fb52860ccca` | tree `40760a184f20adbc9b7993f72940028ec229626c` |
-| Extension Manager wheel source | `52922dec6b67db1825404d0bfd0d68305f6dcfd1` | tree `eaa9df581a01e8c1c734105612bdd8fd1cbb88b7`; wheel SHA-256 `2e0ab6c766fe875f518be309123fb4571cd6737559c6bd7948d7074d04ddb382` |
+| Extension Manager wheel source | `e2962ba7eec2e3210241cf73ec77e78d82fa6017` | tree `e9dacac99ff883713d2d30d9644f5f0ec734872c`; wheel SHA-256 `70a31c15716aa0a32d69a6369ca66ded0f3d09a9eacbc320a0545c7c1351f8ba` |
 | KV MOD | `9728ccd9df68c654aaf541bb7565c0bd3f85b983` | tree `ea6911c6e0b8a0d7ff66d3078397dd4c615a3364` |
-| installed venv bytes | 196 distributions; `uv pip check` passed | `sha256:9aabf5ce2e4022724770ab56f75ded0c1005e82994ae5c70b8abd7186ddb6013` |
+| installed venv bytes | 196 distributions; `uv pip check` passed | `sha256:a67e1f40ae49b859df14ed785552979b1afb1c333979b960da639be0ce787df1` |
 | container image | `192.168.0.6:5050/vllm-ascend-ssh:v1` | Kubernetes pod-status image ID `sha256:cd3c36c1832d8b9dfd193405d52a73b22ca2699fbe95271015bc7932bef3e2ee` |
 
 The venv digest covers installed venv bytes only. It excludes CANN, driver,
 model and host OS. A full `pip check` that also exposes CANN's external Python
 path is not clean, so this packet does not claim whole-stack dependency
 consistency.
+
+The merged Manager now installs the production `ecpa-formal-observer` command. It derives activation, invocation and coverage from the immutable process transition, deployment-owned host journal and live Linux identities; it accepts neither SUT truth nor a SUT causal ACK. The focused harness has 125 passing tests, the full repository has 704 passing tests, and CI run 151 passed. This is implementation evidence, not a formal H1 start.
 
 The Host/Ascend pair has a bounded Qwen2.5 eager TP2 contract subset result of
 175 passed and 1 skipped. The broader CPU suite stopped after 50 failures
