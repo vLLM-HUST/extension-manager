@@ -76,7 +76,8 @@ def verify_run(
         "oracle binding mismatch",
     )
     require(
-        result["runner_sha256"] == digest(root / "runner.py"), "runner binding mismatch"
+        result["runner_sha256"] == digest(root / "runner.snapshot"),
+        "runner binding mismatch",
     )
 
     frozen = campaign["workload"]
@@ -265,7 +266,7 @@ def verify(root: Path) -> dict[str, Any]:
         "oracle digest mismatch",
     )
     require(
-        campaign["runner"]["sha256"] == digest(root / "runner.py"),
+        campaign["runner"]["sha256"] == digest(root / "runner.snapshot"),
         "runner digest mismatch",
     )
     require(
@@ -303,7 +304,7 @@ def verify(root: Path) -> dict[str, Any]:
         "performance_result": False,
         "campaign_sha256": digest(root / "campaign.json"),
         "oracle_sha256": digest(root / "oracle.json"),
-        "runner_sha256": digest(root / "runner.py"),
+        "runner_sha256": digest(root / "runner.snapshot"),
         "runs": records,
         "claims": [
             "both installation orders completed a real TP2 compression transaction",
