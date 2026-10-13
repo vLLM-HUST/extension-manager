@@ -53,6 +53,16 @@ EVIDENCE_INPUTS := \
 	../experiments/false_effective/scenarios.json \
 	../experiments/false_effective/protocol.json \
 	../experiments/false_effective/verified-adapters.json \
+	../experiments/real_mod_composition/artifacts/h2-knorm-prelaunch-reject-20261013.json \
+	../experiments/real_mod_composition/artifacts/h2-source-corpus-manager-predictions-20261013.json \
+	../experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/score-admission.json \
+	../experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/planner/planner-receipt.json \
+	../experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/campaign.json \
+	../experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/oracle-index.json \
+	../experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/status.json \
+	../experiments/real_mod_composition/artifacts/h2-real-source-augmentation-20261013/augmentation.json \
+	../experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/oracle.json \
+	../experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/manager-predictions.json \
 	../experiments/transaction_model/explore.py \
 	../experiments/transaction_model/artifacts/result-summary.json \
 	../experiments/transaction_model/result-summary.schema.json \
