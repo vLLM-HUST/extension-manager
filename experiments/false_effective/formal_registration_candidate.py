@@ -49,8 +49,8 @@ INPUTS = {
 }
 SCHEMA = "ecpa-h1-formal-registration-candidate/v1"
 CLASSIFICATION = "deployment-bound-non-admitting-command-candidate"
-EXPERIMENT_MANAGER_COMMIT = "b734a923a566f3d1b07b22e087fdbab796b3b1d9"
-EXPERIMENT_MANAGER_TREE = "62d3cf4899dff86661a9debb78fa1257cb029775"
+EXPERIMENT_MANAGER_COMMIT = "e583852ac3cb7ea0003ac4b5798c09d369151514"
+EXPERIMENT_MANAGER_TREE = "97c940d8214f8c1006b5c25adc22e5101ef62e84"
 EXPERIMENT_MANAGER_NOTE = (
     "merged Manager source for the non-admitting reachable-stack candidate"
 )
@@ -323,7 +323,7 @@ def _declared_identity() -> dict[str, Any]:
         "dataset": "fixed-single-request-no-external-dataset",
         "workload": copy.deepcopy(machine["workload"]),
         "software": copy.deepcopy(machine["sources"]),
-        "observer": "vllm_hust_ext.formal_host_observer@manager-b734a923",
+        "observer": "vllm_hust_ext.formal_host_observer@manager-e583852",
         "plugin_commits": {
             "kv_materialization": machine["sources"]["mod"]["commit"],
             "vllm_ascend": machine["sources"]["accelerator_plugin"]["commit"],
@@ -748,19 +748,27 @@ def validate_candidate(value: dict[str, Any], *, live: bool) -> None:
     if set(value.get("remaining_blockers", [])) != expected_blockers:
         raise ValueError("candidate blocker boundary drifted")
     if live:
-        if _load_canonical(REGISTRY_PATH) != {
+        registry = _load_canonical(REGISTRY_PATH)
+        deployment = _load(DEPLOYMENT_PATH)
+        study = _load(STUDY_PATH)
+        pre_admission = registry == {
             "adapters": [],
             "schema": "ecpa-formal-adapter-registry/v2",
-        }:
+        } and deployment.get("registration_state") == "unregistered" and (
+            deployment.get("admissible") is False
+        )
+        registered_amendment = (
+            registry.get("schema") == "ecpa-formal-adapter-registry/v2"
+            and len(registry.get("adapters", [])) == 3
+            and deployment.get("registration_state") == "registered"
+            and deployment.get("admissible") is True
+            and study.get("status") == "admitted"
+            and study.get("admissible") is True
+        )
+        if not (pre_admission or registered_amendment):
             raise ValueError(
-                "official registry changed while candidate is non-admitting"
+                "official registration state is not a valid candidate base"
             )
-        deployment = _load(DEPLOYMENT_PATH)
-        if (
-            deployment.get("registration_state") != "unregistered"
-            or deployment.get("admissible") is not False
-        ):
-            raise ValueError("official deployment was promoted without admission")
 
 
 def transition_dry_run(value: dict[str, Any], *, live: bool) -> dict[str, Any]:

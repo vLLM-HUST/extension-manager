@@ -67,16 +67,16 @@ def test_issuer_binds_existing_human_review_and_three_machine_inputs() -> None:
         __import__("hashlib").sha256(candidate).hexdigest()
     )
     assert receipt["bindings"]["candidate_sha256"] == (
-        "sha256:e09f10b49c8b5008763e68021ea0ca1577b40dc33e010a61070ec27fe653b2ea"
+        "sha256:fba3ed36399b5677bbb9c8283e4c5d3b8789acedcdf8fea3d4009ad7159d67da"
     )
     assert receipt["bindings"]["review_subject_candidate_sha256"] == (
-        "sha256:d5f58616766cc1a480dac228e55fb11a43501dd3e4ff3e0ca6ef9df9bc3512b7"
+        "sha256:88ff58dcf1e2392064356293c7b32c173019dbf93d9f768879288a5248e82c55"
     )
     assert receipt["bindings"]["review_sha256"].endswith(
         __import__("hashlib").sha256(review).hexdigest()
     )
     assert receipt["bindings"]["qualification_sha256"] == (
-        "sha256:8a8cdee6cd2729ecbaecc6bad7a5353793203fb2237e9d71700e10e659147451"
+        "sha256:5b77acdb1f510b55d6bb05a3762e0e1ca4a3670a0c1f4c390d4d7700f875af4c"
     )
     assert receipt["formal_h1_starts"] == 0
     assert receipt["official_files_mutated"] is False
