@@ -1,7 +1,7 @@
-from __future__ import annotations
-
+import hashlib
 import importlib.util
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -14,6 +14,14 @@ SPEC = importlib.util.spec_from_file_location("real_mod_composition_audit", SCRI
 assert SPEC is not None and SPEC.loader is not None
 audit_module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(audit_module)
+
+PROBE_SCRIPT = SCRIPT.parent / "install_order_probe.py"
+PROBE_SPEC = importlib.util.spec_from_file_location(
+    "real_mod_composition_install_order_probe", PROBE_SCRIPT
+)
+assert PROBE_SPEC is not None and PROBE_SPEC.loader is not None
+probe_module = importlib.util.module_from_spec(PROBE_SPEC)
+PROBE_SPEC.loader.exec_module(probe_module)
 
 
 def test_source_manifests_are_exact_git_blobs() -> None:
@@ -122,3 +130,61 @@ def test_tampered_physical_owner_excerpt_fails_closed(
     monkeypatch.setattr(audit_module, "HERE", tmp_path)
     with pytest.raises(ValueError, match="excerpt digest mismatch"):
         audit_module.load_ownership_observations({"kvcompress", "knorm"})
+
+
+def test_runtime_campaign_requires_both_orders_and_stays_unscored() -> None:
+    campaign = probe_module._load(SCRIPT.parent / "runtime_campaign.json")
+    probe_module.validate_campaign(campaign)
+    assert campaign["oracle"] == {
+        "status": "unreviewed",
+        "label": None,
+        "reviewed_artifact_sha256": None,
+        "review_commit": None,
+    }
+    assert set(campaign["measurement_state"].values()) == {"unmeasured"}
+    assert campaign["score_eligible"] is False
+
+    one_order = deepcopy(campaign)
+    one_order["installation_orders"].pop()
+    with pytest.raises(ValueError, match="both installation orders"):
+        probe_module.validate_campaign(one_order)
+
+
+def test_runtime_campaign_rejects_invented_oracle_or_measurement() -> None:
+    campaign = probe_module._load(SCRIPT.parent / "runtime_campaign.json")
+    labeled = deepcopy(campaign)
+    labeled["oracle"]["label"] = "reject"
+    with pytest.raises(ValueError, match="cannot contain an oracle label"):
+        probe_module.validate_campaign(labeled)
+
+    measured = deepcopy(campaign)
+    measured["measurement_state"]["runtime_effective"] = "effective"
+    with pytest.raises(ValueError, match="must remain unmeasured"):
+        probe_module.validate_campaign(measured)
+
+
+def test_install_order_probe_rejects_wrong_wheel_bytes(tmp_path: Path) -> None:
+    campaign = probe_module._load(SCRIPT.parent / "runtime_campaign.json")
+    for member in campaign["members"]:
+        (tmp_path / member["wheel"]).write_bytes(b"not a wheel")
+    with pytest.raises(ValueError, match="wheel digest mismatch"):
+        probe_module.run_probe(SCRIPT.parent / "runtime_campaign.json", tmp_path)
+
+
+def test_checked_install_order_receipt_is_current_and_non_scoreable() -> None:
+    campaign_path = SCRIPT.parent / "runtime_campaign.json"
+    result = probe_module._load(
+        SCRIPT.parent / "artifacts" / "kvcompress-knorm-install-order-preflight.json"
+    )
+    assert (
+        result["campaign_sha256"]
+        == hashlib.sha256(campaign_path.read_bytes()).hexdigest()
+    )
+    assert [item["members"] for item in result["orders"]] == [
+        ["kvcompress", "knorm"],
+        ["knorm", "kvcompress"],
+    ]
+    assert all(item["host_started"] is False for item in result["orders"])
+    assert all(item["plugin_imported"] is False for item in result["orders"])
+    assert result["runtime_effective"] == "unmeasured"
+    assert result["score_eligible"] is False
