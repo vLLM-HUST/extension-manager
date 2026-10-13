@@ -1,0 +1,82 @@
+{
+  "schema": "ecpa-h1-machine-frozen-input-candidate/v1",
+  "classification": "unregistered-machine-facts-not-formal-real",
+  "captured_at": "2026-10-13T08:40:00Z",
+  "sources": {
+    "runtime": {
+      "repository": "vLLM-HUST/vllm-hust",
+      "commit": "b093ae0096a4ee801064f7a3673d42383e89f5c7",
+      "tree": "dd66f7b4b1844a19211894706786832aef63d5ff"
+    },
+    "accelerator_plugin": {
+      "repository": "vLLM-HUST/vllm-ascend-hust",
+      "commit": "fd70a5c818363ee4357604e637e36fb52860ccca",
+      "tree": "40760a184f20adbc9b7993f72940028ec229626c"
+    },
+    "manager": {
+      "repository": "vLLM-HUST/extension-manager",
+      "commit": "52922dec6b67db1825404d0bfd0d68305f6dcfd1",
+      "tree": "eaa9df581a01e8c1c734105612bdd8fd1cbb88b7",
+      "wheel_sha256": "sha256:2e0ab6c766fe875f518be309123fb4571cd6737559c6bd7948d7074d04ddb382"
+    },
+    "mod": {
+      "repository": "vLLM-HUST/vllm-hust-kv-materialization-arrival-control",
+      "commit": "9728ccd9df68c654aaf541bb7565c0bd3f85b983",
+      "tree": "ea6911c6e0b8a0d7ff66d3078397dd4c615a3364"
+    }
+  },
+  "installed_environment": {
+    "distribution_count": 196,
+    "uv_pip_check": "pass",
+    "digest": "sha256:9aabf5ce2e4022724770ab56f75ded0c1005e82994ae5c70b8abd7186ddb6013",
+    "scope": "venv-installed-bytes-only; excludes CANN, driver, model and host OS"
+  },
+  "container": {
+    "image": "192.168.0.6:5050/vllm-ascend-ssh:v1",
+    "image_id": "sha256:cd3c36c1832d8b9dfd193405d52a73b22ca2699fbe95271015bc7932bef3e2ee",
+    "runtime": "containerd",
+    "container_id": "sha256:9ac92e3bb80bcf45f0c0c4a977dd17c6f6d068855282fbb91bde9e6f2c007d95",
+    "pod_uid": "55309062-e31c-44e4-bcde-fb6cfd75d8d7",
+    "authority": "kubernetes-pod-status"
+  },
+  "model": {
+    "repository": "Qwen/Qwen2.5-7B-Instruct",
+    "revision": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "file_count": 14,
+    "manifest": "qwen2.5-7b-instruct-a09a3545.sha256",
+    "manifest_sha256": "sha256:8075871e293fffe8c042b5ce165997a1b8f4487cad1e570168285279b4a19fd9",
+    "verification": "all-files-match"
+  },
+  "workload": {
+    "path": "h1-qwen2.5-7b-workload.json",
+    "sha256": "sha256:9ff24793404386289eb61866b57f6943914af8f46317af28dc60c279e777198d"
+  },
+  "fault": {
+    "path": "h1-partial-worker-coverage-fault.json",
+    "sha256": "sha256:83cf593eda175a7a8c809350a6456bb1070bcba25e3b341c9c6598db16d46a17",
+    "target_identity_phase": "postlaunch-host-owned-process-snapshot"
+  },
+  "activation_probe": {
+    "formal_h1_start": false,
+    "all_three_arms_passed": true,
+    "artifact_sha256": "sha256:66cfa7121e0e95f4b9a8f4ce4d5ef59769a5176a31a4c0e9f78bc74c36c5cb23"
+  },
+  "hardware": {
+    "device_family": "Ascend 910B2",
+    "physical_device_ids": [3, 6],
+    "process_tables_empty": true,
+    "topology": "single-host TP2 eager",
+    "warm_state": "cold"
+  },
+  "qualification": {
+    "registration_state": "unregistered",
+    "formal_h1_starts": 0,
+    "formal_h1_required_starts": 9,
+    "blockers": [
+      "runtime-and-mod-candidates-not-repository-reachable",
+      "exact-runtime-accelerator-support-matrix-unqualified",
+      "adapter-registry-empty",
+      "commands-and-independent-reviews-absent"
+    ]
+  }
+}
