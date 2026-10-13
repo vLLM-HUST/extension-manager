@@ -91,3 +91,9 @@ nine therefore fail this new gate with `formal proxy membership lacks
 host-owned roles: api-server`; none may be relabeled as an exposure result.
 The host must bind the serve parent before parser-time general plugin loading,
 then the exact Host wheel and proxy command must be requalified and registered.
+
+The source-bound
+[`proxy-parent-membership-preflight-20261013.json`](artifacts/proxy-parent-membership-preflight-20261013.json)
+records the first real TP2 functional preflight in which the Host emitted all
+three host-assigned process layers. It is explicitly unregistered and does not
+count as a formal traffic-boundary or performance result.
