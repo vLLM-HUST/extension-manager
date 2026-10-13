@@ -260,7 +260,7 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
     }
     receipt_path = tmp_path / "receipt.json"
     receipt_path.write_text(json.dumps(receipt) + "\n")
-    subprocess.run(
+    result = subprocess.run(
         [
             sys.executable,
             str(RUNNER),
@@ -279,23 +279,25 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
             "--output-dir",
             str(output),
         ],
-        check=True,
+        check=False,
+        capture_output=True,
+        text=True,
     )
-    raw = json.loads((output / "raw-recovery.json").read_text())
-    assert [event["kind"] for event in raw["events"]] == [
-        "fault-triggered",
-        "fault-observed",
-        "recovery-started",
-        "request-result",
-        "request-result",
-        "recovery-complete",
-    ]
-    assert raw["fault_target"]["pid"] == raw["process_identity"]["fault_target_pid"]
-    assert json.loads((output / "run-manifest.json").read_text())["cleanup"] == {
-        "processes_reclaimed": True,
-        "ports_reclaimed": True,
-        "devices_reclaimed": True,
-    }
+    assert result.returncode != 0
+    failure = json.loads((output / "failure.json").read_text())
+    assert failure["fault_injected"] is False
+    assert "durable prepare" in failure["error"]
+    record = json.loads((output / "record.json").read_text())
+    assert record["status"] == "failed"
+    assert record["metrics"] == {}
+    assert not (output / "raw-recovery.json").exists()
+    import jsonschema
+
+    jsonschema.Draft7Validator(
+        json.loads(
+            (ROOT / "experiments/formal_campaign/record.schema.json").read_text()
+        )
+    ).validate(record)
     analyzed = subprocess.run(
         [
             sys.executable,
@@ -314,8 +316,9 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
         text=True,
     )
     summary = json.loads(analyzed.stdout)
-    assert summary["status"] == "incomplete"
+    assert summary["formal_result"] is False
     assert summary["received_starts"] == 1
+    assert summary["failed_starts"] == [record["start_id"]]
 
 
 def test_frozen_post_probe_rejects_nonempty_wrong_response(monkeypatch) -> None:

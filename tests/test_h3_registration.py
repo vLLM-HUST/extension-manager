@@ -37,6 +37,10 @@ def fixture(module, tmp_path: Path):
             "id": arm,
             "launch_command": ["launch", arm],
             "fault_target_pid_file": f"/{arm}.pid",
+            "phase_barrier": {
+                "support": "unsupported",
+                "reason": "unit-only registration fixture; no live native adapter",
+            },
         }
         for arm in module.ARMS
     ]

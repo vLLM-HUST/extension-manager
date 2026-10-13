@@ -57,6 +57,61 @@
           "fault_target_pid_file": {
             "type": "string",
             "minLength": 1
+          },
+          "phase_barrier": {
+            "type": "object",
+            "required": [
+              "support",
+              "reason"
+            ],
+            "properties": {
+              "support": {
+                "enum": [
+                  "supported",
+                  "not-applicable",
+                  "unsupported"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "protocol": {
+                "const": "ecpa-native-close-prepare-barrier/v1"
+              },
+              "barrier_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "journal_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "timeout_s": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "support": {
+                      "const": "supported"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "protocol",
+                    "barrier_path",
+                    "journal_path",
+                    "timeout_s"
+                  ]
+                }
+              }
+            ]
           }
         },
         "additionalProperties": false
