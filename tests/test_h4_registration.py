@@ -12,6 +12,13 @@ SCRIPT = ROOT / "experiments/formal_campaign/h4_registration.py"
 REFREEZE = Path("/root/ecpa-h4-formal-refreeze-20261013")
 
 
+def external_refreeze_available() -> bool:
+    try:
+        return REFREEZE.is_dir()
+    except OSError:
+        return False
+
+
 def load_registration():
     spec = importlib.util.spec_from_file_location("h4_registration", SCRIPT)
     assert spec is not None and spec.loader is not None
@@ -30,7 +37,9 @@ def source(repository: str, remote: str, candidate: str, main: str) -> dict[str,
     }
 
 
-@pytest.mark.skipif(not REFREEZE.is_dir(), reason="exact H4 refreeze is external")
+@pytest.mark.skipif(
+    not external_refreeze_available(), reason="exact H4 refreeze is external"
+)
 def test_exact_refreeze_can_only_build_receipt_from_merged_source_observations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
