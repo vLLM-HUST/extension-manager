@@ -61,6 +61,24 @@ in both orders do not override either source contract.  The artifact therefore
 reports zero H2-eligible pairs and zero H4-eligible pairs and contains no
 performance result.
 
+A later, separately pinned lifecycle-profiler port is recorded in
+`artifacts/lifecycle-profiler-kvcompress-host-contract-20261013.json`.  It
+widens the profiler source manifest to vLLM `>=0.31.1,<0.32` and verifies, in
+isolated processes for both installation and entry-point orders, that the
+profiler observes one synthetic typed lifecycle event while KVCompress patches
+the scheduler and KV manager.  Manager also renders both extensions enabled
+for the exact Host/Ascend wheel pair.  This supersedes only the earlier
+*contract activation* blocker for this new source commit; it does not rewrite
+the historical preflight above.
+
+The later artifact did not start vLLM, load a model, send a workload, observe
+device execution, establish an independent H2 ownership label, or measure
+performance.  It is activation-ready input for a real model-serving campaign,
+not a runtime-effective result or an H2/H4 score input.  Run
+`python experiments/real_mod_composition/host_contract_qualification.py` to
+validate its schema, byte identity, exact source/Host bindings, both orders,
+and those fail-closed boundaries.
+
 `score_admission.py` enforces that boundary mechanically. With the checked-in
 artifacts it exits 2 and reports `INCOMPLETE`: all three runtime artifacts are
 preflights, the independent real-MOD oracle is absent, and neither frozen
