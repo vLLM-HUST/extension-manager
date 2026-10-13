@@ -86,7 +86,7 @@
       "repetitions": 3,
       "status": "planned",
       "supports": ["CLM-TRANSACTIONAL-RECOVERY"],
-      "evidence_artifacts": ["experiments/false_effective/scenarios.json", "experiments/false_effective/protocol.json"]
+      "evidence_artifacts": ["experiments/false_effective/scenarios.json", "experiments/false_effective/protocol.json", "experiments/formal_campaign/protocol.json", "experiments/formal_campaign/protocol.schema.json", "experiments/formal_campaign/record.schema.json", "experiments/formal_campaign/analyze.py"]
     },
     {
       "id": "EXP-MATCHED-PERFORMANCE",
@@ -96,7 +96,7 @@
       "repetitions": 3,
       "status": "planned",
       "supports": ["CLM-BOUNDED-COST"],
-      "evidence_artifacts": ["experiments/false_effective/scenarios.json", "experiments/false_effective/protocol.json"]
+      "evidence_artifacts": ["experiments/false_effective/scenarios.json", "experiments/false_effective/protocol.json", "experiments/formal_campaign/protocol.json", "experiments/formal_campaign/protocol.schema.json", "experiments/formal_campaign/record.schema.json", "experiments/formal_campaign/analyze.py"]
     }
   ]
 }

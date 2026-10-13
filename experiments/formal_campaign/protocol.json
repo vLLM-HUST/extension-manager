@@ -1,0 +1,83 @@
+{
+  "schema": "ecpa-formal-campaign-protocol/v1",
+  "status": "planned",
+  "evidence_class": "formal-real",
+  "minimum_starts": 3,
+  "arms": [
+    "vanilla-vllm-entry-points",
+    "manual-integration",
+    "ecpa"
+  ],
+  "schedule": [
+    ["vanilla-vllm-entry-points", "manual-integration", "ecpa"],
+    ["manual-integration", "ecpa", "vanilla-vllm-entry-points"],
+    ["ecpa", "vanilla-vllm-entry-points", "manual-integration"]
+  ],
+  "h3": {
+    "campaign_id": "H3-transactional-recovery-v1",
+    "required_cells": [
+      "unsupported-plugin-below-range",
+      "supported-current-plugin-within-range",
+      "unsupported-plugin-above-range",
+      "previous-supported-host",
+      "next-available-host",
+      "older-manifest-revision",
+      "mixed-parent-worker-versions",
+      "manager-crash-before-prepare",
+      "manager-crash-after-prepare",
+      "manager-crash-after-launch",
+      "manager-crash-after-observation",
+      "manager-crash-after-route-mutation",
+      "manager-crash-after-commit",
+      "worker-crash",
+      "worker-replacement",
+      "partial-rollout",
+      "observer-loss",
+      "stale-receipt",
+      "replayed-receipt",
+      "lease-expiration",
+      "external-dependency-outage",
+      "query-loss",
+      "interrupted-rollback",
+      "compensation-failure",
+      "unsupported-api-protocol-capability"
+    ],
+    "objective_rate_minimum": 0.95,
+    "cleanup_failure_policy": "falsify",
+    "prerequisites": [
+      "registered-formal-deployment",
+      "authority-owned-real-traffic-gate",
+      "exact-version-support-matrix"
+    ]
+  },
+  "h4": {
+    "campaign_id": "H4-matched-cost-v1",
+    "required_cells": [
+      "compatible-resource-pair.lifecycle-only",
+      "compatible-resource-pair.sampled-invocation",
+      "conditional-resource-pair.lifecycle-only",
+      "conditional-resource-pair.sampled-invocation"
+    ],
+    "manual_baseline": "manual-integration",
+    "thresholds": {
+      "startup_percent": 5.0,
+      "startup_absolute_ms": 250.0,
+      "startup_join": "and",
+      "throughput_regression_percent": 1.0,
+      "latency_p99_regression_percent": 2.0
+    },
+    "confidence": {
+      "method": "paired-bootstrap-percentile",
+      "level": 0.95,
+      "resamples": 10000,
+      "seed": 12012
+    },
+    "failed_start_policy": "falsify",
+    "cleanup_failure_policy": "falsify",
+    "prerequisites": [
+      "registered-formal-deployment",
+      "matched-model-workload-topology-and-runtime",
+      "controlled-warm-state"
+    ]
+  }
+}

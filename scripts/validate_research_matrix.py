@@ -21,6 +21,8 @@ DEPLOYMENT_PATH = "experiments/false_effective/first-formal-real-deployment.json
 DEPLOYMENT_SCHEMA_PATH = (
     "experiments/false_effective/first-formal-real-deployment.schema.json"
 )
+CAMPAIGN_PROTOCOL_PATH = "experiments/formal_campaign/protocol.json"
+CAMPAIGN_PROTOCOL_SCHEMA_PATH = "experiments/formal_campaign/protocol.schema.json"
 
 PHASE_COMMANDS = {
     "service-ready": "readiness-http",
@@ -163,6 +165,7 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
     claims_matrix = load(root, CLAIMS_PATH)
     study = load(root, STUDY_PATH)
     deployment = load(root, DEPLOYMENT_PATH)
+    campaign_protocol = load(root, CAMPAIGN_PROTOCOL_PATH)
     protocol = load(root, "experiments/false_effective/protocol.json")
     scenarios = load(root, "experiments/false_effective/scenarios.json")
     registry = load(root, "experiments/false_effective/verified-adapters.json")
@@ -175,6 +178,7 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
     validate_schema(root, claims_matrix, CLAIMS_SCHEMA_PATH)
     validate_schema(root, study, STUDY_SCHEMA_PATH)
     validate_schema(root, deployment, DEPLOYMENT_SCHEMA_PATH)
+    validate_schema(root, campaign_protocol, CAMPAIGN_PROTOCOL_SCHEMA_PATH)
 
     claims = require_unique(claims_matrix["claims"], "claim")
     experiments = require_unique(claims_matrix["experiments"], "experiment")
@@ -222,6 +226,43 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
     if len(scenario_ids) != len(set(scenario_ids)):
         raise ValueError("scenario ids must be unique")
     formal_arms = protocol["arms"]
+    if (
+        campaign_protocol["status"] != "planned"
+        or campaign_protocol["evidence_class"] != "formal-real"
+        or campaign_protocol["arms"] != formal_arms
+        or campaign_protocol["minimum_starts"] != protocol["minimum_starts"]
+        or campaign_protocol["schedule"] != protocol["schedule"]
+        or campaign_protocol["h4"]["manual_baseline"] != "manual-integration"
+        or campaign_protocol["h4"]["failed_start_policy"] != "falsify"
+        or campaign_protocol["h4"]["cleanup_failure_policy"] != "falsify"
+        or campaign_protocol["h3"]["cleanup_failure_policy"] != "falsify"
+        or campaign_protocol["h4"]["thresholds"]
+        != {
+            "startup_percent": 5.0,
+            "startup_absolute_ms": 250.0,
+            "startup_join": "and",
+            "throughput_regression_percent": 1.0,
+            "latency_p99_regression_percent": 2.0,
+        }
+        or len(campaign_protocol["h3"]["required_cells"])
+        != len(set(campaign_protocol["h3"]["required_cells"]))
+        or len(campaign_protocol["h4"]["required_cells"])
+        != len(set(campaign_protocol["h4"]["required_cells"]))
+    ):
+        raise ValueError(
+            "H3/H4 campaign protocol differs from the frozen claim contract"
+        )
+    campaign_artifacts = {
+        CAMPAIGN_PROTOCOL_PATH,
+        CAMPAIGN_PROTOCOL_SCHEMA_PATH,
+        "experiments/formal_campaign/record.schema.json",
+        "experiments/formal_campaign/analyze.py",
+    }
+    for experiment_id in ("EXP-TRANSACTIONAL-RECOVERY", "EXP-MATCHED-PERFORMANCE"):
+        if not campaign_artifacts <= set(
+            experiments[experiment_id]["evidence_artifacts"]
+        ):
+            raise ValueError("H3/H4 experiment does not bind the campaign validator")
     for experiment in experiments.values():
         if not set(experiment["scenarios"]) <= set(scenario_ids):
             raise ValueError("experiment references an unknown scenario")
