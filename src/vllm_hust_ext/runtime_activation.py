@@ -68,12 +68,7 @@ def probe_receipt(contract: str) -> dict[str, Any]:
     return {
         "accepted_options": sorted(required),
         "activation_contract": contract,
-        "entry_point": {
-            "group": ENTRY_POINT_GROUP,
-            "name": ENTRY_POINT_NAME,
-            "value": ENTRY_POINT_VALUE,
-        },
-        "schema": "ecpa-manager-host-activation-probe/v1",
+        "schema": "ecpa-activation-probe/v1",
     }
 
 
@@ -110,7 +105,9 @@ def configure_activation(contract: str) -> None:
     else:
         # An empty allowlist suppresses every entry point, including the target.
         os.environ["VLLM_PLUGINS"] = ""
-    os.environ.pop("VLLMHUST_EXT_ENABLED_BUNDLES", None)
+    os.environ["VLLMHUST_EXT_ENABLED_BUNDLES"] = _merge_csv(
+        os.getenv("VLLMHUST_EXT_ENABLED_BUNDLES"), EXTENSION_ID
+    )
     os.environ[MANUAL_BOOTSTRAP_FLAG] = MANUAL_BOOTSTRAP_VALUE
     bootstrap = str(_bootstrap_directory())
     inherited = os.getenv("PYTHONPATH")
