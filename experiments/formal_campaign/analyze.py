@@ -271,6 +271,25 @@ def _verify_h3_receipt(
             raise ValueError(f"{record['start_id']} receipt {name} is not bound")
     if receipt["campaign_sha256"] != campaign_spec["_sha256"]:
         raise ValueError(f"{record['start_id']} receipt campaign digest differs")
+    host_admission = receipt["host_source_admission"]
+    if _canonical_digest(host_admission) != receipt["host_source_admission_sha256"]:
+        raise ValueError(f"{record['start_id']} Host admission digest differs")
+    if host_admission["candidate_commit"] != receipt["host_commit"]:
+        raise ValueError(f"{record['start_id']} Host admission commit differs")
+    arm_commands = {
+        row["id"]: _canonical_digest({"argv": row["launch_command"]})
+        for row in campaign_spec["arms"]
+    }
+    if receipt["arm_command_digests"] != arm_commands:
+        raise ValueError(f"{record['start_id']} receipt arm commands differ")
+    if receipt["fault_command_digest"] != _canonical_digest(campaign_spec["fault"]):
+        raise ValueError(f"{record['start_id']} receipt fault command differs")
+    if receipt["state_command_digest"] != _canonical_digest(
+        {"argv": campaign_spec["probe"]["state_command"]}
+    ) or receipt["cleanup_command_digest"] != _canonical_digest(
+        {"argv": campaign_spec["probe"]["cleanup_command"]}
+    ):
+        raise ValueError(f"{record['start_id']} receipt authority commands differ")
     return receipt
 
 
@@ -408,7 +427,50 @@ def _verify_h3_raw_artifact(
     if errors:
         raise ValueError(f"{record['start_id']} raw H3 evidence: {errors[0].message}")
     receipt_path = (root / record["artifacts"]["deployment_receipt"]["path"]).resolve()
-    _verify_h3_receipt(record, receipt_path, campaign_spec)
+    receipt = _verify_h3_receipt(record, receipt_path, campaign_spec)
+    authority_binding = record["artifacts"].get("authority_registration")
+    if not isinstance(authority_binding, dict):
+        raise ValueError(f"{record['start_id']} lacks authority registration")
+    authority_path = (root / authority_binding["path"]).resolve()
+    if not authority_path.is_relative_to(root) or not authority_path.is_file():
+        raise ValueError(f"{record['start_id']} authority registration is missing")
+    if _digest_bytes(authority_path) != authority_binding["sha256"]:
+        raise ValueError(f"{record['start_id']} authority registration digest differs")
+    if authority_binding["sha256"] != receipt["authority_registration_sha256"]:
+        raise ValueError(
+            f"{record['start_id']} authority registration is not receipt-bound"
+        )
+    authority = _load_object(authority_path)
+    authority_errors = _schema_errors(
+        authority, "h3-authority-registration.schema.json"
+    )
+    if authority_errors:
+        message = authority_errors[0].message
+        raise ValueError(
+            f"{record['start_id']} authority registration: {message}"
+        )
+    review_subject = {key: value for key, value in authority.items() if key != "review"}
+    if authority["review"]["subject_sha256"] != _canonical_digest(review_subject):
+        raise ValueError(f"{record['start_id']} authority review subject differs")
+    starts = {row["start_id"]: row for row in authority["starts"]}
+    authority_start = starts.get(record["start_id"])
+    if authority_start is None:
+        raise ValueError(f"{record['start_id']} is absent from authority registration")
+    proxy_sha = authority_start["proxy_registration_sha256"]
+    if proxy_sha != _canonical_digest(authority_start["proxy_registration"]):
+        raise ValueError(f"{record['start_id']} proxy registration digest differs")
+    if (
+        receipt["authority"]["start_proxy_registration_digests"].get(record["start_id"])
+        != proxy_sha
+    ):
+        raise ValueError(
+            f"{record['start_id']} proxy registration is not receipt-bound"
+        )
+    if (
+        raw["authority_registration_sha256"] != authority_binding["sha256"]
+        or raw["proxy_registration_sha256"] != proxy_sha
+    ):
+        raise ValueError(f"{record['start_id']} raw H3 authority identity differs")
     request_document = _load_object(
         (root / record["artifacts"]["request_results"]["path"]).resolve()
     )
