@@ -199,6 +199,7 @@ def prepare_formal_proxy_authorization(
     )
     value = {
         "schema": "ecpa-loopback-formal-host-authorization/v1",
+        "authorization_path": str(output),
         "plan_path": str(plan_path),
         "journal_dir": str(event_dir),
         "journal_device": metadata.st_dev,
