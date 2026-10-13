@@ -284,6 +284,18 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     remaining_prediction = load_json(
         root, f"{remaining_prefix}/manager-prediction.json"
     )
+    scheduler_prefix = (
+        "experiments/real_mod_composition/artifacts/"
+        "h2-pipeline-bidkv-oracle-20261013"
+    )
+    scheduler_campaign = load_json(root, f"{scheduler_prefix}/campaign.json")
+    scheduler_oracle = load_json(root, f"{scheduler_prefix}/oracle.json")
+    scheduler_freeze = load_json(
+        root, f"{scheduler_prefix}/oracle-freeze-receipt.json"
+    )
+    scheduler_prediction = load_json(
+        root, f"{scheduler_prefix}/manager-prediction.json"
+    )
     if (
         campaign.get("schema") != "ecpa-h2-minimal-real-source-corpus/v2"
         or campaign.get("revision") != 2
@@ -489,6 +501,104 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
 
     counts["true_negative"] += 1
     scored.append(external_case)
+
+    scheduler_sources = scheduler_campaign.get("sources")
+    scheduler_host = scheduler_campaign.get("host")
+    scheduler_boundary = scheduler_prediction.get("process_boundary")
+    scheduler_runtime = scheduler_prediction.get("runtime")
+    expected_scheduler_aggregate = {
+        "case_count": 5,
+        "true_positive": 2,
+        "true_negative": 3,
+        "false_positive": 0,
+        "false_negative": 0,
+        "admit_precision": 1.0,
+        "admit_recall": 1.0,
+    }
+    expected_scheduler_options = {
+        "org.vllm-hust.pipeline-microbatch": {
+            "--batch-admission-policy": (
+                "vllm_hust_pipeline_microbatch.policy.PipelineMicrobatchPolicy"
+            )
+        },
+        "org.vllm-hust.bidkv": {
+            "--preemption-policy": (
+                "bidkv.adapters.vllm_hust.selector.BidkvPreemptionPolicy"
+            )
+        },
+    }
+    if (
+        digest(root, f"{scheduler_prefix}/campaign.json")
+        != "a0c36781ee9776935f673e4d5904ec3dc03ffe6401971227b35b3904438eb7a5"
+        or digest(root, f"{scheduler_prefix}/oracle.json")
+        != "9ba8f59096de7ecc8864a67a25f27cd5a41cf8f4f182636410f1a2e3ac410a45"
+        or scheduler_campaign.get("schema") != "ecpa-h2-source-bound-case/v1"
+        or scheduler_campaign.get("classification")
+        != "source-bound-pre-launch-oracle-input"
+        or scheduler_campaign.get("case_id")
+        != "pair-pipeline-microbatch-bidkv-vllm-0281"
+        or not isinstance(scheduler_host, dict)
+        or scheduler_host.get("repository") != "vLLM-HUST/vllm-hust"
+        or scheduler_host.get("commit")
+        != "3e57b2f75cffffd26dda0df4d9bcac890cfe99fc"
+        or scheduler_host.get("tree")
+        != "b0e682747b3b7242c1b857841136b784f6c7f6a3"
+        or scheduler_campaign.get("planned_evaluation")
+        != {
+            "host_launch": False,
+            "manager_prediction_after_oracle_freeze": True,
+            "runtime_execution": False,
+        }
+        or not isinstance(scheduler_sources, dict)
+        or any(
+            not isinstance(source, dict)
+            or source.get("sha256")
+            != f"sha256:{digest(root, source.get('snapshot', ''))}"
+            for source in scheduler_sources.values()
+        )
+        or scheduler_oracle.get("schema")
+        != "ecpa-h2-independent-source-oracle/v3"
+        or scheduler_oracle.get("decision") != "admit"
+        or scheduler_oracle.get("score_eligible") is not True
+        or scheduler_oracle.get("scope") != "source-bound-pre-launch-composition"
+        or scheduler_oracle.get("runtime_claim") is not False
+        or scheduler_oracle.get("performance_claim") is not False
+        or scheduler_freeze.get("schema")
+        != "ecpa-h2-independent-oracle-freeze/v1"
+        or scheduler_freeze.get("manager_prediction_present_at_freeze") is not False
+        or scheduler_freeze.get("campaign_sha256")
+        != f"sha256:{digest(root, f'{scheduler_prefix}/campaign.json')}"
+        or scheduler_freeze.get("oracle_sha256")
+        != f"sha256:{digest(root, f'{scheduler_prefix}/oracle.json')}"
+        or scheduler_prediction.get("schema")
+        != "ecpa-h2-scheduler-pair-manager-prediction/v1"
+        or scheduler_prediction.get("captured_utc", "")
+        <= scheduler_freeze.get("frozen_utc", "")
+        or scheduler_prediction.get("oracle_sha256")
+        != scheduler_freeze.get("oracle_sha256")
+        or scheduler_prediction.get("prediction") != "admit"
+        or scheduler_prediction.get("oracle_decision") != "admit"
+        or scheduler_prediction.get("matched") is not True
+        or scheduler_prediction.get("score_eligible") is not True
+        or scheduler_prediction.get("performance_claim") is not False
+        or scheduler_prediction.get("projected_options")
+        != expected_scheduler_options
+        or not isinstance(scheduler_boundary, dict)
+        or scheduler_boundary.get("host_process_started") is not False
+        or not isinstance(scheduler_runtime, dict)
+        or scheduler_runtime.get("claim") is not False
+        or scheduler_runtime.get("host_launch_command_invoked") is not False
+        or "PP2+TP2 on four devices; only two devices are allocated"
+        not in scheduler_runtime.get("reason", "")
+        or scheduler_prediction.get("corpus_update", {}).get("current")
+        != expected_scheduler_aggregate
+        or scheduler_prediction.get("corpus_update", {}).get("h2_complete")
+        is not False
+    ):
+        raise ValueError("H2 scheduler-pair evidence is invalid or overclaimed")
+
+    counts["true_positive"] += 1
+    scored.append(scheduler_oracle)
     tp, tn = counts["true_positive"], counts["true_negative"]
     fp, fn = counts["false_positive"], counts["false_negative"]
     admit_precision = tp / (tp + fp)

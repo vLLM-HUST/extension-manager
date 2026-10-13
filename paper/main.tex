@@ -158,7 +158,7 @@ fail-closed formal harness are implemented.  Release \ECPAReleaseVersion{}
 freezes Manifest \ECPAManifestVersion{} and records one pinned native-host
 lifecycle qualification.  The source-bound static corpus is measured, and the
 first matched prototype-host H1 cell is complete and falsifies its prevention
-hypothesis.  H2 has a four-case real-source subset but lacks the breadth to
+hypothesis.  H2 has a five-case real-source subset but lacks the breadth to
 support its population claim; H3 and H4 each have zero formal runs, and a real
 authority-owned ExposureGate remains incomplete.  We do not present
 modeled decisions, interface fixtures, release qualification, or lifecycle
@@ -606,7 +606,7 @@ Section~\ref{sec:evaluation}.  The matched nine-start partial-worker campaign
 now establishes that the formal protocol can collect and replay process-owned
 evidence, and it falsifies H1 for the tested implementation.  Consequently we
 claim one negative H1 result, one bounded lifecycle qualification, and a
-four-case partial H2 result, not a completed end-to-end \system evaluation.
+five-case partial H2 result, not a completed end-to-end \system evaluation.
 
 An exact-commit, cross-repository adapter preflight exercises the host's
 preemption-policy controller and translates its deployment journal into a
@@ -922,7 +922,7 @@ precision/recall and reject precision/recall are therefore all 1.0.  The admit
 prevents a reject-all policy from satisfying H2; that baseline has admit recall
 0.
 
-The true positive is Lifecycle Profiler plus KVCompress on an exact TP2
+The first true positive is Lifecycle Profiler plus KVCompress on an exact TP2
 vLLM-HUST/Ascend stack.  Both frozen installation orders completed a short
 context request and produced process-owned host evidence with clean shutdown.
 The scored workload has \code{max\_model\_len=2048}, below KVCompress's
@@ -934,6 +934,17 @@ pre-launch rejection of Production Stack plus a standalone KEDA controller:
 with chart-side KEDA delegation disabled, both claim the same Deployment
 replica projection.  The explicit safe delegation configuration is outside
 that negative case.
+
+The second true positive is a source-bound, pre-launch admit for Pipeline
+Microbatch plus BidKV on exact vLLM-HUST commit
+\code{3e57b2f75cffffd26dda0df4d9bcac890cfe99fc}.  Its independent oracle was
+frozen before the Manager prediction.  The frozen Host source exposes separate
+batch-admission-policy and preemption-policy controllers, protocol versions,
+and scheduler fields, and the Manager projects the pair onto those distinct
+options.  This is source-only evidence.  The qualified Pipeline Microbatch
+cell requires PP2+TP2 on four devices, while the current allocation has two;
+we did not launch the Host and make no runtime or performance claim for this
+case.
 
 A separate real TP2 qualification crosses the compression threshold in both
 of its \ECPAHTwoCompressionOrders{} installation orders.  Its independently
@@ -948,7 +959,7 @@ field labeled \code{frozen\_utc} is later than the observed first launch, so
 we explicitly reject it as a preregistration timestamp; pre-launch integrity
 is limited to the runner's digest checks of the campaign, oracle, and runner.
 
-This is a partial H2 result.  Four scored cases cannot estimate prevalence or
+This is a partial H2 result.  Five scored cases cannot estimate prevalence or
 support the preregistered population claim.  The CLI/config collision remains
 unresolved because no second qualifying active bundle claims the same launch
 projection.  Two communication/process-carrier cases retain independent
@@ -956,7 +967,7 @@ projection.  Two communication/process-carrier cases retain independent
 source-level and pre-launch, not a Kubernetes runtime receipt.  The conditional
 DiffSpec/KVCompress pair is also excluded pending physical-ownership and
 installation-order review.  We therefore report the observed 1.0 values with
-$n=4$ and keep H2 incomplete.
+$n=5$ and keep H2 incomplete.
 
 \subsection{Reference ExposureGate Artifact}
 The reference gate artifact is a deterministic, single-host state machine backed
@@ -989,7 +1000,7 @@ bind that fixture to inspected source.  These numbers measure conformance to
 the modeled taxonomy, not H2, real conflict prevalence, or runtime
 effectiveness.
 
-The partial-worker-coverage H1 cell is measured.  H2 has only the four-case
+The partial-worker-coverage H1 cell is measured.  H2 has only the five-case
 partial result above, while H3 and H4 have zero formal runs.  The single
 release qualification is
 reported separately and cannot populate a formal cell.  Table and figure
@@ -999,6 +1010,7 @@ this implementation, Manager-controlled activation alone did not revoke the
 effective claim after evidence coverage fell to 0.5.  A real authority-owned
 ExposureGate is still required before the paper can claim prevention at a
 traffic boundary.
+The current overall submission decision therefore remains \code{NO-GO}.
 
 \section{Related Work}
 \textbf{Inference and module plugins.}  vLLM's Plugin System loads registered
@@ -1158,7 +1170,7 @@ process-owned evidence and cleanup path can execute end to end.  More
 significantly, the first matched nine-start study finds false-effective state
 in all three ECPA repetitions after partial evidence loss.  The tested runtime
 therefore does not yet enforce its intended prevention property.  The partial
-H2 subset correctly classifies one admit and three rejects, but is not broad
+H2 subset correctly classifies two admits and three rejects, but is not broad
 enough to establish composability.  A real traffic gate plus broader
 composability, version-skew, recovery, and overhead
 evaluations remain necessary before making the broader systems claim.
