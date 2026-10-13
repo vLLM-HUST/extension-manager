@@ -260,3 +260,40 @@ def test_frozen_environment_unsets_inherited_device_mapping(monkeypatch):
     definition["environment"]["ASCEND_RT_VISIBLE_DEVICES"] = "3,6"
     with pytest.raises(ValueError, match="both assigned and unset"):
         runner.arm_environment(definition)
+
+
+def test_http_error_status_and_exact_body_are_retained(monkeypatch):
+    import io
+    import urllib.error
+
+    runner = load_runner()
+    body = b'{"error":"worker missing"}'
+
+    def rejected(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            "http://fixture", 503, "Unavailable", {}, io.BytesIO(body)
+        )
+
+    monkeypatch.setattr(runner.urllib.request, "urlopen", rejected)
+    result = runner.request_once("http://fixture", b"{}", 1, "req", "measured")
+    assert result["status_code"] == 503
+    assert result["output_tokens"] == 0
+    assert result["response_nonempty"] is False
+    assert runner.h4_response_summary(result["http_response"])["status_code"] == 503
+    import base64
+
+    assert base64.b64decode(result["http_response"]["body_base64"]) == body
+    assert result["error"].startswith("HTTPError:")
+
+
+def test_transport_failure_is_retained_without_an_http_response(monkeypatch):
+    runner = load_runner()
+
+    def disconnected(*args, **kwargs):
+        raise TimeoutError("fixture timeout")
+
+    monkeypatch.setattr(runner.urllib.request, "urlopen", disconnected)
+    result = runner.request_once("http://fixture", b"{}", 1, "req", "measured")
+    assert result["status_code"] == 0
+    assert result["http_response"] is None
+    assert result["error"] == "TimeoutError: fixture timeout"

@@ -22,6 +22,9 @@ from analyze import (
     _canonical_digest,
     _digest_bytes,
     _recompute_h4_metrics,
+    h4_body_binding,
+    h4_request_payload,
+    h4_response_summary,
     load_h4_campaign,
 )
 from jsonschema import Draft7Validator
@@ -183,48 +186,45 @@ def request_once(
     endpoint: str, payload: bytes, timeout: float, request_id: str, kind: str
 ) -> dict[str, Any]:
     dispatch = now_ns()
-    status = 0
-    response_nonempty = False
-    output_tokens = 0
+    response_evidence = None
     error: str | None = None
+    request = urllib.request.Request(
+        endpoint,
+        data=payload,
+        headers={"content-type": "application/json"},
+        method="POST",
+    )
     try:
-        request = urllib.request.Request(
-            endpoint,
-            data=payload,
-            headers={"content-type": "application/json"},
-            method="POST",
-        )
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            status = response.status
-            body = response.read()
-        parsed = json.loads(body)
-        text = parsed.get("choices", [{}])[0].get("text", "")
-        response_nonempty = bool(text)
-        output_tokens = int(parsed.get("usage", {}).get("completion_tokens", 0))
-    except Exception as exc:  # retained verbatim as per-request evidence
+            response_evidence = {
+                "status_code": response.status,
+                "headers": list(response.headers.items()),
+                **h4_body_binding(response.read()),
+            }
+    except urllib.error.HTTPError as exc:
+        # HTTPError is a real response, not a transport status 0.
+        response_evidence = {
+            "status_code": exc.code,
+            "headers": list(exc.headers.items()),
+            **h4_body_binding(exc.read()),
+        }
+        error = f"HTTPError: {exc}"
+    except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"
     return {
         "request_id": request_id,
         "kind": kind,
         "dispatch_ns": dispatch,
         "complete_ns": now_ns(),
-        "status_code": status,
-        "response_nonempty": response_nonempty,
-        "output_tokens": output_tokens,
         "error": error,
+        "http_request": h4_body_binding(payload),
+        "http_response": response_evidence,
+        **h4_response_summary(response_evidence),
     }
 
 
 def drive_requests(endpoint: str, workload: dict[str, Any]) -> list[dict[str, Any]]:
-    payload = json.dumps(
-        {
-            "model": workload["served_model"],
-            "prompt": workload["prompt"],
-            "max_tokens": workload["max_tokens"],
-            "temperature": workload["temperature"],
-            "seed": workload["seed"],
-        }
-    ).encode()
+    payload = h4_request_payload(workload, workload["served_model"])
     timeout = float(workload["request_timeout_seconds"])
     rows: list[dict[str, Any]] = []
     for kind, count in (
@@ -520,7 +520,8 @@ def execute_start(
         "cleanup_report": bind_file(cleanup_report, output_root),
     }
     raw = {
-        "schema": "ecpa-h4-raw-measurement/v1",
+        "schema": "ecpa-h4-raw-measurement/v2",
+        "launch_definition": definition,
         "campaign_id": campaign["campaign_id"],
         "cell_id": campaign["cell_id"],
         "start_id": start_id,
@@ -599,7 +600,15 @@ def execute_start(
         "failure": failure,
     }
     if not failure:
-        record["metrics"] = _recompute_h4_metrics(record, raw, campaign)
+        try:
+            record["metrics"] = _recompute_h4_metrics(record, raw, campaign)
+        except ValueError as exc:
+            record["status"] = "failed"
+            record["failure"] = {
+                "phase": "measurement_verification",
+                "class": type(exc).__name__,
+            }
+
     (run_dir / "record.json").write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n"
     )

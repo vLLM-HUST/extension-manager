@@ -127,3 +127,16 @@ NPU nodes 3 and 6 as logical devices 0 and 1, do not set
 `ASCEND_RT_VISIBLE_DEVICES=3,6`: first record a real initialization/allocation
 probe and freeze the successful environment. A prelaunch dry-run cannot prove
 that device initialization succeeds.
+
+H4 HTTP raw evidence v2 retains exact request and response entity bytes as
+base64 plus SHA-256, along with observed HTTP status and headers, including
+HTTPError responses. These are application HTTP observations, not packet
+captures. Intake binds the arm definition to the issuer receipt, checks every
+request byte against the frozen workload and admitted model, and reparses
+response model, text and server-reported completion-token usage. Summary values
+cannot independently qualify a successful request. Throughput remains successful
+requests per second; server usage is not independent tokenizer or model-quality
+validation. Transport failures retain their error and an absent HTTP response.
+Old H4 v1 records lacking raw bodies remain unverified and must not be backfilled.
+Unit-test HTTP fixtures are regression evidence only; formal H4 remains zero
+until an admitted real campaign runs.

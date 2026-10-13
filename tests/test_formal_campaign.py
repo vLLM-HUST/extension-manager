@@ -52,6 +52,10 @@ def campaign_spec(cell: str) -> dict[str, object]:
         },
         "workload": {
             "sha256": "sha256:" + "6" * 64,
+            "prompt": "fixture",
+            "max_tokens": 2,
+            "temperature": 0.0,
+            "seed": 12012,
             "warmup_requests": 1,
             "measured_requests": 4,
             "min_successful_measured_requests": 4,
@@ -93,12 +97,15 @@ def receipt(root: Path, cell: str) -> tuple[Path, dict[str, str]]:
         "campaign_id": "H4-matched-cost-v1",
         "cell_id": cell,
         "arm_command_digests": {
-            arm: "sha256:" + char * 64
-            for arm, char in (
-                ("vanilla-vllm-entry-points", "a"),
-                ("manual-integration", "b"),
-                ("ecpa", "c"),
-            )
+            arm: "sha256:"
+            + hashlib.sha256(
+                json.dumps(
+                    {"served_model": "fixture-model"},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
+            ).hexdigest()
+            for arm in ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
         },
         "manager_commit": "1" * 40,
         "host_commit": "2" * 40,
@@ -201,6 +208,24 @@ def make_h4_record(
                 "error": None,
             }
         )
+    for row in requests:
+        row["http_request"] = module.h4_body_binding(
+            module.h4_request_payload(campaign_spec(cell)["workload"], "fixture-model")
+        )
+        row["http_response"] = {
+            "status_code": 200,
+            "headers": [],
+            **module.h4_body_binding(
+                json.dumps(
+                    {
+                        "model": "fixture-model",
+                        "choices": [{"text": "fixture completion"}],
+                        "usage": {"completion_tokens": 1},
+                    }
+                ).encode()
+            ),
+        }
+        row["response_model"] = "fixture-model"
     cleanup = {
         "processes_reclaimed": True,
         "ports_reclaimed": True,
@@ -219,7 +244,8 @@ def make_h4_record(
         name: write(run / f"{name}.json", value) for name, value in child_values.items()
     }
     raw = {
-        "schema": "ecpa-h4-raw-measurement/v1",
+        "schema": "ecpa-h4-raw-measurement/v2",
+        "launch_definition": {"served_model": "fixture-model"},
         "campaign_id": "H4-matched-cost-v1",
         "cell_id": cell,
         "start_id": start_id,
@@ -798,3 +824,63 @@ def test_h3_recomputes_frozen_request_oracle(tmp_path: Path, mutation: str) -> N
         )
     with pytest.raises(ValueError, match="frozen POST|response digest|frozen oracle"):
         analyzer._recompute_h3_metrics(row, raw, campaign)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "request",
+        "body_hash",
+        "wrong_model",
+        "tokens",
+        "summary",
+        "status",
+        "missing_raw",
+        "bad_base64",
+    ],
+)
+def test_h4_http_evidence_tampering_is_rejected(tmp_path: Path, mutation: str):
+    """Synthetic verifier regression, never a formal experiment."""
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    record = rows[0]
+    raw_path = tmp_path / record["artifacts"]["raw_measurement"]["path"]
+    raw = json.loads(raw_path.read_text())
+    item = raw["requests"][1]
+    if mutation == "request":
+        item["http_request"] = module.h4_body_binding(b'{"prompt":"changed"}')
+    elif mutation == "body_hash":
+        item["http_response"]["body_sha256"] = "sha256:" + "0" * 64
+    elif mutation in ("wrong_model", "tokens"):
+        body = json.loads(module.h4_decode_body(item["http_response"]))
+        if mutation == "wrong_model":
+            body["model"] = "different-model"
+        else:
+            body["usage"]["completion_tokens"] = 999
+        item["http_response"].update(module.h4_body_binding(json.dumps(body).encode()))
+        # Recompute the summaries too: consistent forged summaries cannot evade
+        # the frozen model/request limit check.
+        item.update(module.h4_response_summary(item["http_response"]))
+    elif mutation == "summary":
+        item["output_tokens"] = 999
+    elif mutation == "status":
+        item["status_code"] = 503
+    elif mutation == "missing_raw":
+        del item["http_response"]
+    else:
+        item["http_response"]["body_base64"] = "!not-base64!"
+    with pytest.raises(ValueError):
+        module._recompute_h4_metrics(record, raw, campaign_spec(cell))
+
+
+def test_h4_admitted_model_cannot_be_rebound(tmp_path: Path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    record = rows[0]
+    raw_path = tmp_path / record["artifacts"]["raw_measurement"]["path"]
+    raw = json.loads(raw_path.read_text())
+    raw["launch_definition"]["served_model"] = "mutated-model"
+    write(raw_path, raw)
+    record["artifacts"]["raw_measurement"]["sha256"] = digest(raw_path)
+    with pytest.raises(ValueError, match="admitted arm"):
+        module._verify_h4_raw_artifact(record, tmp_path, campaign_spec(cell))

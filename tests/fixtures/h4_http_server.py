@@ -24,6 +24,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         body = json.dumps(
             {
+                "model": request["model"],
                 "choices": [{"text": "fixture completion"}],
                 "usage": {"completion_tokens": 2},
             }
