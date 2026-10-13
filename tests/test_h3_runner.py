@@ -97,6 +97,14 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
             "health_url": f"http://127.0.0.1:{port}/health",
             "request_url": f"http://127.0.0.1:{port}/request",
             "request_count": 2,
+            "request_payload": {
+                "model": "test-model",
+                "prompt": "Reply ECPA",
+                "max_tokens": 8,
+                "temperature": 0,
+                "stream": False,
+            },
+            "response_expectation": {"text_equals": "ECPA"},
             "state_command": [sys.executable, str(state)],
             "cleanup_command": [sys.executable, str(cleanup_probe)],
             "ready_timeout_s": 5,
@@ -308,3 +316,72 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
     summary = json.loads(analyzed.stdout)
     assert summary["status"] == "incomplete"
     assert summary["received_starts"] == 1
+
+
+def test_frozen_post_probe_rejects_nonempty_wrong_response(monkeypatch) -> None:
+    import importlib.util
+    import urllib.request
+
+    spec = importlib.util.spec_from_file_location("h3_http_probe_test", RUNNER)
+    assert spec and spec.loader
+    old_path = sys.path[:]
+    sys.path.insert(0, str(RUNNER.parent))
+    try:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        sys.path[:] = old_path
+    payload = {
+        "model": "test-model",
+        "prompt": "Reply ECPA",
+        "max_tokens": 8,
+        "temperature": 0,
+        "stream": False,
+    }
+    observed = []
+
+    class Response:
+        status = 200
+        headers = {"x-ecpa-tuple-supported": "true"}
+
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def read(self):
+            return self.body
+
+    bodies = [
+        b"completion",
+        b'{"model":"wrong","choices":[{"index":0,"text":"ECPA","finish_reason":"stop"}]}',
+        b'{"model":"test-model","choices":[{"index":0,"text":"ECPA","finish_reason":"length"}]}',
+        b'{"model":"test-model","choices":[{"index":0,"text":"wrong","finish_reason":"stop"}]}',
+        b'{"model":"test-model","choices":[{"index":0,"text":"ECPA","finish_reason":"stop"}]}',
+    ]
+    for body in bodies:
+
+        def open_response(request, timeout, response_body=body):
+            observed.append(request)
+            return Response(response_body)
+
+        monkeypatch.setattr(urllib.request, "urlopen", open_response)
+        result = module.request_event(
+            "http://127.0.0.1:8187/v1/completions",
+            "request-test",
+            2,
+            payload,
+            {"text_equals": "ECPA"},
+        )
+        assert result["functional_correctness"] is (body == bodies[-1])
+        assert result["response_body"] == body.decode()
+        assert result["response_sha256"] == "sha256:" + hashlib.sha256(body).hexdigest()
+    assert all(request.get_method() == "POST" for request in observed)
+    assert all(json.loads(request.data) == payload for request in observed)
+    assert all(
+        request.headers["X-ecpa-request-id"] == "request-test" for request in observed
+    )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import http.server
+import json
 import os
 from pathlib import Path
 
@@ -10,13 +11,35 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/health":
             body = b"ok"
-        elif self.path == "/request":
-            body = b"completion"
         else:
             self.send_error(404)
             return
         self.send_response(200)
         self.send_header("content-type", "text/plain")
+        self.send_header("x-ecpa-tuple-supported", "true")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_POST(self) -> None:
+        value = json.loads(self.rfile.read(int(self.headers["content-length"])))
+        if self.path != "/request" or value != {
+            "model": "test-model",
+            "prompt": "Reply ECPA",
+            "max_tokens": 8,
+            "temperature": 0,
+            "stream": False,
+        }:
+            self.send_error(400)
+            return
+        body = json.dumps(
+            {
+                "model": value["model"],
+                "choices": [{"index": 0, "text": "ECPA", "finish_reason": "stop"}],
+            }
+        ).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
         self.send_header("x-ecpa-tuple-supported", "true")
         self.send_header("content-length", str(len(body)))
         self.end_headers()

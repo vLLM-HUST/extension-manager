@@ -378,6 +378,19 @@ def bind_file(path: Path, root: Path) -> dict[str, str]:
     return {"path": str(path.relative_to(root)), "sha256": _digest_bytes(path)}
 
 
+def arm_environment(definition: dict[str, Any]) -> dict[str, str]:
+    explicit = {
+        str(key): str(value) for key, value in definition.get("environment", {}).items()
+    }
+    removed = definition.get("unset_environment", [])
+    if set(removed) & explicit.keys():
+        raise ValueError("environment variable is both assigned and unset")
+    env = os.environ.copy()
+    for key in removed:
+        env.pop(key, None)
+    return env | explicit
+
+
 def execute_start(
     campaign: dict[str, Any],
     receipt_path: Path,
@@ -392,9 +405,7 @@ def execute_start(
     run_dir = output_root / start_id
     run_dir.mkdir(parents=True, exist_ok=False)
     definition = launch_spec["arms"][arm]
-    env = os.environ.copy() | {
-        str(key): str(value) for key, value in definition.get("environment", {}).items()
-    }
+    env = arm_environment(definition)
     phase_times: dict[str, dict[str, int]] = {}
     process: subprocess.Popen[bytes] | None = None
     sampler: ResourceSampler | None = None

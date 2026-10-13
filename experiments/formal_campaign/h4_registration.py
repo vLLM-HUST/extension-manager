@@ -104,6 +104,11 @@ def validate_launch_spec(launch: dict[str, Any]) -> None:
     for arm in ARMS:
         definition = launch["arms"][arm]
         served_models.add(definition["served_model"])
+        if (
+            set(definition.get("unset_environment", []))
+            & definition["environment"].keys()
+        ):
+            raise ValueError(f"{arm} assigns and unsets the same environment variable")
         if set(definition["phase_commands"]) - set(PHASES):
             raise ValueError(f"{arm} has an unknown prelaunch phase")
     if len(served_models) != 1:

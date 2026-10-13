@@ -17,6 +17,24 @@ import jsonschema
 ROOT = Path(__file__).resolve().parent
 
 
+def h3_response_correctness(
+    response: Any, payload: dict[str, Any], expected: dict[str, Any]
+) -> bool:
+    """Check the frozen task oracle, not HTTP body presence or a runner boolean."""
+    if not isinstance(response, dict) or response.get("model") != payload["model"]:
+        return False
+    choices = response.get("choices")
+    if not isinstance(choices, list) or len(choices) != 1:
+        return False
+    choice = choices[0]
+    return (
+        isinstance(choice, dict)
+        and choice.get("index") == 0
+        and choice.get("finish_reason") == "stop"
+        and choice.get("text") == expected["text_equals"]
+    )
+
+
 def _load_object(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text())
     if not isinstance(value, dict):
@@ -356,6 +374,43 @@ def _recompute_h3_metrics(
     final = recovery[0]["detail"]
     objective = campaign_spec["objective"]
     request_events = kinds.get("request-result", [])
+    if len(request_events) != campaign_spec["probe"]["request_count"]:
+        raise ValueError(f"{start_id} request count differs from frozen probe")
+    payload = campaign_spec["probe"]["request_payload"]
+    payload_sha = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode()
+        ).hexdigest()
+    )
+    for event in request_events:
+        detail = event["detail"]
+        if (
+            detail.get("request_method") != "POST"
+            or detail.get("request_payload_sha256") != payload_sha
+        ):
+            raise ValueError(f"{start_id} request is not bound to frozen POST payload")
+        response_raw = detail.get("response_body", "")
+        if not isinstance(response_raw, str):
+            raise ValueError(f"{start_id} response body must be retained")
+        if (
+            detail.get("response_sha256")
+            != "sha256:" + hashlib.sha256(response_raw.encode()).hexdigest()
+        ):
+            raise ValueError(f"{start_id} response digest mismatch")
+        try:
+            response = json.loads(response_raw)
+        except (ValueError, TypeError):
+            response = None
+        correct = detail.get("status_code") == 200 and h3_response_correctness(
+            response, payload, campaign_spec["probe"]["response_expectation"]
+        )
+        if detail.get("functional_correctness") is not correct:
+            raise ValueError(
+                f"{start_id} response correctness is not derived from frozen oracle"
+            )
     ids = [event["detail"]["request_id"] for event in request_events]
     if len(ids) != len(set(ids)):
         raise ValueError(f"{start_id} has duplicate request observations")
@@ -446,9 +501,7 @@ def _verify_h3_raw_artifact(
     )
     if authority_errors:
         message = authority_errors[0].message
-        raise ValueError(
-            f"{record['start_id']} authority registration: {message}"
-        )
+        raise ValueError(f"{record['start_id']} authority registration: {message}")
     review_subject = {key: value for key, value in authority.items() if key != "review"}
     if authority["review"]["subject_sha256"] != _canonical_digest(review_subject):
         raise ValueError(f"{record['start_id']} authority review subject differs")

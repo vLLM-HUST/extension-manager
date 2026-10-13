@@ -245,3 +245,18 @@ def test_runner_executes_requests_and_reclaims_fixture_process(tmp_path: Path):
         == 5
     )
     assert runner.port_closed("127.0.0.1", port)
+
+
+def test_frozen_environment_unsets_inherited_device_mapping(monkeypatch):
+    runner = load_runner()
+    monkeypatch.setenv("ASCEND_RT_VISIBLE_DEVICES", "3,6")
+    definition = {
+        "environment": {"H4_ARM": "ecpa"},
+        "unset_environment": ["ASCEND_RT_VISIBLE_DEVICES"],
+    }
+    env = runner.arm_environment(definition)
+    assert "ASCEND_RT_VISIBLE_DEVICES" not in env
+    assert env["H4_ARM"] == "ecpa"
+    definition["environment"]["ASCEND_RT_VISIBLE_DEVICES"] = "3,6"
+    with pytest.raises(ValueError, match="both assigned and unset"):
+        runner.arm_environment(definition)
