@@ -37,6 +37,11 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert model["file_count"] == 14
 
     assert SHA256.fullmatch(candidate["installed_environment"]["digest"])
+    versions = candidate["installed_environment"]["versions"]
+    assert versions["vllm"].endswith("+gb093ae009.empty")
+    assert versions["vllm_ascend"].endswith("+hust.20260903.4.gfd70a5c81")
+    assert versions["cann_runtime"] == "9.1.0"
+    assert versions["ascend_driver"] == "25.2.1"
     assert SHA256.fullmatch(candidate["container"]["image_id"])
     assert candidate["container"]["authority"] == "kubernetes-pod-status"
     assert SHA256.fullmatch(candidate["activation_probe"]["artifact_sha256"])

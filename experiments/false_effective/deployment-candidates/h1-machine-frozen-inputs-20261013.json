@@ -29,7 +29,19 @@
     "distribution_count": 196,
     "uv_pip_check": "pass",
     "digest": "sha256:52cdc8b6356c57899c15bf1aa3e0dafeeac3192eb71a8fab4d72c90d59335aa0",
-    "scope": "venv-installed-bytes-only; excludes CANN, driver, model and host OS"
+    "scope": "venv-installed-bytes-only; excludes CANN, driver, model and host OS",
+    "versions": {
+      "python": "3.12.13",
+      "vllm": "0.31.1.post1.dev164+gb093ae009.empty",
+      "vllm_ascend": "0.25.1rc2.dev874+hust.20260903.4.gfd70a5c81",
+      "vllm_hust_ext": "0.3.0",
+      "vllm_kv_materialization": "0.1.0",
+      "torch": "2.13.0+cpu",
+      "torch_npu": "2.13.0rc1",
+      "triton_ascend": "3.6.0+git92513dba",
+      "cann_runtime": "9.1.0",
+      "ascend_driver": "25.2.1"
+    }
   },
   "container": {
     "image": "192.168.0.6:5050/vllm-ascend-ssh:v1",
