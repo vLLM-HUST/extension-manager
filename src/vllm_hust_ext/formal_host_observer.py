@@ -190,28 +190,37 @@ def observe(args: argparse.Namespace, capture: dict[str, Any]) -> dict[str, Any]
         "value": args.entry_point_value,
     }
 
-    def bound(item: Any) -> bool:
+    def execution_bound(item: Any) -> bool:
         observed_event = item.event
         return bool(
             observed_event["plan_id"] == execution["plan_id"]
             and observed_event["launch_id"] == execution["launch_id"]
             and observed_event["binding_status"] == "bound"
-            and observed_event["entry_point"] == entry_point
+        )
+
+    def invocation_bound(item: Any) -> bool:
+        return execution_bound(item) and item.event["entry_point"] == entry_point
+
+    def effective_bound(item: Any) -> bool:
+        observed_entry_point = item.event["entry_point"]
+        return execution_bound(item) and all(
+            observed_entry_point[field] == entry_point[field]
+            for field in ("group", "name")
         )
 
     by_process: dict[tuple[str, str, int, int], dict[str, Any]] = {}
     effective = False
     for item in records:
         event = item.event
-        if not bound(item):
-            continue
         if (
-            event["event"] == "effective"
+            effective_bound(item)
+            and event["event"] == "effective"
             and event["observation_kind"] == "runtime_effective"
         ):
             effective = True
         if (
-            event["event"] != "invoked"
+            not invocation_bound(item)
+            or event["event"] != "invoked"
             or event["observation_kind"] != "loader_lifecycle"
         ):
             continue
