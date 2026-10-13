@@ -37,6 +37,8 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert model["file_count"] == 14
 
     assert SHA256.fullmatch(candidate["installed_environment"]["digest"])
+    assert SHA256.fullmatch(candidate["container"]["image_id"])
+    assert candidate["container"]["authority"] == "kubernetes-pod-status"
     assert SHA256.fullmatch(candidate["activation_probe"]["artifact_sha256"])
 
 

@@ -14,6 +14,7 @@ producer, observer, or cross-arm reviews required for admission.
 | Extension Manager wheel source | `52922dec6b67db1825404d0bfd0d68305f6dcfd1` | tree `eaa9df581a01e8c1c734105612bdd8fd1cbb88b7`; wheel SHA-256 `2e0ab6c766fe875f518be309123fb4571cd6737559c6bd7948d7074d04ddb382` |
 | KV MOD | `9728ccd9df68c654aaf541bb7565c0bd3f85b983` | tree `ea6911c6e0b8a0d7ff66d3078397dd4c615a3364` |
 | installed venv bytes | 196 distributions; `uv pip check` passed | `sha256:9aabf5ce2e4022724770ab56f75ded0c1005e82994ae5c70b8abd7186ddb6013` |
+| container image | `192.168.0.6:5050/vllm-ascend-ssh:v1` | Kubernetes pod-status image ID `sha256:cd3c36c1832d8b9dfd193405d52a73b22ca2699fbe95271015bc7932bef3e2ee` |
 
 The venv digest covers installed venv bytes only. It excludes CANN, driver,
 model and host OS. A full `pip check` that also exposes CANN's external Python
@@ -47,7 +48,6 @@ rechecked immediately before every start.
 
 ## Remaining admission blockers
 
-- No trustworthy container image digest is exposed in this environment.
 - The Host and MOD commits remain local candidates and are not repository
   reachable through the current GitHub App installation.
 - The exact Host/Ascend tuple has not received a bounded support-matrix
