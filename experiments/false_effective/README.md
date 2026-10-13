@@ -61,11 +61,21 @@ observer, activation probes, fixed Plan/workload/fault inputs, and nine-start
 Latin-square order for the Manager `9f075f8e` experiment binary. Generate and
 recheck it with [`formal_registration_candidate.py`](formal_registration_candidate.py).
 The checked transition dry-run covers the study, deployment, and runtime
-registry as one atomic write set. It remains blocked and leaves every official
-file unchanged: machine-generated fingerprints and successful parser probes do
-not supply repository reachability, the exact Host/Ascend support qualification,
-or independent command/activation/observer/artifact-retention review. Therefore
-the candidate is not a registry entry and H1 remains 0/9.
+registry as one digest-bound atomic write set and records the required
+cross-document post-transition invariants. It remains blocked and leaves every
+official file unchanged.
+
+[`deployment-candidates/h1-local-source-archive-receipt-20261013.json`](deployment-candidates/h1-local-source-archive-receipt-20261013.json)
+verifies that the exact Host, MOD, and Ascend commit/tree objects exist in the
+recorded clean local repositories and that exact incremental Git bundles export
+each candidate commit. Rebuild it with
+[`source_reachability_receipt.py`](source_reachability_receipt.py). This is a
+local archival receipt: it performs no remote query, does not claim a commit is
+reachable from a remote repository ref, and does not clear the repository
+reachability blocker. Machine-generated fingerprints, bundles, and successful
+parser probes also do not supply the exact Host/Ascend support qualification or
+independent command/activation/observer/artifact-retention review. Therefore the
+candidate is not a registry entry and H1 remains 0/9.
 
 ```bash
 PYTHONPATH=src python3 experiments/false_effective/reproduce.py --output /tmp/false-effective
