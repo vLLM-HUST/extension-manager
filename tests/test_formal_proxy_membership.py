@@ -93,7 +93,9 @@ def test_membership_rejects_epoch_replacement_for_one_slot():
         derive_formal_proxy_membership(value)
 
 
-def test_preparation_binds_membership_and_reviewed_proxy_command(tmp_path: Path):
+def test_preparation_binds_membership_and_reviewed_proxy_command(
+    tmp_path: Path, monkeypatch
+):
     value = transition(
         process_event("api-server", 0, 101, 11),
         process_event("engine-core-scheduler", 0, 102, 12),
@@ -147,6 +149,21 @@ def test_preparation_binds_membership_and_reviewed_proxy_command(tmp_path: Path)
     assert prepared["registration"] == registration
     assert prepared["process_membership_sha256"].startswith("sha256:")
     authority = _HostAuthorization(output)
+    # Fixture isolates the semantic admission boundary after membership success.
+    monkeypatch.setattr(
+        "experiments.exposure_gate.loopback_traffic.verify_formal_proxy_membership",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "experiments.exposure_gate.loopback_traffic.observe_bound_invocations",
+        lambda *args, **kwargs: {
+            "schema": "ecpa-host-effect-observation/v1",
+            "complete_coverage": True,
+            "semantic_obligations_complete": True,  # Untrusted promotion attempt.
+        },
+    )
+    with pytest.raises(GateError, match="semantic obligation evidence is unverified"):
+        authority.authorize(authority.binding())
     assert authority.binding()["registration_sha256"] == prepared[
         "registration_sha256"
     ]

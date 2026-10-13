@@ -635,6 +635,14 @@ class _HostAuthorization:
             ) from exc
         if not observation["complete_coverage"]:
             raise GateError("host observation does not cover frozen membership")
+        if self.registration is not None:
+            # This source-owned observer only supports event="invoked". Its
+            # v1 schema is invocation evidence even if a caller adds semantic
+            # flags. No registered live semantic producer is consumed here.
+            # Keep ordinary v1 qualification compatible; formal exposure must
+            # remain closed until an independently implemented semantic path
+            # binds operation, request, process epoch and exact producer source.
+            raise GateError("semantic obligation evidence is unverified")
         return "sha256:" + hashlib.sha256(_canonical(observation)).hexdigest()
 
 

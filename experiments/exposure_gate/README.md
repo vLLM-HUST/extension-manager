@@ -131,3 +131,34 @@ review therefore records `BLOCKED`; the candidate cannot become a formal
 producer registration until the exact Host commit is repository-reachable and
 merged. Uploading a different commit or retaining only the wheel does not clear
 the source-provenance gate.
+
+The formal authorization path now **fails closed for semantic admission**. The
+current `observe_bound_invocations` implementation accepts only Plan events
+`invoked`; a complete worker set proves entry-point invocation coverage, not a
+plugin's required runtime effect. Formal registration, live process identities,
+and a caller-supplied semantic-success flag cannot upgrade this observer.
+The ordinary nonformal v1 path remains available for bounded invocation/route
+qualification, including sealed historical evidence. This does not change H1's
+historical 9/9 starts or its falsified prevention result.
+
+Run the concrete retained-evidence gap audit without a device:
+
+```sh
+PYTHONPATH=src:. python -m experiments.exposure_gate.semantic_obligation_gap
+```
+
+It verifies the original real-model archive and returns explicit
+`source-bound-worker-invocation-only`, semantic status `unverified`, runtime
+effectiveness `null`, and formal traffic admission `false`. It lists missing
+edges: a registered live source-owned semantic producer; an operation/effect
+predicate; authority probe to Host runtime request identity; operation to worker
+PID/start-ticks/boot/membership epoch; operation to Plan/launch/controller/
+generation; and per-worker semantic outcome to the observed response.
+The separate real H2 compression archive already binds scheduler commit,
+TP0/TP1 acknowledgement, runtime request, response and profiler completion.
+Those offline stdout/profiler bytes belong to a threshold-specific workload;
+they are not a registered live producer consumed by this gate and cannot open
+it. Implementing and independently qualifying that producer remains necessary.
+The added fixture negative test reproduces the former formal authorization
+acceptance before the fix, then rejects it after the fix; fixtures do not become
+formal evidence. Formal H3/H4 counts and NO-GO are unchanged.
