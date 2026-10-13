@@ -43,6 +43,24 @@ Do not add these results to H2 precision/recall or the paper's formal-real
 table until an independent oracle, complete host/provider checks and process-
 owned execution evidence exist. The 31-case synthetic corpus remains separate.
 
+## Current TP2 active-pair preflight
+
+`artifacts/active-mod-pair-preflight-20261013.json` binds Manager `58a2c32`,
+the exact Qwen2.5-7B TP2 host wheels, three remotely reachable MOD commits,
+their manifest blobs, locally rebuilt wheel bytes, Manager compatibility
+checks, and both entry-point invocation orders for the two closest pairs.
+The invocation probes run in disposable processes and do not start the host or
+touch either NPU.
+
+Neither pair is activation-ready.  KVCompress plus the lifecycle profiler is
+blocked because the profiler's source manifest accepts vLLM `>=0.23,<0.24`,
+while the exact host is `0.31.1.post1.dev163+g973d9ef5a.empty`.  KVCompress
+plus KNorm is blocked because KNorm declares its implementation `import_only`,
+which makes Manager correctly refuse enablement.  Direct entry-point returns
+in both orders do not override either source contract.  The artifact therefore
+reports zero H2-eligible pairs and zero H4-eligible pairs and contains no
+performance result.
+
 `score_admission.py` enforces that boundary mechanically. With the checked-in
 artifacts it exits 2 and reports `INCOMPLETE`: all three runtime artifacts are
 preflights, the independent real-MOD oracle is absent, and neither frozen
