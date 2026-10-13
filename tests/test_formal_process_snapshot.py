@@ -48,10 +48,10 @@ def mutated(raw, change):
 
 
 def test_transition_reconstructs_exact_host_epoch_and_rejects_offline_edits():
-    raw = host_event(epoch=148591475053783)
+    raw = host_event(epoch=912345)
     transition = make_transition(SLOTS, EXECUTION, [receipt(raw)], frozen_at_ns=100)
     rows = validate_transition(transition, SLOTS, EXECUTION)
-    assert rows[0]["process_epoch"] == 148591475053783
+    assert rows[0]["process_epoch"] == 912345
     assert rows[0]["pid"] == os.getpid()
     assert rows[0]["start_ticks"] > 0
     for field in ("processes_digest", "logical_slots_digest", "execution_identity"):
