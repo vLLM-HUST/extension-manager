@@ -97,3 +97,14 @@ The source-bound
 records the first real TP2 functional preflight in which the Host emitted all
 three host-assigned process layers. It is explicitly unregistered and does not
 count as a formal traffic-boundary or performance result.
+
+The content-addressed
+[`host-parent-registration-candidate-20261013.json`](artifacts/host-parent-registration-candidate-20261013.json)
+binds that preflight to Host candidate `379a0ad35`, its two changed source
+blobs, wheel `a850a238...d551`, and the Manager review context at `32cebf7`.
+The Host commit is present only in the local checkout: `git ls-remote` found no
+matching remote ref and remote `main` remained at `973d9ef5`. The automated
+review therefore records `BLOCKED`; the candidate cannot become a formal
+producer registration until the exact Host commit is repository-reachable and
+merged. Uploading a different commit or retaining only the wheel does not clear
+the source-provenance gate.

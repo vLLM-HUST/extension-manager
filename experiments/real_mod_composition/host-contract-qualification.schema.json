@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "captured_utc": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "classification": {
+      "const": "real-host-process-contract-probe-not-model-serving-or-runtime-effectiveness"
+    },
+    "host": {
+      "additionalProperties": false,
+      "properties": {
+        "request_lifecycle_events_api": {
+          "type": "string"
+        },
+        "vllm_ascend_commit": {
+          "type": "string"
+        },
+        "vllm_ascend_wheel_sha256": {
+          "type": "string"
+        },
+        "vllm_commit": {
+          "type": "string"
+        },
+        "vllm_wheel_sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_lifecycle_events_api",
+        "vllm_commit",
+        "vllm_wheel_sha256",
+        "vllm_ascend_commit",
+        "vllm_ascend_wheel_sha256"
+      ],
+      "type": "object"
+    },
+    "manager_preflight": {
+      "type": "object"
+    },
+    "members": {
+      "additionalProperties": false,
+      "properties": {
+        "kvcompress": {
+          "type": "object"
+        },
+        "lifecycle_profiler": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "kvcompress",
+        "lifecycle_profiler"
+      ],
+      "type": "object"
+    },
+    "orders": {
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "qualification": {
+      "additionalProperties": false,
+      "properties": {
+        "actual_model_started": {
+          "const": false
+        },
+        "actual_workload_completed": {
+          "const": false
+        },
+        "both_install_orders_isolated": {
+          "const": true
+        },
+        "h2_oracle_label": {
+          "type": "null"
+        },
+        "lifecycle_profiler_activation_ready_for_exact_host": {
+          "const": true
+        },
+        "pair_contract_activation_ready_for_model_serving_campaign": {
+          "const": true
+        },
+        "performance_benefit": {
+          "const": "unmeasured"
+        },
+        "runtime_effective": {
+          "const": "unmeasured"
+        },
+        "score_eligible": {
+          "const": false
+        }
+      },
+      "required": [
+        "actual_model_started",
+        "actual_workload_completed",
+        "both_install_orders_isolated",
+        "h2_oracle_label",
+        "lifecycle_profiler_activation_ready_for_exact_host",
+        "pair_contract_activation_ready_for_model_serving_campaign",
+        "performance_benefit",
+        "runtime_effective",
+        "score_eligible"
+      ],
+      "type": "object"
+    },
+    "raw_evidence": {
+      "type": "object"
+    },
+    "schema": {
+      "const": "ecpa-h2-host-contract-qualification/v1"
+    },
+    "tests": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "captured_utc",
+    "classification",
+    "host",
+    "members",
+    "orders",
+    "manager_preflight",
+    "qualification",
+    "raw_evidence",
+    "tests"
+  ],
+  "type": "object"
+}
