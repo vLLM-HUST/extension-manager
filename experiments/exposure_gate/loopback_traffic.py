@@ -378,6 +378,7 @@ class _HostAuthorization:
             raise GateError("host authorization cannot be read safely") from exc
         fields = {
             "schema",
+            "authorization_path",
             "plan_path",
             "journal_dir",
             "journal_device",
@@ -409,6 +410,7 @@ class _HostAuthorization:
         }:
             raise GateError("unsupported host authorization schema")
         try:
+            self.authorization_path = Path(value["authorization_path"])
             self.plan = read_plan_artifact(value["plan_path"]).plan
             self.root = Path(value["journal_dir"])
             self.directory_identity = (
@@ -436,7 +438,9 @@ class _HostAuthorization:
         except (KeyError, TypeError, ValueError) as exc:
             raise GateError("host authorization values are invalid") from exc
         if (
-            not isinstance(self.launch_id, str)
+            self.authorization_path != path
+            or not self.authorization_path.is_absolute()
+            or not isinstance(self.launch_id, str)
             or not self.launch_id
             or not isinstance(self.controller_instance, str)
             or not self.controller_instance
@@ -527,6 +531,57 @@ class _HostAuthorization:
             )
             if self.registration_sha256 != derived_registration:
                 raise GateError("formal proxy registration digest changed")
+        self._claim_once(raw, metadata)
+
+    def _claim_once(self, raw: bytes, metadata: os.stat_result) -> None:
+        """Atomically consume this path-bound authorization for one authority."""
+        parent = self.authorization_path.parent.stat()
+        if (
+            not stat.S_ISDIR(parent.st_mode)
+            or parent.st_uid != os.getuid()
+            or parent.st_mode & 0o077
+        ):
+            raise GateError("host authorization directory is not private")
+        claim_path = self.authorization_path.with_name(
+            self.authorization_path.name + ".claim"
+        )
+        stat_fields = Path("/proc/self/stat").read_text().rsplit(")", 1)[1].split()
+        claim = {
+            "schema": "ecpa-loopback-authorization-claim/v1",
+            "authorization_path": str(self.authorization_path),
+            "authorization_sha256": "sha256:" + hashlib.sha256(raw).hexdigest(),
+            "authorization_device": metadata.st_dev,
+            "authorization_inode": metadata.st_ino,
+            "authority_pid": os.getpid(),
+            "authority_start_ticks": int(stat_fields[19]),
+        }
+        try:
+            descriptor = os.open(
+                claim_path,
+                os.O_WRONLY
+                | os.O_CREAT
+                | os.O_EXCL
+                | os.O_NOFOLLOW
+                | os.O_CLOEXEC,
+                0o600,
+            )
+        except FileExistsError as exc:
+            raise GateError("host authorization was already claimed") from exc
+        try:
+            with os.fdopen(descriptor, "wb", closefd=False) as stream:
+                stream.write(_canonical(claim) + b"\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            directory = os.open(
+                self.authorization_path.parent,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC,
+            )
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        finally:
+            os.close(descriptor)
 
     def binding(self) -> dict[str, Any]:
         value = {
