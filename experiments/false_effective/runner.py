@@ -1,4 +1,4 @@
-ÚznÛéºÉ¢Šwè"""Reference self-test and independently observed formal command runner."""
+"""Reference self-test and independently observed formal command runner."""
 
 from __future__ import annotations
 

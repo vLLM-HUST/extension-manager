@@ -1,4 +1,4 @@
-ÚznÛéºÉ¢Šwè"""Synthetic host bytes exercise identity mechanics, not formal H1 qualification."""
+"""Synthetic host bytes exercise identity mechanics, not formal H1 qualification."""
 
 import base64
 import copy

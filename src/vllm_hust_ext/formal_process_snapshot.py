@@ -1,4 +1,4 @@
-ÚznÛéºÉ¢Šwè"""Two-stage formal process identity, derived from retained host bytes.
+"""Two-stage formal process identity, derived from retained host bytes.
 
 This validates unsigned host journals inside the declared trusted experiment
 boundary. It does not upgrade the same-UID journal to a cryptographic authority.

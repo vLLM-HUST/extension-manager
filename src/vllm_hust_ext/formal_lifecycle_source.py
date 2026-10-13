@@ -1,4 +1,4 @@
-ÚznÛéºÉ¢Šwè"""Independent lifecycle fact sources for the formal-real evaluation path.
+"""Independent lifecycle fact sources for the formal-real evaluation path.
 
 These commands do not consume a SUT acknowledgement as truth.  Each command
 performs one external observation or control action, sends one canonical fact
