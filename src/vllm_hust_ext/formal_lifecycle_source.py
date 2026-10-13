@@ -834,22 +834,76 @@ def _journal(args: argparse.Namespace, request: dict[str, Any]) -> bool:
         (args.device, args.inode),
         max_total_bytes=MAX_JOURNAL_BYTES,
     )
-    selected = [
+    if any(
+        item.event["plan_id"] != request["plan_id"]
+        or item.event["launch_id"] != request["launch_id"]
+        or item.event["binding_status"] != "bound"
+        for item in records
+    ):
+        raise LifecycleSourceError(
+            "host journal contains unbound or cross-launch evidence"
+        )
+    required = {
+        (row["host"], row["role"], row["ordinal"], row["process_epoch"])
+        for row in request["required_processes"]
+    }
+    invocations = [
         item
         for item in records
-        if item.event["plan_id"] == request["plan_id"]
-        and item.event["launch_id"] == request["launch_id"]
-        and item.event["event"] == "invoked"
-        and item.event["observation_kind"] == "scheduler_dispatch"
-        and item.event["binding_status"] == "bound"
-        and item.event["controller_instance_id"] == request["controller_instance"]
+        if item.event["event"] == "invoked"
+        and item.event["observation_kind"] == "loader_lifecycle"
         and item.event["process"].get("assignment_source") == "host"
-    ]
-    if not selected:
-        raise LifecycleSourceError(
-            "host journal has no bound scheduler dispatch for this Plan, "
-            "launch, and controller"
+        and tuple(
+            item.event["process"][field]
+            for field in ("host", "role", "ordinal", "process_epoch")
         )
+        in required
+    ]
+    if not invocations:
+        raise LifecycleSourceError(
+            "host journal has no bound loader invocation from a frozen process"
+        )
+    invoked_entry_points = {
+        (item.event["entry_point"]["group"], item.event["entry_point"]["name"])
+        for item in invocations
+    }
+    effective = [
+        item
+        for item in records
+        if item.event["event"] == "effective"
+        and item.event["observation_kind"] == "runtime_effective"
+        and item.event["process"].get("assignment_source") == "host"
+        and (
+            item.event["entry_point"]["group"],
+            item.event["entry_point"]["name"],
+        )
+        in invoked_entry_points
+    ]
+    if not effective:
+        raise LifecycleSourceError(
+            "host journal has no runtime effect for a frozen loader invocation"
+        )
+    # Runtime evidence names the effect site in ``value`` rather than the
+    # loader callable, so the Host contract joins both records by group/name.
+    effective_entry_points = {
+        (item.event["entry_point"]["group"], item.event["entry_point"]["name"])
+        for item in effective
+    }
+    invocations = [
+        item
+        for item in invocations
+        if (
+            item.event["entry_point"]["group"],
+            item.event["entry_point"]["name"],
+        )
+        in effective_entry_points
+    ]
+    selected_ids = {
+        item.event["event_id"] for item in [*invocations, *effective]
+    }
+    selected = [
+        item for item in records if item.event["event_id"] in selected_ids
+    ]
     _audit(
         "host-journal-capture",
         plan_id=request["plan_id"],
@@ -877,7 +931,7 @@ def _journal(args: argparse.Namespace, request: dict[str, Any]) -> bool:
     return True
 
 
-def _shutdown(args: argparse.Namespace, request: dict[str, Any]) -> bool:
+def _shutdown(args: argparse.Namespace, request: dict[str, Any]) -> PreparedFact:
     if request["fact"] != "service-shutdown":
         raise LifecycleSourceError("shutdown source received another phase")
     pidfd = -1
@@ -893,18 +947,33 @@ def _shutdown(args: argparse.Namespace, request: dict[str, Any]) -> bool:
             after = before
         if after != before:
             raise LifecycleSourceError("shutdown target identity changed before wait")
-        readable, _, _ = select.select([pidfd], [], [], _timeout(args.timeout))
-        if not readable:
-            raise LifecycleSourceError("SUT did not exit after shutdown phase")
     except ProcessLookupError as exc:
+        if pidfd >= 0:
+            os.close(pidfd)
         raise LifecycleSourceError(
             "shutdown target exited before independent identity binding"
         ) from exc
-    finally:
+
+    except (LifecycleSourceError, OSError):
         if pidfd >= 0:
             os.close(pidfd)
-    _audit("process-shutdown", pid=request["sut_pid"])
-    return True
+        raise
+
+    def confirm_exit() -> None:
+        readable, _, _ = select.select([pidfd], [], [], _timeout(args.timeout))
+        if not readable:
+            raise LifecycleSourceError("SUT did not exit after shutdown phase")
+        _audit("process-shutdown", pid=request["sut_pid"])
+
+    def release_pidfd() -> None:
+        if pidfd >= 0:
+            os.close(pidfd)
+
+    # Preparing the fact pins the live target with a pidfd.  The runner then
+    # requests termination before committing, and commit independently proves
+    # that the exact pinned process exited.  This avoids the old race where the
+    # runner waited for exit before the source had a chance to bind identity.
+    return PreparedFact(True, confirm_exit, release_pidfd)
 
 
 def _linux_process_identity(pid: int) -> dict[str, Any]:

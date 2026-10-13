@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -597,6 +598,28 @@ def popen_pinned(
         os.close(executable_fd)
 
 
+def observed_command_exit_code(
+    *,
+    phase_complete: bool,
+    sut_exit_code: int,
+    sut_exit_accepted: bool,
+    observer_exit_code: int,
+) -> int:
+    """Return an aggregate status without hiding a component failure.
+
+    The raw SUT status is retained separately as ``sut_exit_code``.  This
+    aggregate remains zero only when the lifecycle, SUT, and observer all meet
+    their success contracts.
+    """
+    if phase_complete and sut_exit_accepted and observer_exit_code == 0:
+        return 0
+    if not sut_exit_accepted and sut_exit_code != 0:
+        return sut_exit_code
+    if observer_exit_code != 0:
+        return observer_exit_code
+    return 1
+
+
 def run_lifecycle_fact_source(
     phase: str,
     fingerprint: dict[str, Any],
@@ -605,6 +628,7 @@ def run_lifecycle_fact_source(
     cwd: Path,
     env: dict[str, str],
     timeout_s: float,
+    before_commit: Callable[[], None] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Collect one fact over a dedicated, registry-pinned process channel."""
     argv = [fingerprint["executable"], *fingerprint["arguments"]]
@@ -784,6 +808,8 @@ def run_lifecycle_fact_source(
             raise ValueError(
                 f"lifecycle fact source binding is invalid before commit: {phase}"
             )
+        if before_commit is not None:
+            before_commit()
         process.stdin.write(
             canonical(
                 {
@@ -1710,6 +1736,7 @@ def _run_start_impl(
                 "plan_raw_base64": process_snapshot_context["plan_raw_base64"],
                 "plan_raw_sha256": process_snapshot_context["plan_raw_sha256"],
             }
+        wall_start = time.time_ns()
         sut_start = time.monotonic_ns()
         sut = popen_pinned(
             argv,
@@ -1989,6 +2016,9 @@ def _run_start_impl(
                             cwd=run_dir,
                             env=sut_env,
                             timeout_s=timeout_s,
+                            before_commit=(
+                                sut.terminate if phase == "service-shutdown" else None
+                            ),
                         )
                         lifecycle_fact_events.append(fact_event)
                         lifecycle_fact_processes[phase] = fact_process
@@ -2011,7 +2041,12 @@ def _run_start_impl(
                             observer.stdin.write(canonical(capture).decode() + "\n")
                             observer.stdin.flush()
                     except (OSError, ValueError) as exc:
-                        lifecycle_fact_errors[phase] = type(exc).__name__
+                        detail = str(exc).strip()
+                        lifecycle_fact_errors[phase] = (
+                            f"{type(exc).__name__}: {detail}"
+                            if detail
+                            else type(exc).__name__
+                        )
                         causal = False
                 else:
                     lifecycle_fact_errors[phase] = "source-unavailable"
@@ -2051,16 +2086,6 @@ def _run_start_impl(
             phase_ok &= drive("fault-injected", f"fault {scenario['id']}", 3)
             phase_ok &= drive("observer-captured", "observe", 4)
         exited_before_shutdown = sut.poll() is not None
-        if formal_sources and not exited_before_shutdown:
-            # Ask the managed leader to stop before the independent monitor
-            # proves termination. The source cannot truthfully prove a live SUT dead.
-            sut.terminate()
-            with contextlib.suppress(subprocess.TimeoutExpired):
-                sut.wait(
-                    timeout=max(timeout_s, MANAGED_TERMINATION_GRACE_S)
-                    if managed_binding is not None
-                    else timeout_s
-                )
         if process_transition_error is None:
             phase_ok &= drive("service-shutdown", "shutdown", 5)
         phase_ok &= not exited_before_shutdown
@@ -2101,6 +2126,7 @@ def _run_start_impl(
             sut.kill()
             sut_exit = sut.wait()
         sut_end = time.monotonic_ns()
+        wall_end = time.time_ns()
         remaining_stdout, remaining_stderr = sut.communicate()
         if remaining_stdout:
             sut_lines.extend(remaining_stdout.splitlines())
@@ -2121,22 +2147,24 @@ def _run_start_impl(
         (run_dir / "observer-pipe.bin").write_bytes(result_bytes)
         result_path.write_bytes(result_bytes or canonical({"events": []}))
         pipe_digest = digest_bytes(result_bytes)
+        sut_exit_accepted = sut_exit in (0, -signal.SIGTERM) or (
+            managed_binding is not None and sut_exit == 128 + signal.SIGTERM
+        )
         command = {
             "argv": argv,
             "cwd": str(run_dir.resolve()),
             "environment_manifest": "environment.json",
-            "wall_start_ns": time.time_ns(),
-            "wall_end_ns": time.time_ns(),
+            "wall_start_ns": wall_start,
+            "wall_end_ns": wall_end,
             "monotonic_start_ns": sut_start,
             "monotonic_end_ns": sut_end,
-            "exit_code": 0
-            if phase_ok
-            and (
-                sut_exit in (0, -signal.SIGTERM)
-                or (managed_binding is not None and sut_exit == 128 + signal.SIGTERM)
-            )
-            and observer.returncode == 0
-            else sut_exit,
+            "exit_code": observed_command_exit_code(
+                phase_complete=phase_ok,
+                sut_exit_code=sut_exit,
+                sut_exit_accepted=sut_exit_accepted,
+                observer_exit_code=observer.returncode,
+            ),
+            "sut_exit_code": sut_exit,
             "signal": (
                 signal.SIGTERM
                 if sut_exit == -signal.SIGTERM

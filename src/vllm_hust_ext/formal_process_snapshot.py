@@ -83,7 +83,8 @@ def derive_snapshot(
             or event["launch_id"] != execution["launch_id"]
             or event["binding_status"] != "bound"
             or (
-                event["observation_kind"] != "loader_lifecycle"
+                event["observation_kind"]
+                in {"scheduler_resolution", "scheduler_dispatch"}
                 and event["controller_instance_id"] != execution["controller_instance"]
             )
         ):

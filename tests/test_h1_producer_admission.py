@@ -67,7 +67,7 @@ def test_issuer_binds_existing_human_review_and_three_machine_inputs() -> None:
         __import__("hashlib").sha256(candidate).hexdigest()
     )
     assert receipt["bindings"]["candidate_sha256"] == (
-        "sha256:e5fd816dd5b46a511a029e56ff87405f0ba86369ed2cd619521fbb6d7267fb60"
+        "sha256:e09f10b49c8b5008763e68021ea0ca1577b40dc33e010a61070ec27fe653b2ea"
     )
     assert receipt["bindings"]["review_subject_candidate_sha256"] == (
         "sha256:d5f58616766cc1a480dac228e55fb11a43501dd3e4ff3e0ca6ef9df9bc3512b7"

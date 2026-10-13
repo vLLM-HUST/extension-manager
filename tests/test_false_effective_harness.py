@@ -269,18 +269,12 @@ request = json.loads(sys.stdin.readline())
 assert request['fact'] == sys.argv[1]
 pid = request['sut_pid']
 identity = request['sut_process_identity']
-if request['fact'] != 'service-shutdown':
-    stat = Path(f'/proc/{pid}/stat').read_text()
-    close = stat.rfind(')')
-    ticks = int(stat[close + 2:].split()[19])
-    argv = Path(f'/proc/{pid}/cmdline').read_bytes().rstrip(b'\\0').split(b'\\0')
-    assert ticks == identity['start_ticks']
-    assert [part.decode() for part in argv] == identity['argv']
-else:
-    process_path = Path(f'/proc/{pid}')
-    if process_path.exists():
-        stat = (process_path / 'stat').read_text()
-        assert stat[stat.rfind(')') + 2:].split()[0] == 'Z'
+stat = Path(f'/proc/{pid}/stat').read_text()
+close = stat.rfind(')')
+ticks = int(stat[close + 2:].split()[19])
+argv = Path(f'/proc/{pid}/cmdline').read_bytes().rstrip(b'\\0').split(b'\\0')
+assert ticks == identity['start_ticks']
+assert [part.decode() for part in argv] == identity['argv']
 payload = {
     'schema': 'ecpa-formal-lifecycle-fact/v1',
     'fact': request['fact'],
@@ -303,6 +297,15 @@ assert commit == {
     'challenge': request['challenge'],
     'phase': request['fact'],
 }
+if request['fact'] == 'service-shutdown':
+    process_path = Path(f'/proc/{pid}')
+    deadline = time.monotonic() + 1
+    while process_path.exists():
+        stat = (process_path / 'stat').read_text()
+        if stat[stat.rfind(')') + 2:].split()[0] == 'Z':
+            break
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
 """
     )
     entry_point = {
@@ -2385,7 +2388,25 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
     if source_failure is not None:
         assert record["status"] == "failed"
         assert record["command"]["phase_complete"] is False
-        assert "service-ready" in record["command"]["lifecycle_fact_errors"]
+        error = record["command"]["lifecycle_fact_errors"]["service-ready"]
+        assert error.startswith("ValueError: lifecycle fact source ")
+        assert (
+            "timed out: service-ready" in error
+            if source_failure == "timeout"
+            else "exited before receipt: service-ready" in error
+        )
+        assert record["command"]["exit_code"] == 1
+        assert record["command"]["sut_exit_code"] == -signal.SIGTERM
+        wall_elapsed = (
+            record["command"]["wall_end_ns"]
+            - record["command"]["wall_start_ns"]
+        )
+        monotonic_elapsed = (
+            record["command"]["monotonic_end_ns"]
+            - record["command"]["monotonic_start_ns"]
+        )
+        assert wall_elapsed > 1_000_000
+        assert abs(wall_elapsed - monotonic_elapsed) < 1_000_000_000
         assert "fault-injected" not in record["command"]["lifecycle_fact_processes"]
         assert "fault-injected" not in {
             row["phase"] for row in record["command"]["phase_invocations"]
@@ -2405,11 +2426,35 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
     assert all("causal_ack" not in item for item in lifecycle_events.values())
 
     assert record["command"]["phase_complete"] is True
+    assert record["command"]["sut_exit_code"] == -signal.SIGTERM
     assert all(
         not row["acknowledged"] for row in record["command"]["phase_invocations"]
     )
     assert (run_dir / "stdout.bin").stat().st_size == 2 * 1024 * 1024
     assert (run_dir / "stderr.bin").stat().st_size == 2 * 1024 * 1024
+
+
+@pytest.mark.parametrize(
+    ("phase_complete", "sut_exit", "sut_accepted", "observer_exit", "expected"),
+    [
+        (True, 0, True, 0, 0),
+        (False, 0, True, 0, 1),
+        (True, 0, True, 7, 7),
+        (False, 9, False, 7, 9),
+    ],
+)
+def test_observed_command_exit_code_preserves_component_failures(
+    phase_complete, sut_exit, sut_accepted, observer_exit, expected
+):
+    assert (
+        runner_module.observed_command_exit_code(
+            phase_complete=phase_complete,
+            sut_exit_code=sut_exit,
+            sut_exit_accepted=sut_accepted,
+            observer_exit_code=observer_exit,
+        )
+        == expected
+    )
 
 
 def test_lifecycle_fact_source_output_is_bounded(tmp_path):

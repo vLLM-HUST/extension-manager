@@ -331,69 +331,133 @@ def test_http_source_rejects_nonlocal_and_redirect_urls():
         source._local_http_url("http://localhost/health")
 
 
-def test_journal_capture_requires_bound_dispatch_for_controller(monkeypatch, tmp_path):
-    event = {
-        "event_id": "event-one",
-        "event": "invoked",
-        "observation_kind": "scheduler_dispatch",
+def journal_event(
+    request, event_id, event, observation_kind, *, entry_name="demo", **changes
+):
+    value = {
+        "event_id": event_id,
+        "event": event,
+        "observation_kind": observation_kind,
         "binding_status": "bound",
-        "controller_instance_id": "controller:test",
-        "invocation_seq": 1,
-        "dispatch_id": "a" * 64,
-        "plan_id": "sha256:" + "1" * 64,
-        "launch_id": "launch:test",
-        "process": {"assignment_source": "host"},
+        "controller_instance_id": None,
+        "invocation_seq": None,
+        "dispatch_id": None,
+        "plan_id": request["plan_id"],
+        "launch_id": request["launch_id"],
+        "entry_point": {
+            "group": "vllm.general_plugins",
+            "name": entry_name,
+            "value": (
+                "demo.runtime"
+                if observation_kind == "runtime_effective"
+                else "demo:load"
+            ),
+        },
+        "process": {
+            "assignment_source": "host",
+            "host": "host-a",
+            "role": "worker",
+            "ordinal": 0,
+            "process_epoch": 7,
+        },
     }
+    value.update(changes)
+    return SimpleNamespace(
+        event=value,
+        raw=event_id.encode(),
+        journal=f"{event_id}.jsonl",
+        line_number=1,
+    )
+
+
+def test_journal_capture_requires_frozen_invocation_and_runtime_effect(
+    monkeypatch, tmp_path
+):
+    request = request_for("observer-captured")
+    invocation = journal_event(
+        request, "event-invoked", "invoked", "loader_lifecycle"
+    )
+    effective = journal_event(
+        request, "event-effective", "effective", "runtime_effective"
+    )
+    records = [invocation, effective]
     audit = {}
     monkeypatch.setattr(
         source,
         "read_events",
-        lambda root, identity, **kwargs: [
-            SimpleNamespace(
-                event=event,
-                raw=b"event",
-                journal="one.jsonl",
-                line_number=1,
-            )
-        ],
+        lambda root, identity, **kwargs: records,
     )
     monkeypatch.setattr(source, "_audit", lambda kind, **values: audit.update(values))
 
     assert (
         source._journal(
             SimpleNamespace(event_dir=str(tmp_path), device=1, inode=2),
-            request_for("observer-captured"),
+            request,
         )
         is True
     )
-    assert audit["selected_event_ids"] == ["event-one"]
-    assert base64.b64decode(audit["journal_records"][0]["raw_base64"]) == b"event"
+    assert audit["selected_event_ids"] == ["event-invoked", "event-effective"]
+    assert base64.b64decode(audit["journal_records"][0]["raw_base64"]) == (
+        b"event-invoked"
+    )
 
-    event["event"] = "failed"
-    with pytest.raises(
-        source.LifecycleSourceError, match="no bound scheduler dispatch"
-    ):
+    records[:] = [invocation]
+    with pytest.raises(source.LifecycleSourceError, match="no runtime effect"):
         source._journal(
             SimpleNamespace(event_dir=str(tmp_path), device=1, inode=2),
-            request_for("observer-captured"),
+            request,
         )
-    event["event"] = "invoked"
-    event["observation_kind"] = "loader_lifecycle"
-    with pytest.raises(
-        source.LifecycleSourceError, match="no bound scheduler dispatch"
-    ):
+
+    outside = journal_event(
+        request, "event-outside", "invoked", "loader_lifecycle"
+    )
+    outside.event["process"]["process_epoch"] = 8
+    records[:] = [outside, effective]
+    with pytest.raises(source.LifecycleSourceError, match="no bound loader invocation"):
         source._journal(
             SimpleNamespace(event_dir=str(tmp_path), device=1, inode=2),
-            request_for("observer-captured"),
+            request,
         )
-    event["observation_kind"] = "scheduler_dispatch"
-    event["controller_instance_id"] = "controller:other"
-    with pytest.raises(
-        source.LifecycleSourceError, match="no bound scheduler dispatch"
-    ):
+
+    another_effect = journal_event(
+        request,
+        "event-another-effective",
+        "effective",
+        "runtime_effective",
+        entry_name="another",
+    )
+    records[:] = [invocation, another_effect]
+    with pytest.raises(source.LifecycleSourceError, match="no runtime effect"):
         source._journal(
             SimpleNamespace(event_dir=str(tmp_path), device=1, inode=2),
-            request_for("observer-captured"),
+            request,
+        )
+
+
+@pytest.mark.parametrize(
+    ("change", "value"),
+    [("launch_id", "launch:other"), ("binding_status", "unbound")],
+)
+def test_journal_capture_rejects_foreign_or_unbound_records(
+    monkeypatch, tmp_path, change, value
+):
+    request = request_for("observer-captured")
+    invocation = journal_event(
+        request, "event-invoked", "invoked", "loader_lifecycle"
+    )
+    effective = journal_event(
+        request, "event-effective", "effective", "runtime_effective"
+    )
+    foreign = journal_event(
+        request, "event-foreign", "discovered", "loader_lifecycle"
+    )
+    foreign.event[change] = value
+    monkeypatch.setattr(
+        source, "read_events", lambda *args, **kwargs: [invocation, effective, foreign]
+    )
+    with pytest.raises(source.LifecycleSourceError, match="cross-launch"):
+        source._journal(
+            SimpleNamespace(event_dir=str(tmp_path), device=1, inode=2), request
         )
 
 
@@ -709,18 +773,13 @@ def test_shutdown_source_observes_real_process_exit():
     process = sleeping_process()
     request = request_for("service-shutdown", pid=process.pid)
     request["sut_process_identity"] = source._linux_process_identity(process.pid)
-    timer = threading.Timer(0.05, process.terminate)
-    timer.start()
+    prepared = source._shutdown(SimpleNamespace(timeout=1.0), request)
     try:
-        assert (
-            source._shutdown(
-                SimpleNamespace(timeout=1.0),
-                request,
-            )
-            is True
-        )
+        assert prepared.value is True
+        process.terminate()
+        prepared.commit()
     finally:
-        timer.cancel()
+        prepared.release()
         process.wait(timeout=2)
 
 
