@@ -58,6 +58,27 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert preflight["observed_worker_ordinals"] == [1]
     assert preflight["coverage"] == 0.5
     assert preflight["cleanup_proven"] is True
+    three_arm = observer["three_arm_real_tp2_preflights"]
+    assert three_arm["formal_h1_starts"] == 0
+    assert three_arm["performance_results"] is False
+    assert set(three_arm["arms"]) == {
+        "vanilla-vllm-entry-points",
+        "manual-integration",
+        "ecpa",
+    }
+    for arm in three_arm["arms"].values():
+        assert all(SHA256.fullmatch(value) for value in arm.values())
+    assert three_arm["common_observation"] == {
+        "health_status": 200,
+        "completion_status": 200,
+        "completion_nonempty": True,
+        "membership_freeze": "passed",
+        "quarantined_worker_ordinal": 0,
+        "effective_claim": True,
+        "observed_worker_ordinals": [1],
+        "coverage": 0.5,
+        "cleanup_proven": True,
+    }
     hardware = candidate["hardware"]
     assert hardware["physical_device_ids"] == hardware["npu_smi_device_ids"] == [3, 6]
     assert hardware["runtime_logical_device_ids"] == [0, 1]
