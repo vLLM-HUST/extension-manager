@@ -18,7 +18,11 @@ from test_host_observer import BINDING, PLAN, host_event
 
 from experiments.exposure_gate.loopback_traffic import _HostAuthorization
 from experiments.false_effective.formal_proxy import (
+    formal_proxy_command,
+    formal_proxy_command_material,
+    formal_proxy_source_sha256,
     prepare_formal_proxy_authorization,
+    validate_formal_proxy_registration,
 )
 from vllm_hust_ext.formal_process_snapshot import make_transition
 from vllm_hust_ext.formal_proxy_membership import derive_formal_proxy_membership
@@ -104,8 +108,15 @@ def test_preparation_binds_membership_and_reviewed_proxy_command(tmp_path: Path)
         "evidence_class": "formal-real",
         "authority": "independent-loopback-proxy",
         "proxy_command_digest": "sha256:" + "1" * 64,
+        "proxy_source_sha256": "sha256:" + "3" * 64,
         "review_receipt_sha256": "sha256:" + "2" * 64,
         "reviewer_kind": "automated-independent",
+        "public_port": 8187,
+        "backend_port": 18187,
+        "predecessor_port": 28187,
+        "grant_holder": "formal-runner",
+        "grant_token": 1,
+        "grant_expires_at": 4_102_444_800,
     }
     output = (tmp_path / "authority.json").resolve()
     prepared = prepare_formal_proxy_authorization(
@@ -149,3 +160,32 @@ def test_preparation_binds_membership_and_reviewed_proxy_command(tmp_path: Path)
             bindings=prepared["bindings"],
             registration=registration,
         )
+
+
+def test_formal_proxy_command_freezes_public_and_backend_ports(tmp_path: Path):
+    run_dir = tmp_path.resolve()
+    registration = {
+        "schema": "ecpa-formal-proxy-registration/v1",
+        "evidence_class": "formal-real",
+        "authority": "independent-loopback-proxy",
+        "proxy_command_digest": "sha256:" + "0" * 64,
+        "proxy_source_sha256": formal_proxy_source_sha256(),
+        "review_receipt_sha256": "sha256:" + "2" * 64,
+        "reviewer_kind": "automated-independent",
+        "public_port": 8187,
+        "backend_port": 18187,
+        "predecessor_port": 28187,
+        "grant_holder": "formal-runner",
+        "grant_token": 9,
+        "grant_expires_at": 4_102_444_800,
+    }
+    material = formal_proxy_command_material(run_dir, registration)
+    registration["proxy_command_digest"] = material["digest"]
+    assert formal_proxy_command(run_dir, registration) == material["argv"]
+    assert material["argv"][material["argv"].index("--listen-port") + 1] == "8187"
+    assert material["argv"][material["argv"].index("--candidate-port") + 1] == (
+        "18187"
+    )
+
+    with pytest.raises(ValueError, match="registration is invalid"):
+        validate_formal_proxy_registration(registration | {"public_port": 18187})

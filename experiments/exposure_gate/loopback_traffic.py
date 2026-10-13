@@ -474,8 +474,15 @@ class _HostAuthorization:
                 "evidence_class",
                 "authority",
                 "proxy_command_digest",
+                "proxy_source_sha256",
                 "review_receipt_sha256",
                 "reviewer_kind",
+                "public_port",
+                "backend_port",
+                "predecessor_port",
+                "grant_holder",
+                "grant_token",
+                "grant_expires_at",
             }
             if (
                 not isinstance(self.registration, dict)
@@ -486,8 +493,33 @@ class _HostAuthorization:
                 or self.registration["reviewer_kind"] != "automated-independent"
                 or SHA256.fullmatch(str(self.registration["proxy_command_digest"]))
                 is None
+                or SHA256.fullmatch(str(self.registration["proxy_source_sha256"]))
+                is None
                 or SHA256.fullmatch(str(self.registration["review_receipt_sha256"]))
                 is None
+                or self.registration["public_port"] != 8187
+                or any(
+                    isinstance(self.registration[field], bool)
+                    or not isinstance(self.registration[field], int)
+                    or not 1 <= self.registration[field] <= 65535
+                    for field in ("backend_port", "predecessor_port")
+                )
+                or len(
+                    {
+                        self.registration["public_port"],
+                        self.registration["backend_port"],
+                        self.registration["predecessor_port"],
+                    }
+                )
+                != 3
+                or not isinstance(self.registration["grant_holder"], str)
+                or not self.registration["grant_holder"]
+                or any(
+                    isinstance(self.registration[field], bool)
+                    or not isinstance(self.registration[field], int)
+                    or self.registration[field] < 1
+                    for field in ("grant_token", "grant_expires_at")
+                )
             ):
                 raise GateError("formal proxy registration is invalid")
             derived_registration = (
@@ -833,8 +865,8 @@ class _ProxyHandler(BaseHTTPRequestHandler):
 
 
 class _ProxyServer(ThreadingHTTPServer):
-    def __init__(self, authority: _Authority):
-        super().__init__(("127.0.0.1", 0), _ProxyHandler)
+    def __init__(self, authority: _Authority, listen_port: int = 0):
+        super().__init__(("127.0.0.1", listen_port), _ProxyHandler)
         self.authority = authority
 
 
@@ -891,6 +923,7 @@ def main() -> None:
     parser.add_argument("--journal", type=Path, required=True)
     parser.add_argument("--predecessor-port", type=int, required=True)
     parser.add_argument("--candidate-port", type=int, required=True)
+    parser.add_argument("--listen-port", type=int, default=0)
     parser.add_argument("--predecessor-snapshot", required=True)
     parser.add_argument("--grant-holder", required=True)
     parser.add_argument("--grant-token", type=int, required=True)
@@ -921,7 +954,14 @@ def main() -> None:
             journal,
             observer,
         )
-        server = _ProxyServer(authority)
+        if not 0 <= args.listen_port <= 65535:
+            raise GateError("proxy listen port is invalid")
+        if args.listen_port and args.listen_port in {
+            args.predecessor_port,
+            args.candidate_port,
+        }:
+            raise GateError("proxy listen port must be independent of backends")
+        server = _ProxyServer(authority, args.listen_port)
     except Exception:
         journal.close()
         raise

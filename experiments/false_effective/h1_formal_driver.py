@@ -10,17 +10,20 @@ import json
 import os
 import re
 import stat
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import runner
-from formal_registration_candidate import validate_candidate
-from harness import LATIN_SQUARE, canonical, validate_record
-from jsonschema import Draft7Validator
-
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[1]))
+
+import runner  # noqa: E402
+from formal_registration_candidate import validate_candidate  # noqa: E402
+from harness import LATIN_SQUARE, canonical, validate_record  # noqa: E402
+from jsonschema import Draft7Validator  # noqa: E402
+
 STUDY_PATH = HERE / "first-formal-real-study.json"
 DEPLOYMENT_PATH = HERE / "first-formal-real-deployment.json"
 REGISTRY_PATH = HERE / "verified-adapters.json"
@@ -381,6 +384,20 @@ def run_campaign(
             arm = campaign.arms[position["arm"]]
             clear_launch_workspace(arm)
             arguments = arm["runner_arguments"]
+            proxy_registrations = arguments.get("formal_proxy_registrations")
+            proxy_registration = None
+            if proxy_registrations is not None:
+                if not isinstance(proxy_registrations, dict):
+                    raise ValueError("formal proxy registrations are malformed")
+                start_id = (
+                    f"{campaign.scenario['id']}-r{position['repetition']}-"
+                    f"{position['arm']}"
+                )
+                proxy_registration = proxy_registrations.get(start_id)
+                if proxy_registration is None:
+                    raise ValueError(
+                        f"formal proxy registration is missing for {start_id}"
+                    )
             os.environ.update(campaign.candidate["environment"])
             record = start_fn(
                 root,
@@ -400,6 +417,7 @@ def run_campaign(
                 execution_plan_path=arguments["execution_plan_path"],
                 host_event_dir=arguments["host_event_dir"],
                 lifecycle_fact_commands=_lifecycle_commands(arm),
+                formal_proxy_registration=proxy_registration,
             )
             records.append(record)
             publish_fn(root, records)

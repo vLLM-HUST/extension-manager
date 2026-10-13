@@ -19,11 +19,17 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.parse
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from formal_proxy import (
+    formal_proxy_command,
+    prepare_formal_proxy_authorization,
+    validate_formal_proxy_registration,
+)
 from harness import (
     ARMS,
     FORMAL_HOST_OBSERVABLES,
@@ -46,6 +52,12 @@ from harness import (
 )
 from jsonschema import Draft7Validator
 
+from experiments.exposure_gate.loopback_traffic import (
+    LoopbackTrafficAdapter,
+    observe_gate_transitions,
+    read_traffic_journal,
+)
+from vllm_hust_ext.exposure_gate import GateError, LeaseGrant
 from vllm_hust_ext.formal_adapter_admission import (
     FORMAL_ADAPTER_REGISTRY_SCHEMA,
     validate_formal_adapter_admission,
@@ -1767,6 +1779,8 @@ def _run_start_impl(
     observer_executable_fingerprint: dict[str, Any] | None = None,
     fixture_handshake: bool = False,
     process_snapshot_context: dict[str, Any] | None = None,
+    formal_proxy_registration: dict[str, Any] | None = None,
+    formal_proxy_bindings: list[dict[str, str]] | None = None,
     _resources: dict[str, Any],
 ) -> dict[str, Any]:
     start_id = f"{scenario['id']}-r{repetition}-{arm}"
@@ -1812,13 +1826,14 @@ def _run_start_impl(
                 "plan_raw_base64": process_snapshot_context["plan_raw_base64"],
                 "plan_raw_sha256": process_snapshot_context["plan_raw_sha256"],
             }
-        if formal_sources and managed_binding is not None:
-            if prelaunch_snapshot is None:
-                raise ValueError("managed launch lacks retained Plan bytes")
+        if formal_sources and prelaunch_snapshot is not None:
             retained_plan = base64.b64decode(
                 prelaunch_snapshot["plan_raw_base64"], validate=True
             )
-            if digest_bytes(retained_plan) != managed_binding.get("plan_sha256"):
+            if (
+                managed_binding is not None
+                and digest_bytes(retained_plan) != managed_binding.get("plan_sha256")
+            ):
                 raise ValueError("managed launch Plan bytes differ from binding")
             retained_plan_name = "execution-plan.json"
             retained_plan_path = (run_dir / retained_plan_name).resolve()
@@ -1838,15 +1853,16 @@ def _run_start_impl(
                     os.fsync(retained_file.fileno())
             finally:
                 os.close(retained_fd)
-            old_plan_path = managed_binding.get("plan_path")
-            if not isinstance(old_plan_path, str) or argv.count(old_plan_path) != 1:
-                raise ValueError("managed launch argv lacks exactly one Plan path")
-            argv = [
-                str(retained_plan_path) if value == old_plan_path else value
-                for value in argv
-            ]
-            managed_binding = dict(managed_binding)
-            managed_binding["plan_path"] = str(retained_plan_path)
+            if managed_binding is not None:
+                old_plan_path = managed_binding.get("plan_path")
+                if not isinstance(old_plan_path, str) or argv.count(old_plan_path) != 1:
+                    raise ValueError("managed launch argv lacks exactly one Plan path")
+                argv = [
+                    str(retained_plan_path) if value == old_plan_path else value
+                    for value in argv
+                ]
+                managed_binding = dict(managed_binding)
+                managed_binding["plan_path"] = str(retained_plan_path)
         wall_start = time.time_ns()
         sut_start = time.monotonic_ns()
         sut = popen_pinned(
@@ -1906,6 +1922,107 @@ def _run_start_impl(
                 snapshot_path.chmod(0o400)
             except (OSError, ValueError, RuntimeError) as exc:
                 process_transition_error = str(exc)
+        proxy = None
+        proxy_adapter = None
+        proxy_identity = None
+        proxy_observation = None
+        proxy_command_argv = None
+        proxy_authorization = None
+        proxy_stderr = None
+        proxy_error = None
+        if formal_proxy_registration is not None:
+            try:
+                if process_transition is None or process_snapshot_context is None:
+                    raise ValueError(
+                        "formal proxy requires a complete post-launch process freeze"
+                    )
+                if not formal_proxy_bindings:
+                    raise ValueError("formal proxy entry-point binding is missing")
+                assert retained_plan_name is not None
+                authorization_path = (
+                    run_dir / "formal-proxy-authorization.json"
+                ).resolve()
+                proxy_authorization = prepare_formal_proxy_authorization(
+                    authorization_path,
+                    plan_path=(run_dir / retained_plan_name).resolve(),
+                    event_dir=Path(process_snapshot_context["host_event_dir"]),
+                    event_directory_identity=(
+                        process_snapshot_context["device"],
+                        process_snapshot_context["inode"],
+                    ),
+                    process_transition=process_transition,
+                    required_processes=identity["required_processes"],
+                    bindings=formal_proxy_bindings,
+                    registration=formal_proxy_registration,
+                )
+                proxy_command_argv = formal_proxy_command(
+                    run_dir.resolve(), formal_proxy_registration
+                )
+                proxy_stderr = (run_dir / "authority-stderr.bin").open("wb")
+                _resources["streams"].append(proxy_stderr)
+                proxy = subprocess.Popen(
+                    proxy_command_argv,
+                    cwd=run_dir,
+                    env=sut_env,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=proxy_stderr,
+                    text=True,
+                    close_fds=True,
+                )
+                _resources["children"].append(proxy)
+                proxy_identity = wait_for_linux_process_identity(
+                    proxy, proxy_command_argv, timeout_s
+                )
+                ready, _, _ = select.select([proxy.stdout], [], [], timeout_s)
+                ready_line = (
+                    proxy.stdout.readline().strip()
+                    if ready and proxy.stdout is not None
+                    else ""
+                )
+                if json.loads(ready_line) != {
+                    "port": formal_proxy_registration["public_port"]
+                }:
+                    raise ValueError("formal proxy readiness receipt is invalid")
+                (run_dir / "authority-stdout.bin").write_text(ready_line + "\n")
+                grant = LeaseGrant(
+                    formal_proxy_registration["grant_holder"],
+                    formal_proxy_registration["grant_token"],
+                    formal_proxy_registration["grant_expires_at"],
+                )
+                proxy_adapter = LoopbackTrafficAdapter(
+                    run_dir / "authority.sock", grant
+                )
+                generation = proxy_authorization["candidate_generation"]
+                proxy_adapter.close(generation)
+                proxy_adapter.open(
+                    generation,
+                    f"gate-{secrets.token_hex(16)}",
+                    {
+                        key: proxy_authorization[key]
+                        for key in (
+                            "launch_id",
+                            "controller_instance",
+                            "candidate_generation",
+                            "membership_epoch",
+                            "target_set_sha256",
+                            "process_membership_sha256",
+                            "registration_sha256",
+                        )
+                    }
+                    | {"plan_id": execution_identity["plan_id"]},
+                    grant,
+                    int(time.time()),
+                )
+            except (
+                GateError,
+                OSError,
+                ValueError,
+                RuntimeError,
+                json.JSONDecodeError,
+            ) as exc:
+                proxy_error = str(exc)
+                process_transition_error = f"formal proxy unavailable: {exc}"
         sut_lines: list[str] = []
 
         def await_fixture_ready(child: subprocess.Popen[Any], expected: str) -> str:
@@ -2042,6 +2159,26 @@ def _run_start_impl(
                         ):
                             raise ValueError("frozen process is gone or replaced")
                 except (ValueError, OSError, RuntimeError) as exc:
+                    lifecycle_fact_errors[phase] = str(exc)
+                    return False
+            if formal_proxy_registration is not None:
+                try:
+                    if proxy is None or proxy.poll() is not None:
+                        raise ValueError("formal proxy process was lost")
+                    if observer.poll() is not None:
+                        raise ValueError("formal observer process was lost")
+                    assert proxy_adapter is not None
+                    route = proxy_adapter.query_route()
+                    if sequence <= 3 and route.generation != proxy_authorization[
+                        "candidate_generation"
+                    ]:
+                        raise ValueError("formal proxy route failed closed")
+                    if sequence > 3 and route.generation not in {
+                        None,
+                        proxy_authorization["candidate_generation"],
+                    }:
+                        raise ValueError("formal proxy route changed generation")
+                except (GateError, OSError, ValueError) as exc:
                     lifecycle_fact_errors[phase] = str(exc)
                     return False
             start = time.monotonic_ns()
@@ -2201,6 +2338,33 @@ def _run_start_impl(
         if process_transition_error is None:
             phase_ok &= drive("service-shutdown", "shutdown", 5)
         phase_ok &= not exited_before_shutdown
+        if formal_proxy_registration is not None:
+            try:
+                if proxy_adapter is None or proxy is None:
+                    raise ValueError(proxy_error or "formal proxy did not start")
+                proxy_adapter.close_all()
+                _terminate_process(proxy)
+                if proxy_stderr is not None:
+                    proxy_stderr.flush()
+                proxy_observation = observe_gate_transitions(
+                    run_dir / "authority-journal.jsonl"
+                )
+                (run_dir / "authority-observation.json").write_bytes(
+                    canonical(proxy_observation) + b"\n"
+                )
+                if not any(
+                    event.get("kind") == "request.admit"
+                    and event.get("route", {}).get("generation")
+                    == proxy_authorization["candidate_generation"]
+                    for event in read_traffic_journal(
+                        run_dir / "authority-journal.jsonl"
+                    )
+                ):
+                    raise ValueError("formal proxy retained no admitted request")
+            except (GateError, OSError, ValueError) as exc:
+                proxy_error = str(exc)
+                lifecycle_fact_errors["traffic-authority"] = proxy_error
+                phase_ok = False
         if observer.stdin is not None:
             observer.stdin.close()
         observer_timed_out = False
@@ -2321,6 +2485,31 @@ def _run_start_impl(
             "lifecycle_fact_processes": lifecycle_fact_processes,
             "lifecycle_fact_errors": lifecycle_fact_errors,
             "observer_pipe_sha256": pipe_digest,
+            "formal_proxy": (
+                {
+                    "argv": proxy_command_argv,
+                    "process_identity": proxy_identity,
+                    "registration": formal_proxy_registration,
+                    "authorization_sha256": (
+                        digest_file(run_dir / "formal-proxy-authorization.json")
+                        if (run_dir / "formal-proxy-authorization.json").is_file()
+                        else None
+                    ),
+                    "journal_sha256": (
+                        digest_file(run_dir / "authority-journal.jsonl")
+                        if (run_dir / "authority-journal.jsonl").is_file()
+                        else None
+                    ),
+                    "observation_sha256": (
+                        digest_file(run_dir / "authority-observation.json")
+                        if (run_dir / "authority-observation.json").is_file()
+                        else None
+                    ),
+                    "error": proxy_error,
+                }
+                if formal_proxy_registration is not None
+                else None
+            ),
         }
         (run_dir / "command.json").write_bytes(canonical(command) + b"\n")
         command_digest = digest_file(run_dir / "command.json")
@@ -2394,6 +2583,16 @@ def _run_start_impl(
     }
     if retained_plan_name is not None:
         artifacts["execution_plan"] = retained_plan_name
+    if command.get("formal_proxy") is not None:
+        for key, name in {
+            "formal_proxy_authorization": "formal-proxy-authorization.json",
+            "formal_proxy_journal": "authority-journal.jsonl",
+            "formal_proxy_observation": "authority-observation.json",
+            "formal_proxy_stdout": "authority-stdout.bin",
+            "formal_proxy_stderr": "authority-stderr.bin",
+        }.items():
+            if (run_dir / name).is_file():
+                artifacts[key] = name
     for name in (
         command["stdout"],
         command["stderr"],
@@ -2410,6 +2609,15 @@ def _run_start_impl(
         artifacts["digests"][retained_plan_name] = digest_file(
             run_dir / retained_plan_name
         )
+    for proxy_name in (
+        "formal-proxy-authorization.json",
+        "authority-journal.jsonl",
+        "authority-observation.json",
+        "authority-stdout.bin",
+        "authority-stderr.bin",
+    ):
+        if (run_dir / proxy_name).is_file():
+            artifacts["digests"][proxy_name] = digest_file(run_dir / proxy_name)
     for name in ("observer-stdout.bin", "observer-stderr.bin"):
         if (run_dir / name).is_file():
             artifacts["digests"][name] = digest_file(run_dir / name)
@@ -2474,6 +2682,8 @@ def _run_start_impl(
         "phase_invocations": command.get("phase_invocations"),
         "excluded_fields": ["artifact_root", "receipt_digest"],
     }
+    if command.get("formal_proxy") is not None:
+        receipt["formal_proxy"] = command["formal_proxy"]
     (run_dir / "runner-receipt.json").write_bytes(canonical(receipt) + b"\n")
     record["receipt_digest"] = digest_file(run_dir / "runner-receipt.json")
     artifacts["digests"]["runner-receipt.json"] = record["receipt_digest"]
@@ -2578,6 +2788,7 @@ def run_formal_start(
     execution_plan_path: str | Path | None = None,
     host_event_dir: str | Path | None = None,
     lifecycle_fact_commands: dict[str, tuple[str, list[str]]] | None = None,
+    formal_proxy_registration: dict[str, Any] | None = None,
 ):
     if protocol != json.loads((HERE / "protocol.json").read_text()):
         raise ValueError("formal protocol differs from frozen protocol")
@@ -2626,6 +2837,26 @@ def run_formal_start(
             "controller_instance": "controller:" + secrets.token_hex(16),
         }
     else:
+        proxy_registration = (
+            validate_formal_proxy_registration(formal_proxy_registration)
+            if formal_proxy_registration is not None
+            else None
+        )
+        if proxy_registration is not None:
+            positions = [
+                index for index, value in enumerate(arguments) if value == "--port"
+            ]
+            if (
+                len(positions) != 1
+                or positions[0] + 1 >= len(arguments)
+                or arguments[positions[0] + 1]
+                != str(proxy_registration["public_port"])
+            ):
+                raise ValueError(
+                    "formal proxy requires one registered public SUT port"
+                )
+            arguments = list(arguments)
+            arguments[positions[0] + 1] = str(proxy_registration["backend_port"])
         if "required_process_slots" not in identity:
             validate_required_process_snapshot(identity.get("required_processes"))
             raise ValueError("formal logical slots must not contain prelaunch epochs")
@@ -2749,6 +2980,22 @@ def run_formal_start(
             }
         )
         fact_commands = verification.get("lifecycle_fact_commands")
+        if proxy_registration is not None:
+            if fact_commands is None:
+                raise ValueError("formal proxy requires registered lifecycle sources")
+            for phase in ("service-ready", "workload-complete"):
+                source_arguments = fact_commands[phase]["arguments"]
+                endpoint = urllib.parse.urlsplit(
+                    _single_option(source_arguments, "--url")
+                )
+                if (
+                    endpoint.scheme != "http"
+                    or endpoint.hostname != "127.0.0.1"
+                    or endpoint.port != proxy_registration["public_port"]
+                ):
+                    raise ValueError(
+                        f"formal proxy {phase} source bypasses public port"
+                    )
         if fact_commands is not None:
             fault_arguments = fact_commands["fault-injected"]["arguments"]
             descriptor_path = Path(
@@ -2770,6 +3017,27 @@ def run_formal_start(
             verification["observer_command"]["executable"],
             *verification["observer_command"]["arguments"],
         ]
+        proxy_plan = frozen_plan.plan
+        if proxy_registration is not None and (
+            proxy_plan.predecessor.generation != 0
+            or len(proxy_plan.plugins) != 1
+            or len(proxy_plan.obligations) != 1
+        ):
+            raise ValueError(
+                "formal proxy v1 requires one plugin, one obligation, "
+                "and generation zero"
+            )
+        formal_proxy_bindings = (
+            [
+                {
+                    **verification["scenario_binding"]["entry_point"],
+                    "plugin_id": proxy_plan.plugins[0].id,
+                    "obligation": proxy_plan.obligations[0].obligation_id,
+                }
+            ]
+            if proxy_registration is not None
+            else None
+        )
     identity["adapter_verification"] = verification
     return _run_start(
         root,
@@ -2808,6 +3076,12 @@ def run_formal_start(
         fixture_handshake=fixture_handshake,
         process_snapshot_context=(
             process_snapshot_context if not fixture_mode else None
+        ),
+        formal_proxy_registration=(
+            proxy_registration if not fixture_mode else None
+        ),
+        formal_proxy_bindings=(
+            formal_proxy_bindings if not fixture_mode else None
         ),
     )
 
