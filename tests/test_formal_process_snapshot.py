@@ -20,6 +20,7 @@ from vllm_hust_ext.formal_process_snapshot import (
     validate_slots,
     validate_transition,
 )
+from vllm_hust_ext.host_event_sink import HostEventSinkError
 from vllm_hust_ext.plan_artifact import plan_artifact_bytes
 
 sys.path.insert(0, str(Path("experiments/false_effective").resolve()))
@@ -193,6 +194,69 @@ def test_live_process_freeze_and_missing_deadline(tmp_path):
     finally:
         child.terminate()
         child.wait(timeout=2)
+
+
+def test_runner_retries_partial_record_only_after_same_inode_append(
+    tmp_path, monkeypatch
+):
+    root = (tmp_path / "events").resolve()
+    root.mkdir(mode=0o700)
+    metadata = root.stat()
+    raw = host_event()
+    split = len(raw) // 2
+    path = root / "worker.jsonl"
+    path.write_bytes(raw[:split])
+    path.chmod(0o600)
+    real_read = runner.read_events
+    calls = 0
+
+    def finish_append_after_partial(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        try:
+            return real_read(*args, **kwargs)
+        except HostEventSinkError as exc:
+            if calls == 1 and str(exc) == runner.PARTIAL_FINAL_RECORD:
+                with path.open("ab") as stream:
+                    stream.write(raw[split:] + b"\n")
+            raise
+
+    monkeypatch.setattr(runner, "read_events", finish_append_after_partial)
+    records = runner._read_host_events(
+        root,
+        (metadata.st_dev, metadata.st_ino),
+        max_total_bytes=1024 * 1024,
+        deadline=time.monotonic() + 1,
+    )
+
+    assert calls == 2
+    assert [record.raw for record in records] == [raw]
+
+
+def test_runner_rejects_static_partial_record_without_retry(tmp_path, monkeypatch):
+    root = (tmp_path / "events").resolve()
+    root.mkdir(mode=0o700)
+    metadata = root.stat()
+    path = root / "worker.jsonl"
+    path.write_bytes(host_event())
+    path.chmod(0o600)
+    real_read = runner.read_events
+    calls = 0
+
+    def count_reads(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return real_read(*args, **kwargs)
+
+    monkeypatch.setattr(runner, "read_events", count_reads)
+    with pytest.raises(HostEventSinkError, match="partial final record"):
+        runner._read_host_events(
+            root,
+            (metadata.st_dev, metadata.st_ino),
+            max_total_bytes=1024 * 1024,
+            deadline=time.monotonic() + 1,
+        )
+    assert calls == 1
 
 
 def test_offline_runner_binds_both_snapshots_and_transition_times():
