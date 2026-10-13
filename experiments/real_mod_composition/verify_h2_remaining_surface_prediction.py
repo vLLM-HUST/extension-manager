@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 from dataclasses import asdict
 from pathlib import Path
 
@@ -50,14 +49,12 @@ def main() -> int:
         },
         "prediction oracle binding",
     )
-    subprocess.run(
-        ["git", "merge-base", "--is-ancestor", MANAGER_BASE, "HEAD"], check=True
-    )
-    subprocess.run(
-        ["git", "merge-base", "--is-ancestor", ORACLE_COMMIT, "HEAD"], check=True
-    )
-    subprocess.run(
-        ["git", "diff", "--quiet", MANAGER_BASE, "--", "src/vllm_hust_ext"], check=True
+    require(prediction["manager"]["base_commit"] == MANAGER_BASE, "Manager base")
+    provider_source = ROOT / prediction["manager"]["provider_source"]
+    require(provider_source.is_file(), "Manager provider source")
+    require(
+        sha256(provider_source) == prediction["manager"]["provider_source_sha256"],
+        "Manager provider source digest",
     )
 
     manifest_path = ARTIFACT / "snapshots/production-stack-provider-manifest.json"

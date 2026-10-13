@@ -10,7 +10,7 @@
     "true_negative": 3,
     "true_positive": 1
   },
-  "captured_utc": "2026-10-13T18:00:22.396115+00:00",
+  "captured_utc": "2026-10-13T18:05:50.641367+00:00",
   "case_id": "external-authority-production-stack-keda",
   "classification": "source-bound-pre-launch-provider-check",
   "configuration": {
@@ -38,6 +38,8 @@
   "h2_complete": false,
   "manager": {
     "base_commit": "0884e3568d0b674f5e135f858e8e7f8016d2aa97",
+    "provider_source": "src/vllm_hust_ext/providers/production_stack.py",
+    "provider_source_sha256": "edc6f484e8d7fd0ee290fdd1d06f30eda43f9921df23d4c606f4b851706b9815",
     "source_tree_unchanged_from_base": true
   },
   "nonclaims": [
@@ -121,13 +123,13 @@
       "exit_code": 0,
       "no_running_processes_for_allocated_devices": true,
       "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "stdout_sha256": "9c81a9e2879e67112fc0533c983d059b878239ac15eb739a14eceb359be8f625"
+      "stdout_sha256": "06a586ec4f2a61ba9ee0646732e8353a4fcf26e1452b568c952ecae580d96b7d"
     },
     "npu_before": {
       "exit_code": 0,
       "no_running_processes_for_allocated_devices": true,
       "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "stdout_sha256": "bb5f99ac111c8aaab543eed9ac964c851f79f06ff516752c7e6f003480b5a3bd"
+      "stdout_sha256": "26c43ed9fd78198d26abf6ee43172bdd0c82e177e1110376b2e46c7d919343bc"
     }
   },
   "provider_check": {

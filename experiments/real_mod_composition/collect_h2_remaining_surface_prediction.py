@@ -127,6 +127,10 @@ def main() -> int:
         "manager": {
             "base_commit": MANAGER_BASE,
             "source_tree_unchanged_from_base": True,
+            "provider_source": ("src/vllm_hust_ext/providers/production_stack.py"),
+            "provider_source_sha256": sha256(
+                ROOT / "src/vllm_hust_ext/providers/production_stack.py"
+            ),
         },
         "oracle": {
             "frozen_commit": ORACLE_COMMIT,
