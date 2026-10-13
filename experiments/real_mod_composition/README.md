@@ -165,6 +165,44 @@ not evidence of a compression transaction, compression correctness, or
 performance. H2 remains incomplete until the real admit/reject corpus meets its
 precision/recall target; H3 and H4 are unaffected.
 
+## Real compression-transaction qualification
+
+`artifacts/h2-compression-transaction-20261013/` strengthens the same
+compatible pair beyond the 2048-token activation record. The immutable runner
+reads and validates the exact campaign, runner digest, and
+planner/runtime-blind source oracle before spawning each server. The
+TriAttention configuration lowers the reviewed threshold to
+1152 tokens (`kv_budget=1024`, `recompute_window=128`), and the exact frozen
+Qwen2.5-14B prompt contains 1201 tokenizer tokens.
+
+Both wheel installation orders ran on two Ascend 910B2 devices. Each raw log
+contains one scheduler commit from 1201 semantic tokens to 1024 physical
+tokens and two identical worker acknowledgements, one from each TP rank. The
+same request ID is present in an EngineCore-owned profiler epoch and in the
+HTTP response. Both shutdowns left the port closed, no owned process alive,
+and both allocated NPU process tables empty.
+
+Recompute the portable admission with:
+
+```bash
+python experiments/real_mod_composition/verify_h2_compression_transaction.py \
+  experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013
+```
+
+The verifier rehashes every raw artifact and independently parses the request,
+response, configuration, scheduler commit, worker acknowledgements, process
+identities, profiler records, and NPU snapshots. It rejects missing TP
+acknowledgements, substituted profiler epochs, mismatched anchors, and replayed
+run identities. The campaign's embedded `frozen_utc=17:48:00Z` is inaccurate:
+it is later than the observed first launch even though the file itself was read
+before the server subprocess. The verifier does not use that timestamp as
+evidence, and copied filesystem modification time is not portable evidence.
+The result is therefore retained as a real compatible-pair transaction
+qualification for both installation orders, with `score_eligible=false`, not
+as a formally preregistered H2 result. It is not a performance or
+compression-quality result, does not increase the independently labeled corpus,
+and does not complete H2, H3, or H4.
+
 ## Exact-wheel installation-order campaign
 
 `runtime_campaign.json` freezes source commits, trees, the two locally built
