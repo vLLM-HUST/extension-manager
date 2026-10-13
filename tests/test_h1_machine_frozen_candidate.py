@@ -46,6 +46,18 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert observer["accepts_sut_truth"] is False
     assert observer["accepts_sut_causal_ack"] is False
     assert observer["formal_h1_start"] is False
+    preflight = observer["real_tp2_preflight"]
+    for field in ("result_sha256", "observer_result_sha256", "process_snapshot_sha256"):
+        assert SHA256.fullmatch(preflight[field])
+    assert preflight["classification"].startswith("unregistered-")
+    assert preflight["formal_h1_start"] is False
+    assert preflight["performance_result"] is False
+    assert preflight["membership_freeze"] == "passed"
+    assert preflight["effective_claim"] is True
+    assert preflight["quarantined_worker_ordinal"] == 0
+    assert preflight["observed_worker_ordinals"] == [1]
+    assert preflight["coverage"] == 0.5
+    assert preflight["cleanup_proven"] is True
 
 
 def test_machine_candidate_does_not_admit_the_formal_study() -> None:

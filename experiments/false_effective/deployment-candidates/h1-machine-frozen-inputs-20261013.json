@@ -1,7 +1,7 @@
 {
   "schema": "ecpa-h1-machine-frozen-input-candidate/v1",
   "classification": "unregistered-machine-facts-not-formal-real",
-  "captured_at": "2026-10-13T09:22:00Z",
+  "captured_at": "2026-10-13T09:38:00Z",
   "sources": {
     "runtime": {
       "repository": "vLLM-HUST/vllm-hust",
@@ -15,9 +15,9 @@
     },
     "manager": {
       "repository": "vLLM-HUST/extension-manager",
-      "commit": "e2962ba7eec2e3210241cf73ec77e78d82fa6017",
-      "tree": "e9dacac99ff883713d2d30d9644f5f0ec734872c",
-      "wheel_sha256": "sha256:70a31c15716aa0a32d69a6369ca66ded0f3d09a9eacbc320a0545c7c1351f8ba"
+      "commit": "9f075f8e70da574fb90bdd392cf7c7e424c75972",
+      "tree": "91ebc43a7a82bbc561ad3ed9f94bd02ac72c2a12",
+      "wheel_sha256": "sha256:ec7d718a92361f77da53095547ae3ab407eabce9d471e6cc2e5f859bb69173da"
     },
     "mod": {
       "repository": "vLLM-HUST/vllm-hust-kv-materialization-arrival-control",
@@ -28,7 +28,7 @@
   "installed_environment": {
     "distribution_count": 196,
     "uv_pip_check": "pass",
-    "digest": "sha256:a67e1f40ae49b859df14ed785552979b1afb1c333979b960da639be0ce787df1",
+    "digest": "sha256:52cdc8b6356c57899c15bf1aa3e0dafeeac3192eb71a8fab4d72c90d59335aa0",
     "scope": "venv-installed-bytes-only; excludes CANN, driver, model and host OS"
   },
   "container": {
@@ -59,7 +59,7 @@
   "activation_probe": {
     "formal_h1_start": false,
     "all_three_arms_passed": true,
-    "artifact_sha256": "sha256:dafd3863fe4b17144c544b14bc212e74783c76d4171dbc33dc06db4783ea69ee"
+    "artifact_sha256": "sha256:8aa3b3e51911c7ce3fa780fc45942b18397065679758f39db5f5824517069d8a"
   },
   "hardware": {
     "device_family": "Ascend 910B2",
@@ -97,9 +97,28 @@
     "validation": {
       "targeted_harness_tests": 125,
       "full_repository_tests": 704,
-      "ci_run": 151,
+      "ci_run": 154,
       "ci_conclusion": "success"
     },
-    "formal_h1_start": false
+    "formal_h1_start": false,
+    "real_tp2_preflight": {
+      "classification": "unregistered-real-tp2-production-observer-preflight",
+      "formal_h1_start": false,
+      "performance_result": false,
+      "result_sha256": "sha256:ed78d28566ba99a8e83468da3e0f37d2f982f34c09245553155ef3f7bf8119f2",
+      "observer_result_sha256": "sha256:7f8afdbf894132922dd0990d541e3945ab44647ca4810e6283744794a3290455",
+      "process_snapshot_sha256": "sha256:4cb4dbcf2dcfe796d1555401ba3e70c3196b434eaf2f1290a398bbcf3b7c5067",
+      "health_status": 200,
+      "completion_status": 200,
+      "completion_nonempty": true,
+      "membership_freeze": "passed",
+      "quarantined_worker_ordinal": 0,
+      "effective_claim": true,
+      "observed_worker_ordinals": [
+        1
+      ],
+      "coverage": 0.5,
+      "cleanup_proven": true
+    }
   }
 }

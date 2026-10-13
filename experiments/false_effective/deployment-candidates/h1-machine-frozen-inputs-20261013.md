@@ -11,9 +11,9 @@ producer, observer, or cross-arm reviews required for admission.
 | --- | --- | --- |
 | vLLM-HUST | `b093ae0096a4ee801064f7a3673d42383e89f5c7` | tree `dd66f7b4b1844a19211894706786832aef63d5ff` |
 | vLLM-Ascend-HUST | `fd70a5c818363ee4357604e637e36fb52860ccca` | tree `40760a184f20adbc9b7993f72940028ec229626c` |
-| Extension Manager wheel source | `e2962ba7eec2e3210241cf73ec77e78d82fa6017` | tree `e9dacac99ff883713d2d30d9644f5f0ec734872c`; wheel SHA-256 `70a31c15716aa0a32d69a6369ca66ded0f3d09a9eacbc320a0545c7c1351f8ba` |
+| Extension Manager wheel source | `9f075f8e70da574fb90bdd392cf7c7e424c75972` | tree `91ebc43a7a82bbc561ad3ed9f94bd02ac72c2a12`; wheel SHA-256 `ec7d718a92361f77da53095547ae3ab407eabce9d471e6cc2e5f859bb69173da` |
 | KV MOD | `9728ccd9df68c654aaf541bb7565c0bd3f85b983` | tree `ea6911c6e0b8a0d7ff66d3078397dd4c615a3364` |
-| installed venv bytes | 196 distributions; `uv pip check` passed | `sha256:a67e1f40ae49b859df14ed785552979b1afb1c333979b960da639be0ce787df1` |
+| installed venv bytes | 196 distributions; `uv pip check` passed | `sha256:52cdc8b6356c57899c15bf1aa3e0dafeeac3192eb71a8fab4d72c90d59335aa0` |
 | container image | `192.168.0.6:5050/vllm-ascend-ssh:v1` | Kubernetes pod-status image ID `sha256:cd3c36c1832d8b9dfd193405d52a73b22ca2699fbe95271015bc7932bef3e2ee` |
 
 The venv digest covers installed venv bytes only. It excludes CANN, driver,
@@ -21,7 +21,7 @@ model and host OS. A full `pip check` that also exposes CANN's external Python
 path is not clean, so this packet does not claim whole-stack dependency
 consistency.
 
-The merged Manager now installs the production `ecpa-formal-observer` command. It derives activation, invocation and coverage from the immutable process transition, deployment-owned host journal and live Linux identities; it accepts neither SUT truth nor a SUT causal ACK. The focused harness has 125 passing tests, the full repository has 704 passing tests, and CI run 151 passed. This is implementation evidence, not a formal H1 start.
+The merged Manager installs the production `ecpa-formal-observer` command. A real TP2 preflight on the allocated 910B2 pair reached health 200 and a non-empty completion, froze both host-assigned worker epochs, quarantined worker ordinal 0, and ran the production observer while the service remained live. The observer retained the real runtime-effective claim, identified only worker ordinal 1, and computed coverage 0.5. Cleanup removed every owned process and NPU process. Result SHA-256 is `ed78d28566ba99a8e83468da3e0f37d2f982f34c09245553155ef3f7bf8119f2`; observer-result SHA-256 is `7f8afdbf894132922dd0990d541e3945ab44647ca4810e6283744794a3290455`. This remains an unregistered functional preflight and contributes zero formal H1 starts.
 
 The Host/Ascend pair has a bounded Qwen2.5 eager TP2 contract subset result of
 175 passed and 1 skipped. The broader CPU suite stopped after 50 failures
