@@ -275,6 +275,15 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     )
     carrier_oracle = load_json(root, f"{carrier_prefix}/oracle.json")
     carrier_predictions = load_json(root, f"{carrier_prefix}/manager-predictions.json")
+    remaining_prefix = (
+        "experiments/real_mod_composition/artifacts/"
+        "h2-remaining-surfaces-oracle-20261013"
+    )
+    remaining_oracle = load_json(root, f"{remaining_prefix}/oracle.json")
+    remaining_receipt = load_json(root, f"{remaining_prefix}/review-receipt.json")
+    remaining_prediction = load_json(
+        root, f"{remaining_prefix}/manager-prediction.json"
+    )
     if (
         campaign.get("schema") != "ecpa-h2-minimal-real-source-corpus/v2"
         or campaign.get("revision") != 2
@@ -388,6 +397,105 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     if status.get("metrics") != expected_metrics:
         raise ValueError("H2 reported metrics differ from the recomputed subset")
 
+    remaining_cases = remaining_oracle.get("cases")
+    external_case = next(
+        (
+            row
+            for row in remaining_cases or []
+            if row.get("case_id") == "external-authority-production-stack-keda"
+        ),
+        None,
+    )
+    cli_case = next(
+        (
+            row
+            for row in remaining_cases or []
+            if row.get("case_id") == "scheduler-config-collision-search"
+        ),
+        None,
+    )
+    expected_external_aggregate = {
+        "case_count": 4,
+        "true_positive": 1,
+        "true_negative": 3,
+        "false_positive": 0,
+        "false_negative": 0,
+        "admit_precision": 1.0,
+        "admit_recall": 1.0,
+        "reject_precision": 1.0,
+        "reject_recall": 1.0,
+    }
+    if (
+        remaining_oracle.get("schema")
+        != "ecpa-h2-independent-remaining-surfaces-oracle/v1"
+        or remaining_receipt.get("schema")
+        != "ecpa-h2-independent-review-receipt/v2"
+        or remaining_receipt.get("oracle_sha256")
+        != digest(root, f"{remaining_prefix}/oracle.json")
+        or remaining_oracle.get("oracle_summary")
+        != {
+            "admit": 0,
+            "reject": 1,
+            "unresolved": 1,
+            "score_eligible": 1,
+            "runtime_claim": False,
+            "performance_claim": False,
+        }
+        or not isinstance(external_case, dict)
+        or external_case.get("decision") != "reject"
+        or external_case.get("score_eligible") is not True
+        or external_case.get("dimension") != "external-authority-conflict"
+        or not isinstance(cli_case, dict)
+        or cli_case.get("decision") != "unresolved"
+        or cli_case.get("score_eligible") is not False
+        or cli_case.get("dimension") != "CLI/config-collision"
+        or remaining_prediction.get("schema")
+        != "ecpa-h2-remaining-surface-manager-prediction/v1"
+        or remaining_prediction.get("oracle")
+        != {
+            "frozen_commit": "dfc533d33582f80fae0ee172e17aa47406d98e48",
+            "sha256": digest(root, f"{remaining_prefix}/oracle.json"),
+            "receipt_sha256": digest(root, f"{remaining_prefix}/review-receipt.json"),
+            "frozen_before_prediction": True,
+        }
+        or remaining_prediction.get("case_id") != external_case.get("case_id")
+        or remaining_prediction.get("classification")
+        != "source-bound-pre-launch-provider-check"
+        or remaining_prediction.get("prediction") != "reject"
+        or remaining_prediction.get("oracle_decision") != "reject"
+        or remaining_prediction.get("decision_match") is not True
+        or remaining_prediction.get("score_eligible") is not True
+        or remaining_prediction.get("h2_complete") is not False
+        or remaining_prediction.get("process_boundary", {}).get(
+            "host_process_started"
+        )
+        is not False
+        or any(
+            remaining_prediction.get("process_boundary", {})
+            .get(name, {})
+            .get("no_running_processes_for_allocated_devices")
+            is not True
+            for name in ("npu_before", "npu_after")
+        )
+        or remaining_prediction.get("manager", {}).get("provider_source_sha256")
+        != digest(
+            root,
+            remaining_prediction.get("manager", {}).get("provider_source", ""),
+        )
+        or remaining_prediction.get("aggregate_definite_subset")
+        != expected_external_aggregate
+    ):
+        raise ValueError("H2 remaining-surface evidence is invalid or overclaimed")
+
+    counts["true_negative"] += 1
+    scored.append(external_case)
+    tp, tn = counts["true_positive"], counts["true_negative"]
+    fp, fn = counts["false_positive"], counts["false_negative"]
+    admit_precision = tp / (tp + fp)
+    admit_recall = tp / (tp + fn)
+    reject_precision = tn / (tn + fn)
+    reject_recall = tn / (tn + fp)
+
     carrier_cases = carrier_oracle.get("cases")
     carrier_rows = carrier_predictions.get("predictions")
     if (
@@ -457,6 +565,68 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     }
 
 
+def validate_h2_compression_transaction(root: Path) -> dict[str, int | str]:
+    """Recompute the bounded, explicitly non-formal compression qualification."""
+    prefix = (
+        "experiments/real_mod_composition/artifacts/"
+        "h2-compression-transaction-20261013"
+    )
+    verifier_path = (
+        root
+        / "experiments/real_mod_composition/verify_h2_compression_transaction.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "ecpa_paper_h2_compression_verifier", verifier_path
+    )
+    if spec is None or spec.loader is None:
+        raise ValueError("cannot load H2 compression-transaction verifier")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+        recomputed = module.verify(root / prefix)
+    finally:
+        sys.modules.pop(spec.name, None)
+    admission = load_json(root, f"{prefix}/admission.json")
+    campaign = load_json(root, f"{prefix}/campaign.json")
+    if admission != recomputed:
+        raise ValueError("H2 compression admission differs from raw recomputation")
+    runs = admission.get("runs")
+    boundary = admission.get("qualification_boundary")
+    if (
+        admission.get("schema")
+        != "ecpa-h2-compression-transaction-admission/v1"
+        or admission.get("status") != "QUALIFIED_NONFORMAL"
+        or admission.get("score_eligible") is not False
+        or admission.get("performance_result") is not False
+        or not isinstance(runs, list)
+        or len(runs) != 2
+        or {row.get("order") for row in runs}
+        != {"profiler-then-kvcompress", "kvcompress-then-profiler"}
+        or any(
+            row.get("semantic_tokens") != 1201
+            or row.get("physical_tokens") != 1024
+            or row.get("worker_ack_count") != 2
+            or row.get("engine_core", {}).get("argv") != ["VLLM::EngineCore"]
+            for row in runs
+        )
+        or not isinstance(boundary, dict)
+        or boundary.get("formal_h2_result") is not False
+        or boundary.get("preregistered_timestamp_claim") is not False
+        or "frozen_utc is later than the observed first launch"
+        not in boundary.get("reason", "")
+        or campaign.get("frozen_utc") != "2026-10-13T17:48:00Z"
+        or campaign.get("formal_runs") != []
+    ):
+        raise ValueError("H2 compression qualification boundary has drifted")
+    return {
+        "h2_compression_orders": len(runs),
+        "h2_compression_semantic_tokens": 1201,
+        "h2_compression_physical_tokens": 1024,
+        "h2_compression_worker_acks": 2,
+    }
+
+
 def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     workshop = load_json(root, "docs/corpus/workshop-mods.json")
     workshop_metadata = load_json(
@@ -495,6 +665,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     normalized_native_qualification = " ".join(native_qualification.split())
     h1 = validate_h1_r5(root)
     h2 = validate_h2_real_source_subset(root)
+    h2_compression = validate_h2_compression_transaction(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -977,6 +1148,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         "h1_false_effective_denominator": h1["h1_false_effective_denominator"],
         "h1_coverage": h1["h1_coverage"],
         **h2,
+        **h2_compression,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -1044,6 +1216,10 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPAHTwoRejectPrecision", "h2_reject_precision"),
         ("ECPAHTwoRejectRecall", "h2_reject_recall"),
         ("ECPAHTwoAcceptedOrders", "h2_accepted_orders"),
+        ("ECPAHTwoCompressionOrders", "h2_compression_orders"),
+        ("ECPAHTwoCompressionSemanticTokens", "h2_compression_semantic_tokens"),
+        ("ECPAHTwoCompressionPhysicalTokens", "h2_compression_physical_tokens"),
+        ("ECPAHTwoCompressionWorkerAcks", "h2_compression_worker_acks"),
         ("ECPAFormalPlanned", "formal_planned"),
         ("ECPAVerifiedAdapters", "verified_adapters"),
         ("ECPAReferenceStarts", "reference_starts"),
