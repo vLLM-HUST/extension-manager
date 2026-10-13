@@ -1,4 +1,4 @@
-"""Produce local Git-object and bundle receipts.
+"""Validate the superseded local Git-object and bundle receipt.
 
 The receipt deliberately does not assert remote reachability.
 """
@@ -17,6 +17,26 @@ HERE = Path(__file__).resolve().parent
 CANDIDATE = HERE / "deployment-candidates/h1-formal-registration-commands-20261013.json"
 SCHEMA = "ecpa-h1-source-reachability-receipt/v1"
 CLASSIFICATION = "local-object-and-archive-verification-only"
+SUPERSEDED_CANDIDATE_SHA256 = (
+    "sha256:c94e4531e4a84d07f02a95cadc24a763d7a2147b8049127137efbb76d985c955"
+)
+SUPERSEDED_IDENTITIES = {
+    "runtime": {
+        "repository": "vLLM-HUST/vllm-hust",
+        "commit": "b093ae0096a4ee801064f7a3673d42383e89f5c7",
+        "tree": "dd66f7b4b1844a19211894706786832aef63d5ff",
+    },
+    "mod": {
+        "repository": "vLLM-HUST/vllm-hust-kv-materialization-arrival-control",
+        "commit": "9728ccd9df68c654aaf541bb7565c0bd3f85b983",
+        "tree": "ea6911c6e0b8a0d7ff66d3078397dd4c615a3364",
+    },
+    "accelerator_plugin": {
+        "repository": "vLLM-HUST/vllm-ascend-hust",
+        "commit": "fd70a5c818363ee4357604e637e36fb52860ccca",
+        "tree": "40760a184f20adbc9b7993f72940028ec229626c",
+    },
+}
 
 
 def _git(repository: Path, *arguments: str) -> str:
@@ -126,13 +146,22 @@ def validate_receipt(value: dict[str, Any], *, live: bool = False) -> None:
     ]:
         raise ValueError("source receipt does not cover the exact H1 source tuple")
     candidate = json.loads(CANDIDATE.read_text())
-    if value.get("candidate_sha256") != digest_file(CANDIDATE):
-        raise ValueError("source receipt candidate digest is stale")
+    if value.get("candidate_status") != "superseded-by-reachable-source-candidate":
+        raise ValueError("source receipt supersession status drifted")
+    if value.get("candidate_sha256") != SUPERSEDED_CANDIDATE_SHA256:
+        raise ValueError("superseded candidate digest drifted")
     declared_sources = candidate["declared_identity"]["software"]
     for row in sources:
         identity = row.get("declared_identity", {})
-        if identity != declared_sources[row["name"]]:
-            raise ValueError("source receipt identity differs from the H1 candidate")
+        if identity != SUPERSEDED_IDENTITIES[row["name"]]:
+            raise ValueError("source receipt identity differs from archived candidate")
+        current_identity = declared_sources[row["name"]]
+        if identity == current_identity or not current_identity.get(
+            "repository_reachable"
+        ):
+            raise ValueError(
+                "superseded local identity was not replaced by a reachable candidate"
+            )
         local = row.get("local_repository", {})
         archive = row.get("archive", {})
         remote = row.get("remote_reachability", {})
@@ -194,16 +223,15 @@ def validate_receipt(value: dict[str, Any], *, live: bool = False) -> None:
 
 
 def build_receipt(specifications: list[tuple[str, Path, Path]]) -> dict[str, Any]:
-    candidate = json.loads(CANDIDATE.read_text())
-    declared = candidate["declared_identity"]["software"]
     sources = [
-        inspect_source(name, declared[name], repository, bundle)
+        inspect_source(name, SUPERSEDED_IDENTITIES[name], repository, bundle)
         for name, repository, bundle in specifications
     ]
     receipt = {
         "schema": SCHEMA,
         "classification": CLASSIFICATION,
-        "candidate_sha256": digest_file(CANDIDATE),
+        "candidate_sha256": SUPERSEDED_CANDIDATE_SHA256,
+        "candidate_status": "superseded-by-reachable-source-candidate",
         "sources": sources,
         "summary": {
             "all_local_objects_exact": all(
@@ -221,7 +249,7 @@ def build_receipt(specifications: list[tuple[str, Path, Path]]) -> dict[str, Any
                 "Local Git objects and bundle heads do not prove a commit is "
                 "reachable from a remote repository ref."
             ),
-            "This receipt does not clear the H1 repository-reachability blocker.",
+            "This receipt covers the superseded local source candidate only.",
             "This receipt is not producer admission or independent review.",
             "The incremental bundles require their recorded prerequisite commits.",
         ],

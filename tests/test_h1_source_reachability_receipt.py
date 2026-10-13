@@ -26,6 +26,7 @@ def _receipt() -> dict[str, object]:
 def test_receipt_binds_exact_local_objects_and_archives_without_remote_claim() -> None:
     receipt = _receipt()
     reachability.validate_receipt(receipt)
+    assert receipt["candidate_status"] == "superseded-by-reachable-source-candidate"
 
     assert [row["name"] for row in receipt["sources"]] == [
         "runtime",
@@ -73,5 +74,5 @@ def test_receipt_rejects_archive_head_or_declared_tree_drift() -> None:
 
     wrong_tree = copy.deepcopy(receipt)
     wrong_tree["sources"][2]["declared_identity"]["tree"] = "0" * 40
-    with pytest.raises(ValueError, match="differs from the H1 candidate"):
+    with pytest.raises(ValueError, match="archived candidate"):
         reachability.validate_receipt(wrong_tree)

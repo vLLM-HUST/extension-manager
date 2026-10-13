@@ -58,7 +58,10 @@ The deployment-bound H1 registration candidate in
 [`deployment-candidates/h1-formal-registration-commands-20261013.json`](deployment-candidates/h1-formal-registration-commands-20261013.json)
 pins the exact three arm commands, shared five-source commands, production
 observer, activation probes, fixed Plan/workload/fault inputs, and nine-start
-Latin-square order for the Manager `9f075f8e` experiment binary. Generate and
+Latin-square order for the Manager `b734a923` experiment binary. Vanilla and
+manual use `ecpa-host-launch`; ECPA uses the exact venv Python ELF with
+`-m vllm.entrypoints.cli.main` so multiprocessing spawn cannot confuse the
+Manager fd 3 launch pipe with a Python console-script main path. Generate and
 recheck it with [`formal_registration_candidate.py`](formal_registration_candidate.py).
 The checked transition dry-run covers the study, deployment, and runtime
 registry as one digest-bound atomic write set and records the required
@@ -72,10 +75,28 @@ each candidate commit. Rebuild it with
 [`source_reachability_receipt.py`](source_reachability_receipt.py). This is a
 local archival receipt: it performs no remote query, does not claim a commit is
 reachable from a remote repository ref, and does not clear the repository
-reachability blocker. Machine-generated fingerprints, bundles, and successful
-parser probes also do not supply the exact Host/Ascend support qualification or
-independent command/activation/observer/artifact-retention review. Therefore the
-candidate is not a registry entry and H1 remains 0/9.
+reachability blocker. The separate content-addressed
+[`h1-reachable-stack-tp2-qualification-20261013.json`](deployment-candidates/h1-reachable-stack-tp2-qualification-20261013.json)
+binds the exact reachable source/wheel tuple and three successful real TP2
+functional runs. It also retains the failed ECPA console-script target and its
+fd 3 multiprocessing deadlock. This receipt is functional qualification only:
+it is neither formal H1 nor performance evidence. H1 remains 0/9.
+
+The study owner subsequently authorized the explicit
+[`h1-review-protocol-amendment-20261013.json`](h1-review-protocol-amendment-20261013.json)
+so H1 does not wait for human review. The separate deterministic checker
+[`h1_automated_review.py`](h1_automated_review.py) reviews command bindings,
+activation paths, observer independence, and artifact retention and emits the
+content-addressed
+[`h1-automated-review-receipt-20261013.json`](deployment-candidates/h1-automated-review-receipt-20261013.json).
+The receipt and every embedded review reference say
+`reviewer_kind=automated-independent` and `human_review=false`; they cannot be
+represented as human review. The reviewed candidate remains `candidate-only`,
+`admissible=false`, and `formal_h1_starts=0`. It clears only the four review
+blockers. Exact reachable-stack environment freezing and Host/Ascend functional
+qualification are now bound by the qualification receipt. Producer admission,
+atomic official registration, and the formal validator remain unchanged gates,
+and no qualification run or prior preflight becomes a formal start.
 
 ```bash
 PYTHONPATH=src python3 experiments/false_effective/reproduce.py --output /tmp/false-effective
