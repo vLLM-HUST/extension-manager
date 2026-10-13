@@ -24,6 +24,7 @@ from analyze import (
     _recompute_h4_metrics,
     load_h4_campaign,
 )
+from jsonschema import Draft7Validator
 
 PHASES = (
     "discovery",
@@ -51,9 +52,11 @@ def load_object(path: Path) -> dict[str, Any]:
     return value
 
 
-def validate_launch_spec(spec: dict[str, Any], receipt: dict[str, Any]) -> None:
-    if spec.get("schema") != "ecpa-h4-launch-spec/v1":
-        raise ValueError("unsupported H4 launch spec")
+def validate_launch_spec(
+    spec: dict[str, Any], receipt: dict[str, Any], raw: bytes | None = None
+) -> None:
+    schema = load_object(Path(__file__).resolve().parent / "h4-launch-spec.schema.json")
+    Draft7Validator(schema).validate(spec)
     if set(spec.get("arms", {})) != set(ARMS):
         raise ValueError("launch spec must define the three frozen arms")
     served_models = set()
@@ -72,11 +75,17 @@ def validate_launch_spec(spec: dict[str, Any], receipt: dict[str, Any]) -> None:
             raise ValueError(f"{arm} has an unknown prelaunch phase")
     if len(served_models) != 1:
         raise ValueError("all H4 arms must use the same served_model")
+    if raw is not None and _digest_bytes(raw) != receipt["launch_spec_sha256"]:
+        raise ValueError("launch spec digest differs from registered bytes")
 
 
 def validate_receipt(
     receipt: dict[str, Any], campaign: dict[str, Any], receipt_path: Path
 ) -> None:
+    schema = load_object(
+        Path(__file__).resolve().parent / "h4-deployment-receipt.schema.json"
+    )
+    Draft7Validator(schema).validate(receipt)
     required = {
         "schema": "ecpa-h4-deployment-receipt/v1",
         "registration_state": "registered",
@@ -105,6 +114,11 @@ def validate_receipt(
         raise ValueError("deployment receipt plugin commits differ")
     if receipt.get("workload_digest") != campaign["workload"]["sha256"]:
         raise ValueError("deployment receipt workload digest differs")
+    admission = receipt["host_source_admission"]
+    if canonical_digest(admission) != receipt["host_source_admission_sha256"]:
+        raise ValueError("deployment receipt Host admission digest differs")
+    if admission["candidate_commit"] != receipt["host_commit"]:
+        raise ValueError("deployment receipt Host admission commit differs")
     if not receipt_path.is_file():
         raise ValueError("deployment receipt is missing")
 
@@ -593,8 +607,9 @@ def main() -> int:
     campaign = load_h4_campaign(args.campaign)
     receipt = load_object(args.deployment_receipt)
     validate_receipt(receipt, campaign, args.deployment_receipt)
-    launch_spec = load_object(args.launch_spec)
-    validate_launch_spec(launch_spec, receipt)
+    launch_raw = args.launch_spec.read_bytes()
+    launch_spec = json.loads(launch_raw)
+    validate_launch_spec(launch_spec, receipt, launch_raw)
     if args.validate_only:
         print(json.dumps({"status": "validated", "starts": 9}, sort_keys=True))
         return 0

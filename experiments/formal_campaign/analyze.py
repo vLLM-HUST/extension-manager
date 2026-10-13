@@ -74,8 +74,13 @@ def load_h3_campaign(path: Path) -> dict[str, Any]:
 
 def load_h4_campaign(path: Path) -> dict[str, Any]:
     campaign = _load_object(path)
-    if campaign.get("schema") != "ecpa-h4-minimal-matched-cell-campaign/v1":
-        raise ValueError("H4 campaign uses an unsupported schema")
+    schema = _load_object(ROOT / "h4-campaign.schema.json")
+    errors = sorted(
+        jsonschema.Draft7Validator(schema).iter_errors(campaign),
+        key=lambda error: list(error.path),
+    )
+    if errors:
+        raise ValueError(f"H4 campaign: {errors[0].message}")
     required = {
         "campaign_id",
         "cell_id",
@@ -90,6 +95,14 @@ def load_h4_campaign(path: Path) -> dict[str, Any]:
     campaign["_sha256"] = _digest_bytes(path)
     campaign["_path"] = str(path.resolve())
     campaign["arms_by_id"] = {item["id"]: item for item in campaign["arms"]}
+    if len(campaign["arms_by_id"]) != 3:
+        raise ValueError("H4 campaign contains duplicate arms")
+    schedule = [row["order"] for row in campaign["schedule"]]
+    arms = set(campaign["arms_by_id"])
+    if any(set(row) != arms or len(row) != len(arms) for row in schedule):
+        raise ValueError("H4 campaign schedule does not cover every arm")
+    if any(len({row[column] for row in schedule}) != 3 for column in range(3)):
+        raise ValueError("H4 campaign schedule is not a balanced Latin square")
     workload_path = (path.parent / campaign["workload"]["path"]).resolve()
     if _digest_bytes(workload_path) != campaign["workload"]["sha256"]:
         raise ValueError("H4 workload digest differs from frozen campaign")
@@ -213,6 +226,11 @@ def _verify_h4_receipt(
             raise ValueError(f"{record['start_id']} receipt {name} is not bound")
     if receipt["campaign_sha256"] != campaign_spec["_sha256"]:
         raise ValueError(f"{record['start_id']} receipt campaign digest differs")
+    admission = receipt["host_source_admission"]
+    if _canonical_digest(admission) != receipt["host_source_admission_sha256"]:
+        raise ValueError(f"{record['start_id']} Host admission digest differs")
+    if admission["candidate_commit"] != receipt["host_commit"]:
+        raise ValueError(f"{record['start_id']} Host admission commit differs")
     if receipt["arm_command_digests"].keys() != set(campaign_spec["arms_by_id"]):
         raise ValueError(f"{record['start_id']} receipt does not cover all arms")
     return receipt

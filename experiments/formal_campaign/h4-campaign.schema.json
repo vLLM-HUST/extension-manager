@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h4-minimal-matched-cell-campaign/v1",
+  "type": "object",
+  "required": ["schema", "campaign_id", "cell_id", "arms", "schedule", "fixed_identity", "workload", "planned_starts", "formal_h4_result", "performance_result", "score_eligible"],
+  "properties": {
+    "schema": {"const": "ecpa-h4-minimal-matched-cell-campaign/v1"},
+    "campaign_id": {"const": "H4-matched-cost-v1"},
+    "cell_id": {"type": "string", "minLength": 1},
+    "arms": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "required": ["id"], "properties": {"id": {"enum": ["vanilla-vllm-entry-points", "manual-integration", "ecpa"]}}, "additionalProperties": true}},
+    "schedule": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "object", "required": ["order"], "properties": {"order": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"enum": ["vanilla-vllm-entry-points", "manual-integration", "ecpa"]}}}, "additionalProperties": true}},
+    "fixed_identity": {
+      "type": "object",
+      "required": ["manager_commit", "host_commit", "accelerator_commit", "plugins", "model_digest", "hardware", "topology"],
+      "properties": {
+        "manager_commit": {"$ref": "#/definitions/sha"}, "host_commit": {"$ref": "#/definitions/sha"}, "accelerator_commit": {"$ref": "#/definitions/sha"},
+        "plugins": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "object", "required": ["commit"], "properties": {"commit": {"$ref": "#/definitions/sha"}}, "additionalProperties": true}},
+        "model_digest": {"$ref": "#/definitions/digest"}, "hardware": {"type": "string", "minLength": 1}, "topology": {"type": "string", "minLength": 1}
+      }, "additionalProperties": true
+    },
+    "workload": {"type": "object", "required": ["path", "sha256"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/definitions/digest"}}, "additionalProperties": false},
+    "planned_starts": {"const": 9}, "formal_h4_result": {"const": false}, "performance_result": {"const": false}, "score_eligible": {"const": false}
+  },
+  "definitions": {"sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+  "additionalProperties": true
+}
