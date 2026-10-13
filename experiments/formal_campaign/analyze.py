@@ -642,6 +642,13 @@ def _verify_h3_raw_artifact(
     chain_document = _load_object(
         (root / record["artifacts"]["authority_chain"]["path"]).resolve()
     )
+    from experiments.exposure_gate.loopback_traffic import read_traffic_journal
+
+    journal_events = read_traffic_journal(
+        root / record["artifacts"]["authority_journal"]["path"]
+    )
+    if journal_events != chain_document["events"]:
+        raise ValueError(f"{record['start_id']} authority raw journal differs")
     if chain_document != raw["authority_chain"]:
         raise ValueError(f"{record['start_id']} authority chain differs from raw H3")
     if cleanup_document.get("cleanup") != record["cleanup"]:

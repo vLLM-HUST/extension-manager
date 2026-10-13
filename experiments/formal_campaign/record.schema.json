@@ -49,6 +49,7 @@
         "deployment_receipt": {"$ref": "#/definitions/artifact"},
         "authority_registration": {"$ref": "#/definitions/artifact"},
         "authority_chain": {"$ref": "#/definitions/artifact"},
+        "authority_journal": {"$ref": "#/definitions/artifact"},
         "raw_log": {"$ref": "#/definitions/artifact"},
         "request_results": {"$ref": "#/definitions/artifact"},
         "process_snapshot": {"$ref": "#/definitions/artifact"},

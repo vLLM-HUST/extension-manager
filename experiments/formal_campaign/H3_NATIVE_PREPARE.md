@@ -34,9 +34,9 @@ qualifications; they provide no model, Host invocation, two-card, throughput,
 quality or three-arm H3 result. The remote Host merged-source admission gate
 remains required. H3 formal starts remain zero.
 
-This adapter does not yet bind a model launcher to coordinator recovery or
-independently recompute the full post-recovery authority hash chain. A pure
-`state_command` report is insufficient to establish those remaining claims.
+This adapter does not yet bind a model launcher to coordinator recovery. A pure
+`state_command` report is insufficient to establish restoration. The v2 raw
+recovery protocol below independently validates authority evidence.
 
 Post-recovery intake now independently recomputes the traffic authority's full
 hash chain. The authority start binds the exact launch and proxy registration;
@@ -57,3 +57,7 @@ post-recovery loss count is derived from HTTP status and has that limited scope.
 A frozen independent client trace spanning the fault remains required. This
 change and its real CPU SIGKILL/SQLite/authority test provide no formal H3 starts,
 model performance, matched baseline recovery or Host admission.
+
+The CPU regression also issues a real POST through the independent authority to
+a separately owned fixture backend after restart. That fixture response proves
+HTTP forwarding only, never model correctness or model recovery.

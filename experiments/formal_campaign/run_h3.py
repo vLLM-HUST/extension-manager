@@ -450,7 +450,10 @@ def main() -> int:
                 json.loads(prepared["predecessor_json"])
             ),
         }
-        authority_events = read_traffic_journal(authority_journal)
+        authority_snapshot = out / "authority-journal.raw.jsonl"
+        authority_snapshot.write_bytes(authority_journal.read_bytes())
+        authority_snapshot.chmod(0o600)
+        authority_events = read_traffic_journal(authority_snapshot)
         authority_facts = verify_recovery_events(
             authority_events,
             expected_proxy=proxy_identity,
@@ -552,8 +555,12 @@ def main() -> int:
         },
     )
     bindings["authority_chain"] = authority_binding
+    bindings["authority_journal"] = {
+        "path": authority_snapshot.name,
+        "sha256": digest(authority_snapshot),
+    }
     raw = {
-        "schema": "ecpa-h3-raw-recovery/v1",
+        "schema": "ecpa-h3-raw-recovery/v2",
         "evidence_class": "formal-real",
         "campaign_sha256": campaign_sha,
         "campaign_id": campaign["campaign_id"],

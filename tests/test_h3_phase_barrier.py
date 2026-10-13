@@ -11,6 +11,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -60,6 +61,9 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        authority_port = sock.getsockname()[1]
     binding = tmp_path / "recovery-binding.json"
     registration_sha = "sha256:" + "b" * 64
     binding.write_text(
@@ -77,7 +81,7 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
         "--journal",
         str(tmp_path / "authority.jsonl"),
         "--listen-port",
-        "0",
+        str(authority_port),
         "--predecessor-port",
         str(port),
         "--candidate-port",
@@ -101,6 +105,23 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
     children = []
     with (tmp_path / "raw.log").open("wb") as log:
         try:
+            backend_pid = tmp_path / "backend.pid"
+            backend = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(ROOT / "tests/fixtures/h3_http_server.py"),
+                    "--port",
+                    str(port),
+                    "--pid-file",
+                    str(backend_pid),
+                ],
+                env=env,
+                stdout=log,
+                stderr=log,
+                start_new_session=True,
+            )
+            children.append(backend)
+            wait_file(backend_pid, backend)
             proxy = subprocess.Popen(
                 proxy_cmd, env=env, stdout=log, stderr=log, start_new_session=True
             )
@@ -169,7 +190,28 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
             assert recovered["manager"]["pid"] != manager.pid
             from experiments.exposure_gate.loopback_traffic import read_traffic_journal
 
+            payload = {
+                "model": "test-model",
+                "prompt": "Reply ECPA",
+                "max_tokens": 8,
+                "temperature": 0,
+                "stream": False,
+            }
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{authority_port}/request",
+                data=json.dumps(payload).encode(),
+                headers={
+                    "Content-Type": "application/json",
+                    "X-ECPA-Request-ID": "post-recovery-cpu-only",
+                },
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                assert response.status == 200
+                assert json.loads(response.read())["choices"][0]["text"] == "ECPA"
             trace = read_traffic_journal(tmp_path / "authority.jsonl")
+            assert trace[-1]["kind"] == "request.admit"
+            assert trace[-1]["route"]["generation"] == 0
+
             kwargs = {
                 "expected_proxy": {
                     k: identity(proxy.pid)[k] for k in ("pid", "start_ticks", "boot_id")
@@ -198,7 +240,11 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
             ):
                 with pytest.raises(ValueError):
                     verify_recovery_events(trace, **(kwargs | wrong))
-            for mutated in (trace[:-1], trace + [trace[-1]], list(reversed(trace))):
+            for mutated in (
+                [e for e in trace if e["kind"] != "route.restore.applied"],
+                trace + [trace[-1]],
+                list(reversed(trace)),
+            ):
                 with pytest.raises(ValueError):
                     verify_recovery_events(mutated, **kwargs)
 

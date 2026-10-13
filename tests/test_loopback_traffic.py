@@ -328,6 +328,9 @@ def test_slow_post_rechecks_authority_after_complete_body(
     coverage.set()
 
     class Observer:
+        def binding(self) -> dict[str, str]:
+            return {"launch_id": "slow-upload-qualification"}
+
         def authorize(self, _snapshot: dict[str, object]) -> str:
             if not coverage.is_set():
                 raise GateError("coverage withdrawn")

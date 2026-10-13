@@ -631,7 +631,7 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
         for name, value in children.items()
     }
     raw = {
-        "schema": "ecpa-h3-raw-recovery/v1",
+        "schema": "ecpa-h3-raw-recovery/v2",
         "evidence_class": "formal-real",
         "campaign_sha256": campaign["_sha256"],
         "campaign_id": "H3-transactional-recovery-v1",
@@ -749,6 +749,7 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
             "previous_sha256": previous,
             "kind": kind,
             "monotonic_ns": ns,
+            "at_ns": ns,
             "detail": detail,
             "route": route,
             **{"proxy_" + k: v for k, v in proxy.items()},
@@ -761,10 +762,25 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
         )
         chain_events.append(e)
     chain = {"events": chain_events, "proxy_identity": proxy, "prepared_route": route}
+    raw_journal = root / f"{start_id}-authority.raw.jsonl"
+    raw_journal.write_text(
+        "".join(
+            json.dumps(e, sort_keys=True, separators=(",", ":")) + "\n"
+            for e in chain_events
+        )
+    )
+    raw_journal.chmod(0o600)
+    bindings["authority_journal"] = {
+        "path": raw_journal.name,
+        "sha256": "sha256:" + hashlib.sha256(raw_journal.read_bytes()).hexdigest(),
+    }
     chain_binding = write_artifact(root / f"{start_id}-authority-chain.json", chain)
     bindings["authority_chain"] = chain_binding
     raw["authority_chain"] = chain
     raw["artifact_sha256"]["authority_chain"] = chain_binding["sha256"]
+    raw["artifact_sha256"]["authority_journal"] = bindings["authority_journal"][
+        "sha256"
+    ]
     raw["events"].insert(
         2,
         {
@@ -894,6 +910,9 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
     )
     record["artifacts"]["authority_chain"] = chain_binding
     raw["artifact_sha256"]["authority_chain"] = chain_binding["sha256"]
+    raw["artifact_sha256"]["authority_journal"] = bindings["authority_journal"][
+        "sha256"
+    ]
     record["artifacts"]["raw_recovery"] = write_artifact(
         root / f"{start_id}-raw-recovery.json", raw
     )
