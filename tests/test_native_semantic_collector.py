@@ -64,7 +64,7 @@ def read_line(process):
 
 
 @pytest.fixture
-def running(tmp_path):
+def running(tmp_path, request):
     tmp_path.chmod(0o700)
     source = tmp_path / "sender_fixture.py"
     source.write_text(SENDER_CODE)
@@ -117,6 +117,20 @@ def running(tmp_path):
                 }
             ],
         }
+        if getattr(request, "param", None) == "kv":
+            from experiments.exposure_gate.native_semantic_collector import KV_SPEC
+
+            spec["schema"] = KV_SPEC
+            spec["kv_requirements"] = {
+                "phase-1": {
+                    "attention_group": 0,
+                    "semantic_anchor": 384,
+                    "physical_anchor": 256,
+                    "allocation_block_size": 128,
+                    "compression_threshold_tokens": 384,
+                    "destination_block_count": 2,
+                }
+            }
         path = tmp_path / "spec.json"
         path.write_bytes(canonical(spec))
         path.chmod(0o600)
@@ -612,3 +626,155 @@ def test_legacy_missing_accept_clocks_are_unverified_even_with_rehashed_prefix(r
     assert result["native_chronology_status"] == "unverified-missing-accept-clock"
     assert result["complete_two_rank_transport_phases"] is None
     assert result["GPU_semantic_qualification"] is None
+
+
+def projection():
+    from experiments.exposure_gate.native_semantic_collector import (
+        PROJECTION,
+        PROJECTION_OPERATION,
+        PROJECTION_SCOPE,
+    )
+
+    transaction = {
+        "runtime_request_id": "actual-runtime-1",
+        "attention_group": 0,
+        "semantic_anchor": 384,
+        "physical_anchor": 256,
+        "destination_block_ids": [10, 11],
+        "host_cpu_block_ids": [10, 11],
+        "allocation_block_size": 128,
+        "compression_threshold_tokens": 384,
+    }
+    return {
+        "schema": PROJECTION,
+        "plan_id": "native-plan",
+        "launch_id": "native-launch",
+        **transaction,
+        "metadata_row": 2,
+        "transaction_id": sha(canonical(transaction)),
+        "operation": PROJECTION_OPERATION,
+        "scope": PROJECTION_SCOPE,
+        "host_mapping": "identity-host-block-id-projection",
+        "kv_tensor_equivalence": None,
+        "attention_consumed_observed_tensor": None,
+        "full_generation_quality": None,
+    }
+
+
+def sealed_result(run):
+    status = probe_collector(
+        run["socket"],
+        expected_collector=run["ready"]["collector"],
+        expected_socket_identity=tuple(run["ready"]["socket_identity"]),
+        expected_collector_source_sha256=run["ready"]["collector_source_sha256"],
+        expected_spec_sha256=run["ready"]["spec_sha256"],
+        expected_archive_identity=run["ready"]["archive_identity"],
+    )
+    return verify_journal(
+        run["spec_path"],
+        run["journal"],
+        acknowledged_prefix=status["acknowledged_prefix"],
+    )
+
+
+@pytest.mark.parametrize("running", ["kv"], indirect=True)
+def test_actual_peers_projection_requires_later_same_rank_destination(running):
+    run = running
+    assert "ack" in command(run, 0, mapping())
+    for rank in [1, 2]:
+        assert "ack" in command(run, rank, upload())
+        assert "ack" in command(run, rank, projection())
+    assert sealed_result(run)["complete_two_rank_KV_projection_upload_phases"] == 0
+    wrong = upload()
+    wrong["uploaded_rows"][0]["blocks"] = [12, 13]
+    wrong["uploaded_rows_sha256"] = sha(canonical(wrong["uploaded_rows"]))
+    assert "ack" in command(run, 1, wrong)  # Real generic fact, no KV discharge.
+    assert "ack" in command(run, 2, upload())
+    assert sealed_result(run)["complete_two_rank_KV_projection_upload_phases"] == 0
+    assert "ack" in command(run, 1, upload())
+    result = sealed_result(run)
+    assert result["complete_two_rank_KV_projection_upload_phases"] == 1
+    assert result["GPU_semantic_qualification"] is None
+    assert result["formal_result"] is False
+
+
+@pytest.mark.parametrize("running", ["kv"], indirect=True)
+@pytest.mark.parametrize(
+    "mutation", ["anchor", "request", "peer", "rank", "destination"]
+)
+def test_projection_counterfactual_rejected_before_ack(running, mutation):
+    run = running
+    assert "ack" in command(run, 0, mapping())
+    fact = projection()
+    index = 1
+    if mutation == "anchor":
+        fact["semantic_anchor"] += 1
+    if mutation == "request":
+        fact["runtime_request_id"] = "unmapped-request"
+    if mutation == "peer":
+        index = 0
+    if mutation == "rank":
+        fact["process"] = run["spec"]["senders"][2]["process"]
+    if mutation == "destination":
+        fact["host_cpu_block_ids"] = [12, 13]
+    assert "rejected" in command(run, index, fact)
+    assert sealed_result(run)["source_authenticated_native_envelopes"] == 1
+
+
+def test_generic_frozen_scope_rejects_extension_projection(running):
+    assert "ack" in command(running, 0, mapping())
+    assert "rejected" in command(running, 1, projection())
+
+
+@pytest.mark.parametrize("running", ["kv"], indirect=True)
+@pytest.mark.parametrize("mutation", ["anchor", "before-map", "quality", "extra-field"])
+def test_kv_portable_predicate_rejects_rehashed_raw_counterfactual(running, mutation):
+    run = running
+    assert "ack" in command(run, 0, mapping())
+    assert "ack" in command(run, 1, projection())
+    events = [json.loads(line) for line in run["journal"].read_bytes().splitlines()]
+    fact = json.loads(base64.b64decode(events[2]["raw_base64"]))
+    if mutation == "anchor":
+        fact["semantic_anchor"] += 1
+        transaction = {
+            k: fact[k]
+            for k in [
+                "runtime_request_id",
+                "attention_group",
+                "semantic_anchor",
+                "physical_anchor",
+                "destination_block_ids",
+                "host_cpu_block_ids",
+                "allocation_block_size",
+                "compression_threshold_tokens",
+            ]
+        }
+        fact["transaction_id"] = sha(canonical(transaction))
+    if mutation == "before-map":
+        actual_mapping = json.loads(base64.b64decode(events[1]["raw_base64"]))
+        fact["monotonic_ns"] = actual_mapping["monotonic_ns"] - 1
+    if mutation == "quality":
+        fact["kv_tensor_equivalence"] = True
+    if mutation == "extra-field":
+        fact["success"] = True
+    raw = canonical(fact)
+    events[2]["raw_base64"] = base64.b64encode(raw).decode()
+    events[2]["raw_sha256"] = sha(raw)
+    previous = "0" * 64
+    for event in events:
+        event["previous_event_sha256"] = previous
+        event["event_sha256"] = sha(
+            canonical({k: v for k, v in event.items() if k != "event_sha256"})
+        )
+        previous = event["event_sha256"]
+    path = run["root"] / "tampered-kv.jsonl"
+    path.write_bytes(b"".join(canonical(event) + b"\n" for event in events))
+    with pytest.raises(ValueError):
+        verify_journal(
+            run["spec_path"],
+            path,
+            acknowledged_prefix={
+                "next_sequence": len(events),
+                "last_event_sha256": previous,
+            },
+        )
