@@ -1,0 +1,22 @@
+--- a/src/vllm_ascend_kvcompress/provider.py
++++ b/src/vllm_ascend_kvcompress/provider.py
+@@ -360,6 +360,19 @@
+                 pending.physical_anchor,
+                 pending.per_layer_physical_num_tokens,
+             )
++            # Local candidate only: context must be frozen by Host worker code.
++            # Absent/unregistered context produces no semantic receipt.
++            semantic_context = getattr(
++                self.runner, "_ecpa_semantic_projection_context", None
++            )
++            if semantic_context is not None:
++                from vllm.plugins.semantic_evidence_candidate import (
++                    emit_worker_projection,
++                )
++                emit_worker_projection(
++                    self, scheduler_output, request_id, pending,
++                    **semantic_context,
++                )
+             logger.info(
+                 "KV compression worker commit acknowledged request_id=%s "
+                 "semantic_tokens=%d physical_tokens=%d destination_blocks=%d",
