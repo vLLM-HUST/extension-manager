@@ -1,0 +1,57 @@
+ÚznÛéºÉ¢Šwè{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h3-exact-stack-cell-campaign/v1",
+  "type": "object",
+  "required": ["schema", "campaign_id", "cell_id", "evidence_class", "arms", "fixed_identity", "fault", "objective", "probe"],
+  "properties": {
+    "schema": {"const": "ecpa-h3-exact-stack-cell-campaign/v1"},
+    "campaign_id": {"const": "H3-transactional-recovery-v1"},
+    "cell_id": {"type": "string", "minLength": 1},
+    "evidence_class": {"const": "formal-real"},
+    "arms": {
+      "type": "array", "minItems": 3, "maxItems": 3,
+      "items": {
+        "type": "object", "required": ["id", "launch_command", "fault_target_pid_file"],
+        "properties": {
+          "id": {"enum": ["vanilla-vllm-entry-points", "manual-integration", "ecpa"]},
+          "launch_command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "fault_target_pid_file": {"type": "string", "minLength": 1}
+        }, "additionalProperties": false
+      }
+    },
+    "fixed_identity": {"type": "object"},
+    "fault": {
+      "type": "object", "required": ["id", "signal", "target_role", "target_exit_timeout_s"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "signal": {"enum": ["SIGKILL", "SIGTERM"]},
+        "target_role": {"type": "string", "minLength": 1},
+        "target_exit_timeout_s": {"type": "number", "exclusiveMinimum": 0}
+      }, "additionalProperties": false
+    },
+    "objective": {
+      "type": "object", "required": ["max_recovery_ms", "max_lost_requests", "max_duplicated_requests", "max_operator_actions", "expected_final_route", "allowed_rollback_classifications"],
+      "properties": {
+        "max_recovery_ms": {"type": "number", "exclusiveMinimum": 0},
+        "max_lost_requests": {"type": "integer", "minimum": 0},
+        "max_duplicated_requests": {"type": "integer", "minimum": 0},
+        "max_operator_actions": {"type": "integer", "minimum": 0},
+        "expected_final_route": {"type": "string", "minLength": 1},
+        "allowed_rollback_classifications": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["automatic-restoration", "failed-safe", "bounded-operator-action", "not-applicable"]}}
+      }, "additionalProperties": false
+    },
+    "probe": {
+      "type": "object", "required": ["health_url", "request_url", "request_count", "state_command", "cleanup_command", "ready_timeout_s", "request_timeout_s"],
+      "properties": {
+        "health_url": {"type": "string", "pattern": "^https?://"},
+        "request_url": {"type": "string", "pattern": "^https?://"},
+        "request_count": {"type": "integer", "minimum": 1},
+        "state_command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "cleanup_command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "ready_timeout_s": {"type": "number", "exclusiveMinimum": 0},
+        "request_timeout_s": {"type": "number", "exclusiveMinimum": 0}
+      }, "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

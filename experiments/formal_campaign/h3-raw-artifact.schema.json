@@ -1,0 +1,84 @@
+ÚznÛéºÉ¢Šwè{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h3-raw-recovery/v1",
+  "type": "object",
+  "required": ["schema", "evidence_class", "campaign_sha256", "campaign_id", "cell_id", "start_id", "arm", "repetition", "arm_order", "deployment_receipt_sha256", "process_identity", "fault_target", "pre_fault", "artifact_sha256", "events", "request_results", "process_snapshot"],
+  "properties": {
+    "schema": {"const": "ecpa-h3-raw-recovery/v1"},
+    "evidence_class": {"const": "formal-real"},
+    "campaign_sha256": {"$ref": "#/definitions/digest"},
+    "campaign_id": {"const": "H3-transactional-recovery-v1"},
+    "cell_id": {"type": "string", "minLength": 1},
+    "start_id": {"type": "string", "minLength": 1},
+    "arm": {"enum": ["vanilla-vllm-entry-points", "manual-integration", "ecpa"]},
+    "repetition": {"type": "integer", "minimum": 1, "maximum": 3},
+    "arm_order": {"type": "integer", "minimum": 1, "maximum": 3},
+    "deployment_receipt_sha256": {"$ref": "#/definitions/digest"},
+    "process_identity": {"$ref": "#/definitions/processIdentity"},
+    "fault_target": {"$ref": "#/definitions/targetIdentity"},
+    "pre_fault": {
+      "type": "object",
+      "required": ["predecessor_digest", "evidence_identity_sha256"],
+      "properties": {
+        "predecessor_digest": {"$ref": "#/definitions/digest"},
+        "evidence_identity_sha256": {"$ref": "#/definitions/digest"}
+      },
+      "additionalProperties": false
+    },
+    "artifact_sha256": {
+      "type": "object",
+      "required": ["raw_log", "request_results", "process_snapshot", "cleanup_report"],
+      "properties": {
+        "raw_log": {"$ref": "#/definitions/digest"},
+        "request_results": {"$ref": "#/definitions/digest"},
+        "process_snapshot": {"$ref": "#/definitions/digest"},
+        "cleanup_report": {"$ref": "#/definitions/digest"}
+      },
+      "additionalProperties": false
+    },
+    "events": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["sequence", "monotonic_ns", "kind", "detail"],
+        "properties": {
+          "sequence": {"type": "integer", "minimum": 1},
+          "monotonic_ns": {"type": "integer", "minimum": 0},
+          "kind": {"enum": ["request-result", "fault-triggered", "fault-observed", "recovery-started", "recovery-complete", "operator-action", "predecessor-destroyed"]},
+          "detail": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "request_results": {"type": "object"},
+    "process_snapshot": {"type": "object"}
+  },
+  "definitions": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "targetIdentity": {
+      "type": "object",
+      "required": ["pid", "start_ticks", "boot_id", "role"],
+      "properties": {
+        "pid": {"type": "integer", "minimum": 1},
+        "start_ticks": {"type": "integer", "minimum": 1},
+        "boot_id": {"type": "string", "minLength": 1},
+        "role": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "processIdentity": {
+      "type": "object",
+      "required": ["launcher_pid", "launcher_start_ticks", "fault_target_pid", "fault_target_start_ticks", "boot_id"],
+      "properties": {
+        "launcher_pid": {"type": "integer", "minimum": 1},
+        "launcher_start_ticks": {"type": "integer", "minimum": 1},
+        "fault_target_pid": {"type": "integer", "minimum": 1},
+        "fault_target_start_ticks": {"type": "integer", "minimum": 1},
+        "boot_id": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

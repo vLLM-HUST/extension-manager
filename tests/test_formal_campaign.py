@@ -1,4 +1,4 @@
-from __future__ import annotations
+ÚznÛéºÉ¢Šwèfrom __future__ import annotations
 
 import hashlib
 import importlib.util
@@ -380,87 +380,237 @@ def test_h4_schema_requires_raw_measurement_and_process_identity(tmp_path: Path)
         module.load_records(records)
 
 
-def test_h3_incomplete_still_fails_closed_without_h4_raw_schema(tmp_path: Path):
-    module = load_analyzer()
-    protocol = module.load_protocol()
-    assert module.analyze_h3(protocol, [], tmp_path)["status"] == "incomplete"
+def write_artifact(path: Path, value: object) -> dict[str, str]:
+    path.write_text(json.dumps(value, sort_keys=True) + "\n")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {"path": path.name, "sha256": f"sha256:{digest}"}
 
 
-def h3_artifacts(root: Path):
-    bindings = {}
-    for name in ("raw_log", "request_results", "process_snapshot", "cleanup_report"):
-        binding = write(root / f"h3-{name}.json", {"artifact": name})
-        binding["path"] = Path(binding["path"]).name
-        bindings[name] = binding
-    receipt_path = root / "h3-receipt.json"
-    receipt_binding = write(
-        receipt_path,
-        {
-            "schema": "ecpa-formal-real-deployment-registration/v1",
-            "registration_state": "registered",
-            "admissible": True,
+def h3_campaign(cell: str) -> dict[str, object]:
+    return {
+        "_sha256": "sha256:" + "8" * 64,
+        "campaign_id": "H3-transactional-recovery-v1",
+        "cell_id": cell,
+        "fixed_identity": identity(),
+        "fault": {"id": "kill-manager", "target_role": "manager"},
+        "objective": {
+            "max_recovery_ms": 1000,
+            "max_lost_requests": 0,
+            "max_duplicated_requests": 0,
+            "max_operator_actions": 0,
+            "expected_final_route": "predecessor",
+            "allowed_rollback_classifications": ["automatic-restoration"],
         },
-    )
-    receipt_binding["path"] = receipt_path.name
-    bindings["deployment_receipt"] = receipt_binding
-    return bindings
+    }
 
 
-def h3_records(module, artifacts):
+def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
     protocol = module.load_protocol()
+    cell = "manager-crash-after-prepare"
+    campaign = h3_campaign(cell)
+    start_id = f"{cell}-r{rep}-{arm}"
+    process = {
+        "launcher_pid": 10,
+        "launcher_start_ticks": 20,
+        "fault_target_pid": 11,
+        "fault_target_start_ticks": 21,
+        "boot_id": "boot-id",
+    }
+    target = {
+        "pid": 11,
+        "start_ticks": 21,
+        "boot_id": "boot-id",
+        "role": "manager",
+    }
+    predecessor = "sha256:" + "a" * 64
+    evidence_identity = "sha256:" + "b" * 64
+    cleanup = {
+        "processes_reclaimed": True,
+        "ports_reclaimed": True,
+        "devices_reclaimed": True,
+    }
+    receipt = {
+        "schema": "ecpa-h3-deployment-receipt/v1",
+        "registration_state": "registered",
+        "admissible": True,
+        "evidence_mode": "formal-real",
+        "campaign_sha256": campaign["_sha256"],
+        "campaign_id": "H3-transactional-recovery-v1",
+        "cell_id": cell,
+        **{
+            name: identity()[name]
+            for name in (
+                "manager_commit",
+                "host_commit",
+                "accelerator_commit",
+                "plugin_commits",
+                "model_digest",
+                "workload_digest",
+                "hardware",
+                "topology",
+            )
+        },
+        "authority": {
+            "kind": "host",
+            "parent_process_registration": True,
+            "exposure_gate": True,
+        },
+    }
+    receipt_binding = write_artifact(root / f"{start_id}-receipt.json", receipt)
+    request_results = {
+        "start_id": start_id,
+        "requests": [{"request_id": "request-1", "outcome": "served"}],
+    }
+    process_snapshot = {"start_id": start_id, "process_identity": process}
+    children = {
+        "raw_log": {"start_id": start_id, "events": 4},
+        "request_results": request_results,
+        "process_snapshot": process_snapshot,
+        "cleanup_report": {"start_id": start_id, "cleanup": cleanup},
+    }
+    bindings = {
+        name: write_artifact(root / f"{start_id}-{name}.json", value)
+        for name, value in children.items()
+    }
+    raw = {
+        "schema": "ecpa-h3-raw-recovery/v1",
+        "evidence_class": "formal-real",
+        "campaign_sha256": campaign["_sha256"],
+        "campaign_id": "H3-transactional-recovery-v1",
+        "cell_id": cell,
+        "start_id": start_id,
+        "arm": arm,
+        "repetition": rep,
+        "arm_order": protocol["schedule"][rep - 1].index(arm) + 1,
+        "deployment_receipt_sha256": receipt_binding["sha256"],
+        "process_identity": process,
+        "fault_target": target,
+        "pre_fault": {
+            "predecessor_digest": predecessor,
+            "evidence_identity_sha256": evidence_identity,
+        },
+        "artifact_sha256": {
+            name: binding["sha256"] for name, binding in bindings.items()
+        },
+        "events": [
+            {
+                "sequence": 1,
+                "monotonic_ns": 1_000_000_000,
+                "kind": "fault-triggered",
+                "detail": {"fault_id": "kill-manager", **target},
+            },
+            {
+                "sequence": 2,
+                "monotonic_ns": 1_100_000_000,
+                "kind": "fault-observed",
+                "detail": target,
+            },
+            {
+                "sequence": 3,
+                "monotonic_ns": 1_200_000_000,
+                "kind": "request-result",
+                "detail": {
+                    "request_id": "request-1",
+                    "outcome": "served",
+                    "tuple_supported": True,
+                    "functional_correctness": True,
+                },
+            },
+            {
+                "sequence": 4,
+                "monotonic_ns": 1_300_000_000,
+                "kind": "recovery-complete",
+                "detail": {
+                    "final_route": "predecessor",
+                    "predecessor_digest": predecessor,
+                    "evidence_identity_sha256": evidence_identity,
+                    "functional_correctness": True,
+                    "rollback_classification": "automatic-restoration",
+                },
+            },
+        ],
+        "request_results": request_results,
+        "process_snapshot": process_snapshot,
+    }
+    raw_binding = write_artifact(root / f"{start_id}-raw-recovery.json", raw)
+    artifacts = {
+        "deployment_receipt": receipt_binding,
+        "raw_recovery": raw_binding,
+        **bindings,
+    }
+    record = {
+        "schema": "ecpa-formal-campaign-record/v1",
+        "campaign_id": "H3-transactional-recovery-v1",
+        "evidence_class": "formal-real",
+        "deployment": {
+            "registration_state": "registered",
+            "receipt_sha256": receipt_binding["sha256"],
+        },
+        "cell_id": cell,
+        "start_id": start_id,
+        "process_identity": process,
+        "status": "complete",
+        "arm": arm,
+        "repetition": rep,
+        "arm_order": raw["arm_order"],
+        "identity": identity(),
+        "artifacts": artifacts,
+        "cleanup": cleanup,
+        "metrics": {},
+    }
+    record["metrics"] = module._recompute_h3_metrics(record, raw, campaign)
+    return record, campaign, raw
+
+
+def test_h3_requires_raw_metrics_and_rejects_metric_forgery(tmp_path: Path) -> None:
+    analyzer = load_analyzer()
+    protocol = analyzer.load_protocol()
+    row, campaign, _ = h3_record(analyzer, tmp_path)
+    incomplete = analyzer.analyze_h3(protocol, [row], tmp_path, campaign)
+    assert incomplete["status"] == "incomplete"
+    row["metrics"]["objective_met"] = False
+    with pytest.raises(ValueError, match="metrics differ from raw evidence"):
+        analyzer.analyze_h3(protocol, [row], tmp_path, campaign)
+
+
+def test_h3_complete_exact_stack_cell_is_reported_without_claiming_campaign(
+    tmp_path: Path,
+) -> None:
+    analyzer = load_analyzer()
     rows = []
-    for cell in protocol["h3"]["required_cells"]:
-        for repetition in range(1, 4):
-            for arm in protocol["arms"]:
-                rows.append(
-                    {
-                        "schema": "ecpa-formal-campaign-record/v1",
-                        "campaign_id": "H3-transactional-recovery-v1",
-                        "evidence_class": "formal-real",
-                        "deployment": {
-                            "registration_state": "registered",
-                            "receipt_sha256": artifacts["deployment_receipt"]["sha256"],
-                        },
-                        "cell_id": cell,
-                        "start_id": f"{cell}-r{repetition}-{arm}",
-                        "status": "complete",
-                        "arm": arm,
-                        "repetition": repetition,
-                        "arm_order": protocol["schedule"][repetition - 1].index(arm)
-                        + 1,
-                        "identity": identity(),
-                        "artifacts": artifacts,
-                        "cleanup": {
-                            "processes_reclaimed": True,
-                            "ports_reclaimed": True,
-                            "devices_reclaimed": True,
-                        },
-                        "metrics": {
-                            "injected_failure": True,
-                            "objective_met": True,
-                            "unsupported_tuple_served": False,
-                            "predecessor_preserved": True,
-                            "functional_correctness": True,
-                            "evidence_identity_preserved": True,
-                            "recovery_ms": 100.0,
-                            "lost_requests": 0,
-                            "duplicated_requests": 0,
-                            "operator_actions": 0,
-                            "final_route": "predecessor",
-                            "rollback_classification": "automatic-restoration",
-                        },
-                    }
-                )
-    return rows
+    campaign = None
+    for rep in range(1, 4):
+        for arm in analyzer.load_protocol()["arms"]:
+            row, campaign, _ = h3_record(analyzer, tmp_path, arm=arm, rep=rep)
+            rows.append(row)
+    assert campaign is not None
+    result = analyzer.analyze_h3(analyzer.load_protocol(), rows, tmp_path, campaign)
+    cell = campaign["cell_id"]
+    assert result["status"] == "incomplete"
+    assert result["formal_result"] is False
+    assert result["completed_cells"][cell]["formal_result"] is True
+    assert result["completed_cells"][cell]["status"] == "supported"
+    assert result["completed_cells"][cell]["starts"] == 9
 
 
-def test_h3_complete_analysis_and_direct_violation_are_unchanged(tmp_path: Path):
-    module = load_analyzer()
-    rows = h3_records(module, h3_artifacts(tmp_path))
-    result = module.analyze_h3(module.load_protocol(), rows, tmp_path)
-    assert result["status"] == "supported"
-    assert result["metrics"]["objective_rate"] == 1.0
-    rows[0]["metrics"]["unsupported_tuple_served"] = True
-    result = module.analyze_h3(module.load_protocol(), rows, tmp_path)
-    assert result["status"] == "falsified"
-    assert result["metrics"]["direct_safety_violation"] is True
+def test_h3_rejects_replayed_raw_evidence_between_starts(tmp_path: Path) -> None:
+    analyzer = load_analyzer()
+    protocol = analyzer.load_protocol()
+    first, campaign, _ = h3_record(analyzer, tmp_path, arm="ecpa")
+    second, _, _ = h3_record(analyzer, tmp_path, arm="manual-integration")
+    second["artifacts"]["raw_recovery"] = first["artifacts"]["raw_recovery"]
+    with pytest.raises(ValueError, match="raw H3|reused"):
+        analyzer.analyze_h3(protocol, [first, second], tmp_path, campaign)
+
+
+def test_h3_rejects_unbound_fault_target(tmp_path: Path) -> None:
+    analyzer = load_analyzer()
+    row, campaign, raw = h3_record(analyzer, tmp_path)
+    raw["events"][0]["detail"]["start_ticks"] += 1
+    path = tmp_path / row["artifacts"]["raw_recovery"]["path"]
+    path.write_text(json.dumps(raw, sort_keys=True) + "\n")
+    row["artifacts"]["raw_recovery"]["sha256"] = (
+        "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    )
+    with pytest.raises(ValueError, match="fault target start_ticks is not bound"):
+        analyzer.analyze_h3(analyzer.load_protocol(), [row], tmp_path, campaign)

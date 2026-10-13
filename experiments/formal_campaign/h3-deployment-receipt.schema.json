@@ -1,0 +1,34 @@
+ÚznÛéºÉ¢Šwè{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h3-deployment-receipt/v1",
+  "type": "object",
+  "required": ["schema", "registration_state", "admissible", "evidence_mode", "campaign_sha256", "campaign_id", "cell_id", "manager_commit", "host_commit", "accelerator_commit", "plugin_commits", "model_digest", "workload_digest", "hardware", "topology", "authority"],
+  "properties": {
+    "schema": {"const": "ecpa-h3-deployment-receipt/v1"},
+    "registration_state": {"const": "registered"},
+    "admissible": {"const": true},
+    "evidence_mode": {"const": "formal-real"},
+    "campaign_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "campaign_id": {"const": "H3-transactional-recovery-v1"},
+    "cell_id": {"type": "string", "minLength": 1},
+    "manager_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "host_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "accelerator_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "plugin_commits": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{40}$"}},
+    "model_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "workload_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "hardware": {"type": "string", "minLength": 1},
+    "topology": {"type": "string", "minLength": 1},
+    "authority": {
+      "type": "object",
+      "required": ["kind", "parent_process_registration", "exposure_gate"],
+      "properties": {
+        "kind": {"enum": ["host", "router", "deployment-controller"]},
+        "parent_process_registration": {"const": true},
+        "exposure_gate": {"const": true}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

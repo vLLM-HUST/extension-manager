@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ÚznÛéºÉ¢Šwè#!/usr/bin/env python3
 """Fail-closed intake and paired analysis for formal H3/H4 campaigns."""
 
 from __future__ import annotations
@@ -40,6 +40,36 @@ def load_protocol(root: Path = ROOT) -> dict[str, Any]:
     if protocol["h4"]["manual_baseline"] != "manual-integration":
         raise ValueError("H4 must retain manual integration as its primary baseline")
     return protocol
+
+
+def load_h3_campaign(path: Path) -> dict[str, Any]:
+    campaign = _load_object(path)
+    schema = _load_object(ROOT / "h3-campaign.schema.json")
+    jsonschema.Draft7Validator.check_schema(schema)
+    jsonschema.Draft7Validator(schema).validate(campaign)
+    if campaign.get("schema") != "ecpa-h3-exact-stack-cell-campaign/v1":
+        raise ValueError("H3 campaign uses an unsupported schema")
+    required = {
+        "campaign_id",
+        "cell_id",
+        "arms",
+        "fixed_identity",
+        "fault",
+        "objective",
+    }
+    missing = sorted(required - campaign.keys())
+    if missing:
+        raise ValueError(f"H3 campaign lacks {', '.join(missing)}")
+    arms = campaign["arms"]
+    if not isinstance(arms, list) or {row.get("id") for row in arms} != {
+        "vanilla-vllm-entry-points",
+        "manual-integration",
+        "ecpa",
+    }:
+        raise ValueError("H3 campaign must freeze all three arms")
+    campaign["_sha256"] = _digest_bytes(path)
+    campaign["_path"] = str(path.resolve())
+    return campaign
 
 
 def load_h4_campaign(path: Path) -> dict[str, Any]:
@@ -186,6 +216,199 @@ def _verify_h4_receipt(
     if receipt["arm_command_digests"].keys() != set(campaign_spec["arms_by_id"]):
         raise ValueError(f"{record['start_id']} receipt does not cover all arms")
     return receipt
+
+
+def _schema_errors(value: Any, schema_name: str) -> list[jsonschema.ValidationError]:
+    schema = _load_object(ROOT / schema_name)
+    jsonschema.Draft7Validator.check_schema(schema)
+    return sorted(
+        jsonschema.Draft7Validator(schema).iter_errors(value),
+        key=lambda error: list(error.path),
+    )
+
+
+def _verify_h3_receipt(
+    record: dict[str, Any], receipt_path: Path, campaign_spec: dict[str, Any]
+) -> dict[str, Any]:
+    receipt = _load_object(receipt_path)
+    errors = _schema_errors(receipt, "h3-deployment-receipt.schema.json")
+    if errors:
+        raise ValueError(
+            f"{record['start_id']} H3 deployment receipt: {errors[0].message}"
+        )
+    expected = {
+        "campaign_id": record["campaign_id"],
+        "cell_id": record["cell_id"],
+        "manager_commit": record["identity"]["manager_commit"],
+        "host_commit": record["identity"]["host_commit"],
+        "accelerator_commit": record["identity"]["accelerator_commit"],
+        "plugin_commits": record["identity"]["plugin_commits"],
+        "model_digest": record["identity"]["model_digest"],
+        "workload_digest": record["identity"]["workload_digest"],
+        "hardware": record["identity"]["hardware"],
+        "topology": record["identity"]["topology"],
+    }
+    for name, value in expected.items():
+        if receipt.get(name) != value:
+            raise ValueError(f"{record['start_id']} receipt {name} is not bound")
+    if receipt["campaign_sha256"] != campaign_spec["_sha256"]:
+        raise ValueError(f"{record['start_id']} receipt campaign digest differs")
+    return receipt
+
+
+def _recompute_h3_metrics(
+    record: dict[str, Any], raw: dict[str, Any], campaign_spec: dict[str, Any]
+) -> dict[str, Any]:
+    start_id = record["start_id"]
+    bindings = {
+        "campaign_id": record["campaign_id"],
+        "cell_id": record["cell_id"],
+        "start_id": start_id,
+        "arm": record["arm"],
+        "repetition": record["repetition"],
+        "arm_order": record["arm_order"],
+        "deployment_receipt_sha256": record["deployment"]["receipt_sha256"],
+    }
+    for name, expected in bindings.items():
+        if raw.get(name) != expected:
+            raise ValueError(f"{start_id} raw H3 artifact {name} is not bound")
+    if raw["campaign_sha256"] != campaign_spec["_sha256"]:
+        raise ValueError(f"{start_id} raw H3 campaign digest differs")
+    if raw["process_identity"] != record["process_identity"]:
+        raise ValueError(f"{start_id} raw H3 process identity differs")
+    for label, digest in raw["artifact_sha256"].items():
+        if record["artifacts"][label]["sha256"] != digest:
+            raise ValueError(f"{start_id} raw H3 manifest differs for {label}")
+
+    events = raw["events"]
+    sequences = [event["sequence"] for event in events]
+    if sequences != list(range(1, len(events) + 1)):
+        raise ValueError(f"{start_id} H3 event sequence is not contiguous")
+    timestamps = [event["monotonic_ns"] for event in events]
+    if timestamps != sorted(timestamps):
+        raise ValueError(f"{start_id} H3 event time moves backwards")
+    kinds: dict[str, list[dict[str, Any]]] = {}
+    for event in events:
+        kinds.setdefault(event["kind"], []).append(event)
+
+    faults = kinds.get("fault-triggered", [])
+    if len(faults) != 1:
+        raise ValueError(f"{start_id} requires exactly one fault trigger")
+    fault = faults[0]
+    if fault["detail"].get("fault_id") != campaign_spec["fault"]["id"]:
+        raise ValueError(f"{start_id} fault trigger differs from campaign")
+    target = raw["fault_target"]
+    if target["role"] != campaign_spec["fault"]["target_role"]:
+        raise ValueError(f"{start_id} fault target role differs from campaign")
+    for key in ("pid", "start_ticks", "boot_id"):
+        if fault["detail"].get(key) != target[key]:
+            raise ValueError(f"{start_id} fault target {key} is not bound")
+    observed = kinds.get("fault-observed", [])
+    if len(observed) != 1 or any(
+        observed[0]["detail"].get(key) != target[key]
+        for key in ("pid", "start_ticks", "boot_id")
+    ):
+        raise ValueError(f"{start_id} fault observation is not target-bound")
+    if observed[0]["monotonic_ns"] < fault["monotonic_ns"]:
+        raise ValueError(f"{start_id} fault was observed before it was triggered")
+
+    recovery = kinds.get("recovery-complete", [])
+    if len(recovery) != 1 or recovery[0]["monotonic_ns"] < observed[0]["monotonic_ns"]:
+        raise ValueError(f"{start_id} lacks one ordered recovery completion")
+    recovery_ms = (recovery[0]["monotonic_ns"] - fault["monotonic_ns"]) / 1_000_000
+    final = recovery[0]["detail"]
+    objective = campaign_spec["objective"]
+    request_events = kinds.get("request-result", [])
+    ids = [event["detail"]["request_id"] for event in request_events]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"{start_id} has duplicate request observations")
+    lost = sum(event["detail"]["outcome"] == "lost" for event in request_events)
+    duplicated = sum(
+        event["detail"]["outcome"] == "duplicated" for event in request_events
+    )
+    unsupported_served = any(
+        event["detail"]["outcome"] == "served"
+        and event["detail"]["tuple_supported"] is False
+        for event in request_events
+    )
+    predecessor_preserved = final.get("predecessor_digest") == raw["pre_fault"][
+        "predecessor_digest"
+    ] and not kinds.get("predecessor-destroyed")
+    functional_correctness = bool(final.get("functional_correctness")) and all(
+        event["detail"]["functional_correctness"]
+        for event in request_events
+        if event["detail"]["outcome"] == "served"
+    )
+    identity_preserved = (
+        final.get("evidence_identity_sha256")
+        == raw["pre_fault"]["evidence_identity_sha256"]
+    )
+    operator_actions = len(kinds.get("operator-action", []))
+    rollback = final.get("rollback_classification")
+    objective_met = (
+        recovery_ms <= objective["max_recovery_ms"]
+        and lost <= objective["max_lost_requests"]
+        and duplicated <= objective["max_duplicated_requests"]
+        and operator_actions <= objective["max_operator_actions"]
+        and final.get("final_route") == objective["expected_final_route"]
+        and rollback in objective["allowed_rollback_classifications"]
+        and not unsupported_served
+        and predecessor_preserved
+        and functional_correctness
+        and identity_preserved
+    )
+    return {
+        "injected_failure": True,
+        "objective_met": objective_met,
+        "unsupported_tuple_served": unsupported_served,
+        "predecessor_preserved": predecessor_preserved,
+        "functional_correctness": functional_correctness,
+        "evidence_identity_preserved": identity_preserved,
+        "recovery_ms": recovery_ms,
+        "lost_requests": lost,
+        "duplicated_requests": duplicated,
+        "operator_actions": operator_actions,
+        "final_route": final["final_route"],
+        "rollback_classification": rollback,
+    }
+
+
+def _verify_h3_raw_artifact(
+    record: dict[str, Any], artifact_root: Path, campaign_spec: dict[str, Any]
+) -> None:
+    root = artifact_root.resolve()
+    binding = record["artifacts"].get("raw_recovery")
+    if not isinstance(binding, dict):
+        raise ValueError(f"{record['start_id']} lacks raw H3 recovery evidence")
+    path = (root / binding["path"]).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise ValueError(f"{record['start_id']} raw H3 recovery evidence is missing")
+    if _digest_bytes(path) != binding["sha256"]:
+        raise ValueError(f"{record['start_id']} raw H3 recovery digest differs")
+    raw = _load_object(path)
+    errors = _schema_errors(raw, "h3-raw-artifact.schema.json")
+    if errors:
+        raise ValueError(f"{record['start_id']} raw H3 evidence: {errors[0].message}")
+    receipt_path = (root / record["artifacts"]["deployment_receipt"]["path"]).resolve()
+    _verify_h3_receipt(record, receipt_path, campaign_spec)
+    request_document = _load_object(
+        (root / record["artifacts"]["request_results"]["path"]).resolve()
+    )
+    process_document = _load_object(
+        (root / record["artifacts"]["process_snapshot"]["path"]).resolve()
+    )
+    cleanup_document = _load_object(
+        (root / record["artifacts"]["cleanup_report"]["path"]).resolve()
+    )
+    if request_document != raw["request_results"]:
+        raise ValueError(f"{record['start_id']} request results differ from raw H3")
+    if process_document != raw["process_snapshot"]:
+        raise ValueError(f"{record['start_id']} process snapshot differs from raw H3")
+    if cleanup_document.get("cleanup") != record["cleanup"]:
+        raise ValueError(f"{record['start_id']} cleanup report differs from record")
+    recomputed = _recompute_h3_metrics(record, raw, campaign_spec)
+    if _canonical_digest(recomputed) != _canonical_digest(record["metrics"]):
+        raise ValueError(f"{record['start_id']} H3 metrics differ from raw evidence")
 
 
 def _duration_ms(interval: dict[str, int]) -> float:
@@ -375,7 +598,17 @@ def _validate_intake(
         if key in indexed:
             raise ValueError(f"duplicate formal start for {key}")
         _verify_artifacts(row, artifact_root)
-        if campaign == "h4":
+        if campaign == "h3":
+            if campaign_spec is None:
+                raise ValueError("H3 intake requires the frozen campaign spec")
+            if row["campaign_id"] != campaign_spec["campaign_id"]:
+                raise ValueError(f"{row['start_id']} differs from frozen campaign")
+            if row["cell_id"] != campaign_spec["cell_id"]:
+                raise ValueError(f"{row['start_id']} differs from frozen H3 cell")
+            if row["identity"] != campaign_spec["fixed_identity"]:
+                raise ValueError(f"{row['start_id']} differs from frozen H3 identity")
+            _verify_h3_raw_artifact(row, artifact_root, campaign_spec)
+        elif campaign == "h4":
             if campaign_spec is None:
                 raise ValueError("H4 intake requires the frozen campaign spec")
             if row["campaign_id"] != campaign_spec["campaign_id"]:
@@ -403,9 +636,10 @@ def _validate_intake(
         receipts = {row["deployment"]["receipt_sha256"] for row in cell_rows}
         if len(receipts) != 1:
             raise ValueError(f"{cell} has mixed deployment registration receipts")
-    if campaign == "h4":
+    if campaign in {"h3", "h4"}:
+        raw_label = "raw_recovery" if campaign == "h3" else "raw_measurement"
         for label in (
-            "raw_measurement",
+            raw_label,
             "raw_log",
             "request_results",
             "process_snapshot",
@@ -413,7 +647,9 @@ def _validate_intake(
         ):
             digests = [row["artifacts"][label]["sha256"] for row in records]
             if len(digests) != len(set(digests)):
-                raise ValueError(f"H4 {label} artifacts are reused across starts")
+                raise ValueError(
+                    f"{campaign.upper()} {label} artifacts are reused across starts"
+                )
     return missing, indexed
 
 
@@ -572,8 +808,47 @@ def analyze_h3(
     protocol: dict[str, Any],
     records: list[dict[str, Any]],
     artifact_root: Path,
+    campaign_spec: dict[str, Any],
 ) -> dict[str, Any]:
-    missing, indexed = _validate_intake(protocol, "h3", records, artifact_root)
+    missing, indexed = _validate_intake(
+        protocol, "h3", records, artifact_root, campaign_spec
+    )
+    completed_cell: dict[str, Any] = {}
+    cell = campaign_spec["cell_id"]
+    if not any(item.startswith(f"{cell}/") for item in missing):
+        cell_rows = [row for row in indexed.values() if row["cell_id"] == cell]
+        injected = [row for row in cell_rows if row["metrics"]["injected_failure"]]
+        violations = any(
+            row["metrics"]["unsupported_tuple_served"]
+            or not row["metrics"]["predecessor_preserved"]
+            or not row["metrics"]["functional_correctness"]
+            or not row["metrics"]["evidence_identity_preserved"]
+            for row in cell_rows
+        )
+        cleanup_failures = [
+            row["start_id"] for row in cell_rows if not all(row["cleanup"].values())
+        ]
+        objective_rate = (
+            sum(row["metrics"]["objective_met"] for row in injected) / len(injected)
+            if injected
+            else 0.0
+        )
+        supported = (
+            bool(injected)
+            and not violations
+            and not cleanup_failures
+            and objective_rate >= protocol["h3"]["objective_rate_minimum"]
+        )
+        completed_cell[cell] = {
+            "status": "supported" if supported else "falsified",
+            "formal_result": True,
+            "campaign_complete": False,
+            "starts": len(cell_rows),
+            "injected_failures": len(injected),
+            "objective_rate": objective_rate,
+            "direct_safety_violation": violations,
+            "cleanup_failures": cleanup_failures,
+        }
     if missing:
         return {
             "schema": "ecpa-formal-campaign-summary/v1",
@@ -584,6 +859,7 @@ def analyze_h3(
             "required_starts": len(protocol["h3"]["required_cells"]) * 9,
             "missing": missing,
             "metrics": None,
+            "completed_cells": completed_cell,
         }
     rows = list(indexed.values())
     injected = [row for row in rows if row["metrics"]["injected_failure"]]
@@ -870,11 +1146,13 @@ def main() -> int:
     args = parser.parse_args()
     protocol = load_protocol()
     records = load_records(args.records)
+    if args.campaign_spec is None:
+        parser.error("--campaign-spec is required for H3 and H4")
     if args.campaign == "h3":
-        summary = analyze_h3(protocol, records, args.artifact_root)
+        summary = analyze_h3(
+            protocol, records, args.artifact_root, load_h3_campaign(args.campaign_spec)
+        )
     else:
-        if args.campaign_spec is None:
-            parser.error("--campaign-spec is required for H4")
         summary = analyze_h4(
             protocol, records, args.artifact_root, load_h4_campaign(args.campaign_spec)
         )
