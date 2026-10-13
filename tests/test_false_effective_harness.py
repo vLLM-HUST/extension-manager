@@ -2238,7 +2238,11 @@ def test_managed_ecpa_record_validates_without_spoofing_target_contract(
     )
     assert record["status"] == "complete"
     assert record["command"]["exit_code"] == 0
-    assert record["command"]["signal"] == signal.SIGTERM
+    # Shutdown ACK can be followed by natural exit before manager termination.
+    # Report the observed component exit; never invent a SIGTERM.
+    sut_exit = record["command"]["sut_exit_code"]
+    assert sut_exit in (0, -signal.SIGTERM, 128 + signal.SIGTERM)
+    assert record["command"]["signal"] == (None if sut_exit == 0 else signal.SIGTERM)
     validate_record(
         record,
         tmp_path / "run",
@@ -2498,8 +2502,7 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
         assert record["command"]["exit_code"] == 1
         assert record["command"]["sut_exit_code"] == -signal.SIGTERM
         wall_elapsed = (
-            record["command"]["wall_end_ns"]
-            - record["command"]["wall_start_ns"]
+            record["command"]["wall_end_ns"] - record["command"]["wall_start_ns"]
         )
         monotonic_elapsed = (
             record["command"]["monotonic_end_ns"]
