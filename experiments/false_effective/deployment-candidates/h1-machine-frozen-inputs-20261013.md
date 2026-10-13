@@ -19,9 +19,9 @@ producer, observer, or cross-arm reviews required for admission.
 The venv digest covers installed venv bytes only. It excludes CANN, driver,
 model and host OS. A full `pip check` that also exposes CANN's external Python
 path is not clean, so this packet does not claim whole-stack dependency
-consistency.
+consistency. The installed tuple exercised by the three live runs is Python 3.12.13, vLLM `0.31.1.post1.dev164+gb093ae009.empty`, vLLM-Ascend `0.25.1rc2.dev874+hust.20260903.4.gfd70a5c81`, torch `2.13.0+cpu`, torch-npu `2.13.0rc1`, Triton-Ascend `3.6.0+git92513dba`, CANN runtime 9.1.0, and Ascend driver 25.2.1.
 
-The merged Manager installs the production `ecpa-formal-observer` command. A real TP2 preflight on the allocated 910B2 pair reached health 200 and a non-empty completion, froze both host-assigned worker epochs, quarantined worker ordinal 0, and ran the production observer while the service remained live. The observer retained the real runtime-effective claim, identified only worker ordinal 1, and computed coverage 0.5. Cleanup removed every owned process and NPU process. Result SHA-256 is `ed78d28566ba99a8e83468da3e0f37d2f982f34c09245553155ef3f7bf8119f2`; observer-result SHA-256 is `7f8afdbf894132922dd0990d541e3945ab44647ca4810e6283744794a3290455`. This remains an unregistered functional preflight and contributes zero formal H1 starts.
+The merged Manager installs the production `ecpa-formal-observer` command. A real TP2 preflight on the allocated 910B2 pair reached health 200 and a non-empty completion, froze both host-assigned worker epochs, quarantined worker ordinal 0, and ran the production observer while the service remained live. The observer retained the real runtime-effective claim, identified only worker ordinal 1, and computed coverage 0.5. Cleanup removed every owned process and NPU process. Result SHA-256 is `ed78d28566ba99a8e83468da3e0f37d2f982f34c09245553155ef3f7bf8119f2`; observer-result SHA-256 is `7f8afdbf894132922dd0990d541e3945ab44647ca4810e6283744794a3290455`. The same live procedure also passed for the vanilla entry-points and manual-integration arms: each reached health 200 and a non-empty completion, froze both worker epochs before workload, retained `effective=true`, and produced coverage 0.5 after worker 0 quarantine. Result SHA-256 values are `162ffd85cec072b2e47f7f3aa024b1ccba1de378cbbac4529e4924519b0f1ef3` (vanilla), `af64dc6ed23702027a521ca0ade8f7a18fe447e62649c932b9846be66f47b7d4` (manual), and `ed78d28566ba99a8e83468da3e0f37d2f982f34c09245553155ef3f7bf8119f2` (ECPA). These are unregistered functional preflights and contribute zero formal H1 starts.
 
 The Host/Ascend pair has a bounded Qwen2.5 eager TP2 contract subset result of
 175 passed and 1 skipped. The broader CPU suite stopped after 50 failures
@@ -45,8 +45,7 @@ the host-owned process snapshot.
 
 The current allocation exposes two healthy Ascend 910B2 devices as physical
 IDs 3 and 6, with no NPU processes at capture time. The proposed topology is a
-single-host TP2 eager cold start. Physical IDs are allocation-local and must be
-rechecked immediately before every start.
+single-host TP2 eager cold start. The allocation reports NPU IDs 3 and 6 through `npu-smi`, while CANN exposes them to worker processes as logical IDs 0 and 1. The successful run inherited the container device assignment and left `ASCEND_RT_VISIBLE_DEVICES` unset. Passing the `npu-smi` IDs through that variable fails `aclInit` with an invalid logical device ID. Both views are allocation-local and must be rechecked immediately before every start.
 
 ## Remaining admission blockers
 

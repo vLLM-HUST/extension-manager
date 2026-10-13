@@ -29,7 +29,19 @@
     "distribution_count": 196,
     "uv_pip_check": "pass",
     "digest": "sha256:52cdc8b6356c57899c15bf1aa3e0dafeeac3192eb71a8fab4d72c90d59335aa0",
-    "scope": "venv-installed-bytes-only; excludes CANN, driver, model and host OS"
+    "scope": "venv-installed-bytes-only; excludes CANN, driver, model and host OS",
+    "versions": {
+      "python": "3.12.13",
+      "vllm": "0.31.1.post1.dev164+gb093ae009.empty",
+      "vllm_ascend": "0.25.1rc2.dev874+hust.20260903.4.gfd70a5c81",
+      "vllm_hust_ext": "0.3.0",
+      "vllm_kv_materialization": "0.1.0",
+      "torch": "2.13.0+cpu",
+      "torch_npu": "2.13.0rc1",
+      "triton_ascend": "3.6.0+git92513dba",
+      "cann_runtime": "9.1.0",
+      "ascend_driver": "25.2.1"
+    }
   },
   "container": {
     "image": "192.168.0.6:5050/vllm-ascend-ssh:v1",
@@ -69,7 +81,17 @@
     ],
     "process_tables_empty": true,
     "topology": "single-host TP2 eager",
-    "warm_state": "cold"
+    "warm_state": "cold",
+    "npu_smi_device_ids": [
+      3,
+      6
+    ],
+    "runtime_logical_device_ids": [
+      0,
+      1
+    ],
+    "runtime_visibility_policy": "inherit-container-device-assignment",
+    "explicit_ascend_rt_visible_devices": null
   },
   "qualification": {
     "registration_state": "unregistered",
@@ -119,6 +141,41 @@
       ],
       "coverage": 0.5,
       "cleanup_proven": true
+    },
+    "three_arm_real_tp2_preflights": {
+      "classification": "unregistered-three-arm-real-tp2-production-observer-preflights",
+      "formal_h1_starts": 0,
+      "performance_results": false,
+      "common_observation": {
+        "health_status": 200,
+        "completion_status": 200,
+        "completion_nonempty": true,
+        "membership_freeze": "passed",
+        "quarantined_worker_ordinal": 0,
+        "effective_claim": true,
+        "observed_worker_ordinals": [
+          1
+        ],
+        "coverage": 0.5,
+        "cleanup_proven": true
+      },
+      "arms": {
+        "vanilla-vllm-entry-points": {
+          "result_sha256": "sha256:162ffd85cec072b2e47f7f3aa024b1ccba1de378cbbac4529e4924519b0f1ef3",
+          "observer_result_sha256": "sha256:2bdf7817b1d408f2c43d08be182b4802bcb0b9e50feae387118c2ec637c4ce17",
+          "process_snapshot_sha256": "sha256:66ac57743ad6f7eeec79a23afa5c7da1c8982522dfed023eaab608f00312ccb6"
+        },
+        "manual-integration": {
+          "result_sha256": "sha256:af64dc6ed23702027a521ca0ade8f7a18fe447e62649c932b9846be66f47b7d4",
+          "observer_result_sha256": "sha256:c497b6454e73ad313512e1d929f42223e52ea46b5faf86b506aef1befdb96c4b",
+          "process_snapshot_sha256": "sha256:0b5d598f0d1ff195c21a01af4ca31584d884c3ce70b8385af642080aa7452b1d"
+        },
+        "ecpa": {
+          "result_sha256": "sha256:ed78d28566ba99a8e83468da3e0f37d2f982f34c09245553155ef3f7bf8119f2",
+          "observer_result_sha256": "sha256:7f8afdbf894132922dd0990d541e3945ab44647ca4810e6283744794a3290455",
+          "process_snapshot_sha256": "sha256:4cb4dbcf2dcfe796d1555401ba3e70c3196b434eaf2f1290a398bbcf3b7c5067"
+        }
+      }
     }
   }
 }

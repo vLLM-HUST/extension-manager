@@ -37,6 +37,11 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert model["file_count"] == 14
 
     assert SHA256.fullmatch(candidate["installed_environment"]["digest"])
+    versions = candidate["installed_environment"]["versions"]
+    assert versions["vllm"].endswith("+gb093ae009.empty")
+    assert versions["vllm_ascend"].endswith("+hust.20260903.4.gfd70a5c81")
+    assert versions["cann_runtime"] == "9.1.0"
+    assert versions["ascend_driver"] == "25.2.1"
     assert SHA256.fullmatch(candidate["container"]["image_id"])
     assert candidate["container"]["authority"] == "kubernetes-pod-status"
     assert SHA256.fullmatch(candidate["activation_probe"]["artifact_sha256"])
@@ -58,6 +63,35 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert preflight["observed_worker_ordinals"] == [1]
     assert preflight["coverage"] == 0.5
     assert preflight["cleanup_proven"] is True
+    three_arm = observer["three_arm_real_tp2_preflights"]
+    assert three_arm["formal_h1_starts"] == 0
+    assert three_arm["performance_results"] is False
+    assert set(three_arm["arms"]) == {
+        "vanilla-vllm-entry-points",
+        "manual-integration",
+        "ecpa",
+    }
+    for arm in three_arm["arms"].values():
+        assert all(SHA256.fullmatch(value) for value in arm.values())
+    assert three_arm["common_observation"] == {
+        "health_status": 200,
+        "completion_status": 200,
+        "completion_nonempty": True,
+        "membership_freeze": "passed",
+        "quarantined_worker_ordinal": 0,
+        "effective_claim": True,
+        "observed_worker_ordinals": [1],
+        "coverage": 0.5,
+        "cleanup_proven": True,
+    }
+    hardware = candidate["hardware"]
+    assert hardware["physical_device_ids"] == hardware["npu_smi_device_ids"] == [3, 6]
+    assert hardware["runtime_logical_device_ids"] == [0, 1]
+    assert (
+        hardware["runtime_visibility_policy"]
+        == "inherit-container-device-assignment"
+    )
+    assert hardware["explicit_ascend_rt_visible_devices"] is None
 
 
 def test_machine_candidate_does_not_admit_the_formal_study() -> None:
