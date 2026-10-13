@@ -33,7 +33,20 @@
         "independent_service_start": {"type": "boolean"},
         "arm_order": {"type": "integer", "minimum": 1},
         "warm_state": {"enum": ["cold", "warm", "controlled-mixed"]},
-        "workload": {"type": "string"},
+        "workload": {
+          "oneOf": [
+            {"type": "string"},
+            {
+              "type": "object",
+              "required": ["path", "sha256"],
+              "properties": {
+                "path": {"type": "string", "minLength": 1},
+                "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
         "fault": {"type": ["string", "null"]},
         "model_calls": {"type": "integer", "minimum": 0},
         "api_calls": {"type": "integer", "minimum": 0}

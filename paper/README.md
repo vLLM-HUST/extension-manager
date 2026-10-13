@@ -20,7 +20,11 @@ inventory and the pinned Ascend lifecycle qualification are generated from
 `docs/evidence/native-current-npu-qualification-2026-10-11.md`. The lifecycle
 qualification establishes one clean-wheel, process-owned observer and cleanup
 path; it is not inserted into the preregistered formal-real aggregate and makes
-no performance claim. H1--H4 therefore remain unmeasured.
+no performance claim.  The separate authoritative r5 campaign now supplies
+the first H1 formal cell: nine validator-approved starts over three arms and
+three repetitions.  All arms, including ECPA, retained an effective claim at
+0.5 evidence coverage, so the tested H1 prevention claim is falsified.  H2--H4
+and the real ExposureGate remain incomplete.
 
 Build:
 
@@ -85,11 +89,12 @@ is a reference implementation rather than the standard itself.
 Open scientific and evaluation decisions that must not be silently promoted to
 claims are tracked in [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
-The current Tectonic PDF is 12 pages total, with body text ending on page 11
-before References begins. This fixes the earlier body-page violation by removing
+The paper must be rebuilt and audited after every results edit.  The prior
+checkpoint was 12 pages total, with body text ending on page 11 before
+References began. This fixed the earlier body-page violation by removing
 duplicated corpus inventory and architecture/status visuals while keeping the
 source-bound inventory in `../docs/corpus/`. It is still a working draft: the
-formal H1--H4 results are missing, and the recovered space must be budgeted for
+H2--H4 results are missing, and the recovered space must be budgeted for
 measured tables and analysis. Recheck the body/reference boundary after every
 substantive edit; page count alone does not certify submission readiness.
 Install the optional `paper` dependency from the repository root, then run

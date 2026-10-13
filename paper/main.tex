@@ -56,14 +56,14 @@ communication, and observability.  We implement a host-neutral
 coordinator, a narrow adapter for one vLLM-compatible prototype host, and an
 adversarial evaluation harness covering namespace errors, resource conflicts,
 partial worker coverage, replay, crash recovery, lease expiration, and failed
-compensation.  The released reference manager freezes Manifest
-\ECPAManifestVersion{} and has one pinned clean-wheel Ascend lifecycle
-qualification in which two requests produced process-owned receipts and
-supervised stop reclaimed the owned processes, port, and device allocation.
-That qualification is outside the preregistered matched experiment and makes
-no performance claim.  ECPA provides explicit extension semantics beyond API
-availability while keeping host bindings and optimization-specific algorithms
-outside the contract runtime.
+compensation.  The first preregistered real-host study ran nine independent
+cold TP2 starts across entry-point, manual-integration, and ECPA arms.  All
+nine records passed offline evidence validation, but after one worker's
+evidence was quarantined, all three ECPA repetitions still claimed effective
+with only 0.5 process coverage.  This falsifies the tested H1 prevention claim
+and identifies the missing real traffic-boundary gate as a system requirement,
+rather than establishing it from the runtime protocol.  The study makes no
+throughput, latency, rollback, or cross-runtime claim.
 \end{abstract}
 
 \section{Introduction}
@@ -146,11 +146,12 @@ the evidence available today:
 The contract compiler, reference coordinator, evidence protocol, and
 fail-closed formal harness are implemented.  Release \ECPAReleaseVersion{}
 freezes Manifest \ECPAManifestVersion{} and records one pinned native-host
-lifecycle qualification.  The source-bound static corpus is measured; the
-matched prototype-host experiment and performance evaluation remain
-incomplete.  We do not present modeled decisions, interface fixtures, release
-qualification, or provider demonstrations as substitutes for that formal
-comparison.
+lifecycle qualification.  The source-bound static corpus is measured, and the
+first matched prototype-host H1 cell is complete and falsifies its prevention
+hypothesis.  H2's real-composition oracle, H3 recovery, H4 performance, and a
+real authority-owned ExposureGate remain incomplete.  We do not present
+modeled decisions, interface fixtures, release qualification, or lifecycle
+startup fields as substitutes for those experiments.
 
 \begin{figure*}[t]
 \centering
@@ -583,18 +584,18 @@ effectiveness.  Post-release main also composes distinct, hash-bound StateAxis
 MOD plans under separate configuration keys and rejects overlapping claims;
 this is contract and test evidence, not a performance or runtime-effect result.
 
-One major evaluation piece remains incomplete.  The implementation has a
+Major evaluation pieces remain incomplete.  The implementation has a
 pure contract compiler that resolves normalized public-PEP-440 requirements to
 exactly one provider, derives deterministic dependency order, rejects cycles,
 binds typed observation authority and quorum policy, and checks exclusive,
 shared-read, and selected-mediator resource ownership.  A frozen
 machine-readable taxonomy and independently labeled modeled oracle now measure
 the static admission mechanics, with the limitations reported in
-Section~\ref{sec:evaluation}.  One pinned real launch now establishes the
-release lifecycle path and process-owned receipt plumbing, but the matched
-multi-arm aggregation across parent/worker topologies is still empty.
-Consequently we claim measured modeled L2 admission and one bounded lifecycle
-qualification, not a completed end-to-end \system evaluation.
+Section~\ref{sec:evaluation}.  The matched nine-start partial-worker campaign
+now establishes that the formal protocol can collect and replay process-owned
+evidence, and it falsifies H1 for the tested implementation.  Consequently we
+claim measured modeled L2 admission, one bounded lifecycle qualification, and
+one negative H1 result, not a completed end-to-end \system evaluation.
 
 An exact-commit, cross-repository adapter preflight exercises the host's
 preemption-policy controller and translates its deployment journal into a
@@ -763,9 +764,9 @@ vanilla vLLM entry points, manual integration, and ECPA.  Formal cells require
 \ECPAScheduleRows{}-by-\ECPAFormalArms{} Latin-square order.  A separate oracle
 derives outcomes from preregistered truth predicates
 and raw runtime observations; implementation decisions are not accepted as
-ground truth.  The current checked matrix has zero completed formal-real cells,
-so activation, rollback, and performance metrics remain null; the modeled L2
-result above is separate.  A \ECPAReferenceStarts{}-start helper-process run tests the
+ground truth.  The checked r5 campaign has \ECPAFormalStarts{} complete
+formal-real starts in one scenario cell; H2--H4 remain null or planned, and the
+modeled L2 result above is separate.  A \ECPAReferenceStarts{}-start helper-process run tests the
 harness lifecycle and failure classification, but is explicitly
 reference-synthetic and excluded from paper aggregates.  Formal ingestion is
 runner-owned and content-addresses the command, semantic environment, raw
@@ -777,9 +778,10 @@ rollback success.
 The checked claim graph maps \ECPAResearchClaims{} falsifiable claims to their
 counterexamples, authority-owned facts, and non-substitutable experiments.
 The first formal comparison is the partial-worker-coverage scenario across all
-\ECPAFormalArms{} arms and \ECPAFirstStudyStarts{} independent starts.  It
-remains pre-admission while the producer, deployment identity, commands, and
-adapter registry are not all frozen; preregistration is not a result.
+\ECPAFormalArms{} arms and \ECPAFirstStudyStarts{} independent starts.  Its
+producer, deployment identity, commands, adapter registry, and
+\ECPAFormalLifecycleSources{} independent lifecycle sources were frozen before
+the authoritative r5 campaign.
 We separate four artifacts that would otherwise collapse into one ``ready''
 bit.  The study preregistration fixes the comparison and falsifier; a
 repository-owned producer receipt records merge and review facts; a deployment
@@ -816,12 +818,12 @@ baseline, and status stopped projecting runtime effectiveness.  Disable,
 forget, and uninstall then removed intent and discovery without stopping an
 external service.
 
-This is \ECPANativeLifecycleQualifications{} lifecycle qualification, not one
-of the \ECPAFormalCompleted{} completed formal cells.  It has no matched vanilla
+This is \ECPANativeLifecycleQualifications{} lifecycle qualification, not the
+now-complete formal H1 cell.  It has no matched vanilla
 or manual arm, repeated-start schedule, injected partial-worker fault, latency
 distribution, or throughput measurement.  We therefore use it to retire the
-claim that no real host path has executed, while leaving H1--H4, rollback fault
-rates, and performance overhead unmeasured.
+claim that no real host path has executed; it does not change the H1 result or
+measure rollback fault rates and performance overhead.
 
 \subsection{Baselines and Workloads}
 We compare (1) vanilla vLLM entry-point discovery/loading
@@ -862,30 +864,39 @@ occurred cannot falsify the corresponding premise.
 
 The static planner and transaction model have only modeled results; the
 source-bound page corpus and one NPU lifecycle qualification are observed but
-outside the formal aggregate. Matched runtime, rollback, and overhead results
-remain planned, with \ECPAFormalCompleted{} complete formal cells and
-\ECPAVerifiedAdapters{} registered adapters.
+outside the formal aggregate.  The first matched runtime cell is complete;
+recovery, rollback, real-composition, traffic-gate, and overhead results remain
+planned or missing, with \ECPAFormalCompleted{} complete formal scenario cell
+and \ECPAVerifiedAdapters{} registered adapters.
 
 \begin{table}[t]
 \centering
 \small
-\caption{Authority chain for the first formal-real cell.  Each row is a
-different fact; later rows cannot infer earlier ones.}
-\begin{tabularx}{\columnwidth}{@{}lXX@{}}
+\caption{Authoritative r5 partial-worker-coverage result.  ``PASS'' means the
+record passed evidence validation; it is not the H1 hypothesis verdict.}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-Artifact & Establishes & Current state \\
+Arm & Starts & False-effective & Coverage \\
 \midrule
-Study preregistration & arms, order, falsifier, outcomes & frozen; no result \\
-Producer receipt & reviewed evidence seam merged into prototype host & absent \\
-Deployment packet & matched identities and reviewed commands &
-\ECPADeploymentBlockers{} blockers \\
-Runtime registry & exact commands permitted to execute &
-\ECPAVerifiedAdapters{} adapters \\
-Run generation & raw observations for one independent start & 0 of
-\ECPAFirstStudyStarts{} starts \\
+Entry points & \ECPAMinimumStarts{} & \ECPAHOneFalseEffectiveNumerator{}/\ECPAHOneFalseEffectiveDenominator{} & \ECPAHOneCoverage{} \\
+Manual & \ECPAMinimumStarts{} & \ECPAHOneFalseEffectiveNumerator{}/\ECPAHOneFalseEffectiveDenominator{} & \ECPAHOneCoverage{} \\
+ECPA & \ECPAMinimumStarts{} & \ECPAHOneFalseEffectiveNumerator{}/\ECPAHOneFalseEffectiveDenominator{} & \ECPAHOneCoverage{} \\
 \bottomrule
-\end{tabularx}
+\end{tabular}
 \end{table}
+
+All \ECPAFormalStarts{} starts are validator-approved and contain the five
+registered phases: service readiness, workload completion, fault injection,
+observer capture, and shutdown.  The post-cleanup batch replay also passed.
+The fault actuator removed one of two worker evidence journals, producing 0.5
+coverage.  Every arm nevertheless retained an effective claim, so H1's ECPA
+falsifier fired in all three ECPA repetitions.  Equal outcomes across arms mean
+this implementation did not prevent false-effective state in the tested
+partial-coverage cell.  The fault removes evidence, not worker execution; the
+result therefore concerns evidence coverage and the recorded effectiveness
+claim, not traffic exposure or whether computation stopped.  The r2--r4 campaigns
+are excluded from this aggregate.  Recorded startup durations are lifecycle
+fields for H1 and are not interpreted as H4 performance measurements.
 
 \subsection{Reference ExposureGate Artifact}
 The reference gate artifact is a deterministic, single-host state machine backed
@@ -917,14 +928,15 @@ across \ECPASourceRepositories{} repositories
 bind the corpus to inspected source.  These numbers measure conformance to the
 modeled taxonomy, not real conflict prevalence or runtime effectiveness.
 
-All matched formal-runtime and performance quantities remain planned.  The
-single release qualification is reported separately and cannot populate a
-formal cell.  Table and figure generators must refuse to replace missing values
-with zero.  The final paper will include per-cell confidence intervals and raw
-failure counts.  Until H1--H4 are measured, the strongest defensible runtime
-claim is that one pinned lifecycle produced process-owned evidence and cleaned
-up reversibly while the architecture and harness otherwise fail closed; this
-does not establish production effectiveness.
+The partial-worker-coverage H1 cell is measured; all other formal runtime and
+performance quantities remain planned.  The single release qualification is
+reported separately and cannot populate a formal cell.  Table and figure
+generators refuse to replace missing values with zero.  The H1 result shows
+that complete evidence collection can expose a failed prevention property: in
+this implementation, Manager-controlled activation alone did not revoke the
+effective claim after evidence coverage fell to 0.5.  A real authority-owned
+ExposureGate is still required before the paper can claim prevention at a
+traffic boundary.
 
 \section{Related Work}
 \textbf{Inference and module plugins.}  vLLM's Plugin System loads registered
@@ -1029,8 +1041,8 @@ and fail-safe rollback outcomes.  Deterministic adapters and adversarial traces
 exercise these semantics, and one pinned vLLM-HUST/Ascend launch exercises the
 native process-owned observer and reversible supervised lifecycle.  No
 production attestation trust root, production traffic gate, elastic
-membership, matched fault campaign, or formal external-provider result exists
-yet.  The separate loopback traffic authority has only CPU-fixture
+membership campaign, broader recovery campaign, or formal external-provider
+result exists yet.  The separate loopback traffic authority has only CPU-fixture
 host-observation coverage.  SQLite is a reference implementation choice
 rather than a protocol requirement.  The qualification establishes feasibility
 in one lifecycle cell,
@@ -1066,14 +1078,14 @@ installation or saved enablement.  \system treats activation as a typed,
 conflict-checked plan with explicit authorities and evidence obligations.  It
 separates lifecycle predicates, requires runtime facts from the processes that
 own them, fails closed, and preserves a deterministic rollback target.  A real
-namespace regression already demonstrates the value of installed-package
-evidence over mock-only tests, while a pinned native NPU lifecycle now shows
-that the process-owned evidence and cleanup path can execute end to end.  The
-broader systems claim remains contingent on
-the preregistered multi-process, composability, version-skew, recovery, and
-overhead evaluation.  This evidence boundary is intentional: the architecture
-is useful only if its own status claims are as disciplined as those it imposes
-on plugins.
+namespace regression demonstrates the value of installed-package evidence
+over mock-only tests, while a pinned native NPU lifecycle shows that the
+process-owned evidence and cleanup path can execute end to end.  More
+significantly, the first matched nine-start study finds false-effective state
+in all three ECPA repetitions after partial evidence loss.  The tested runtime
+therefore does not yet enforce its intended prevention property.  A real
+traffic gate plus the composability, version-skew, recovery, and overhead
+evaluations remain necessary before making the broader systems claim.
 
 \bibliographystyle{plain}
 \bibliography{references}
