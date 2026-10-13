@@ -43,6 +43,16 @@ Do not add these results to H2 precision/recall or the paper's formal-real
 table until an independent oracle, complete host/provider checks and process-
 owned execution evidence exist. The 31-case synthetic corpus remains separate.
 
+`score_admission.py` enforces that boundary mechanically. With the checked-in
+artifacts it exits 2 and reports `INCOMPLETE`: all three runtime artifacts are
+preflights, the independent real-MOD oracle is absent, and neither frozen
+installation order has a formal-real host record. It emits no metrics while
+blocked. Future admitted records must validate against
+`formal-runtime-record.schema.json`, bind the exact campaign and oracle bytes,
+and, for an admitted composition, carry host start, model load, workload,
+process-owned observation, and cleanup evidence. This gate does not promote or
+reinterpret any existing artifact.
+
 ## Exact-wheel installation-order campaign
 
 `runtime_campaign.json` freezes source commits, trees, the two locally built
