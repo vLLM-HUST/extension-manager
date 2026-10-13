@@ -25,11 +25,17 @@ the first H1 formal cell: nine validator-approved starts over three arms and
 three repetitions.  All arms, including ECPA, retained an effective claim at
 0.5 evidence coverage, so the tested H1 prevention claim is falsified.  H2--H4
 and the real ExposureGate remain incomplete.  H2 now has a source-bound,
-three-case definite subset with one true admit and two true rejects
+four-case definite subset with one true admit and three true rejects
 ($FP=FN=0$); its observed precision and recall are 1.0, but the sample and
-conflict-surface coverage are insufficient to close H2.  The compatible TP2
-pair proves short-context process-owned execution only, not compression
-correctness or performance.  H3 and H4 each have zero formal runs.  The older
+conflict-surface coverage are insufficient to close H2.  The fourth case is a
+source-bound, pre-launch Production Stack plus KEDA authority rejection; the
+CLI/config collision remains unresolved and both process-carrier cases remain
+abstentions.  A separate real TP2 transaction qualification observes
+1,201 semantic tokens compressed to a 1,024-token physical budget in both
+installation orders, with two worker acknowledgements and clean shutdown.  It
+is `QUALIFIED_NONFORMAL`: the inaccurate `frozen_utc` field disqualifies a
+preregistration timestamp claim, and it is not an H2 score, performance result,
+or compression-quality/correctness comparison.  H3 and H4 each have zero formal runs.  The older
 31-case synthetic/modeled L2 seed is retained only as a reproducibility
 fixture and is not reported as H2 evidence.
 

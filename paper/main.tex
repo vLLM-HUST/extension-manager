@@ -158,7 +158,7 @@ fail-closed formal harness are implemented.  Release \ECPAReleaseVersion{}
 freezes Manifest \ECPAManifestVersion{} and records one pinned native-host
 lifecycle qualification.  The source-bound static corpus is measured, and the
 first matched prototype-host H1 cell is complete and falsifies its prevention
-hypothesis.  H2 has a three-case real-source subset but lacks the breadth to
+hypothesis.  H2 has a four-case real-source subset but lacks the breadth to
 support its population claim; H3 and H4 each have zero formal runs, and a real
 authority-owned ExposureGate remains incomplete.  We do not present
 modeled decisions, interface fixtures, release qualification, or lifecycle
@@ -606,7 +606,7 @@ Section~\ref{sec:evaluation}.  The matched nine-start partial-worker campaign
 now establishes that the formal protocol can collect and replay process-owned
 evidence, and it falsifies H1 for the tested implementation.  Consequently we
 claim one negative H1 result, one bounded lifecycle qualification, and a
-three-case partial H2 result, not a completed end-to-end \system evaluation.
+four-case partial H2 result, not a completed end-to-end \system evaluation.
 
 An exact-commit, cross-repository adapter preflight exercises the host's
 preemption-policy controller and translates its deployment journal into a
@@ -925,22 +925,38 @@ prevents a reject-all policy from satisfying H2; that baseline has admit recall
 The true positive is Lifecycle Profiler plus KVCompress on an exact TP2
 vLLM-HUST/Ascend stack.  Both frozen installation orders completed a short
 context request and produced process-owned host evidence with clean shutdown.
-The workload has \code{max\_model\_len=2048}, below KVCompress's 9216-token
-threshold.  This is compatible host execution, not an observed compression
-transaction, compression-correctness result, or performance measurement.  One
-true negative is the exact-stack KNorm plus KVCompress pre-launch rejection;
-the other is a source-bound three-MOD rejection containing import-only KNorm.
+The scored workload has \code{max\_model\_len=2048}, below KVCompress's
+9216-token threshold.  This establishes compatible host execution, not an
+observed compression transaction.  Two true negatives are the exact-stack
+KNorm plus KVCompress pre-launch rejection and a source-bound three-MOD
+rejection containing import-only KNorm.  The third is a source-bound,
+pre-launch rejection of Production Stack plus a standalone KEDA controller:
+with chart-side KEDA delegation disabled, both claim the same Deployment
+replica projection.  The explicit safe delegation configuration is outside
+that negative case.
 
-This is a partial H2 result.  Three scored cases cannot estimate prevalence or
-support the preregistered population claim.  External-service and
-provider-translation cases remain unavailable; CLI/config and
-external-authority surfaces lack a competing real source.  Two
-communication/process-carrier cases now have independent
-\emph{abstain} labels: their Manager surface predictions are retained but are
-unscored, so they do not change $n=3$.  The conditional DiffSpec/KVCompress
-pair is also excluded pending
-physical-ownership and installation-order review.  We therefore report the
-observed 1.0 values with $n=3$ and keep H2 incomplete.
+A separate real TP2 qualification crosses the compression threshold in both
+of its \ECPAHTwoCompressionOrders{} installation orders.  Its independently
+recomputed raw evidence binds a \ECPAHTwoCompressionSemanticTokens{}-token
+semantic request to a \ECPAHTwoCompressionPhysicalTokens{}-token physical KV
+budget, one EngineCore epoch, \ECPAHTwoCompressionWorkerAcks{} distinct
+acknowledgements from TP0 and TP1, an HTTP response, and empty owned-process,
+port, and NPU state after shutdown.  We classify this
+as \code{QUALIFIED\_NONFORMAL}: it is excluded from the H2 score and provides
+no performance, compression-quality, or correctness comparison.  The campaign
+field labeled \code{frozen\_utc} is later than the observed first launch, so
+we explicitly reject it as a preregistration timestamp; pre-launch integrity
+is limited to the runner's digest checks of the campaign, oracle, and runner.
+
+This is a partial H2 result.  Four scored cases cannot estimate prevalence or
+support the preregistered population claim.  The CLI/config collision remains
+unresolved because no second qualifying active bundle claims the same launch
+projection.  Two communication/process-carrier cases retain independent
+\emph{abstain} labels and remain unscored.  The external-authority result is
+source-level and pre-launch, not a Kubernetes runtime receipt.  The conditional
+DiffSpec/KVCompress pair is also excluded pending physical-ownership and
+installation-order review.  We therefore report the observed 1.0 values with
+$n=4$ and keep H2 incomplete.
 
 \subsection{Reference ExposureGate Artifact}
 The reference gate artifact is a deterministic, single-host state machine backed
@@ -973,7 +989,7 @@ bind that fixture to inspected source.  These numbers measure conformance to
 the modeled taxonomy, not H2, real conflict prevalence, or runtime
 effectiveness.
 
-The partial-worker-coverage H1 cell is measured.  H2 has only the three-case
+The partial-worker-coverage H1 cell is measured.  H2 has only the four-case
 partial result above, while H3 and H4 have zero formal runs.  The single
 release qualification is
 reported separately and cannot populate a formal cell.  Table and figure
@@ -1085,7 +1101,7 @@ otherwise a disappearing worker could make success vacuous.
 
 Conflict taxonomies can be incomplete.  Precision and recall are measured
 against an independently labeled oracle, but that oracle may miss semantic
-interactions.  The current real-source subset has only three scored cases and
+interactions.  The current real-source subset has only four scored cases and
 does not cover several required conflict surfaces.  We mitigate this with
 explicit unknown/unverified outcomes and negative cells, not a universal
 composability claim.  Deterministic rollback
@@ -1142,7 +1158,7 @@ process-owned evidence and cleanup path can execute end to end.  More
 significantly, the first matched nine-start study finds false-effective state
 in all three ECPA repetitions after partial evidence loss.  The tested runtime
 therefore does not yet enforce its intended prevention property.  The partial
-H2 subset correctly classifies one admit and two rejects, but is not broad
+H2 subset correctly classifies one admit and three rejects, but is not broad
 enough to establish composability.  A real traffic gate plus broader
 composability, version-skew, recovery, and overhead
 evaluations remain necessary before making the broader systems claim.

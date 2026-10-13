@@ -26,6 +26,7 @@ EVIDENCE_INPUTS := \
 	../docs/qualification-policy.md \
 	../docs/support-matrix.md \
 	../src/vllm_hust_ext/catalog.py \
+	../src/vllm_hust_ext/providers/production_stack.py \
 	../tests/test_catalog.py \
 	../tests/test_failure_permission_matrix.py \
 	../experiments/contract_planner/cases.json \
@@ -63,6 +64,11 @@ EVIDENCE_INPUTS := \
 	../experiments/real_mod_composition/artifacts/h2-real-source-augmentation-20261013/augmentation.json \
 	../experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/oracle.json \
 	../experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/manager-predictions.json \
+	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/oracle.json \
+	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/review-receipt.json \
+	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/manager-prediction.json \
+	../experiments/real_mod_composition/verify_h2_compression_transaction.py \
+	$(shell find ../experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013 -type f | sort) \
 	../experiments/transaction_model/explore.py \
 	../experiments/transaction_model/artifacts/result-summary.json \
 	../experiments/transaction_model/result-summary.schema.json \
