@@ -11,6 +11,7 @@ from jsonschema import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
+    "experiments/formal_campaign/artifacts/h3-model-qualification-20261013",
     "experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013",
     "docs/corpus/plugin-workshop-metadata.snapshot.json",
     "docs/corpus/workshop-mods.json",
@@ -152,6 +153,10 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "real_gate_raw_files": 95,
         "h3_native_sources": 5,
         "h3_prepare_na_baselines": 2,
+        "h3_model_tp2_backends": 2,
+        "h3_model_marker_completions": 7,
+        "h3_model_raw_files": 156,
+        "h3_model_failed_attempts": 3,
         "real_gate_failed_attempts": 4,
         "real_gate_complete_coverage": "1.0",
         "real_gate_partial_coverage": "0.5",
@@ -638,3 +643,32 @@ def test_h3_native_support_rejects_source_and_oracle_tampering(tmp_path):
     oracle.write_text(json.dumps(data))
     with pytest.raises(ValueError, match="oracle changed"):
         generator.validate_h3_native_support(tmp_path)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("formal_result", True), ("lost_requests", 0),
+    ("duplicate_requests", 0), ("full_objective_satisfied", True),
+])
+def test_h3_model_paper_rejects_promotion(tmp_path, field, value):
+    generator = load_generator()
+    prefix = Path(
+        "experiments/formal_campaign/artifacts/h3-model-qualification-20261013"
+    )
+    package = tmp_path / prefix
+    shutil.copytree(ROOT / prefix, package)
+    rewrite_json(package / "manifest.json", lambda row: row.update({field: value}))
+    with pytest.raises(ValueError, match="nonformal boundary changed"):
+        generator.validate_h3_model_qualification(tmp_path)
+
+
+def test_h3_model_paper_rejects_changed_failed_archive(tmp_path):
+    generator = load_generator()
+    prefix = Path(
+        "experiments/formal_campaign/artifacts/h3-model-qualification-20261013"
+    )
+    package = tmp_path / prefix
+    shutil.copytree(ROOT / prefix, package)
+    archive = package / "failed-hccl-port-conflict.tar.gz"
+    archive.write_bytes(archive.read_bytes() + b"changed")
+    with pytest.raises(ValueError, match="archive changed"):
+        generator.validate_h3_model_qualification(tmp_path)

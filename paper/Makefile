@@ -2,6 +2,8 @@ TECTONIC ?= tectonic
 PYTHON ?= python3
 EVIDENCE_SUMMARY := generated/evidence-summary.tex
 EVIDENCE_INPUTS := \
+	../experiments/formal_campaign/h3_model_qualification.py \
+	$(shell find ../experiments/formal_campaign/artifacts/h3-model-qualification-20261013 -type f | sort) \
 	$(shell find ../experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013 -type f | sort) \
 	../docs/corpus/plugin-workshop-metadata.snapshot.json \
 	../docs/corpus/workshop-mods.json \

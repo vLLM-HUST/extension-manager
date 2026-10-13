@@ -182,3 +182,14 @@ including forbidden before-effect candidate exposure. CPU fixture checks prove
 control-chain behavior only. Whole-fault-window loss, duplication and objective
 remain unknown without a client trace across the fault. H3/H4 formal runs remain
 zero and the submission decision remains NO-GO; no r4 success is asserted.
+
+
+The ECPA-only two-backend H3 qualification is recomputed by the paper generator
+through `verify_archive`, not copied from a reported success summary. All four
+archive hashes are verified; raw files and marker counts are derived from the
+retained evidence. Frozen runtime source `7c0b2d7e` and later independent
+analysis APIs from `c6372547` are distinct. The seven exact marker completions
+and actual native SQLite/SIGKILL/restart/predecessor restoration establish a
+limited nonformal qualification, not formal H3, matched baseline recovery,
+post-exposure rollback, throughput or quality. Whole-window lost/duplicated
+requests and objective remain unknown. H3/H4 formal starts stay zero, NO-GO.

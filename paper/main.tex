@@ -1000,11 +1000,19 @@ original cell; separately registered worker-crash/full-relaunch cannot replace
 it.  Host worker death shuts down the executor, without native replacement.
 
 The ECPA verifier checks live launch/proxy identities, the authority hash chain,
-adjacent restore intent/effect, predecessor route and SQLite rollback prefix;
-it rejects before-effect candidate exposure.  Real CPU and fixture HTTP tests
-establish control-chain behavior only.  Post-restart clients leave whole-window
-loss, duplication and recovery objective unknown.  Matched arms and a registered
-fault-spanning client trace remain required; formal H3/H4 runs remain zero.
+restore intent/effect, predecessor route and SQLite rollback prefix; it rejects
+before-effect candidate exposure.  A separate ECPA-only qualification retains
+\ECPAHThreeModelTPBackends{} independent live Qwen TP2 backends,
+\ECPAHThreeModelMarkerCompletions{} exact marker completions, and a real
+SQLite prepare, coordinator SIGKILL/restart and predecessor restoration.
+The generator independently verifies its \ECPAHThreeModelRawFiles{} raw files
+and retains \ECPAHThreeModelFailedAttempts{} failed/interrupted attempts.
+Runtime source is frozen at \code{7c0b2d7e}; later analysis uses
+\code{c6372547} verifier APIs, without retroactive preregistration.
+The marker task establishes neither in-flight transfer nor rollback after
+candidate exposure.  Whole-window loss, duplication and recovery objective
+remain unknown.  Host admission and matched baselines are missing:
+\code{QUALIFIED\_NONFORMAL}, formal H3/H4 zero, \code{NO-GO}.
 
 \subsection{Preliminary Evidence and Missing Results}
 The incident's pre-fix and namespace-modified implementations both pass 66 CPU
@@ -1149,18 +1157,12 @@ engineering report if runtime intent cannot be separated from process effect,
 conflict thresholds remain unmet after one correction cycle, rollback loses
 the predecessor plan, or overhead exceeds the frozen bounds.
 
-The frozen executable model makes these limits precise.  Intent authority,
-planning authority, host-runtime evidence authority, provider translation,
-and external-service authority are distinct.  Activation proceeds through
-Intent, Resolved, Planned, Preparing, Prepared, Launching, Observing,
-CommitReady, and Effective; failures may enter Degraded, Reconcile, Rollback,
-RolledBack, or FailedSafe.  Append-only WAL intent and receipts support fenced
-logical-once replay, while generation compare-and-swap prevents stale commits.
-Attestations bind plan, launch, artifact, process epoch, obligation, validity,
-and nonce.  Rollback is conditional on manager ownership and may fail safe.
-This pure executable reference model and its adversarial traces are a design
-oracle, not a production control plane, distributed side-effect transaction,
-physical exactly-once guarantee, or completed performance evaluation.
+The executable model separates intent, planning, runtime evidence, provider
+and external-service authorities.  Append-only WAL intents/receipts, epoch-bound
+attestations and generation CAS support fenced logical-once replay; rollback
+is conditional on ownership and may fail safe.  This adversarial design oracle
+establishes no production control plane, distributed transaction, physical
+exactly-once guarantee or performance result.
 
 External validity is bounded by this single-runtime study.  Deep validation
 across multiple extension classes, process roles, versions/topologies, and injected
