@@ -6,19 +6,24 @@ This never enters the original manager-crash/native-prepare campaign.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import hashlib
 import json
 import os
 import signal
 import subprocess
 import time
+import traceback
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 from vllm_hust_ext.host_evidence import parse_host_event
+from vllm_hust_ext.runtime_phase_handoff import (
+    PROTOCOL,
+    accept_native_binding,
+    bind_receiver,
+)
 
 ARMS = {
     "vanilla-vllm-entry-points": "entry-points-unmanaged",
@@ -65,7 +70,7 @@ def members(owner: dict[str, Any]) -> list[dict[str, Any]]:
     return found
 
 
-def owned_sessions(owner):
+def owned_sessions(owner, known=None):
     """Capture nested supervisor sessions while their ancestry is live."""
     if not live(owner):
         raise ValueError("launcher is not live for ownership capture")
@@ -88,10 +93,16 @@ def owned_sessions(owner):
     sessions = {table[pid][0]["session"] for pid in reachable if pid in table}
     captured = []
     for sid in sessions:
-        if sid not in reachable or sid not in table:
+        # Only cleanup may retain a previously bound session after native
+        # supervisor reaping. Initial worker intake always requires live ancestry.
+        leader = table[sid][0] if sid in table else None
+        leader_live = leader is not None and live(leader)
+        if known and sid in known and not leader_live:
+            captured.append(known[sid])
+            continue
+        if sid not in reachable or leader is None:
             raise ValueError("descendant session lacks live owned leader")
-        leader = table[sid][0]
-        if leader["start_ticks"] < owner["start_ticks"] or not live(leader):
+        if leader["start_ticks"] < owner["start_ticks"] or not leader_live:
             raise ValueError("nested session leader changed")
         captured.append(leader)
     return captured, {pid: table[pid][0] for pid in reachable if pid in table}
@@ -113,7 +124,7 @@ def cleanup(process, owner, timeout, captured=None):
     for sig in (signal.SIGTERM, signal.SIGKILL):
         if live(owner):
             try:
-                new, _ = owned_sessions(owner)
+                new, _ = owned_sessions(owner, sessions)
             except ValueError:
                 if live(owner):
                     raise
@@ -121,14 +132,22 @@ def cleanup(process, owner, timeout, captured=None):
                 sessions.update({item["pid"]: item for item in new})
         for session_owner in sessions.values():
             leader = Path(f"/proc/{session_owner['pid']}/stat")
-            if leader.exists():
+            try:
                 fields = leader.read_text().rsplit(")", 1)[1].split()
+            except (FileNotFoundError, ProcessLookupError):
+                pass
+            else:
                 if int(fields[19]) != session_owner["start_ticks"]:
                     raise ValueError("launcher PID reused; refuse cleanup")
             for item in members(session_owner):
                 if live(item):
-                    with contextlib.suppress(FileNotFoundError, ProcessLookupError):
+                    try:
                         signal_exact(item, sig)
+                    except (FileNotFoundError, ProcessLookupError):
+                        pass
+                    except ValueError:
+                        if live(item):
+                            raise
         deadline = time.monotonic() + timeout
         while (
             any(members(s) for s in sessions.values()) and time.monotonic() < deadline
@@ -173,10 +192,47 @@ def validate(campaign: dict[str, Any]) -> None:
             raise ValueError("concrete launch command required")
         if len(arm["phases"]) != 2:
             raise ValueError("two fresh launch phases required")
-        if len({p["launch_id"] for p in arm["phases"]}) != 2:
-            raise ValueError("relaunch requires a fresh launch identity")
-        if len({p["evidence_path"] for p in arm["phases"]}) != 2:
-            raise ValueError("relaunch requires fresh evidence path")
+        native = arm.get("binding_protocol") == PROTOCOL
+        if native:
+            if arm["id"] != "ecpa" or "plan_id" in arm:
+                raise ValueError("only Manager may mint native plan/launch bindings")
+            if set(arm["manager_source_sha256"]) != {
+                "cli.py",
+                "runtime_evidence.py",
+                "runtime_phase_handoff.py",
+                "process_supervisor.py",
+            }:
+                raise ValueError("exact native Manager source inventory required")
+            for phase in arm["phases"]:
+                if (
+                    set(phase) != {"handoff_path"}
+                    or not Path(phase["handoff_path"]).is_absolute()
+                ):
+                    raise ValueError("freeze private native handoff paths, never IDs")
+            if "@native_phase_socket@" not in arm["argv"]:
+                raise ValueError("native phase socket command placeholder required")
+            if any(
+                k in arm["env"]
+                for k in (
+                    "VLLM_ECPA_PLAN_ID",
+                    "VLLM_ECPA_LAUNCH_ID",
+                    "VLLM_HUST_EXT_EVIDENCE_PATH",
+                    "VLLM_ECPA_EVIDENCE_SINK",
+                    "VLLM_ECPA_EVIDENCE_STRICT",
+                )
+            ):
+                raise ValueError("reserved native environment remains Manager-owned")
+        else:
+            if len({p["launch_id"] for p in arm["phases"]}) != 2:
+                raise ValueError("relaunch requires a fresh launch identity")
+            if len({p["evidence_path"] for p in arm["phases"]}) != 2:
+                raise ValueError("relaunch requires fresh evidence path")
+        if (
+            campaign["classification"] == "QUALIFIED_NONFORMAL"
+            and arm["id"] == "ecpa"
+            and not native
+        ):
+            raise ValueError("actual Manager requires native phase handoff")
         if arm["evidence_protocol"] != (
             "cpu-fixture-worker/v1"
             if campaign["classification"] == "CPU_PREFLIGHT_ONLY"
@@ -225,10 +281,19 @@ def validate(campaign: dict[str, Any]) -> None:
                 raise ValueError("baseline native activation options missing")
             if arm["id"] == "ecpa" and activation_flags:
                 raise ValueError("ECPA cannot disable Manager")
-    phases = [p for a in arms for p in a["phases"]]
+    fixed = [
+        p for a in arms if a.get("binding_protocol") != PROTOCOL for p in a["phases"]
+    ]
+    sockets = [
+        p["handoff_path"]
+        for a in arms
+        if a.get("binding_protocol") == PROTOCOL
+        for p in a["phases"]
+    ]
     if (
-        len({p["launch_id"] for p in phases}) != 6
-        or len({p["evidence_path"] for p in phases}) != 6
+        len({p["launch_id"] for p in fixed}) != len(fixed)
+        or len({p["evidence_path"] for p in fixed}) != len(fixed)
+        or len(set(sockets)) != len(sockets)
     ):
         raise ValueError("launch/evidence paths must be start-owned across arms")
 
@@ -364,7 +429,7 @@ def run_arm(campaign, arm_id, output: Path):
     output.mkdir(parents=True, exist_ok=False)
     frozen_campaign = output / "campaign.json"
     frozen_campaign.write_text(json.dumps(campaign, indent=2) + "\n")
-    events, processes = [], []
+    events, processes, sockets = [], [], []
     result = {
         "campaign_sha256": sha(frozen_campaign),
         "classification": campaign["classification"],
@@ -384,15 +449,29 @@ def run_arm(campaign, arm_id, output: Path):
             )
         for index, phase in enumerate(arm["phases"]):
             validate(campaign)
-            evidence = Path(phase["evidence_path"])
-            if evidence.exists():
-                raise ValueError("fresh evidence path already exists")
+            native = arm.get("binding_protocol") == PROTOCOL
             env = dict(arm["env"])
-            env.update(
-                ECPA_ACTIVATION_CONTRACT=arm["activation_contract"],
-                VLLM_ECPA_PLAN_ID=arm["plan_id"],
-                VLLM_ECPA_LAUNCH_ID=phase["launch_id"],
-                VLLM_HUST_EXT_EVIDENCE_PATH=str(evidence),
+            launch_argv = list(arm["argv"])
+            if native:
+                socket_path = Path(phase["handoff_path"])
+                listener = bind_receiver(socket_path, policy["ready_timeout_s"])
+                sockets.append((listener, socket_path, socket_path.stat().st_ino))
+                launch_argv = [
+                    str(socket_path) if v == "@native_phase_socket@" else v
+                    for v in launch_argv
+                ]
+            else:
+                evidence = Path(phase["evidence_path"])
+                if evidence.exists():
+                    raise ValueError("fresh evidence path already exists")
+                env.update(
+                    ECPA_ACTIVATION_CONTRACT=arm["activation_contract"],
+                    VLLM_ECPA_PLAN_ID=arm["plan_id"],
+                    VLLM_ECPA_LAUNCH_ID=phase["launch_id"],
+                    VLLM_HUST_EXT_EVIDENCE_PATH=str(evidence),
+                )
+            (output / f"phase{index}.launch-argv.json").write_text(
+                json.dumps(launch_argv) + "\n"
             )
             launched = time.time_ns()
             with (
@@ -400,7 +479,7 @@ def run_arm(campaign, arm_id, output: Path):
                 (output / f"phase{index}.stderr").open("wb") as stderr,
             ):
                 process = subprocess.Popen(
-                    arm["argv"],
+                    launch_argv,
                     cwd=arm["cwd"],
                     env=env,
                     start_new_session=True,
@@ -410,6 +489,28 @@ def run_arm(campaign, arm_id, output: Path):
             owner = identity(process.pid)
             captured = [owner]
             processes.append((process, owner, captured))
+            bound_arm = arm
+            if native:
+                receipt = accept_native_binding(
+                    listener,
+                    socket_path,
+                    owner,
+                    launched,
+                    arm["manager_source_sha256"],
+                    output / f"phase{index}.handoff-unvalidated.json",
+                )
+                (output / f"phase{index}.native-binding.json").write_text(
+                    json.dumps(receipt, indent=2) + "\n"
+                )
+                native_env = receipt["environment"]
+                phase = {
+                    "launch_id": native_env["VLLM_ECPA_LAUNCH_ID"],
+                    "evidence_path": native_env["VLLM_HUST_EXT_EVIDENCE_PATH"],
+                }
+                evidence = Path(phase["evidence_path"])
+                bound_arm = {**arm, "plan_id": native_env["VLLM_ECPA_PLAN_ID"]}
+                if observed and bound_arm["plan_id"] != observed[0]["raw"]["plan_id"]:
+                    raise ValueError("native relaunch changed Manager plan identity")
             deadline = time.monotonic() + policy["ready_timeout_s"]
             while not evidence.exists() and time.monotonic() < deadline:
                 if process.poll() is not None:
@@ -418,7 +519,7 @@ def run_arm(campaign, arm_id, output: Path):
             target = None
             while target is None and time.monotonic() < deadline:
                 if evidence.exists():
-                    target = worker(arm, phase, owner, launched)
+                    target = worker(bound_arm, phase, owner, launched)
                 if target is None:
                     time.sleep(0.01)
             if target is None:
@@ -473,6 +574,7 @@ def run_arm(campaign, arm_id, output: Path):
         result["passed"] = True
     except Exception as exc:
         result["failure"] = str(exc)
+        (output / "failure-traceback.txt").write_text(traceback.format_exc())
     finally:
         errors = []
         for process, owner, captured in processes:
@@ -480,6 +582,13 @@ def run_arm(campaign, arm_id, output: Path):
                 cleanup(process, owner, policy["cleanup_timeout_s"], captured)
             except Exception as exc:
                 errors.append(str(exc))
+        for listener, path, inode in sockets:
+            listener.close()
+            if path.exists():
+                if path.stat().st_ino == inode:
+                    path.unlink()
+                else:
+                    errors.append("handoff socket identity changed during cleanup")
         result["cleanup_errors"] = errors
         if errors:
             result["passed"] = False

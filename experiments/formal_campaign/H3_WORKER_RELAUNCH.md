@@ -95,3 +95,53 @@ objective remain null. Original H3 requirements remain open and formal starts
 remain zero. Next actual use requires independently frozen per-arm source,
 installed stack, owned port/backend bindings and model commands; it cannot reuse
 historical H1 commands as current qualification or claim the original cell done.
+
+
+## Opt-in native Manager phase handoff
+
+The original prototype inherited reserved plan/launch/evidence variables and
+could not run the actual Manager `run` path: `launch_environment` correctly
+rejects those caller values. Its three-label CPU fixture runs therefore remain
+CPU-only, with no claim that three actual model arms have run.
+
+An opt-in `vllm-hust-ext run --phase-binding-socket PRIVATE_SOCKET -- COMMAND`
+now invokes the original native mint, then transfers its generated binding
+through a private Unix stream socket. Default `run` behavior is unchanged.
+Enabled bundle discovery, compatibility checks and provider plans remain the
+normal CLI inputs; the new option does not bypass them or the reserved-variable
+rejection. A receiver cannot supply plan/launch IDs or select the evidence file:
+Manager chooses its UUID and a fresh private evidence file before supervision.
+Both endpoints verify kernel SO_PEERCRED: publisher is the exact live Manager
+child, receiver is its actual parent. Canonical private directory/socket inode,
+PID/start ticks/boot/session, timestamp and exact Manager source digests bind
+the handoff. Manager waits for a digest-bound acknowledgement before invoking
+the existing process supervisor, which creates the actual nested SUT session.
+
+For an ECPA common-worker arm, freeze
+`binding_protocol: ecpa-manager-native-phase-handoff/v1`, exact
+`manager_source_sha256` for `cli.py`, `runtime_evidence.py` and
+`runtime_phase_handoff.py`, `process_supervisor.py`, and two phase objects containing only
+`handoff_path`. Native `plan_id`, `launch_id` and `evidence_path` are not frozen
+external identities: they are received after startup and before fault, then
+retained in separate phase receipts. Actual IDs must follow Manager generation;
+these receipts are not retroactive formal registration. Freeze the command's
+single `@native_phase_socket@` argument in the position of
+`--phase-binding-socket`; only that frozen path is substituted per phase.
+Baseline fixed environment contracts remain unchanged. Actual ECPA Host mode
+requires the native protocol and rejects externally supplied reserved variables.
+
+The CPU integration traverses the real Manager CLI parser, native mint,
+source-bound handoff, acknowledgement and process supervisor, then actually
+kills/relaunches a nested CPU worker and checks cleanup. Its bundle discovery,
+provider plan/compatibility input and worker protocol are explicitly fixtures;
+no fake Host event is emitted. Reserved-variable, wrong process identity,
+non-owned publisher, source mismatch, public directory and wrong-ack negatives
+stop before worker supervision or fault. Raw unvalidated handoff bytes remain
+failure evidence, not accepted receipts. All of this is CPU_PREFLIGHT_ONLY.
+
+A new exact Manager wheel/source freeze is needed before actual model use;
+the earlier r4/runtime source does not acquire this API retroactively. Actual
+three-arm model experiments, owned port/backend bindings, formal Host admission,
+the original manager-crash cell and whole-window loss/dup/objective remain open.
+Formal H3 remains zero. The source hashes bind bytes and the trusted native code
+path; they are not signatures against an actor rewriting every artifact.

@@ -42,6 +42,7 @@ from vllm_hust_ext.process_supervisor import (
 from vllm_hust_ext.providers.base import ProviderPlan
 from vllm_hust_ext.providers.vllm import declared_vllm_plugin_names
 from vllm_hust_ext.runtime_evidence import launch_environment
+from vllm_hust_ext.runtime_phase_handoff import publish_native_binding
 
 _VLLM_BUILTIN_PLUGIN = "ascend"
 
@@ -690,8 +691,14 @@ def _run_command(args: argparse.Namespace) -> int:
         )
     environment = os.environ.copy()
     environment.update(activation)
+    phase_socket = getattr(args, "phase_binding_socket", None)
+    if phase_socket is not None and not bundles:
+        raise ValueError("native phase handoff requires enabled bundles")
     if bundles:
-        environment.update(launch_environment(bundles))
+        native_binding = launch_environment(bundles)
+        if phase_socket is not None:
+            native_binding = publish_native_binding(native_binding, Path(phase_socket))
+        environment.update(native_binding)
     shutdown_grace_seconds = getattr(
         args, "shutdown_grace_seconds", DEFAULT_SHUTDOWN_GRACE_SECONDS
     )
@@ -939,6 +946,10 @@ def build_parser() -> argparse.ArgumentParser:
         "run", help="launch and supervise a host command with enabled extensions"
     )
     run_parser.add_argument("--dry-run", action="store_true")
+    run_parser.add_argument(
+        "--phase-binding-socket",
+        help="private parent socket for native phase observation",
+    )
     run_parser.add_argument(
         "--shutdown-grace-seconds",
         type=float,
