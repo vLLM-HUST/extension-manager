@@ -23,7 +23,8 @@ Optional `--observer-config` mode (contract:
 [`host-authorization.schema.json`](host-authorization.schema.json)) freezes
 one canonical execution-plan path,
 host-journal directory identity, launch/controller identity, entry-point
-bindings, and exact required process epochs at proxy startup. The traffic
+bindings, candidate generation, membership epoch, a digest of the canonical
+fixed target set, and every required process epoch at proxy startup. The traffic
 process independently reads the host journal and live Linux identities before
 opening a candidate route. It rechecks them on candidate route queries and
 before every external request; loss of coverage or lease closes the route and
@@ -32,11 +33,23 @@ candidate admission records the independently refreshed digest. A caller's
 plan ID, environment variables, import success, or fabricated `OpenProof`
 digest alone cannot make this mode admit a request.
 
+`observe_gate_transitions` is an offline reader for the authority-owned hash
+chain. It emits gate-open only when a durable applied record immediately
+follows an intent bound to plan, launch, controller, generation, membership
+epoch and target-set digest; it also emits close/restore facts. Its schema is
+explicitly classified `real-loopback-integration-preflight`, with both formal
+and performance result flags false. These are independent traffic-boundary
+facts, not SUT effect claims.
+
 The new CPU integration test exercises a real separate proxy and external
 HTTP clients against a live *fixture* process: missing evidence, an old epoch,
-and a cross-launch snapshot keep the predecessor route; a matching fixture
-event permits the candidate; terminating that process closes the route while
-both externally owned backends remain alive. The fixture's event is test-
+and a cross-launch, generation, membership-epoch or target-set snapshot keep
+the predecessor route; a matching fixture event permits the candidate.
+Replacing that process and publishing evidence for a new process epoch
+invalidates the frozen old coverage and closes the route while both externally
+owned backends remain alive. Observer exceptions and query-time observation
+loss also close or preserve the predecessor without opening the candidate.
+The fixture's event is test-
 generated, **not** a vLLM-HUST worker event or a formal runtime-effective
 receipt. The same-UID experiment threat model still trusts the host journal
 writer; a malicious same-UID actor could forge its bytes. A real host-owned

@@ -11,6 +11,9 @@
     "journal_inode",
     "launch_id",
     "controller_instance",
+    "candidate_generation",
+    "membership_epoch",
+    "target_set_sha256",
     "local_host",
     "bindings",
     "required_processes"
@@ -23,6 +26,9 @@
     "journal_inode": {"type": "integer", "minimum": 1},
     "launch_id": {"type": "string", "minLength": 1},
     "controller_instance": {"type": "string", "minLength": 1},
+    "candidate_generation": {"type": "integer", "minimum": 1},
+    "membership_epoch": {"type": "integer", "minimum": 0},
+    "target_set_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "local_host": {"type": "string", "minLength": 1},
     "bindings": {
       "type": "array",

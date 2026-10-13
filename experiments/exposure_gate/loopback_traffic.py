@@ -40,6 +40,14 @@ MAX_BODY = 1024 * 1024
 MAX_JOURNAL = 4 * 1024 * 1024
 JOURNAL_SCHEMA = "ecpa-loopback-route-journal/v1"
 SHA256 = re.compile(r"sha256:[0-9a-f]{64}\Z")
+AUTHORIZATION_FIELDS = {
+    "plan_id",
+    "launch_id",
+    "controller_instance",
+    "candidate_generation",
+    "membership_epoch",
+    "target_set_sha256",
+}
 JOURNAL_KINDS = {
     "authority.start",
     "authority.stop",
@@ -58,6 +66,53 @@ def _canonical(value: dict[str, Any]) -> bytes:
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), allow_nan=False
     ).encode()
+
+
+def frozen_target_set_sha256(values: list[dict[str, Any]]) -> str:
+    """Digest a canonical fixed-membership process snapshot."""
+    fields = {"host", "role", "ordinal", "process_epoch"}
+    if not isinstance(values, list) or not values:
+        raise GateError("host authorization target set is empty")
+    for value in values:
+        if not isinstance(value, dict) or set(value) != fields:
+            raise GateError("host authorization target fields are invalid")
+        if (
+            not isinstance(value["host"], str)
+            or not value["host"]
+            or value["host"].strip() != value["host"]
+            or not isinstance(value["role"], str)
+            or not value["role"]
+            or value["role"].strip() != value["role"]
+            or isinstance(value["ordinal"], bool)
+            or not isinstance(value["ordinal"], int)
+            or value["ordinal"] < 0
+            or isinstance(value["process_epoch"], bool)
+            or not isinstance(value["process_epoch"], int)
+            or value["process_epoch"] < 0
+        ):
+            raise GateError("host authorization target values are invalid")
+    try:
+        canonical_targets = sorted(
+            values,
+            key=lambda item: (
+                item["host"],
+                item["role"],
+                item["ordinal"],
+                item["process_epoch"],
+            ),
+        )
+    except TypeError as exc:
+        raise GateError("host authorization target values are invalid") from exc
+    if values != canonical_targets:
+        raise GateError("host authorization target set is not canonical")
+    logical_slots = [
+        (item["host"], item["role"], item["ordinal"]) for item in canonical_targets
+    ]
+    if len(logical_slots) != len(set(logical_slots)):
+        raise GateError("host authorization target set repeats a logical slot")
+    return "sha256:" + hashlib.sha256(
+        _canonical({"required_processes": canonical_targets})
+    ).hexdigest()
 
 
 class _TrafficJournal:
@@ -173,7 +228,14 @@ def read_traffic_journal(path: Path) -> list[dict[str, Any]]:
             or not isinstance(event.get("detail"), dict)
             or not isinstance(route, dict)
             or set(route) != {"generation", "fence", "snapshot_sha256"}
-            or not (route["generation"] is None or isinstance(route["generation"], int))
+            or not (
+                route["generation"] is None
+                or (
+                    not isinstance(route["generation"], bool)
+                    and isinstance(route["generation"], int)
+                    and route["generation"] >= 0
+                )
+            )
             or not isinstance(route["fence"], str)
             or not isinstance(route["snapshot_sha256"], str)
             or SHA256.fullmatch(route["snapshot_sha256"]) is None
@@ -193,6 +255,78 @@ def read_traffic_journal(path: Path) -> list[dict[str, Any]]:
     if events[0]["kind"] != "authority.start":
         raise GateError("traffic journal has no authority start")
     return events
+
+
+def observe_gate_transitions(path: Path) -> dict[str, Any]:
+    """Derive loopback gate facts from authority-owned journal bytes.
+
+    This deliberately reports integration facts, not runtime-effect evidence.
+    The reader is independent of the SUT and Manager and only accepts applied
+    opens that immediately follow their durable intent record.
+    """
+    events = read_traffic_journal(path)
+    facts: list[dict[str, Any]] = []
+    for index, event in enumerate(events):
+        if event["kind"] == "route.open.applied":
+            if index == 0:
+                raise GateError("applied route open has no authority intent")
+            intent = events[index - 1]
+            route = event["route"]
+            detail = intent["detail"]
+            authorization = detail.get("authorization")
+            if (
+                intent["kind"] != "route.open.intent"
+                or detail.get("candidate_generation") != route["generation"]
+                or detail.get("candidate_fence") != route["fence"]
+                or not isinstance(authorization, dict)
+                or set(authorization) != AUTHORIZATION_FIELDS
+                or any(
+                    not isinstance(authorization[field], str)
+                    or not authorization[field]
+                    for field in ("plan_id", "launch_id", "controller_instance")
+                )
+                or authorization["candidate_generation"] != route["generation"]
+                or isinstance(authorization["membership_epoch"], bool)
+                or not isinstance(authorization["membership_epoch"], int)
+                or authorization["membership_epoch"] < 0
+                or SHA256.fullmatch(str(authorization["target_set_sha256"])) is None
+                or SHA256.fullmatch(str(detail.get("observation_sha256"))) is None
+            ):
+                raise GateError("applied route open is not authority-bound")
+            facts.append(
+                {
+                    "event": "gate-open",
+                    "sequence": event["sequence"],
+                    "route": route,
+                    "authorization": authorization,
+                    "observation_sha256": detail["observation_sha256"],
+                }
+            )
+        elif event["kind"] in {"route.close_all", "route.restore.applied"}:
+            facts.append(
+                {
+                    "event": (
+                        "gate-close"
+                        if event["kind"] == "route.close_all"
+                        else "gate-restore"
+                    ),
+                    "sequence": event["sequence"],
+                    "route": event["route"],
+                    "reason": event["detail"].get("reason"),
+                }
+            )
+    first = events[0]
+    return {
+        "schema": "ecpa-loopback-gate-observation/v1",
+        "classification": "real-loopback-integration-preflight",
+        "formal_result": False,
+        "performance_result": False,
+        "authority_process": {
+            "pid": first["proxy_pid"],
+            "start_ticks": first["proxy_start_ticks"],
+        },
+        "facts": facts,
+    }
 
 
 class _HostAuthorization:
@@ -224,6 +358,9 @@ class _HostAuthorization:
             "journal_inode",
             "launch_id",
             "controller_instance",
+            "candidate_generation",
+            "membership_epoch",
+            "target_set_sha256",
             "local_host",
             "bindings",
             "required_processes",
@@ -241,6 +378,9 @@ class _HostAuthorization:
             )
             self.launch_id = value["launch_id"]
             self.controller_instance = value["controller_instance"]
+            self.candidate_generation = value["candidate_generation"]
+            self.membership_epoch = value["membership_epoch"]
+            self.target_set_sha256 = value["target_set_sha256"]
             self.local_host = value["local_host"]
             self.bindings = tuple(
                 EntryPointBinding(**binding) for binding in value["bindings"]
@@ -255,19 +395,36 @@ class _HostAuthorization:
             or not self.controller_instance
             or not isinstance(self.local_host, str)
             or not self.local_host
+            or isinstance(self.candidate_generation, bool)
+            or not isinstance(self.candidate_generation, int)
+            or self.candidate_generation < 1
+            or isinstance(self.membership_epoch, bool)
+            or not isinstance(self.membership_epoch, int)
+            or self.membership_epoch < 0
+            or not isinstance(self.target_set_sha256, str)
+            or SHA256.fullmatch(self.target_set_sha256) is None
             or not self.root.is_absolute()
             or self.root.is_symlink()
             or not self.required_processes
             or not self.bindings
         ):
             raise GateError("host authorization identity is incomplete")
+        derived_target_set = frozen_target_set_sha256(list(self.required_processes))
+        if self.target_set_sha256 != derived_target_set:
+            raise GateError("host authorization target-set digest changed")
+
+    def binding(self) -> dict[str, Any]:
+        return {
+            "plan_id": self.plan.plan_id,
+            "launch_id": self.launch_id,
+            "controller_instance": self.controller_instance,
+            "candidate_generation": self.candidate_generation,
+            "membership_epoch": self.membership_epoch,
+            "target_set_sha256": self.target_set_sha256,
+        }
 
     def authorize(self, snapshot: dict[str, Any]) -> str:
-        if (
-            snapshot.get("plan_id") != self.plan.plan_id
-            or snapshot.get("launch_id") != self.launch_id
-            or snapshot.get("controller_instance") != self.controller_instance
-        ):
+        if any(snapshot.get(key) != value for key, value in self.binding().items()):
             raise GateError("candidate route is not bound to host authorization")
         try:
             observation = observe_bound_invocations(
@@ -403,12 +560,26 @@ class _Authority:
             if not isinstance(self.route.snapshot, dict):
                 raise GateError("candidate route snapshot is unavailable")
             return self.observer.authorize(self.route.snapshot)
-        except GateError:
+        except Exception:
             self.route = RouteState(None, "closed", None)
             self._record(
                 "route.close_all", self.route, reason="host observation lost"
             )
             return None
+
+    def _authorize_candidate(
+        self, generation: int, snapshot: dict[str, Any]
+    ) -> str | None:
+        if self.observer is None:
+            return None
+        try:
+            if self.observer.binding()["candidate_generation"] != generation:
+                raise GateError("candidate generation differs from authorization")
+            return self.observer.authorize(snapshot)
+        except GateError:
+            raise
+        except Exception as exc:
+            raise GateError("host observation is unavailable") from exc
 
     def apply(self, value: dict[str, Any]) -> dict[str, Any]:
         operation = value.get("operation")
@@ -444,11 +615,7 @@ class _Authority:
                     or not isinstance(snapshot, dict)
                 ):
                     raise GateError("invalid candidate route transition")
-                observation_sha256 = (
-                    self.observer.authorize(snapshot)
-                    if self.observer is not None
-                    else None
-                )
+                observation_sha256 = self._authorize_candidate(generation, snapshot)
                 candidate_route = RouteState(generation, fence, snapshot)
                 self._record(
                     "route.open.intent",
@@ -456,6 +623,11 @@ class _Authority:
                     candidate_generation=generation,
                     candidate_fence=fence,
                     observation_sha256=observation_sha256,
+                    authorization=(
+                        self.observer.binding()
+                        if self.observer is not None
+                        else None
+                    ),
                 )
                 self.route = candidate_route
                 self._record("route.open.applied", self.route)
