@@ -54,8 +54,52 @@ def load_sources() -> dict[str, BundleManifest]:
     return manifests
 
 
+def load_ownership_observations(source_ids: set[str]) -> dict[str, dict[str, Any]]:
+    """Load frozen physical-owner review inputs without converting them to labels."""
+    document = _load(HERE / "ownership_observations.json")
+    if (
+        document.get("schema") != "ecpa-h2-physical-ownership-observations/0.1"
+        or document.get("classification")
+        != "source-bound-review-input-not-independent-oracle-or-runtime"
+        or not isinstance(document.get("observations"), list)
+    ):
+        raise ValueError("physical ownership observation document is invalid")
+    observations: dict[str, dict[str, Any]] = {}
+    for observation in document["observations"]:
+        case_id = observation.get("case_id")
+        members = observation.get("members")
+        sources = observation.get("sources")
+        if (
+            not isinstance(case_id, str)
+            or not case_id
+            or case_id in observations
+            or not isinstance(members, list)
+            or set(members) - source_ids
+            or not isinstance(sources, list)
+            or {source.get("member") for source in sources} != set(members)
+            or observation.get("oracle_label") is not None
+            or observation.get("status") != "unknown"
+        ):
+            raise ValueError(
+                "physical ownership observation is not an unknown review input"
+            )
+        for source in sources:
+            excerpt = source.get("excerpt")
+            excerpt_digest = source.get("excerpt_sha256")
+            if (
+                not isinstance(excerpt, str)
+                or not isinstance(excerpt_digest, str)
+                or "sha256:" + hashlib.sha256(excerpt.encode()).hexdigest()
+                != excerpt_digest
+            ):
+                raise ValueError("physical ownership source excerpt digest mismatch")
+        observations[case_id] = observation
+    return observations
+
+
 def audit() -> list[dict[str, Any]]:
     manifests = load_sources()
+    ownership_observations = load_ownership_observations(set(manifests))
     cases = _load(HERE / "cases.json")["cases"]
     if len({case["id"] for case in cases}) != len(cases):
         raise ValueError("duplicate case id")
@@ -120,6 +164,9 @@ def audit() -> list[dict[str, Any]]:
                 "host_mismatches": mismatches,
                 "protocol_mismatches": protocol_mismatches,
                 "same_name_resource_conflicts": declared_conflicts,
+                "physical_ownership_observation": ownership_observations.get(
+                    case["id"]
+                ),
                 "preflight_result": (
                     "reject-declared"
                     if mismatches or protocol_mismatches or declared_conflicts

@@ -1,6 +1,6 @@
 # Real-MOD H2 source preflight
 
-These six **unmodified** ECPA 0.3 manifests are copied byte-for-byte from
+These seven **unmodified** ECPA 0.3 manifests are copied byte-for-byte from
 independent MOD repositories at the exact commits, root trees and Git manifest
 blobs in `sources.json`. `audit.py` verifies each Git blob before parsing
 it with the current Manager. Run `python experiments/real_mod_composition/audit.py`.
@@ -29,6 +29,15 @@ patch the same `NPUModelRunner` methods
 [vSpec source](https://github.com/vLLM-HUST/vllm-hust-vSpec/blob/bdd919d24669f09e6eb1987157dfdb5561460f45/src/vllm_hust_vspec/adaptive/runtime.py#L3852-L3854)),
 so ownership may become relevant after a future port, but that is not a real
 present-day admission result.
+
+The KVCompress/Knorm pair has intersecting declared component ranges at vLLM
+core 0.23.3 and vLLM-Ascend 0.23.3. Their differently named exclusive claims
+do not trigger the declared-resource checker, while both frozen sources wrap
+`Scheduler.update_from_output`. `ownership_observations.json` retains the
+exact-commit source excerpts and their digests. Both wrappers call the captured
+predecessor, so the observation remains `unknown`: it is not an incompatibility
+label. Pinned-host execution in both installation orders and independent review
+of their KV-state semantics are required before scoring the case.
 
 Do not add these results to H2 precision/recall or the paper's formal-real
 table until an independent oracle, complete host/provider checks and process-
