@@ -101,7 +101,7 @@
       "runtime-and-mod-candidates-not-repository-reachable",
       "exact-runtime-accelerator-support-matrix-unqualified",
       "adapter-registry-empty",
-      "commands-and-independent-reviews-absent"
+      "independent-command-and-observer-reviews-absent"
     ]
   },
   "production_observer": {

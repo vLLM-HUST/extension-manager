@@ -54,6 +54,19 @@ isolates one concrete provenance blocker, an accelerator plugin verified
 against a different upstream vLLM commit. This does not register a formal
 adapter or promote the successful wheel-only serving pilot to H1 data.
 
+The deployment-bound H1 registration candidate in
+[`deployment-candidates/h1-formal-registration-commands-20261013.json`](deployment-candidates/h1-formal-registration-commands-20261013.json)
+pins the exact three arm commands, shared five-source commands, production
+observer, activation probes, fixed Plan/workload/fault inputs, and nine-start
+Latin-square order for the Manager `9f075f8e` experiment binary. Generate and
+recheck it with [`formal_registration_candidate.py`](formal_registration_candidate.py).
+The checked transition dry-run covers the study, deployment, and runtime
+registry as one atomic write set. It remains blocked and leaves every official
+file unchanged: machine-generated fingerprints and successful parser probes do
+not supply repository reachability, the exact Host/Ascend support qualification,
+or independent command/activation/observer/artifact-retention review. Therefore
+the candidate is not a registry entry and H1 remains 0/9.
+
 ```bash
 PYTHONPATH=src python3 experiments/false_effective/reproduce.py --output /tmp/false-effective
 # Or ingest the runner-owned manifest (hand-written JSONL is rejected):
