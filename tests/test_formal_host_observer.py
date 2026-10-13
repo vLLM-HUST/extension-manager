@@ -1,9 +1,10 @@
 import argparse
+import json
 from pathlib import Path
 
 import pytest
 from test_formal_process_snapshot import EXECUTION, SLOTS, receipt
-from test_host_observer import BINDING, host_event
+from test_host_observer import BINDING, event_id, host_event
 
 from vllm_hust_ext.ecpa_model import canonical_bytes
 from vllm_hust_ext.formal_host_observer import FormalObserverError, observe
@@ -26,7 +27,13 @@ def _inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> argparse.Namespa
     event_dir = (tmp_path / "events").resolve()
     event_dir.mkdir(mode=0o700)
     raw = host_event()
-    (event_dir / "worker.jsonl").write_bytes(raw + b"\n")
+    effective = json.loads(raw)
+    effective.update(event="effective", observation_kind="runtime_effective")
+    effective["occurrence_id"] = "cmpl-observer-test"
+    effective["entry_point"]["value"] = "vllm.v1.core.kv_materialization"
+    effective["event_id"] = event_id(effective)
+    effective_raw = json.dumps(effective, separators=(",", ":")).encode()
+    (event_dir / "worker.jsonl").write_bytes(raw + b"\n" + effective_raw + b"\n")
     transition = make_transition(SLOTS, EXECUTION, [receipt(raw)], frozen_at_ns=1)
     snapshot = (tmp_path / "snapshot.json").resolve()
     snapshot.write_bytes(canonical_bytes(transition) + b"\n")
@@ -92,7 +99,7 @@ def test_observer_derives_activation_invocation_and_dynamic_epoch(
     events = {row["event"]: row for row in result["events"]}
 
     assert events["activation-path"]["value"] == "manager-controlled-activation"
-    assert events["effective-claim"]["value"] is False
+    assert events["effective-claim"]["value"] is True
     assert events["plugin-invoked"]["value"] is True
     assert events["coverage"]["value"] == 1.0
     process = events["plugin-invoked"]["effect_process_identities"][0]
