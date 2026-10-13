@@ -867,6 +867,19 @@ def test_planned_projection_validates_paper_schema():
     assert result["outcome"]["false_effective"] is None
 
 
+def test_formal_projection_preserves_content_addressed_workload(tmp_path):
+    schema = json.loads(Path("paper/artifacts/results.schema.json").read_text())
+    record = formal_complete_record(tmp_path)
+    record["identity"]["workload"] = {
+        "path": "h1-qwen2.5-7b-workload.json",
+        "sha256": "sha256:" + "9" * 64,
+    }
+
+    result = project_paper_result(record, schema)
+
+    assert result["protocol"]["workload"] == record["identity"]["workload"]
+
+
 @pytest.mark.parametrize("missing", ["effective-claim", "plugin-invoked"])
 def test_core_claim_observations_are_mandatory(missing):
     scenario = scenarios()[0]

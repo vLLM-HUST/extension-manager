@@ -38,6 +38,12 @@ EVIDENCE_INPUTS := \
 	../experiments/contract_planner/results/metrics.json \
 	../experiments/false_effective/artifacts/formal-aggregate-summary.json \
 	../experiments/false_effective/artifacts/reference-summary.json \
+	artifacts/h1-r5/formal-aggregate.json \
+	artifacts/h1-r5/formal-aggregate-summary.json \
+	artifacts/h1-r5/paper-results.jsonl \
+	artifacts/h1-r5/paper-table.csv \
+	artifacts/h1-r5/source-binding.json \
+	artifacts/results.schema.json \
 	../experiments/false_effective/first-formal-real-study.json \
 	../experiments/false_effective/first-formal-real-study.schema.json \
 	../experiments/false_effective/first-formal-real-deployment.json \

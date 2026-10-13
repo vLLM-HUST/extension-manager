@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import csv
 import hashlib
 import importlib.util
 import json
@@ -120,6 +121,145 @@ def corpus_evidence_path(value: str) -> str:
     return re.sub(r":[0-9]+(?:-[0-9]+)?$", "", value).rstrip("/")
 
 
+def validate_h1_r5(root: Path) -> dict[str, int | str]:
+    """Validate the checked projection of the authoritative r5 formal campaign."""
+    prefix = "paper/artifacts/h1-r5"
+    binding = load_json(root, f"{prefix}/source-binding.json")
+    aggregate = load_json(root, f"{prefix}/formal-aggregate.json")
+    summary = load_json(root, f"{prefix}/formal-aggregate-summary.json")
+    results = load_jsonl(root, f"{prefix}/paper-results.jsonl")
+    with (root / f"{prefix}/paper-table.csv").open(newline="") as stream:
+        table_rows = list(csv.DictReader(stream))
+    result_schema = load_json(root, "paper/artifacts/results.schema.json")
+    validator = jsonschema.Draft7Validator(result_schema)
+    for result in results:
+        validator.validate(result)
+
+    digest_pattern = re.compile(r"^sha256:[0-9a-f]{64}$")
+    records = binding.get("records")
+    design = binding.get("design")
+    cleanup = binding.get("post_cleanup_validation")
+    if (
+        binding.get("schema") != "ecpa-h1-paper-intake/v1"
+        or binding.get("campaign") != "r5"
+        or binding.get("classification") != "formal-real"
+        or binding.get("runner_commit")
+        != "73ba06ede8a94f6ee7323a4fa5add60439845595"
+        or not all(
+            digest_pattern.fullmatch(binding.get(name, ""))
+            for name in (
+                "formal_manifest_pointer_sha256",
+                "generation_index_sha256",
+                "records_jsonl_sha256",
+            )
+        )
+        or not isinstance(records, list)
+        or len(records) != 9
+        or len({row.get("start_id") for row in records}) != 9
+        or any(not digest_pattern.fullmatch(row.get("sha256", "")) for row in records)
+        or not isinstance(design, dict)
+        or design.get("scenario") != "partial-worker-coverage"
+        or design.get("arms")
+        != ["vanilla-vllm-entry-points", "manual-integration", "ecpa"]
+        or design.get("repetitions") != 3
+        or design.get("schedule") != "registered-3x3-latin-square"
+        or design.get("lifecycle_sources")
+        != [
+            "service-ready",
+            "workload-complete",
+            "fault-injected",
+            "observer-captured",
+            "service-shutdown",
+        ]
+        or cleanup
+        != {
+            "load_formal_manifest": "PASS",
+            "validate_batch_formal": "PASS",
+            "npu_processes": 0,
+            "port_8187": "free",
+            "driver_sut_observer_processes": 0,
+        }
+        or binding.get("excluded_campaigns") != ["r2", "r3", "r4"]
+    ):
+        raise ValueError("H1 r5 source binding is incomplete or mixed")
+
+    arms = ["vanilla-vllm-entry-points", "manual-integration", "ecpa"]
+    if (
+        len(results) != 9
+        or {row.get("arm") for row in results} != set(arms)
+        or any(sum(row.get("arm") == arm for row in results) != 3 for arm in arms)
+        or any(
+            row.get("schema") != "ecpa-result/v1"
+            or row.get("status") != "complete"
+            or row.get("hypothesis") != "H1"
+            or row.get("cell_id") != "partial-worker-coverage"
+            or row.get("protocol", {}).get("repetition") not in {1, 2, 3}
+            or row.get("outcome", {}).get("false_effective") is not True
+            or row.get("outcome", {}).get("activation_event_coverage") != 0.5
+            or row.get("outcome", {}).get("throughput") is not None
+            or row.get("outcome", {}).get("latency_p99_ms") is not None
+            for row in results
+        )
+        or any(
+            sorted(
+                row["protocol"]["repetition"]
+                for row in results
+                if row["arm"] == arm
+            )
+            != [1, 2, 3]
+            for arm in arms
+        )
+    ):
+        raise ValueError("H1 r5 projected results are incomplete or overclaim scope")
+
+    measured_cells = [
+        row
+        for row in aggregate.get("cells", [])
+        if row.get("scenario") == "partial-worker-coverage"
+    ]
+    measured_table_rows = [
+        row for row in table_rows if row.get("scenario") == "partial-worker-coverage"
+    ]
+    if (
+        aggregate.get("schema") != "ecpa-false-effective-aggregate/v1"
+        or aggregate.get("formal") is not True
+        or aggregate.get("completed_cells") != 1
+        or aggregate.get("failure_missing_modes")
+        != {"excluded": 0, "failed": 0, "planned": 0}
+        or aggregate.get("metrics", {}).get("n_starts") != 9
+        or len(measured_cells) != 3
+        or len(measured_table_rows) != 3
+        or any(
+            row.get("arm") not in arms
+            or row.get("complete_starts") != "3"
+            or row.get("false_effective_rate") != "1.0"
+            or row.get("reason") != ""
+            for row in measured_table_rows
+        )
+        or any(
+            row.get("status_counts", {}).get("complete") != 3
+            or row.get("false_effective", {}).get("numerator") != 3
+            or row.get("false_effective", {}).get("denominator") != 3
+            or row.get("false_effective", {}).get("rate") != 1.0
+            or row.get("quality", {}).get("coverage_samples") != [0.5, 0.5, 0.5]
+            for row in measured_cells
+        )
+        or summary.get("completed_cells") != 1
+        or summary.get("planned_records") != 0
+        or summary.get("metrics", {}).get("n_starts") != 9
+    ):
+        raise ValueError("H1 r5 aggregate differs from the projected formal records")
+
+    return {
+        "formal_completed": 1,
+        "formal_starts": 9,
+        "formal_lifecycle_sources": 5,
+        "h1_false_effective_numerator": 3,
+        "h1_false_effective_denominator": 3,
+        "h1_coverage": "0.5",
+    }
+
+
 def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     workshop = load_json(root, "docs/corpus/workshop-mods.json")
     workshop_metadata = load_json(
@@ -156,6 +296,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         root / "docs/evidence/native-current-npu-qualification-2026-10-11.md"
     ).read_text()
     normalized_native_qualification = " ".join(native_qualification.split())
+    h1 = validate_h1_r5(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -631,7 +772,12 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         "planner_admit_recall": formatted_metrics["admit recall"],
         "source_repositories": len(source_rows),
         "source_objects": source_objects,
-        "formal_completed": completed,
+        "formal_completed": h1["formal_completed"],
+        "formal_starts": h1["formal_starts"],
+        "formal_lifecycle_sources": h1["formal_lifecycle_sources"],
+        "h1_false_effective_numerator": h1["h1_false_effective_numerator"],
+        "h1_false_effective_denominator": h1["h1_false_effective_denominator"],
+        "h1_coverage": h1["h1_coverage"],
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -684,6 +830,11 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPASourceRepositories", "source_repositories"),
         ("ECPASourceObjects", "source_objects"),
         ("ECPAFormalCompleted", "formal_completed"),
+        ("ECPAFormalStarts", "formal_starts"),
+        ("ECPAFormalLifecycleSources", "formal_lifecycle_sources"),
+        ("ECPAHOneFalseEffectiveNumerator", "h1_false_effective_numerator"),
+        ("ECPAHOneFalseEffectiveDenominator", "h1_false_effective_denominator"),
+        ("ECPAHOneCoverage", "h1_coverage"),
         ("ECPAFormalPlanned", "formal_planned"),
         ("ECPAVerifiedAdapters", "verified_adapters"),
         ("ECPAReferenceStarts", "reference_starts"),
