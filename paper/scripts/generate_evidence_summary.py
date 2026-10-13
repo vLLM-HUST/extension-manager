@@ -822,6 +822,72 @@ def validate_h3_native_support(root: Path) -> dict[str, int]:
     return {"h3_native_sources": len(sources), "h3_prepare_na_baselines": 2}
 
 
+def validate_h3_model_qualification(root: Path) -> dict[str, int]:
+    """Independently recompute retained model qualification, never formal H3."""
+    from experiments.formal_campaign.h3_model_qualification import verify_archive
+
+    prefix = "experiments/formal_campaign/artifacts/h3-model-qualification-20261013"
+    package = root / prefix
+    manifest = load_json(package, "manifest.json")
+    archives = manifest["archives"]
+    if set(archives) != {
+        "raw.tar.gz", "failed-hccl-port-conflict.tar.gz",
+        "failed-private-directory.tar.gz", "interrupted-for-cpu-preflight.tar.gz",
+    }:
+        raise ValueError("H3 model qualification archive inventory changed")
+    for name, binding in archives.items():
+        raw = (package / name).read_bytes()
+        if len(raw) != binding["bytes"] or hashlib.sha256(raw).hexdigest() != (
+            binding["sha256"]
+        ):
+            raise ValueError("H3 model qualification archive changed")
+    recomputed = verify_archive(package / "raw.tar.gz")
+    import tarfile
+
+    with tarfile.open(package / "raw.tar.gz", "r:gz") as archive:
+        retained_files = sum(item.isfile() for item in archive.getmembers())
+        stream = archive.extractfile("inputs.json")
+        if stream is None:
+            raise ValueError("H3 model qualification runtime source missing")
+        inputs = json.load(stream)
+    if inputs["manager_commit"] != "7c0b2d7e9aa4b94312c61e1295c886df953e73e5":
+        raise ValueError("H3 model qualification runtime source differs")
+    if (
+        recomputed["classification"] != "QUALIFIED_NONFORMAL"
+        or not recomputed["passed"]
+        or not recomputed["two_distinct_tp2_backend_worker_sets"]
+        or not recomputed["observed_marker_task_passed"]
+        or recomputed["real_model_completions"] != 7
+        or retained_files != 156
+        or retained_files != manifest["successful_raw_files"]
+        or manifest["classification"] != "QUALIFIED_NONFORMAL"
+        or manifest["successful_attempt"] != "r4"
+        or len(manifest["failed_attempts"]) != 3
+        or {row["archive"] for row in manifest["failed_attempts"]} != (
+            set(archives) - {"raw.tar.gz"}
+        )
+        or {row["attempt"] for row in manifest["failed_attempts"]} != {
+            "r1", "r2", "r3"
+        }
+        or any(recomputed[key] is not False for key in (
+            "formal_result", "matched_three_arm_result", "performance_result"
+        ))
+        or any(manifest[key] is not False for key in (
+            "formal_result", "performance_result"
+        ))
+        or any(recomputed[key] is not None or manifest[key] is not None for key in (
+            "lost_requests", "duplicate_requests", "full_objective_satisfied"
+        ))
+    ):
+        raise ValueError("H3 model qualification nonformal boundary changed")
+    return {
+        "h3_model_tp2_backends": 2,
+        "h3_model_marker_completions": recomputed["real_model_completions"],
+        "h3_model_raw_files": retained_files,
+        "h3_model_failed_attempts": len(manifest["failed_attempts"]),
+    }
+
+
 def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     workshop = load_json(root, "docs/corpus/workshop-mods.json")
     workshop_metadata = load_json(
@@ -863,6 +929,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     h2_compression = validate_h2_compression_transaction(root)
     real_gate = validate_real_invocation_gate(root)
     h3_native = validate_h3_native_support(root)
+    h3_model = validate_h3_model_qualification(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -1348,6 +1415,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         **h2_compression,
         **real_gate,
         **h3_native,
+        **h3_model,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -1423,6 +1491,10 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPARealGateBlockedRequests", "real_gate_blocked_requests"),
         ("ECPARealGateRawFiles", "real_gate_raw_files"),
         ("ECPAHThreeNativeSources", "h3_native_sources"),
+        ("ECPAHThreeModelTPBackends", "h3_model_tp2_backends"),
+        ("ECPAHThreeModelMarkerCompletions", "h3_model_marker_completions"),
+        ("ECPAHThreeModelRawFiles", "h3_model_raw_files"),
+        ("ECPAHThreeModelFailedAttempts", "h3_model_failed_attempts"),
         ("ECPAHThreePrepareNABaselines", "h3_prepare_na_baselines"),
         ("ECPARealGateFailedAttempts", "real_gate_failed_attempts"),
         ("ECPARealGateCompleteCoverage", "real_gate_complete_coverage"),
