@@ -6,12 +6,14 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 import jsonschema
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 CLAIMS_PATH = "docs/research/claims-to-experiment-matrix.json"
 CLAIMS_SCHEMA_PATH = "docs/research/claims-to-experiment-matrix.schema.json"
@@ -266,7 +268,7 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
     for experiment in experiments.values():
         if not set(experiment["scenarios"]) <= set(scenario_ids):
             raise ValueError("experiment references an unknown scenario")
-        if experiment["kind"] != "modeled-static" and (
+        if experiment["kind"].startswith("formal-") and (
             experiment["arms"] != formal_arms
             or experiment["repetitions"] != protocol["minimum_starts"]
         ):
@@ -287,11 +289,30 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
         raise ValueError("first formal study differs from claim graph or protocol")
     if any(
         experiment_id != study["experiment_id"]
-        and experiment["kind"] != "modeled-static"
+        and experiment["kind"].startswith("formal-")
         and experiment["status"] != "planned"
         for experiment_id, experiment in experiments.items()
     ):
         raise ValueError("non-executable formal experiments must remain planned")
+
+    if first_experiment.get("result_status") == "completed-falsified":
+        from paper.scripts.generate_evidence_summary import validate_h1_r5
+
+        observed = validate_h1_r5(root)
+        if (
+            observed["formal_starts"] != 9
+            or claims["CLM-FALSE-EFFECTIVE-DETECTION"]["status"] != "falsified"
+        ):
+            raise ValueError("completed H1 must retain its falsification")
+    qualification = experiments.get("EXP-REAL-INVOCATION-GATE-QUALIFICATION")
+    if (
+        qualification is None
+        or qualification["kind"] != "nonformal-invocation-qualification"
+    ):
+        raise ValueError("real invocation qualification must remain nonformal")
+    from paper.scripts.generate_evidence_summary import validate_real_invocation_gate
+
+    validate_real_invocation_gate(root)
 
     phase_commands = {
         row["phase"]: row["source_subcommand"] for row in study["phase_authorities"]

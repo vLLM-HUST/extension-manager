@@ -57,6 +57,7 @@ INPUTS = (
     "experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013",
     "experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013",
     "experiments/real_mod_composition/verify_h2_compression_transaction.py",
+    "experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013",
     "paper/artifacts/h1-r5/formal-aggregate.json",
     "paper/artifacts/h1-r5/formal-aggregate-summary.json",
     "paper/artifacts/h1-r5/paper-results.jsonl",
@@ -145,6 +146,12 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "h2_compression_semantic_tokens": 1201,
         "h2_compression_physical_tokens": 1024,
         "h2_compression_worker_acks": 2,
+        "real_gate_completions": 1,
+        "real_gate_blocked_requests": 2,
+        "real_gate_raw_files": 95,
+        "real_gate_failed_attempts": 4,
+        "real_gate_complete_coverage": "1.0",
+        "real_gate_partial_coverage": "0.5",
         "formal_planned": 30,
         "verified_adapters": 3,
         "reference_starts": 45,
@@ -203,8 +210,7 @@ def test_generator_rejects_h2_partial_result_overclaim(tmp_path: Path) -> None:
     generator = load_generator()
     copy_inputs(tmp_path)
     status = (
-        tmp_path
-        / "experiments/real_mod_composition/artifacts/"
+        tmp_path / "experiments/real_mod_composition/artifacts/"
         "h2-minimal-real-source-corpus-r2-20261013/status.json"
     )
     rewrite_json(
@@ -219,8 +225,7 @@ def test_generator_rejects_h2_external_authority_promotion(tmp_path: Path) -> No
     generator = load_generator()
     copy_inputs(tmp_path)
     prediction = (
-        tmp_path
-        / "experiments/real_mod_composition/artifacts/"
+        tmp_path / "experiments/real_mod_composition/artifacts/"
         "h2-remaining-surfaces-oracle-20261013/manager-prediction.json"
     )
     rewrite_json(prediction, lambda value: value.__setitem__("h2_complete", True))
@@ -235,8 +240,7 @@ def test_generator_rejects_h2_scheduler_pair_runtime_promotion(
     generator = load_generator()
     copy_inputs(tmp_path)
     prediction = (
-        tmp_path
-        / "experiments/real_mod_composition/artifacts/"
+        tmp_path / "experiments/real_mod_composition/artifacts/"
         "h2-pipeline-bidkv-oracle-20261013/manager-prediction.json"
     )
     rewrite_json(prediction, lambda value: value["runtime"].__setitem__("claim", True))
@@ -251,8 +255,7 @@ def test_generator_rejects_formalized_h2_compression_qualification(
     generator = load_generator()
     copy_inputs(tmp_path)
     admission = (
-        tmp_path
-        / "experiments/real_mod_composition/artifacts/"
+        tmp_path / "experiments/real_mod_composition/artifacts/"
         "h2-compression-transaction-20261013/admission.json"
     )
     rewrite_json(
@@ -574,3 +577,38 @@ def test_generator_rejects_unbalanced_protocol_schedule(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="square balanced arm schedule"):
         generator.collect_summary(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("real_model_completions", 2),
+        ("formal_result", True),
+        ("effective_semantics_result", True),
+        ("performance_result", True),
+    ],
+)
+def test_real_gate_summary_cannot_overclaim_raw_archive(tmp_path, field, value):
+    generator = load_generator()
+    copy_inputs(tmp_path)
+    package = (
+        tmp_path
+        / "experiments/exposure_gate/artifacts/"
+        / "real-invocation-gate-qualification-20261013"
+    )
+    rewrite_json(package / "qualification.json", lambda v: v.update({field: value}))
+    with pytest.raises(ValueError, match="differs from raw recomputation"):
+        generator.validate_real_invocation_gate(tmp_path)
+
+
+def test_real_gate_summary_rejects_changed_archive(tmp_path):
+    generator = load_generator()
+    copy_inputs(tmp_path)
+    archive = (
+        tmp_path
+        / "experiments/exposure_gate/artifacts/"
+        / "real-invocation-gate-qualification-20261013/retained.tar.gz"
+    )
+    archive.write_bytes(archive.read_bytes() + b"tampered")
+    with pytest.raises(ValueError, match="archive changed"):
+        generator.validate_real_invocation_gate(tmp_path)

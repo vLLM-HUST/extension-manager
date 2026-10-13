@@ -19,6 +19,8 @@ from typing import Any
 import jsonschema
 
 ROOT = Path(__file__).resolve().parents[2]
+# Support direct invocation from paper/ as well as installed-package CI.
+sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 OUTPUT = ROOT / "paper/generated/evidence-summary.tex"
 WORKSHOP_SOURCE_IDENTITY = {
     "repository": "vLLM-HUST/vllm-hust-website",
@@ -143,8 +145,7 @@ def validate_h1_r5(root: Path) -> dict[str, int | str]:
         binding.get("schema") != "ecpa-h1-paper-intake/v1"
         or binding.get("campaign") != "r5"
         or binding.get("classification") != "formal-real"
-        or binding.get("runner_commit")
-        != "73ba06ede8a94f6ee7323a4fa5add60439845595"
+        or binding.get("runner_commit") != "73ba06ede8a94f6ee7323a4fa5add60439845595"
         or not all(
             digest_pattern.fullmatch(binding.get(name, ""))
             for name in (
@@ -202,9 +203,7 @@ def validate_h1_r5(root: Path) -> dict[str, int | str]:
         )
         or any(
             sorted(
-                row["protocol"]["repetition"]
-                for row in results
-                if row["arm"] == arm
+                row["protocol"]["repetition"] for row in results if row["arm"] == arm
             )
             != [1, 2, 3]
             for arm in arms
@@ -270,8 +269,7 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     oracle = load_json(root, f"{prefix}/oracle-index.json")
     status = load_json(root, f"{prefix}/status.json")
     carrier_prefix = (
-        "experiments/real_mod_composition/artifacts/"
-        "h2-process-carrier-oracle-20261013"
+        "experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013"
     )
     carrier_oracle = load_json(root, f"{carrier_prefix}/oracle.json")
     carrier_predictions = load_json(root, f"{carrier_prefix}/manager-predictions.json")
@@ -285,14 +283,11 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
         root, f"{remaining_prefix}/manager-prediction.json"
     )
     scheduler_prefix = (
-        "experiments/real_mod_composition/artifacts/"
-        "h2-pipeline-bidkv-oracle-20261013"
+        "experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013"
     )
     scheduler_campaign = load_json(root, f"{scheduler_prefix}/campaign.json")
     scheduler_oracle = load_json(root, f"{scheduler_prefix}/oracle.json")
-    scheduler_freeze = load_json(
-        root, f"{scheduler_prefix}/oracle-freeze-receipt.json"
-    )
+    scheduler_freeze = load_json(root, f"{scheduler_prefix}/oracle-freeze-receipt.json")
     scheduler_prediction = load_json(
         root, f"{scheduler_prefix}/manager-prediction.json"
     )
@@ -440,8 +435,7 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     if (
         remaining_oracle.get("schema")
         != "ecpa-h2-independent-remaining-surfaces-oracle/v1"
-        or remaining_receipt.get("schema")
-        != "ecpa-h2-independent-review-receipt/v2"
+        or remaining_receipt.get("schema") != "ecpa-h2-independent-review-receipt/v2"
         or remaining_receipt.get("oracle_sha256")
         != digest(root, f"{remaining_prefix}/oracle.json")
         or remaining_oracle.get("oracle_summary")
@@ -478,9 +472,7 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
         or remaining_prediction.get("decision_match") is not True
         or remaining_prediction.get("score_eligible") is not True
         or remaining_prediction.get("h2_complete") is not False
-        or remaining_prediction.get("process_boundary", {}).get(
-            "host_process_started"
-        )
+        or remaining_prediction.get("process_boundary", {}).get("host_process_started")
         is not False
         or any(
             remaining_prediction.get("process_boundary", {})
@@ -539,10 +531,8 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
         != "pair-pipeline-microbatch-bidkv-vllm-0281"
         or not isinstance(scheduler_host, dict)
         or scheduler_host.get("repository") != "vLLM-HUST/vllm-hust"
-        or scheduler_host.get("commit")
-        != "3e57b2f75cffffd26dda0df4d9bcac890cfe99fc"
-        or scheduler_host.get("tree")
-        != "b0e682747b3b7242c1b857841136b784f6c7f6a3"
+        or scheduler_host.get("commit") != "3e57b2f75cffffd26dda0df4d9bcac890cfe99fc"
+        or scheduler_host.get("tree") != "b0e682747b3b7242c1b857841136b784f6c7f6a3"
         or scheduler_campaign.get("planned_evaluation")
         != {
             "host_launch": False,
@@ -556,15 +546,13 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
             != f"sha256:{digest(root, source.get('snapshot', ''))}"
             for source in scheduler_sources.values()
         )
-        or scheduler_oracle.get("schema")
-        != "ecpa-h2-independent-source-oracle/v3"
+        or scheduler_oracle.get("schema") != "ecpa-h2-independent-source-oracle/v3"
         or scheduler_oracle.get("decision") != "admit"
         or scheduler_oracle.get("score_eligible") is not True
         or scheduler_oracle.get("scope") != "source-bound-pre-launch-composition"
         or scheduler_oracle.get("runtime_claim") is not False
         or scheduler_oracle.get("performance_claim") is not False
-        or scheduler_freeze.get("schema")
-        != "ecpa-h2-independent-oracle-freeze/v1"
+        or scheduler_freeze.get("schema") != "ecpa-h2-independent-oracle-freeze/v1"
         or scheduler_freeze.get("manager_prediction_present_at_freeze") is not False
         or scheduler_freeze.get("campaign_sha256")
         != f"sha256:{digest(root, f'{scheduler_prefix}/campaign.json')}"
@@ -581,8 +569,7 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
         or scheduler_prediction.get("matched") is not True
         or scheduler_prediction.get("score_eligible") is not True
         or scheduler_prediction.get("performance_claim") is not False
-        or scheduler_prediction.get("projected_options")
-        != expected_scheduler_options
+        or scheduler_prediction.get("projected_options") != expected_scheduler_options
         or not isinstance(scheduler_boundary, dict)
         or scheduler_boundary.get("host_process_started") is not False
         or not isinstance(scheduler_runtime, dict)
@@ -592,8 +579,7 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
         not in scheduler_runtime.get("reason", "")
         or scheduler_prediction.get("corpus_update", {}).get("current")
         != expected_scheduler_aggregate
-        or scheduler_prediction.get("corpus_update", {}).get("h2_complete")
-        is not False
+        or scheduler_prediction.get("corpus_update", {}).get("h2_complete") is not False
     ):
         raise ValueError("H2 scheduler-pair evidence is invalid or overclaimed")
 
@@ -609,8 +595,7 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     carrier_cases = carrier_oracle.get("cases")
     carrier_rows = carrier_predictions.get("predictions")
     if (
-        carrier_oracle.get("schema")
-        != "ecpa-h2-independent-process-carrier-oracle/v1"
+        carrier_oracle.get("schema") != "ecpa-h2-independent-process-carrier-oracle/v1"
         or carrier_oracle.get("oracle_summary")
         != {
             "admit": 0,
@@ -652,8 +637,7 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     runtime_source = runtime.get("source")
     if (
         not isinstance(runtime_source, str)
-        or runtime.get("source_sha256")
-        != f"sha256:{digest(root, runtime_source)}"
+        or runtime.get("source_sha256") != f"sha256:{digest(root, runtime_source)}"
         or runtime.get("compatible_host_execution") is not True
         or runtime.get("accepted_installation_orders") != 2
         or runtime.get("compression_transaction") is not False
@@ -678,12 +662,10 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
 def validate_h2_compression_transaction(root: Path) -> dict[str, int | str]:
     """Recompute the bounded, explicitly non-formal compression qualification."""
     prefix = (
-        "experiments/real_mod_composition/artifacts/"
-        "h2-compression-transaction-20261013"
+        "experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013"
     )
     verifier_path = (
-        root
-        / "experiments/real_mod_composition/verify_h2_compression_transaction.py"
+        root / "experiments/real_mod_composition/verify_h2_compression_transaction.py"
     )
     spec = importlib.util.spec_from_file_location(
         "ecpa_paper_h2_compression_verifier", verifier_path
@@ -704,8 +686,7 @@ def validate_h2_compression_transaction(root: Path) -> dict[str, int | str]:
     runs = admission.get("runs")
     boundary = admission.get("qualification_boundary")
     if (
-        admission.get("schema")
-        != "ecpa-h2-compression-transaction-admission/v1"
+        admission.get("schema") != "ecpa-h2-compression-transaction-admission/v1"
         or admission.get("status") != "QUALIFIED_NONFORMAL"
         or admission.get("score_eligible") is not False
         or admission.get("performance_result") is not False
@@ -734,6 +715,80 @@ def validate_h2_compression_transaction(root: Path) -> dict[str, int | str]:
         "h2_compression_semantic_tokens": 1201,
         "h2_compression_physical_tokens": 1024,
         "h2_compression_worker_acks": 2,
+    }
+
+
+def validate_real_invocation_gate(root: Path) -> dict[str, int | str]:
+    """Recompute invocation-only evidence from the sealed raw archive."""
+    from experiments.exposure_gate.qualification_verify import (
+        unpack_qualification,
+        verify_qualification,
+    )
+
+    prefix = (
+        "experiments/exposure_gate/artifacts/"
+        "real-invocation-gate-qualification-20261013"
+    )
+    package = root / prefix
+    with tempfile.TemporaryDirectory() as directory:
+        retained = Path(directory)
+        unpack_qualification(package, retained)
+        recomputed = verify_qualification(retained)
+        failed = json.loads((retained / "failed-attempts-index.json").read_bytes())
+        if not isinstance(failed, list) or {row.get("attempt") for row in failed} != {
+            1,
+            2,
+            3,
+            4,
+        }:
+            raise ValueError("real gate failed-attempt retention changed")
+        for row in failed:
+            for name, binding in row["files"].items():
+                raw = (
+                    retained / "failed-attempts" / str(row["attempt"]) / name
+                ).read_bytes()
+                if (
+                    len(raw) != binding["size"]
+                    or hashlib.sha256(raw).hexdigest() != binding["sha256"]
+                ):
+                    raise ValueError("real gate failed-attempt raw binding changed")
+    stated = load_json(package, "qualification.json")
+    manifest = load_json(package, "manifest.json")
+    if stated != recomputed:
+        raise ValueError("real gate qualification differs from raw recomputation")
+    if (
+        recomputed["classification"] != "QUALIFIED_NONFORMAL"
+        or any(
+            recomputed[name] is not False
+            for name in (
+                "formal_result",
+                "performance_result",
+                "effective_semantics_result",
+            )
+        )
+        or manifest.get("classification") != "QUALIFIED_NONFORMAL"
+        or any(
+            manifest.get(name) is not False
+            for name in (
+                "formal_result",
+                "performance_result",
+                "effective_semantics_result",
+            )
+        )
+        or len(manifest["files"]) != 95
+    ):
+        raise ValueError("real gate invocation-only qualification boundary drifted")
+    return {
+        "real_gate_completions": recomputed["real_model_completions"],
+        "real_gate_blocked_requests": recomputed["blocked_requests"],
+        "real_gate_raw_files": len(manifest["files"]),
+        "real_gate_failed_attempts": len(failed),
+        "real_gate_complete_coverage": str(
+            recomputed["worker_invocation_coverage_complete"]
+        ),
+        "real_gate_partial_coverage": str(
+            recomputed["worker_invocation_coverage_partial"]
+        ),
     }
 
 
@@ -776,6 +831,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     h1 = validate_h1_r5(root)
     h2 = validate_h2_real_source_subset(root)
     h2_compression = validate_h2_compression_transaction(root)
+    real_gate = validate_real_invocation_gate(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -1259,6 +1315,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         "h1_coverage": h1["h1_coverage"],
         **h2,
         **h2_compression,
+        **real_gate,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -1330,6 +1387,12 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPAHTwoCompressionSemanticTokens", "h2_compression_semantic_tokens"),
         ("ECPAHTwoCompressionPhysicalTokens", "h2_compression_physical_tokens"),
         ("ECPAHTwoCompressionWorkerAcks", "h2_compression_worker_acks"),
+        ("ECPARealGateCompletions", "real_gate_completions"),
+        ("ECPARealGateBlockedRequests", "real_gate_blocked_requests"),
+        ("ECPARealGateRawFiles", "real_gate_raw_files"),
+        ("ECPARealGateFailedAttempts", "real_gate_failed_attempts"),
+        ("ECPARealGateCompleteCoverage", "real_gate_complete_coverage"),
+        ("ECPARealGatePartialCoverage", "real_gate_partial_coverage"),
         ("ECPAFormalPlanned", "formal_planned"),
         ("ECPAVerifiedAdapters", "verified_adapters"),
         ("ECPAReferenceStarts", "reference_starts"),

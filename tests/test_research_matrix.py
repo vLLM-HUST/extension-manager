@@ -31,6 +31,16 @@ INPUTS = (
     "experiments/formal_campaign/record.schema.json",
     "experiments/formal_campaign/analyze.py",
     "paper/main.tex",
+    "paper/artifacts/h1-r5/formal-aggregate.json",
+    "paper/artifacts/h1-r5/formal-aggregate-summary.json",
+    "paper/artifacts/h1-r5/paper-results.jsonl",
+    "paper/artifacts/h1-r5/paper-table.csv",
+    "paper/artifacts/h1-r5/source-binding.json",
+    "paper/artifacts/results.schema.json",
+    "experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013/manifest.json",
+    "experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013/qualification.json",
+    "experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013/retained.tar.gz",
+    "experiments/exposure_gate/qualification_verify.py",
     "src/vllm_hust_ext/formal_lifecycle_source.py",
     "src/vllm_hust_ext/manager_controller.py",
 )
@@ -81,9 +91,7 @@ def reset_h1_to_pre_admission(root: Path, validator) -> None:
         value["status"] = "pre-admission"
         value["admissible"] = False
         value["blockers"] = blockers
-        value["fixed_identity"] = {
-            key: None for key in value["fixed_identity"]
-        }
+        value["fixed_identity"] = {key: None for key in value["fixed_identity"]}
 
     def reset_deployment(value) -> None:
         value["registration_state"] = "unregistered"
@@ -103,9 +111,7 @@ def reset_h1_to_pre_admission(root: Path, validator) -> None:
     rewrite_json(
         matrix_path,
         lambda value: next(
-            row
-            for row in value["experiments"]
-            if row["id"] == "EXP-FE-PARTIAL-WORKER"
+            row for row in value["experiments"] if row["id"] == "EXP-FE-PARTIAL-WORKER"
         ).__setitem__("status", "pre-admission"),
     )
     rewrite_json(deployment_path, reset_deployment)
@@ -125,7 +131,7 @@ def test_current_research_matrix_is_registered() -> None:
 
     assert validator.validate(ROOT) == {
         "claims": 4,
-        "experiments": 5,
+        "experiments": 6,
         "first_study_starts": 9,
         "first_study_status": "admitted",
         "deployment_registration": "registered",
@@ -850,4 +856,36 @@ def test_source_cli_subcommand_drift_is_rejected(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="subcommands differ from the source CLI"):
+        validator.validate(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("supports", ["CLM-FALSE-EFFECTIVE-DETECTION"]),
+        ("kind", "formal-comparison"),
+        ("status", "admitted"),
+    ],
+)
+def test_real_invocation_qualification_cannot_support_formal_claim(
+    tmp_path, field, value
+):
+    validator = load_validator()
+    copy_inputs(tmp_path)
+    rewrite_json(
+        tmp_path / "docs/research/claims-to-experiment-matrix.json",
+        lambda v: v["experiments"][-1].update({field: value}),
+    )
+    with pytest.raises((ValueError, ValidationError)):
+        validator.validate(tmp_path)
+
+
+def test_completed_h1_must_retain_falsification(tmp_path):
+    validator = load_validator()
+    copy_inputs(tmp_path)
+    rewrite_json(
+        tmp_path / "docs/research/claims-to-experiment-matrix.json",
+        lambda v: v["claims"][1].update(status="planned"),
+    )
+    with pytest.raises(ValueError, match="retain its falsification"):
         validator.validate(tmp_path)
