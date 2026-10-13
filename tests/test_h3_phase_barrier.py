@@ -210,7 +210,7 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
                 assert response.status == 200
                 assert json.loads(response.read())["choices"][0]["text"] == "ECPA"
             trace = read_traffic_journal(tmp_path / "authority.jsonl")
-            assert trace[-1]["kind"] == "request.admit"
+            assert trace[-1]["kind"] == "request.complete"
             assert trace[-1]["route"]["generation"] == 0
 
             kwargs = {
