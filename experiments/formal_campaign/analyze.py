@@ -1,4 +1,4 @@
-ÚznÛéºÉ¢Šwè#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Fail-closed intake and paired analysis for formal H3/H4 campaigns."""
 
 from __future__ import annotations

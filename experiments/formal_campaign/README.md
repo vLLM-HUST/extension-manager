@@ -1,4 +1,4 @@
-ÚznÛéºÉ¢Šwè# H3/H4 formal campaign intake
+# H3/H4 formal campaign intake
 
 This directory freezes the analysis contract for the H3 recovery campaign and
 the H4 matched-cost campaign.  It contains no formal result.  `protocol.json`

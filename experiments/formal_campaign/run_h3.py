@@ -1,4 +1,4 @@
-ÚznÛéºÉ¢Šwè#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Run one exact-stack H3 process-crash/recovery start and retain raw evidence."""
 
 from __future__ import annotations
