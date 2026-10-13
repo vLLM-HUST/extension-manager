@@ -25,12 +25,12 @@ the first H1 formal cell: nine validator-approved starts over three arms and
 three repetitions.  All arms, including ECPA, retained an effective claim at
 0.5 evidence coverage, so the tested H1 prevention claim is falsified.  H2--H4
 and the real ExposureGate remain incomplete.  H2 now has a source-bound,
-five-case definite subset with two true admits and three true rejects
+four-case definite subset with two true admits and two true rejects
 ($FP=FN=0$); its observed precision and recall are 1.0, but the sample and
-conflict-surface coverage are insufficient to close H2.  The fourth case is a
-source-bound, pre-launch Production Stack plus KEDA authority rejection; the
-fifth is a source-bound Pipeline Microbatch plus BidKV admit against exact Host
-source.  Its independent oracle predates the Manager prediction, but the
+conflict-surface coverage are insufficient to close H2. The fourth scored case
+is a source-bound Pipeline Microbatch plus BidKV admit against exact Host
+source. Production Stack plus KEDA is excluded as report consumption, not
+independent conflict detection.  Its independent oracle predates the Manager prediction, but the
 qualified PP2+TP2 cell needs four devices while this allocation has two, so it
 has no runtime or performance claim.  The CLI/config collision remains
 unresolved and both process-carrier cases remain abstentions.  A separate real
@@ -169,7 +169,7 @@ including four failed/aborted attempts, and recomputes the qualification before
 rendering its counts. It remains `QUALIFIED_NONFORMAL`: the Host candidate is
 unmerged; it supplies no effectiveness semantics, H1 prevention, formal H3/H4,
 rollback, performance, quality, or correctness result. H1 remains falsified at
-9/9 starts; H2 remains a partial n=5 subset; the overall decision is NO-GO.
+9/9 starts; H2 remains a partial n=4 subset; the overall decision is NO-GO.
 
 
 H3 native phase support is bound by `validate_h3_native_support` in the evidence
@@ -179,8 +179,9 @@ not runtime recovery. Both baseline manager-crash-afterprepare arms remain
 incomplete; a shared worker fault requires a separately registered cell.
 The post-recovery verifier checks the actual authority chain and SQLite prefix,
 including forbidden before-effect candidate exposure. CPU fixture checks prove
-control-chain behavior only. Whole-fault-window loss, duplication and objective
-remain unknown without a client trace across the fault. H3/H4 formal runs remain
+control-chain behavior only. The earlier marker qualification leaves
+whole-fault-window loss, duplication and objective unknown. The later continuous
+trace below supplies finite delivery observations only. H3/H4 formal runs remain
 zero and the submission decision remains NO-GO; no r4 success is asserted.
 
 
@@ -191,5 +192,26 @@ retained evidence. Frozen runtime source `7c0b2d7e` and later independent
 analysis APIs from `c6372547` are distinct. The seven exact marker completions
 and actual native SQLite/SIGKILL/restart/predecessor restoration establish a
 limited nonformal qualification, not formal H3, matched baseline recovery,
-post-exposure rollback, throughput or quality. Whole-window lost/duplicated
-requests and objective remain unknown. H3/H4 formal starts stay zero, NO-GO.
+post-exposure rollback, throughput or quality. For this earlier marker-only
+trial, whole-window lost/duplicated requests and objective remain unknown. H3/H4 formal starts stay zero, NO-GO.
+
+The later real model finite-window qualification is independently regenerated
+from the merged 186-file raw archive. It observes 60 frozen single-attempt
+requests across the native coordinator's before-effect SIGKILL/restart, with
+0/60 deadline delivery loss, zero duplicate admissions and zero reused delivered
+response IDs. Those counts apply to this finite delivery window; backend
+execution duplication and the full recovery objective remain unknown. The
+predecessor model backend remains live throughout and the candidate is never
+exposed. This is controller/control-route recovery, not model-backend restart,
+matched baseline recovery or complete Host effectiveness. Runtime source
+`3a559522`, CPU-tested byte-equivalent source `394d4dd0` and later portable
+analysis `49f1c153`/`e948a7bf` semantics are distinct. One failed CPU response-shape
+preflight remains retained. The generator verifies archive integrity, recomputes
+the raw client/authority/native evidence and rejects promotion to formal,
+performance or exactly-once results. Formal H3/H4 stay zero and `NO-GO` remains.
+
+The independent H2 input audit excludes the historical Production Stack/KEDA
+negative from current detection scores: the provider consumed an already supplied
+ownership-conflict diagnosis. Without that report its verdict is unknown. The
+historical oracle and aggregates remain archived; current counts are TP=2, TN=2,
+FP=FN=0, n=4.

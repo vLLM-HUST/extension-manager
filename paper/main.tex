@@ -159,7 +159,7 @@ fail-closed formal harness are implemented.  Release \ECPAReleaseVersion{}
 freezes Manifest \ECPAManifestVersion{} and records one pinned native-host
 lifecycle qualification.  The source-bound static corpus is measured, and the
 first matched prototype-host H1 cell is complete and falsifies its prevention
-hypothesis.  H2 has a five-case real-source subset but lacks the breadth to
+hypothesis.  H2 has a \ECPAHTwoScoredCases{}-case real-source subset but lacks the breadth to
 support its population claim; H3 and H4 each have zero formal runs.  A real
 authority-owned HTTP route now has invocation-only qualification, while its
 formal prevention and effect-semantics evaluation remains incomplete.  We do not present
@@ -608,7 +608,7 @@ Section~\ref{sec:evaluation}.  The matched nine-start partial-worker campaign
 now establishes that the formal protocol can collect and replay process-owned
 evidence, and it falsifies H1 for the tested implementation.  Consequently we
 claim one negative H1 result, one bounded lifecycle qualification, and a
-five-case partial H2 result, not a completed end-to-end \system evaluation.
+\ECPAHTwoScoredCases{}-case partial H2 result, not a completed end-to-end \system evaluation.
 
 An exact-commit, cross-repository adapter preflight exercises the host's
 preemption-policy controller and translates its deployment journal into a
@@ -931,11 +931,10 @@ The scored workload has \code{max\_model\_len=2048}, below KVCompress's
 9216-token threshold.  This establishes compatible host execution, not an
 observed compression transaction.  Two true negatives are the exact-stack
 KNorm plus KVCompress pre-launch rejection and a source-bound three-MOD
-rejection containing import-only KNorm.  The third is a source-bound,
-pre-launch rejection of Production Stack plus a standalone KEDA controller:
-with chart-side KEDA delegation disabled, both claim the same Deployment
-replica projection.  The explicit safe delegation configuration is outside
-that negative case.
+rejection containing import-only KNorm.  Production Stack plus standalone
+KEDA is unscored: its provider consumes a supplied ownership-conflict report.
+With that report removed, the same configuration returns unknown.  This
+source-bound check establishes report consumption, not independent detection.
 
 The second true positive is a source-bound, pre-launch admit for Pipeline
 Microbatch plus BidKV on exact vLLM-HUST commit
@@ -961,15 +960,15 @@ field labeled \code{frozen\_utc} is later than the observed first launch, so
 we explicitly reject it as a preregistration timestamp; pre-launch integrity
 is limited to the runner's digest checks of the campaign, oracle, and runner.
 
-This is a partial H2 result.  Five scored cases cannot estimate prevalence or
+This is a partial H2 result.  \ECPAHTwoScoredCases{} scored cases cannot estimate prevalence or
 support the preregistered population claim.  The CLI/config collision remains
 unresolved because no second qualifying active bundle claims the same launch
 projection.  Two communication/process-carrier cases retain independent
-\emph{abstain} labels and remain unscored.  The external-authority result is
-source-level and pre-launch, not a Kubernetes runtime receipt.  The conditional
+\emph{abstain} labels and remain unscored.  The external-authority check is
+report-only and pre-launch, without a Kubernetes runtime receipt.  The conditional
 DiffSpec/KVCompress pair is also excluded pending physical-ownership and
 installation-order review.  We therefore report the observed 1.0 values with
-$n=5$ and keep H2 incomplete.
+$n=\ECPAHTwoScoredCases{}$ and keep H2 incomplete.
 
 \subsection{Reference ExposureGate Artifact}
 The SQLite reference gate exercises synthetic evidence opening, generation
@@ -999,19 +998,23 @@ Both baseline activation paths lack a durable Manager transaction, so their
 original cell; separately registered worker-crash/full-relaunch cannot replace
 it.  Host worker death shuts down the executor, without native replacement.
 
-The ECPA verifier checks live launch/proxy identities, the authority hash chain,
-restore intent/effect, predecessor route and SQLite rollback prefix; it rejects
-before-effect candidate exposure.  A separate ECPA-only qualification retains
-\ECPAHThreeModelTPBackends{} independent live Qwen TP2 backends,
-\ECPAHThreeModelMarkerCompletions{} exact marker completions, and a real
-SQLite prepare, coordinator SIGKILL/restart and predecessor restoration.
-The generator independently verifies its \ECPAHThreeModelRawFiles{} raw files
-and retains \ECPAHThreeModelFailedAttempts{} failed/interrupted attempts.
-Runtime source is frozen at \code{7c0b2d7e}; later analysis uses
-\code{c6372547} verifier APIs, without retroactive preregistration.
-The marker task establishes neither in-flight transfer nor rollback after
-candidate exposure.  Whole-window loss, duplication and recovery objective
-remain unknown.  Host admission and matched baselines are missing:
+The verifier checks process epochs, authority chains, SQLite intent/rollback
+prefixes and unchanged predecessor routes, rejecting candidate exposure.
+An earlier ECPA-only trial retains \ECPAHThreeModelTPBackends{} live TP2 backends,
+\ECPAHThreeModelMarkerCompletions{} marker completions, SQLite prepare and
+coordinator SIGKILL/restart (\ECPAHThreeModelRawFiles{} raw files,
+\ECPAHThreeModelFailedAttempts{} failed/interrupted attempts).  Markers alone
+leave whole-window loss unknown.  A later qualification freezes
+\ECPAHThreeWindowRequests{} single-attempt requests before, during and after
+that controller fault.  Independent analysis checks \ECPAHThreeWindowRawFiles{}
+raw files: deadline delivery loss is
+\ECPAHThreeWindowDeadlineLoss{}/\ECPAHThreeWindowRequests{}, duplicate admissions
+\ECPAHThreeWindowDuplicateAdmissions{}, and reused delivered IDs
+\ECPAHThreeWindowReusedResponseIds{}.  The predecessor model remains live;
+this is control-route recovery, not model-backend restart.  Execution duplication
+and the full objective stay unknown.  Runtime \code{3a559522} and later
+\code{49f1c153} analysis are distinct; a failed CPU fixture is retained.
+Host admission and matched baselines are missing:
 \code{QUALIFIED\_NONFORMAL}, formal H3/H4 zero, \code{NO-GO}.
 
 \subsection{Preliminary Evidence and Missing Results}
@@ -1029,7 +1032,7 @@ repositories bind this taxonomy conformance result to source, not to H2
 prevalence or runtime effectiveness.
 
 H1 is measured and falsified: Manager activation did not revoke the effective
-claim when coverage fell to 0.5.  H2 remains the partial five-case subset;
+claim when coverage fell to 0.5.  H2 remains the partial \ECPAHTwoScoredCases{}-case subset;
 H3/H4 have zero formal runs.  Qualification cannot populate formal cells,
 and generators reject zero-filled missing values.  Registered effect-obligation
 validation at a real traffic authority remains required before claiming
