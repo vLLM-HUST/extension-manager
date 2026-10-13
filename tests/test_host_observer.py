@@ -532,3 +532,102 @@ def test_exec_cannot_make_one_linux_identity_cover_two_roles(tmp_path, monkeypat
             ],
             local_host="host-a",
         )
+
+
+def platform_context(**changes):
+    payload = json.loads(host_event(role="unknown", assignment_source="environment"))
+    payload["entry_point"] = {
+        "group": "vllm.platform_plugins",
+        "name": "ascend",
+        "value": "vllm_ascend:register",
+    }
+    payload["event"] = "discovered"
+    payload.update(changes)
+    payload["event_id"] = event_id(payload)
+    return json.dumps(payload, separators=(",", ":")).encode()
+
+
+def test_platform_discovery_is_retained_without_covering_worker(tmp_path):
+    root = tmp_path / "journal"
+    raw = platform_context()
+    write_journal(root, raw)
+    result = observe(root)
+    assert result["complete_coverage"] is False
+    assert result["effect_process_identities"] == []
+    assert base64.b64decode(result["other_records"][0]["raw_base64"]) == raw
+    assert result["other_records"][0]["context_reason"] == (
+        "pre-binding-ascend-platform-discovery"
+    )
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"event": "invoked"},
+        {"event": "effective"},
+        {"launch_id": "launch:other"},
+        {"plan_id": "plan:other"},
+        {
+            "entry_point": {
+                "group": "vllm.platform_plugins",
+                "name": "other",
+                "value": "vllm_ascend:register",
+            }
+        },
+    ],
+)
+def test_platform_context_exception_is_narrow(tmp_path, changes):
+    root = tmp_path / "journal"
+    write_journal(root, platform_context(**changes))
+    with pytest.raises(HostObservationError, match="cross-launch"):
+        observe(root)
+
+
+def test_live_other_role_invocation_never_fills_missing_worker(tmp_path):
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    try:
+        root = tmp_path / "journal"
+        raw = host_event(pid=child.pid, role="api-server")
+        write_journal(root, raw, platform_context())
+        result = observe(root)
+        assert result["complete_coverage"] is False
+        assert result["effect_process_identities"] == []
+        assert result["other_records"][0]["process_identity"]["pid"] == child.pid
+        complete_root = tmp_path / "complete-journal"
+        write_journal(complete_root, raw, platform_context(), host_event())
+        assert observe(complete_root)["complete_coverage"] is True
+    finally:
+        child.terminate()
+        child.wait(timeout=5)
+
+
+def test_other_role_cannot_reuse_worker_linux_identity(tmp_path):
+    root = tmp_path / "journal"
+    write_journal(root, host_event(role="api-server"), host_event())
+    with pytest.raises(HostObservationError, match="multiple target slots"):
+        observe(root)
+
+
+@pytest.mark.parametrize(
+    "role,ordinal",
+    [("unknown", 0), ("api-server", 1), ("engine-core-scheduler", 1), ("worker", 1)],
+)
+def test_non_target_exception_does_not_hide_invalid_slots(tmp_path, role, ordinal):
+    payload = json.loads(host_event(role=role))
+    payload["process"]["ordinal"] = ordinal
+    payload["event_id"] = event_id(payload)
+    root = tmp_path / "journal"
+    write_journal(root, json.dumps(payload, separators=(",", ":")).encode())
+    with pytest.raises(HostObservationError, match="outside"):
+        observe(root)
+
+
+def test_non_target_context_rejects_epoch_ambiguity(tmp_path):
+    root = tmp_path / "journal"
+    write_journal(
+        root,
+        host_event(role="api-server", epoch=7),
+        host_event(role="api-server", epoch=8),
+    )
+    with pytest.raises(HostObservationError, match="changed live identity"):
+        observe(root)

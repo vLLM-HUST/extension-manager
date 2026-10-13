@@ -222,6 +222,7 @@ def observe_bound_invocations(
     controller_bound = {obligation_id: False for obligation_id in obligations}
     linux_slots: dict[tuple[str, int, int], tuple[str, str, int]] = {}
     other_records: list[dict[str, Any]] = []
+    context_slots: dict[tuple[str, str, int], tuple[int, int, int]] = {}
 
     for record in records:
         event = record.event
@@ -230,8 +231,44 @@ def observe_bound_invocations(
             event["binding_status"] != "bound"
             or event["plan_id"] != plan.plan_id
             or event["launch_id"] != launch_id
-            or process.get("assignment_source") != "host"
         ):
+            raise HostObservationError(
+                "journal contains unbound or cross-launch evidence"
+            )
+        if process.get("assignment_source") != "host":
+            if (
+                process.get("assignment_source") == "environment"
+                and process["role"] == "unknown"
+                and event["observation_kind"] == "loader_lifecycle"
+                and event["entry_point"]
+                == {
+                    "group": "vllm.platform_plugins",
+                    "name": "ascend",
+                    "value": "vllm_ascend:register",
+                }
+                and all(
+                    event[field] is None
+                    for field in (
+                        "plugin_id",
+                        "artifact_digest",
+                        "controller_instance_id",
+                        "dispatch_id",
+                        "invocation_seq",
+                        "occurrence_id",
+                    )
+                )
+                and event["event"] in {"discovered", "resolved"}
+            ):
+                other_records.append(
+                    {
+                        **_evidence_record(record),
+                        "context_reason": "pre-binding-ascend-platform-discovery",
+                        "process_identity": read_linux_process_identity(
+                            process["pid"], process["start_identity"]
+                        ),
+                    }
+                )
+                continue
             raise HostObservationError(
                 "journal contains unbound or cross-launch evidence"
             )
@@ -248,6 +285,37 @@ def observe_bound_invocations(
             other_records.append(_evidence_record(record))
             continue
         obligation = obligations[effect_binding.obligation]
+        if (
+            process["host"] == local_host
+            and process["role"] in {"api-server", "engine-core-scheduler", "worker"}
+            and process["role"] != obligation.role
+            and event["observation_kind"] == "loader_lifecycle"
+            and (process["role"] == "worker" or process["ordinal"] == 0)
+        ):
+            linux = read_linux_process_identity(
+                process["pid"], process["start_identity"]
+            )
+            slot = (process["host"], process["role"], process["ordinal"])
+            context_identity = (
+                process["process_epoch"],
+                linux["pid"],
+                linux["start_ticks"],
+            )
+            if context_slots.setdefault(slot, context_identity) != context_identity:
+                raise HostObservationError("non-target host slot changed live identity")
+            linux_key = (process["host"], linux["pid"], linux["start_ticks"])
+            if linux_slots.setdefault(linux_key, slot) != slot:
+                raise HostObservationError(
+                    "one Linux identity covers multiple target slots"
+                )
+            other_records.append(
+                {
+                    **_evidence_record(record),
+                    "context_reason": "non-target-host-role",
+                    "process_identity": linux,
+                }
+            )
+            continue
         slot = (process["host"], process["role"], process["ordinal"])
         expected_epoch = required_by_slot.get(slot)
         if (
