@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["schema", "classification", "case_id", "order_id", "campaign_sha256", "oracle_sha256", "planner_receipt_sha256", "raw_manifest_sha256", "raw_result_sha256", "request_sha256", "response_sha256", "npu_after_sha256", "engine_identity", "process_owned_observation", "kvcompress_bind_engine_pid", "health_status", "completion_status", "cleanup_complete", "port_refused_after_stop", "compression_transaction_observed", "performance_result"],
+  "properties": {
+    "schema": {"const": "ecpa-h2-formal-runtime-receipt/v1"},
+    "classification": {"const": "formal-real-host-composition-validated-receipt"},
+    "case_id": {"type": "string", "minLength": 1},
+    "order_id": {"type": "string", "minLength": 1},
+    "campaign_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "oracle_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "planner_receipt_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "raw_manifest_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "raw_result_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "request_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "response_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "npu_after_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "engine_identity": {"type": "object", "required": ["pid", "start_ticks", "argv"], "properties": {"pid": {"type": "integer", "minimum": 1}, "start_ticks": {"type": "integer", "minimum": 1}, "argv": {"const": ["VLLM::EngineCore"]}}, "additionalProperties": false},
+    "process_owned_observation": {"type": "object", "required": ["path", "sha256", "pid", "process_uuid"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "pid": {"type": "integer", "minimum": 1}, "process_uuid": {"type": "string", "pattern": "^[0-9a-f]{32}$"}}, "additionalProperties": false},
+    "kvcompress_bind_engine_pid": {"type": "integer", "minimum": 1},
+    "health_status": {"const": 200},
+    "completion_status": {"const": 200},
+    "cleanup_complete": {"const": true},
+    "port_refused_after_stop": {"const": true},
+    "compression_transaction_observed": {"const": false},
+    "performance_result": {"const": false}
+  },
+  "additionalProperties": false
+}
