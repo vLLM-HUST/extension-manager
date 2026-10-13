@@ -210,3 +210,33 @@ Python modules loaded from KVCompress's documented legacy source commits
 Manager gate still rejects KNorm activation. This source override did not start
 the host or load a model and does not establish provenance for native extension
 binaries, so it remains non-scoreable and carries no oracle label.
+
+## Remaining H2 ownership surfaces
+
+`artifacts/h2-remaining-surfaces-oracle-20261013/` adds one independently
+reviewed external-authority case. It binds the registered Production Stack
+single-writer rule, the upstream vLLM Production Stack `ScaledObject` targeting
+`Deployment/default/vllm-llama3-deployment-vllm`, and pinned KEDA controller
+code that creates an HPA and updates the target scale subresource. For the
+frozen negative configuration, chart-side KEDA delegation is disabled, so the
+oracle and the later Manager provider check both reject the two replica writers.
+This raises the definite real-source subset from three to four cases (one admit,
+three rejects, zero observed errors). It is source-level pre-launch evidence,
+not a Kubernetes runtime or performance result. The upstream chart's explicit
+KEDA delegation mode is a different, potentially safe configuration and is not
+labeled as conflicting.
+
+The same oracle retains an auditable exclusion ledger for the batch-admission
+CLI/config surface. Pipeline Microbatch is the only frozen active bundle that
+claims `vllm.batch-admission-policy.v1` and its CLI/config projection.
+Scheduler Policy Lab and QoS Scheduler are `import_only` and claim different
+contracts; the metadata-only `Qixin-Gaoke/kv-admission-plugin` source could not
+be frozen. No synthetic competitor is substituted, so this surface remains
+unresolved and H2 remains open.
+
+Run the portable checks with:
+
+```bash
+python experiments/real_mod_composition/verify_h2_remaining_surfaces_oracle.py
+python experiments/real_mod_composition/verify_h2_remaining_surface_prediction.py
+```
