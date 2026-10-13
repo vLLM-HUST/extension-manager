@@ -1,5 +1,3 @@
-  昇腾卡 2 张（规格 npu-2x）。npu-smi info 看状态；
-  容器里只看得见分给你的那几张，看不到整机——这是正常的。
 #!/usr/bin/env python3
 """Fail-closed verification for the retained real TP2 pair preflight."""
 
