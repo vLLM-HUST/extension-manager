@@ -1806,6 +1806,16 @@ def _run_start_impl(
         observer_env["ECPA_OBSERVER_SOURCE_ROLE"] = (
             "host-observer" if evidence_class == "formal-real" else "interface-observer"
         )
+        if formal_sources and process_snapshot_context is not None:
+            observer_env["ECPA_HOST_EVENT_DIR"] = str(
+                process_snapshot_context["host_event_dir"]
+            )
+            observer_env["ECPA_HOST_EVENT_DEVICE"] = str(
+                process_snapshot_context["device"]
+            )
+            observer_env["ECPA_HOST_EVENT_INODE"] = str(
+                process_snapshot_context["inode"]
+            )
         observer_start = time.monotonic_ns()
         observer = None
         try:
@@ -1984,6 +1994,22 @@ def _run_start_impl(
                         lifecycle_fact_processes[phase] = fact_process
                         invocation["fact_collected"] = True
                         causal = True
+                        if phase == "observer-captured" and observer.stdin is not None:
+                            capture = {
+                                "schema": "ecpa-formal-observer-capture/v1",
+                                "phase": phase,
+                                "scenario": scenario["id"],
+                                "plan_id": execution_identity["plan_id"],
+                                "launch_id": execution_identity["launch_id"],
+                                "controller_instance": execution_identity[
+                                    "controller_instance"
+                                ],
+                                "invocation_id": invocation_id,
+                                "sequence": sequence,
+                                "challenge": challenge,
+                            }
+                            observer.stdin.write(canonical(capture).decode() + "\n")
+                            observer.stdin.flush()
                     except (OSError, ValueError) as exc:
                         lifecycle_fact_errors[phase] = type(exc).__name__
                         causal = False

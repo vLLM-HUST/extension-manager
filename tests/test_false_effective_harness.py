@@ -2229,7 +2229,7 @@ def test_fixture_evidence_is_nonformal_and_execution_identity_is_bound(tmp_path)
 
 @pytest.mark.parametrize("dynamic_membership", [False, True])
 @pytest.mark.parametrize("source_failure", [None, "timeout", "invalid"])
-def test_formal_observer_receives_no_phase_material(
+def test_formal_observer_receives_only_capture_identity(
     tmp_path, monkeypatch, source_failure, dynamic_membership
 ):
     observer = tmp_path / "capture_formal_observer.py"
@@ -2349,7 +2349,24 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
     run_dir = tmp_path / "formal-message" / record["artifact_root"]
     messages = json.loads((run_dir / "observer-stdout.bin").read_text())
 
-    assert messages == []
+    if source_failure is not None:
+        assert messages == []
+    else:
+        assert len(messages) == 1
+        capture = messages[0]
+        assert capture == {
+            "schema": "ecpa-formal-observer-capture/v1",
+            "phase": "observer-captured",
+            "scenario": scenarios()[0]["id"],
+            "plan_id": execution["plan_id"],
+            "launch_id": execution["launch_id"],
+            "controller_instance": execution["controller_instance"],
+            "invocation_id": capture["invocation_id"],
+            "sequence": 4,
+            "challenge": capture["challenge"],
+        }
+        assert capture["invocation_id"]
+        assert capture["challenge"]
     if dynamic_membership:
         transition = record["command"]["process_transition"]
         assert record["command"]["process_transition_error"] is None
