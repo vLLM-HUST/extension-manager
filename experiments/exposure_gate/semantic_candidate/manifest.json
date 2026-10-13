@@ -1,0 +1,30 @@
+{
+  "schema": "ecpa-local-semantic-producer-candidate/v1",
+  "classification": "CPU_REVIEW_CANDIDATE_ONLY",
+  "source_commits": {
+    "kvcompress": "00cc78dc7f3491eecbc79c5068e29aed9f59afc3",
+    "host": "973d9ef5acd2b9beb03e399dec1511a41fc941b5"
+  },
+  "source_sha256": {
+    "block-table-973d.py.snapshot": "4068aea7336627f809def92f45401659d7c7c592d4da5dace6a11c90e7850c4a",
+    "evidence-973d.py.snapshot": "d4144b4dd2f648b5cbf89123390c430e0f029c51cbf1b2d133f36aceb4edf2f9",
+    "provider-00cc78.py.snapshot": "1ab8f3f62e56d262601b4879c3b86151ab7987d48475bcca2746c73a4d6c0e54"
+  },
+  "patched_provider_sha256": "cdfda38652d0e00b09ed7a73f7153cb3a0f2d8a19413bf9ae7923f371bbb5d87",
+  "registered_formal_producer": false,
+  "real_model_tested": false,
+  "host_publication": "blocked-GitHub-App-403",
+  "operation": "worker-host-blocktable-projection-applied",
+  "remaining": [
+    "Host-frozen-context-installer-and-independent-live-reader",
+    "exact-source-wheel-build-and-registration",
+    "authority-probe-to-runtime-request-binding",
+    "semantic-threshold-real-model-qualification"
+  ],
+  "no_claims": [
+    "GPU-blocktable-upload",
+    "KV-tensor-equivalence",
+    "model-quality",
+    "formal-traffic-admission"
+  ]
+}
