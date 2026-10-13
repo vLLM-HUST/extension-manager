@@ -84,6 +84,28 @@ between starts. `run_h3.py` executes one process-crash cell from frozen launch,
 PID-file, HTTP-probe, authority state-probe, and cleanup-probe commands. Fixture
 output is test evidence only and cannot satisfy a production deployment receipt.
 
+Create that receipt only through `h3_registration.py`. The transition fetches
+the Manager and Host remote `main` branches, checks that both frozen commits are
+ancestors, rehashes the historical protocol, all three launch commands, the
+fault descriptor, state and cleanup probes, and a reviewed nine-start authority
+registration. Each start owns a distinct loopback-proxy run directory and an
+exact source/argv registration. The runner requires the authority bytes again
+and binds its start-specific proxy identity into raw evidence. The issuer writes
+once with an atomic rename and refuses replacement:
+
+```bash
+python3 experiments/formal_campaign/h3_registration.py \
+  --campaign /absolute/path/to/h3-campaign.json \
+  --authority-registration /absolute/path/to/h3-authority.json \
+  --manager-repo /absolute/path/to/extension-manager \
+  --host-repo /absolute/path/to/vllm-hust \
+  --output /absolute/path/to/h3-deployment-receipt.json
+```
+
+A local-only Host candidate, a hand-authored receipt, duplicate start identity,
+changed command, changed endpoint, changed proxy source, or receipt replacement
+fails before the model server starts.
+
 H3 evaluates every injected failure, including failed runs.  Unsupported
 tuples serving traffic or loss of the predecessor plan falsifies H3 directly;
 otherwise at least 95% of injections must meet the preregistered automatic
