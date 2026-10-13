@@ -17,6 +17,11 @@ def sha(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def canonical_sha(value: object) -> str:
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
 def free_port() -> int:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -100,12 +105,109 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
     }
     campaign_path = tmp_path / "campaign.json"
     campaign_path.write_text(json.dumps(campaign) + "\n")
+    output = tmp_path / "run"
+    proxy_source = ROOT / "experiments/exposure_gate/loopback_traffic.py"
+    starts = []
+    proxy_digests = {}
+    for number in range(1, 4):
+        for candidate in ("vanilla-vllm-entry-points", "manual-integration", "ecpa"):
+            sid = f"{campaign['cell_id']}-r{number}-{candidate}"
+            run_dir = (
+                output.resolve()
+                if (number, candidate) == (1, "ecpa")
+                else (tmp_path / sid).resolve()
+            )
+            registration = {
+                "schema": "ecpa-formal-proxy-registration/v1",
+                "evidence_class": "formal-real",
+                "authority": "independent-loopback-proxy",
+                "proxy_command_digest": "",
+                "review_receipt_sha256": "sha256:" + "8" * 64,
+                "reviewer_kind": "automated-independent",
+                "proxy_source_sha256": sha(proxy_source),
+                "public_port": port,
+                "backend_port": port + 1,
+                "predecessor_port": port + 2,
+                "grant_holder": "formal-runner",
+                "grant_token": number,
+                "grant_expires_at": 4102444800,
+            }
+            proxy_argv = [
+                str(Path(sys.executable).resolve()),
+                str(proxy_source.resolve()),
+                "--socket",
+                str(run_dir / "authority.sock"),
+                "--journal",
+                str(run_dir / "authority-journal.jsonl"),
+                "--listen-port",
+                str(port),
+                "--predecessor-port",
+                str(port + 2),
+                "--candidate-port",
+                str(port + 1),
+                "--predecessor-snapshot",
+                '{"generation":0}',
+                "--grant-holder",
+                "formal-runner",
+                "--grant-token",
+                str(number),
+                "--grant-expires-at",
+                "4102444800",
+                "--observer-config",
+                str(run_dir / "formal-proxy-authorization.json"),
+            ]
+            registration["proxy_command_digest"] = canonical_sha({"argv": proxy_argv})
+            proxy_sha = canonical_sha(registration)
+            starts.append(
+                {
+                    "start_id": sid,
+                    "arm": candidate,
+                    "repetition": number,
+                    "run_directory": str(run_dir),
+                    "proxy_registration": registration,
+                    "proxy_registration_sha256": proxy_sha,
+                }
+            )
+            proxy_digests[sid] = proxy_sha
+    authority = {
+        "schema": "ecpa-h3-authority-registration/v1",
+        "registration_state": "reviewed",
+        "evidence_class": "formal-real",
+        "campaign_sha256": sha(campaign_path),
+        "authority_endpoint": f"http://127.0.0.1:{port}/request",
+        "state_command_digest": canonical_sha(
+            {"argv": campaign["probe"]["state_command"]}
+        ),
+        "cleanup_command_digest": canonical_sha(
+            {"argv": campaign["probe"]["cleanup_command"]}
+        ),
+        "starts": starts,
+    }
+    authority["review"] = {
+        "reviewer_kind": "automated-independent",
+        "verdict": "APPROVED",
+        "subject_sha256": canonical_sha(authority),
+    }
+    authority_path = tmp_path / "authority.json"
+    authority_path.write_text(json.dumps(authority) + "\n")
+    host_admission = {
+        "schema": "ecpa-host-source-admission/v1",
+        "repository": "vLLM-HUST/vllm-hust",
+        "remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+        "candidate_commit": identity["host_commit"],
+        "main_commit": identity["host_commit"],
+        "candidate_reachable": True,
+        "candidate_merged_to_main": True,
+    }
     receipt = {
-        "schema": "ecpa-h3-deployment-receipt/v1",
+        "schema": "ecpa-h3-deployment-receipt/v2",
         "registration_state": "registered",
         "admissible": True,
         "evidence_mode": "formal-real",
         "campaign_sha256": sha(campaign_path),
+        "authority_registration_sha256": sha(authority_path),
+        "host_source_admission_sha256": canonical_sha(host_admission),
+        "host_source_admission": host_admission,
         "campaign_id": campaign["campaign_id"],
         "cell_id": campaign["cell_id"],
         **{
@@ -121,15 +223,35 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
                 "topology",
             )
         },
+        "arm_command_digests": {
+            row["id"]: canonical_sha({"argv": row["launch_command"]}) for row in arms
+        },
+        "fault_command_digest": canonical_sha(campaign["fault"]),
+        "state_command_digest": canonical_sha(
+            {"argv": campaign["probe"]["state_command"]}
+        ),
+        "cleanup_command_digest": canonical_sha(
+            {"argv": campaign["probe"]["cleanup_command"]}
+        ),
         "authority": {
-            "kind": "host",
+            "kind": "host-plus-independent-loopback-proxy",
             "parent_process_registration": True,
             "exposure_gate": True,
+            "endpoint": authority["authority_endpoint"],
+            "start_proxy_registration_digests": proxy_digests,
+        },
+        "issuer": {
+            "kind": "ecpa-h3-registration-transition/v1",
+            "manager_repository": "vLLM-HUST/extension-manager",
+            "manager_remote": "https://github.com/vLLM-HUST/extension-manager.git",
+            "host_repository": "vLLM-HUST/vllm-hust",
+            "host_remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+            "manager_main_commit": identity["manager_commit"],
+            "host_main_commit": identity["host_commit"],
         },
     }
     receipt_path = tmp_path / "receipt.json"
     receipt_path.write_text(json.dumps(receipt) + "\n")
-    output = tmp_path / "run"
     subprocess.run(
         [
             sys.executable,
@@ -138,6 +260,8 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
             str(campaign_path),
             "--deployment-receipt",
             str(receipt_path),
+            "--authority-registration",
+            str(authority_path),
             "--arm",
             "ecpa",
             "--repetition",
