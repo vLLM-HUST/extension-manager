@@ -120,7 +120,7 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
 
     assert candidate["sources"]["runtime"]["commit"].startswith("973d9ef5")
     assert candidate["sources"]["mod"]["commit"].startswith("e343fc5c")
-    assert candidate["sources"]["manager"]["commit"].startswith("b734a923")
+    assert candidate["sources"]["manager"]["commit"].startswith("e583852")
     assert candidate["sources"]["accelerator_plugin"]["commit"].startswith("87358402")
     assert (
         candidate["sources"]["accelerator_plugin"]["qualification"]
@@ -134,7 +134,7 @@ def test_machine_candidate_remains_qualification_after_official_admission() -> N
     deployment = _load(ROOT / "first-formal-real-deployment.json")
     registry = _load(ROOT / "verified-adapters.json")
 
-    assert candidate["qualification"]["registration_state"] == "unregistered"
+    assert candidate["qualification"]["registration_state"] == "amended-registered"
     assert candidate["qualification"]["formal_h1_starts"] == 0
     assert study["status"] == "admitted"
     assert study["admissible"] is True

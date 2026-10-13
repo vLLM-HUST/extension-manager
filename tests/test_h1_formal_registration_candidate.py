@@ -37,7 +37,7 @@ def test_checked_candidate_freezes_exact_three_arm_five_source_nine_start_plan()
     registration.validate_candidate(candidate, live=False)
 
     assert candidate["experiment_manager_identity"]["commit"] == (
-        "b734a923a566f3d1b07b22e087fdbab796b3b1d9"
+        "e583852ac3cb7ea0003ac4b5798c09d369151514"
     )
     assert candidate["formal_h1_starts"] == 0
     assert candidate["admissible"] is False
@@ -63,7 +63,7 @@ def test_checked_candidate_freezes_exact_three_arm_five_source_nine_start_plan()
         assert arm["registry_candidate"]["admission"] is None
     assert all(len(digests) == 1 for digests in source_digests.values())
     assert candidate["declared_identity"]["environment_digest"] == (
-        "sha256:50ad1f54bc29cd29ddd0c4ff27b00e4eb123f4b5710bb547aea533672f51547d"
+        "sha256:d8e9b7d1fee667b6c8f3ee0525a7c1ef9bfe78d025c8ade24e3b372f625eb027"
     )
     assert (
         "exact-runtime-accelerator-support-matrix-unqualified"

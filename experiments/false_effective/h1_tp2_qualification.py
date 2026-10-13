@@ -21,7 +21,7 @@ CLASSIFICATION = "exact-reachable-stack-functional-qualification"
 SOURCE_COMMITS = {
     "accelerator_plugin": "873584026f8a683ac73523f15127569e9f6ab34b",
     "host": "973d9ef5acd2b9beb03e399dec1511a41fc941b5",
-    "manager": "b734a923a566f3d1b07b22e087fdbab796b3b1d9",
+    "manager": "e583852ac3cb7ea0003ac4b5798c09d369151514",
     "mod": "e343fc5ce6b4c64611a79df5d797b3db12cd6dac",
 }
 WHEEL_SHA256 = {
@@ -30,7 +30,7 @@ WHEEL_SHA256 = {
     ),
     "host": "sha256:97b27b347889d6e140415e674509519f2ed65848cc51e4b888189fb28f29671a",
     "manager": (
-        "sha256:f08b2b2b4028565c43f6c73d0d0c5130e4c3124522284cacadad99e06ff99f79"
+        "sha256:c377a9b1218d1db15ab211a721bf93ccab06e8242e67bea47ad7836936adcc4f"
     ),
     "mod": "sha256:581caaff07a610bfc3ce9280c315e9548b532fb119731d14fff002aea6825b1c",
     "triton_ascend": (
@@ -49,20 +49,20 @@ PACKAGES = {
 RUNS = (
     (
         "vanilla-vllm-entry-points",
-        "pr54-stock-vanilla-tp2",
-        "sha256:ae6d3dd8135eac6634817f4d77125c9e803db4aba4dbc20d0812e85b9b4b772e",
+        "e583-stock-vanilla-tp2",
+        "sha256:a557197d15c2afc162d2e862ba007475d23ee9243195c261d411c3621c96234c",
         "ecpa-host-launch",
     ),
     (
         "manual-integration",
-        "pr54-stock-manual-tp2",
-        "sha256:6018755b62a4e1f109d66496147b4380d4af1e58716bce8fc36ed16d2908ae8d",
+        "e583-stock-manual-tp2",
+        "sha256:a54db94a5add74f80d9334ec81d36c04a5d5932760abd4c42e30c87671a5ef38",
         "ecpa-host-launch",
     ),
     (
         "ecpa",
-        "pr54-stock-ecpa-python-target-tp2",
-        "sha256:06dcd5cf8324648316289afe7a3d9e91de459788d696cd54318319d1183e0489",
+        "e583-stock-ecpa-python-target-tp2",
+        "sha256:5c5bd3fb39b8ce3d230c1a6863d6c366b1912e525c649199181eec7f976ed71e",
         "direct-venv-python-module",
     ),
 )
@@ -171,11 +171,8 @@ def _failed_record(evidence_root: Path) -> dict[str, Any]:
     result = _load(result_path)
     if digest_file(result_path) != expected_result:
         raise ValueError("failed script-target result digest differs")
-    if (
-        result.get("source_commits") != SOURCE_COMMITS
-        or result.get("wheel_sha256") != WHEEL_SHA256
-    ):
-        raise ValueError("failed script-target tuple differs")
+    # This retained negative control predates the protocol amendment and is not
+    # part of the newly qualified three-arm tuple. Its own bytes remain bound.
     host_argv = result.get("host_argv")
     if (
         result.get("success") is not False
