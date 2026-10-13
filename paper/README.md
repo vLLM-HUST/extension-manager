@@ -24,7 +24,14 @@ no performance claim.  The separate authoritative r5 campaign now supplies
 the first H1 formal cell: nine validator-approved starts over three arms and
 three repetitions.  All arms, including ECPA, retained an effective claim at
 0.5 evidence coverage, so the tested H1 prevention claim is falsified.  H2--H4
-and the real ExposureGate remain incomplete.
+and the real ExposureGate remain incomplete.  H2 now has a source-bound,
+three-case definite subset with one true admit and two true rejects
+($FP=FN=0$); its observed precision and recall are 1.0, but the sample and
+conflict-surface coverage are insufficient to close H2.  The compatible TP2
+pair proves short-context process-owned execution only, not compression
+correctness or performance.  H3 and H4 each have zero formal runs.  The older
+31-case synthetic/modeled L2 seed is retained only as a reproducibility
+fixture and is not reported as H2 evidence.
 
 Build:
 
@@ -55,11 +62,11 @@ Evidence rules:
 - Aggregates may not hide a failed provider, process topology, or version tuple.
 - A figure/table generator must reject mixed identities and missing required
   provenance before producing a paper result.
-- Artifact-backed counts and modeled metrics in `main.tex` come from the
+- Artifact-backed counts and metrics in `main.tex` come from the
   checked-in `generated/evidence-summary.tex`. Regenerate it with `make
   evidence-summary`; `make check-evidence-summary` fails if it is stale or if
-  the corpus, planner, formal-status, adapter-registry, release-readiness, and
-  native-qualification inputs disagree.
+  the corpus, planner, source-bound H2 subset, formal status, adapter registry,
+  release-readiness, and native-qualification inputs disagree.
 - `../docs/research/claims-to-experiment-matrix.json` separates each paper
   claim from its falsifier, evidence authority, and experiment. The first
   formal-real preregistration is

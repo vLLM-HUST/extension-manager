@@ -65,7 +65,12 @@ evidence was quarantined, all three ECPA repetitions still claimed effective
 with only 0.5 process coverage.  This falsifies the tested H1 prevention claim
 and identifies the missing real traffic-boundary gate as a system requirement,
 rather than establishing it from the runtime protocol.  The study makes no
-throughput, latency, rollback, or cross-runtime claim.
+throughput, latency, rollback, or cross-runtime claim.  A separate
+source-bound H2 subset currently scores \ECPAHTwoScoredCases{} definite
+compositions ($TP=\ECPAHTwoTruePositive{},TN=\ECPAHTwoTrueNegative{},
+FP=\ECPAHTwoFalsePositive{},FN=\ECPAHTwoFalseNegative{}$).  Its observed
+precision and recall are 1.0, but this
+sample is too small and omits important conflict surfaces, so H2 remains open.
 \end{abstract}
 
 \section{Introduction}
@@ -153,8 +158,9 @@ fail-closed formal harness are implemented.  Release \ECPAReleaseVersion{}
 freezes Manifest \ECPAManifestVersion{} and records one pinned native-host
 lifecycle qualification.  The source-bound static corpus is measured, and the
 first matched prototype-host H1 cell is complete and falsifies its prevention
-hypothesis.  H2's real-composition oracle, H3 recovery, H4 performance, and a
-real authority-owned ExposureGate remain incomplete.  We do not present
+hypothesis.  H2 has a three-case real-source subset but lacks the breadth to
+support its population claim; H3 and H4 each have zero formal runs, and a real
+authority-owned ExposureGate remains incomplete.  We do not present
 modeled decisions, interface fixtures, release qualification, or lifecycle
 startup fields as substitutes for those experiments.
 
@@ -594,13 +600,13 @@ pure contract compiler that resolves normalized public-PEP-440 requirements to
 exactly one provider, derives deterministic dependency order, rejects cycles,
 binds typed observation authority and quorum policy, and checks exclusive,
 shared-read, and selected-mediator resource ownership.  A frozen
-machine-readable taxonomy and independently labeled modeled oracle now measure
+machine-readable taxonomy and an early modeled seed measure
 the static admission mechanics, with the limitations reported in
 Section~\ref{sec:evaluation}.  The matched nine-start partial-worker campaign
 now establishes that the formal protocol can collect and replay process-owned
 evidence, and it falsifies H1 for the tested implementation.  Consequently we
-claim measured modeled L2 admission, one bounded lifecycle qualification, and
-one negative H1 result, not a completed end-to-end \system evaluation.
+claim one negative H1 result, one bounded lifecycle qualification, and a
+three-case partial H2 result, not a completed end-to-end \system evaluation.
 
 An exact-commit, cross-repository adapter preflight exercises the host's
 preemption-policy controller and translates its deployment journal into a
@@ -741,7 +747,7 @@ not a cross-runtime ECPA experiment.  Our generality evidence is therefore the
 combination of corpus diversity, prototype-host process scopes, the fault model, and
 the explicit contract/host boundary---not cross-framework validation.
 
-For the L2 study, we freeze a canonical resource-and-alias taxonomy,
+The first L2 study froze a canonical resource-and-alias taxonomy,
 \ECPAPlannerCases{} modeled
 single/pair/triple compositions, and a separately stored manual candidate
 oracle before implementing the evaluator.  The models cover all
@@ -756,10 +762,11 @@ rejects, including reject error codes.  Reject precision, reject recall, and
 admit recall are respectively \ECPAPlannerRejectPrecision{},
 \ECPAPlannerRejectRecall{}, and \ECPAPlannerAdmitRecall{}; a reject-all baseline
 has precision $\ECPAPlannerRejects/\ECPAPlannerCases$ and admit
-recall 0.  This result establishes conformance only to the small modeled static
-corpus.  Every conflict case contains a synthetic boundary control, so the
-result does not establish real-plugin conflict prevalence, runtime
-effectiveness, or external validity.
+recall 0.  This early modeled seed establishes conformance only to its small
+static corpus.  Every conflict case contains a synthetic boundary control.  We
+retain it as a reproducibility fixture and do not use it as H2 evidence; the
+source-bound result in Section~\ref{sec:h2-partial} supersedes it for current
+claim accounting.
 
 \section{Evaluation Methodology and Current Evidence}
 \label{sec:evaluation}
@@ -770,8 +777,9 @@ vanilla vLLM entry points, manual integration, and ECPA.  Formal cells require
 derives outcomes from preregistered truth predicates
 and raw runtime observations; implementation decisions are not accepted as
 ground truth.  The checked r5 campaign has \ECPAFormalStarts{} complete
-formal-real starts in one scenario cell; H2--H4 remain null or planned, and the
-modeled L2 result above is separate.  A \ECPAReferenceStarts{}-start helper-process run tests the
+formal-real starts in one scenario cell.  H2 has a partial source-bound result
+outside that matched runtime aggregate; H3 and H4 have zero formal runs.  A
+\ECPAReferenceStarts{}-start helper-process run tests the
 harness lifecycle and failure classification, but is explicitly
 reference-synthetic and excluded from paper aggregates.  Formal ingestion is
 runner-owned and content-addresses the command, semantic environment, raw
@@ -868,11 +876,11 @@ injection is independently observed; asking the SUT whether its own fault
 occurred cannot falsify the corresponding premise.
 
 The static planner and transaction model have only modeled results; the
-source-bound page corpus and one NPU lifecycle qualification are observed but
-outside the formal aggregate.  The first matched runtime cell is complete;
-recovery, rollback, real-composition, traffic-gate, and overhead results remain
-planned or missing, with \ECPAFormalCompleted{} complete formal scenario cell
-and \ECPAVerifiedAdapters{} registered adapters.
+source-bound page corpus, partial H2 subset, and one NPU lifecycle qualification
+are observed but outside the matched runtime aggregate.  The first matched
+runtime cell is complete.  H3 recovery and H4 overhead each remain at zero
+formal runs, with \ECPAFormalCompleted{} complete H1 scenario cell and
+\ECPAVerifiedAdapters{} registered adapters.
 
 \begin{table}[t]
 \centering
@@ -903,6 +911,37 @@ claim, not traffic exposure or whether computation stopped.  The r2--r4 campaign
 are excluded from this aggregate.  Recorded startup durations are lifecycle
 fields for H1 and are not interpreted as H4 performance measurements.
 
+\subsection{Partial Source-Bound H2 Result}
+\label{sec:h2-partial}
+The successor H2 corpus currently has \ECPAHTwoScoredCases{} definite,
+independently labeled compositions for which the Manager also produced a
+binary decision.  Recomputing predictions against the frozen oracle gives
+$TP=\ECPAHTwoTruePositive{}$, $TN=\ECPAHTwoTrueNegative{}$,
+$FP=\ECPAHTwoFalsePositive{}$, and $FN=\ECPAHTwoFalseNegative{}$.  Admit
+precision/recall and reject precision/recall are therefore all 1.0.  The admit
+prevents a reject-all policy from satisfying H2; that baseline has admit recall
+0.
+
+The true positive is Lifecycle Profiler plus KVCompress on an exact TP2
+vLLM-HUST/Ascend stack.  Both frozen installation orders completed a short
+context request and produced process-owned host evidence with clean shutdown.
+The workload has \code{max\_model\_len=2048}, below KVCompress's 9216-token
+threshold.  This is compatible host execution, not an observed compression
+transaction, compression-correctness result, or performance measurement.  One
+true negative is the exact-stack KNorm plus KVCompress pre-launch rejection;
+the other is a source-bound three-MOD rejection containing import-only KNorm.
+
+This is a partial H2 result.  Three scored cases cannot estimate prevalence or
+support the preregistered population claim.  External-service and
+provider-translation cases remain unavailable; CLI/config and
+external-authority surfaces lack a competing real source.  Two
+communication/process-carrier cases now have independent
+\emph{abstain} labels: their Manager surface predictions are retained but are
+unscored, so they do not change $n=3$.  The conditional DiffSpec/KVCompress
+pair is also excluded pending
+physical-ownership and installation-order review.  We therefore report the
+observed 1.0 values with $n=3$ and keep H2 incomplete.
+
 \subsection{Reference ExposureGate Artifact}
 The reference gate artifact is a deterministic, single-host state machine backed
 by SQLite and an in-process scheduler-admission model.  It exercises
@@ -924,17 +963,19 @@ group, zero in the changed group, and zero discovered bundles.  This is a real
 counterexample to ``unit tests plus installation imply activation,'' and it has
 been retained as the M0 negative fixture rather than merged.
 
-The source-bound modeled L2 corpus additionally contains \ECPAPlannerCases{}
+The early modeled L2 seed additionally contains \ECPAPlannerCases{}
 frozen composition cases over \ECPAPlannerSeedExtensions{} seed extensions.
 The compiler matches all \ECPAPlannerAdmits{} admits and \ECPAPlannerRejects{}
 rejects, including reject classes, after independent oracle review.  Exact
 repository commits, root trees, and \ECPASourceObjects{} cited Git objects
 across \ECPASourceRepositories{} repositories
-bind the corpus to inspected source.  These numbers measure conformance to the
-modeled taxonomy, not real conflict prevalence or runtime effectiveness.
+bind that fixture to inspected source.  These numbers measure conformance to
+the modeled taxonomy, not H2, real conflict prevalence, or runtime
+effectiveness.
 
-The partial-worker-coverage H1 cell is measured; all other formal runtime and
-performance quantities remain planned.  The single release qualification is
+The partial-worker-coverage H1 cell is measured.  H2 has only the three-case
+partial result above, while H3 and H4 have zero formal runs.  The single
+release qualification is
 reported separately and cannot populate a formal cell.  Table and figure
 generators refuse to replace missing values with zero.  The H1 result shows
 that complete evidence collection can expose a failed prevention property: in
@@ -1044,8 +1085,10 @@ otherwise a disappearing worker could make success vacuous.
 
 Conflict taxonomies can be incomplete.  Precision and recall are measured
 against an independently labeled oracle, but that oracle may miss semantic
-interactions.  We mitigate this with explicit unknown/unverified outcomes and
-negative cells, not a universal composability claim.  Deterministic rollback
+interactions.  The current real-source subset has only three scored cases and
+does not cover several required conflict surfaces.  We mitigate this with
+explicit unknown/unverified outcomes and negative cells, not a universal
+composability claim.  Deterministic rollback
 can restore manager-owned inputs, not external data or services; bounded
 operator action is therefore a first-class outcome.
 
@@ -1098,8 +1141,10 @@ over mock-only tests, while a pinned native NPU lifecycle shows that the
 process-owned evidence and cleanup path can execute end to end.  More
 significantly, the first matched nine-start study finds false-effective state
 in all three ECPA repetitions after partial evidence loss.  The tested runtime
-therefore does not yet enforce its intended prevention property.  A real
-traffic gate plus the composability, version-skew, recovery, and overhead
+therefore does not yet enforce its intended prevention property.  The partial
+H2 subset correctly classifies one admit and two rejects, but is not broad
+enough to establish composability.  A real traffic gate plus broader
+composability, version-skew, recovery, and overhead
 evaluations remain necessary before making the broader systems claim.
 
 \bibliographystyle{plain}

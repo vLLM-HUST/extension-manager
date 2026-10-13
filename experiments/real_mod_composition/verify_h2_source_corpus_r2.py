@@ -180,7 +180,7 @@ def main() -> int:
         "preexisting_oracle_cases": 2,
         "oracle_pending_cases": 4,
     }
-    assert status["acceptance"]["paper_demotes_synthetic_seed"] is False
+    assert status["acceptance"]["paper_demotes_synthetic_seed"] is True
     assert (
         status["acceptance"]["requested_population_surface_coverage_complete"] is False
     )

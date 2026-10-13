@@ -260,6 +260,203 @@ def validate_h1_r5(root: Path) -> dict[str, int | str]:
     }
 
 
+def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
+    """Recompute the scored, definite subset of the source-bound H2 corpus."""
+    prefix = (
+        "experiments/real_mod_composition/artifacts/"
+        "h2-minimal-real-source-corpus-r2-20261013"
+    )
+    campaign = load_json(root, f"{prefix}/campaign.json")
+    oracle = load_json(root, f"{prefix}/oracle-index.json")
+    status = load_json(root, f"{prefix}/status.json")
+    carrier_prefix = (
+        "experiments/real_mod_composition/artifacts/"
+        "h2-process-carrier-oracle-20261013"
+    )
+    carrier_oracle = load_json(root, f"{carrier_prefix}/oracle.json")
+    carrier_predictions = load_json(root, f"{carrier_prefix}/manager-predictions.json")
+    if (
+        campaign.get("schema") != "ecpa-h2-minimal-real-source-corpus/v2"
+        or campaign.get("revision") != 2
+        or campaign.get("evidence_ordering", {}).get(
+            "labels_reassigned_after_predictions"
+        )
+        is not False
+        or campaign.get("scoring_policy", {}).get("positive_class") != "admit"
+        or campaign.get("scoring_policy", {}).get("negative_class") != "reject"
+        or oracle.get("schema") != "ecpa-h2-real-source-oracle-index/v2"
+        or status.get("schema") != "ecpa-h2-minimal-corpus-status/v2"
+        or status.get("campaign_sha256")
+        != f"sha256:{digest(root, f'{prefix}/campaign.json')}"
+        or status.get("oracle_index_sha256")
+        != f"sha256:{digest(root, f'{prefix}/oracle-index.json')}"
+        or oracle.get("campaign_sha256") != status.get("campaign_sha256")
+    ):
+        raise ValueError("H2 source-bound corpus identities or ordering are invalid")
+
+    cases = campaign.get("cases")
+    labels = oracle.get("labels")
+    if not isinstance(cases, list) or not isinstance(labels, list):
+        raise ValueError("H2 source-bound corpus must contain cases and labels")
+    labels_by_id = {row.get("case_id"): row for row in labels}
+    if len(labels_by_id) != len(labels) or {row.get("case_id") for row in cases} != set(
+        labels_by_id
+    ):
+        raise ValueError("H2 oracle index does not exactly cover the successor corpus")
+
+    counts = {
+        "true_positive": 0,
+        "true_negative": 0,
+        "false_positive": 0,
+        "false_negative": 0,
+    }
+    scored = []
+    for case in cases:
+        label = labels_by_id[case["case_id"]]
+        if label.get("decision") != case.get("oracle_decision") or label.get(
+            "score_eligible"
+        ) != case.get("score_eligible"):
+            raise ValueError("H2 successor case differs from its indexed oracle label")
+        if case.get("score_eligible") is not True:
+            continue
+        prediction = case.get("prediction", {})
+        actual = case.get("oracle_decision")
+        predicted = prediction.get("decision")
+        if actual not in {"admit", "reject"} or predicted not in {"admit", "reject"}:
+            raise ValueError("H2 scored subset contains a non-binary decision")
+        source = prediction.get("source")
+        source_sha256 = prediction.get("source_sha256")
+        if (
+            not isinstance(source, str)
+            or not isinstance(source_sha256, str)
+            or source_sha256 != f"sha256:{digest(root, source)}"
+        ):
+            raise ValueError("H2 scored prediction is not bound to its source artifact")
+        if actual == "admit" and predicted == "admit":
+            counts["true_positive"] += 1
+        elif actual == "reject" and predicted == "reject":
+            counts["true_negative"] += 1
+        elif actual == "reject" and predicted == "admit":
+            counts["false_positive"] += 1
+        else:
+            counts["false_negative"] += 1
+        scored.append(case)
+
+    matrix = status.get("confusion_matrix")
+    acceptance = status.get("acceptance")
+    augmentation = status.get("surface_augmentation")
+    if (
+        matrix != {"case_count": len(scored), "positive_class": "admit", **counts}
+        or len(scored) != 3
+        or counts
+        != {
+            "true_positive": 1,
+            "true_negative": 2,
+            "false_positive": 0,
+            "false_negative": 0,
+        }
+        or status.get("h2_acceptance_complete") is not False
+        or not isinstance(acceptance, dict)
+        or acceptance.get("paper_demotes_synthetic_seed") is not True
+        or acceptance.get("requested_population_surface_coverage_complete") is not False
+        or not isinstance(augmentation, dict)
+        or augmentation.get("sha256")
+        != f"sha256:{digest(root, augmentation.get('path', ''))}"
+        or augmentation.get("oracle_pending_cases") != 4
+        or len(status.get("remaining_gaps", [])) < 5
+    ):
+        raise ValueError("H2 partial result or its explicit incompleteness has drifted")
+
+    tp, tn = counts["true_positive"], counts["true_negative"]
+    fp, fn = counts["false_positive"], counts["false_negative"]
+    admit_precision = tp / (tp + fp)
+    admit_recall = tp / (tp + fn)
+    reject_precision = tn / (tn + fn)
+    reject_recall = tn / (tn + fp)
+    expected_metrics = {
+        "accuracy": (tp + tn) / len(scored),
+        "admit_precision": admit_precision,
+        "admit_recall": admit_recall,
+        "reject_precision": reject_precision,
+        "reject_recall": reject_recall,
+        "threshold": 0.95,
+        "threshold_met": min(
+            admit_precision, admit_recall, reject_precision, reject_recall
+        )
+        >= 0.95,
+    }
+    if status.get("metrics") != expected_metrics:
+        raise ValueError("H2 reported metrics differ from the recomputed subset")
+
+    carrier_cases = carrier_oracle.get("cases")
+    carrier_rows = carrier_predictions.get("predictions")
+    if (
+        carrier_oracle.get("schema")
+        != "ecpa-h2-independent-process-carrier-oracle/v1"
+        or carrier_oracle.get("oracle_summary")
+        != {
+            "admit": 0,
+            "reject": 0,
+            "abstain": 2,
+            "score_eligible": 0,
+            "runtime_claim": False,
+            "performance_claim": False,
+        }
+        or carrier_predictions.get("schema")
+        != "ecpa-h2-process-carrier-manager-predictions/v1"
+        or carrier_predictions.get("h2_complete") is not False
+        or carrier_predictions.get("oracle", {}).get("frozen_before_planner")
+        is not True
+        or carrier_predictions.get("oracle", {}).get("sha256")
+        != digest(root, f"{carrier_prefix}/oracle.json")
+        or not isinstance(carrier_cases, list)
+        or not isinstance(carrier_rows, list)
+        or len(carrier_cases) != 2
+        or len(carrier_rows) != 2
+        or {row.get("case_id") for row in carrier_cases}
+        != {row.get("case_id") for row in carrier_rows}
+        or any(
+            row.get("decision") != "abstain" or row.get("score_eligible") is not False
+            for row in carrier_cases
+        )
+        or any(
+            row.get("oracle_decision") != "abstain"
+            or row.get("score_eligible") is not False
+            or row.get("runtime_claim") is not False
+            or row.get("performance_claim") is not False
+            for row in carrier_rows
+        )
+    ):
+        raise ValueError("H2 process-carrier abstentions were promoted into the score")
+
+    compatible = next(case for case in scored if case["oracle_decision"] == "admit")
+    runtime = compatible.get("formal_runtime", {})
+    runtime_source = runtime.get("source")
+    if (
+        not isinstance(runtime_source, str)
+        or runtime.get("source_sha256")
+        != f"sha256:{digest(root, runtime_source)}"
+        or runtime.get("compatible_host_execution") is not True
+        or runtime.get("accepted_installation_orders") != 2
+        or runtime.get("compression_transaction") is not False
+        or runtime.get("performance") is not False
+    ):
+        raise ValueError("H2 compatible pair scope has been broadened")
+
+    return {
+        "h2_scored_cases": len(scored),
+        "h2_true_positive": tp,
+        "h2_true_negative": tn,
+        "h2_false_positive": fp,
+        "h2_false_negative": fn,
+        "h2_admit_precision": f"{admit_precision:.1f}",
+        "h2_admit_recall": f"{admit_recall:.1f}",
+        "h2_reject_precision": f"{reject_precision:.1f}",
+        "h2_reject_recall": f"{reject_recall:.1f}",
+        "h2_accepted_orders": runtime["accepted_installation_orders"],
+    }
+
+
 def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     workshop = load_json(root, "docs/corpus/workshop-mods.json")
     workshop_metadata = load_json(
@@ -297,6 +494,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     ).read_text()
     normalized_native_qualification = " ".join(native_qualification.split())
     h1 = validate_h1_r5(root)
+    h2 = validate_h2_real_source_subset(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -778,6 +976,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         "h1_false_effective_numerator": h1["h1_false_effective_numerator"],
         "h1_false_effective_denominator": h1["h1_false_effective_denominator"],
         "h1_coverage": h1["h1_coverage"],
+        **h2,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -835,6 +1034,16 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPAHOneFalseEffectiveNumerator", "h1_false_effective_numerator"),
         ("ECPAHOneFalseEffectiveDenominator", "h1_false_effective_denominator"),
         ("ECPAHOneCoverage", "h1_coverage"),
+        ("ECPAHTwoScoredCases", "h2_scored_cases"),
+        ("ECPAHTwoTruePositive", "h2_true_positive"),
+        ("ECPAHTwoTrueNegative", "h2_true_negative"),
+        ("ECPAHTwoFalsePositive", "h2_false_positive"),
+        ("ECPAHTwoFalseNegative", "h2_false_negative"),
+        ("ECPAHTwoAdmitPrecision", "h2_admit_precision"),
+        ("ECPAHTwoAdmitRecall", "h2_admit_recall"),
+        ("ECPAHTwoRejectPrecision", "h2_reject_precision"),
+        ("ECPAHTwoRejectRecall", "h2_reject_recall"),
+        ("ECPAHTwoAcceptedOrders", "h2_accepted_orders"),
         ("ECPAFormalPlanned", "formal_planned"),
         ("ECPAVerifiedAdapters", "verified_adapters"),
         ("ECPAReferenceStarts", "reference_starts"),

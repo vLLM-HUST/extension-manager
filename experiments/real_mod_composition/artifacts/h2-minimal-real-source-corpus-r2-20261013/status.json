@@ -6,7 +6,7 @@
     "exact_repository_tree_manifest_bindings": true,
     "meaningful_real_admit_and_reject": true,
     "observed_precision_recall_at_least_0_95": true,
-    "paper_demotes_synthetic_seed": false,
+    "paper_demotes_synthetic_seed": true,
     "real_conflict_rejected_before_launch": true,
     "requested_population_surface_coverage_complete": false
   },
@@ -39,8 +39,7 @@
     "communication, external-service, and provider-translation sources are frozen, but their preexisting labeled cases remain Manager-unavailable and unscored",
     "CLI/config collision needs a second independently developed active bundle claiming the same real launch projection",
     "external-authority conflict needs a source-bound controller/autoscaler that competes with Production Stack for Deployment.spec.replicas",
-    "two communication/process-carrier candidate compositions are frozen before independent source review and therefore have no Manager prediction",
-    "the paper has not yet demoted the synthetic seed in favor of this real-corpus result",
+    "two communication/process-carrier compositions have independent abstain labels and remain unscored despite Manager surface predictions",
     "n=3 scored compositions gives no strong estimate of population prevalence despite observed metrics of 1.0",
     "the conditional DiffSpec/KVCompress pair still needs physical ownership and install-order review"
   ],

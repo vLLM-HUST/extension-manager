@@ -41,6 +41,16 @@ INPUTS = (
     "experiments/false_effective/scenarios.json",
     "experiments/false_effective/protocol.json",
     "experiments/false_effective/verified-adapters.json",
+    "experiments/real_mod_composition/artifacts/h2-knorm-prelaunch-reject-20261013.json",
+    "experiments/real_mod_composition/artifacts/h2-source-corpus-manager-predictions-20261013.json",
+    "experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/score-admission.json",
+    "experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/planner/planner-receipt.json",
+    "experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/campaign.json",
+    "experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/oracle-index.json",
+    "experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/status.json",
+    "experiments/real_mod_composition/artifacts/h2-real-source-augmentation-20261013/augmentation.json",
+    "experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/oracle.json",
+    "experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/manager-predictions.json",
     "paper/artifacts/h1-r5/formal-aggregate.json",
     "paper/artifacts/h1-r5/formal-aggregate-summary.json",
     "paper/artifacts/h1-r5/paper-results.jsonl",
@@ -110,6 +120,16 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "h1_false_effective_numerator": 3,
         "h1_false_effective_denominator": 3,
         "h1_coverage": "0.5",
+        "h2_scored_cases": 3,
+        "h2_true_positive": 1,
+        "h2_true_negative": 2,
+        "h2_false_positive": 0,
+        "h2_false_negative": 0,
+        "h2_admit_precision": "1.0",
+        "h2_admit_recall": "1.0",
+        "h2_reject_precision": "1.0",
+        "h2_reject_recall": "1.0",
+        "h2_accepted_orders": 2,
         "formal_planned": 30,
         "verified_adapters": 3,
         "reference_starts": 45,
@@ -161,6 +181,22 @@ def test_generator_rejects_planner_classification_drift(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="planner evidence is internally inconsistent"):
+        generator.collect_summary(tmp_path)
+
+
+def test_generator_rejects_h2_partial_result_overclaim(tmp_path: Path) -> None:
+    generator = load_generator()
+    copy_inputs(tmp_path)
+    status = (
+        tmp_path
+        / "experiments/real_mod_composition/artifacts/"
+        "h2-minimal-real-source-corpus-r2-20261013/status.json"
+    )
+    rewrite_json(
+        status, lambda value: value.__setitem__("h2_acceptance_complete", True)
+    )
+
+    with pytest.raises(ValueError, match="explicit incompleteness"):
         generator.collect_summary(tmp_path)
 
 
