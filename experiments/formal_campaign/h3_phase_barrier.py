@@ -121,3 +121,19 @@ def wait_native_prepare(config: dict[str, Any], **kwargs: Any) -> dict[str, Any]
             )
         time.sleep(0.05)
     raise TimeoutError("durable prepare barrier did not appear; no fault injected")
+
+
+def read_native_recovery(path: Path) -> dict[str, Any]:
+    with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True) as db:
+        db.row_factory = sqlite3.Row
+        state = dict(
+            db.execute("SELECT * FROM gate_state WHERE singleton=1").fetchone()
+        )
+        rows = [
+            dict(r) for r in db.execute("SELECT * FROM gate_transition ORDER BY seq")
+        ]
+    for row in [state, *rows]:
+        for key, value in row.items():
+            if isinstance(value, bytes):
+                row[key] = value.decode()
+    return {"native_state": state, "native_rows": rows}

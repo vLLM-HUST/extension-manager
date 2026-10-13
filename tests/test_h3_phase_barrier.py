@@ -15,7 +15,16 @@ from pathlib import Path
 
 import pytest
 
-from experiments.formal_campaign.h3_phase_barrier import identity, wait_native_prepare
+from experiments.formal_campaign.h3_authority_chain import (
+    verify_native_recovery,
+    verify_recovery_chain,
+    verify_recovery_events,
+)
+from experiments.formal_campaign.h3_phase_barrier import (
+    identity,
+    read_native_recovery,
+    wait_native_prepare,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -51,9 +60,18 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
+    binding = tmp_path / "recovery-binding.json"
+    registration_sha = "sha256:" + "b" * 64
+    binding.write_text(
+        json.dumps(
+            {"launch_id": spec["launch_id"], "registration_sha256": registration_sha}
+        )
+    )
     proxy_cmd = [
         sys.executable,
         str(ROOT / "experiments/exposure_gate/loopback_traffic.py"),
+        "--recovery-binding",
+        str(binding),
         "--socket",
         spec["authority_socket"],
         "--journal",
@@ -135,9 +153,11 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
                 with pytest.raises(ValueError):
                     wait_native_prepare(config, **kwargs)
             barrier_path.write_text(original_barrier)
+            fault_ns = time.monotonic_ns()
             manager.kill()
             manager.wait(timeout=5)
             assert manager.returncode == -signal.SIGKILL
+            restart_ns = time.monotonic_ns()
             restarted = subprocess.Popen(
                 command, env=env, stdout=log, stderr=log, start_new_session=True
             )
@@ -147,6 +167,41 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
             assert recovered["rollback_classification"] == "RESTORED_STRONG"
             assert recovered["actual_route"]["generation"] == 0
             assert recovered["manager"]["pid"] != manager.pid
+            from experiments.exposure_gate.loopback_traffic import read_traffic_journal
+
+            trace = read_traffic_journal(tmp_path / "authority.jsonl")
+            kwargs = {
+                "expected_proxy": {
+                    k: identity(proxy.pid)[k] for k in ("pid", "start_ticks", "boot_id")
+                },
+                "registration_sha256": registration_sha,
+                "launch_id": spec["launch_id"],
+                "prepared_route": trace[0]["route"],
+                "fault_ns": fault_ns,
+                "restart_ns": restart_ns,
+                "completion_ns": time.monotonic_ns(),
+            }
+            verify_native_recovery(
+                proof, read_native_recovery(Path(config["journal_path"]))
+            )
+            facts = verify_recovery_chain(tmp_path / "authority.jsonl", **kwargs)
+            assert facts["final_route"] == "predecessor"
+            assert facts["rollback_classification"] == "RESTORED_STRONG"
+            for wrong in (
+                {"launch_id": "other-launch"},
+                {"registration_sha256": "sha256:" + "f" * 64},
+                {"restart_ns": kwargs["completion_ns"]},
+                {
+                    "expected_proxy": kwargs["expected_proxy"]
+                    | {"boot_id": "other-boot"}
+                },
+            ):
+                with pytest.raises(ValueError):
+                    verify_recovery_events(trace, **(kwargs | wrong))
+            for mutated in (trace[:-1], trace + [trace[-1]], list(reversed(trace))):
+                with pytest.raises(ValueError):
+                    verify_recovery_events(mutated, **kwargs)
+
         finally:
             for child in reversed(children):
                 if child.poll() is None:

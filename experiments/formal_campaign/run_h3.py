@@ -17,8 +17,15 @@ from typing import Any
 
 import jsonschema
 from analyze import _recompute_h3_metrics, h3_response_correctness
-from h3_phase_barrier import wait_native_prepare
+from h3_authority_chain import (
+    snapshot_digest,
+    verify_native_recovery,
+    verify_recovery_events,
+)
+from h3_phase_barrier import read_native_recovery, wait_native_prepare
 from h3_registration import canonical, command_digest
+
+from experiments.exposure_gate.loopback_traffic import read_traffic_journal
 
 ROOT = Path(__file__).resolve().parent
 
@@ -345,6 +352,13 @@ def main() -> int:
             raise ValueError(
                 "arm lacks its own durable prepare protocol; no fault injected"
             )
+        authority_journal = out / "authority-journal.jsonl"
+        authority_events = read_traffic_journal(authority_journal)
+        proxy_identity = process_identity(authority_events[0]["proxy_pid"])
+        if proxy_identity["start_ticks"] != authority_events[0]["proxy_start_ticks"]:
+            raise ValueError("authority process identity changed")
+        if proxy_identity["pid"] == os.getpid():
+            raise ValueError("authority is not independently owned")
         launched_ns = time.monotonic_ns()
         launcher = subprocess.Popen(
             arm["launch_command"],
@@ -395,14 +409,17 @@ def main() -> int:
         else:
             raise TimeoutError("fault target identity remained alive")
         event("fault-observed", target)
-        event("recovery-started", {})
+        restart_ns = time.monotonic_ns()
+        event("recovery-started", {"monotonic_ns": restart_ns})
         restarted = subprocess.Popen(
             arm["launch_command"],
             stdout=log_file,
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
-        owned_launches.append((restarted, process_identity(restarted.pid)))
+        restarted_identity = process_identity(restarted.pid)
+        owned_launches.append((restarted, restarted_identity))
+        events[-1]["detail"]["manager"] = restarted_identity
         wait_ready(
             campaign["probe"]["health_url"], campaign["probe"]["ready_timeout_s"]
         )
@@ -420,7 +437,36 @@ def main() -> int:
         state_after = json.loads(
             subprocess.check_output(campaign["probe"]["state_command"], text=True)
         )
-        event("recovery-complete", state_after)
+        completion_ns = time.monotonic_ns()
+        if not phase or phase["support"] != "supported":
+            raise ValueError("arm lacks an independent native recovery adapter")
+        native_recovery = read_native_recovery(Path(phase["journal_path"]))
+        verify_native_recovery(proof, native_recovery)
+        prepared = proof["native_state"]
+        prepared_route = {
+            "generation": prepared["predecessor_generation"],
+            "fence": f"fence-{prepared['predecessor_generation']}",
+            "snapshot_sha256": snapshot_digest(
+                json.loads(prepared["predecessor_json"])
+            ),
+        }
+        authority_events = read_traffic_journal(authority_journal)
+        authority_facts = verify_recovery_events(
+            authority_events,
+            expected_proxy=proxy_identity,
+            registration_sha256=authority_start["proxy_registration_sha256"],
+            launch_id=start_id,
+            prepared_route=prepared_route,
+            fault_ns=next(
+                e["monotonic_ns"] for e in events if e["kind"] == "fault-triggered"
+            ),
+            restart_ns=restart_ns,
+            completion_ns=completion_ns,
+        )
+        event(
+            "recovery-complete",
+            {"authority_facts": authority_facts, "state_probe": state_after},
+        )
     except Exception as exc:
         write(
             out / "failure.json",
@@ -496,6 +542,16 @@ def main() -> int:
             out / "cleanup-report.json", {"start_id": start_id, "cleanup": cleanup}
         ),
     }
+    authority_binding = write(
+        out / "authority-chain.json",
+        {
+            "events": authority_events,
+            "proxy_identity": proxy_identity,
+            "prepared_route": prepared_route,
+            "native_recovery": native_recovery,
+        },
+    )
+    bindings["authority_chain"] = authority_binding
     raw = {
         "schema": "ecpa-h3-raw-recovery/v1",
         "evidence_class": "formal-real",
@@ -517,6 +573,12 @@ def main() -> int:
         },
         "artifact_sha256": {name: value["sha256"] for name, value in bindings.items()},
         "events": events,
+        "authority_chain": {
+            "events": authority_events,
+            "proxy_identity": proxy_identity,
+            "prepared_route": prepared_route,
+            "native_recovery": native_recovery,
+        },
         "request_results": request_results,
         "process_snapshot": process_snapshot,
     }

@@ -37,3 +37,23 @@ remains required. H3 formal starts remain zero.
 This adapter does not yet bind a model launcher to coordinator recovery or
 independently recompute the full post-recovery authority hash chain. A pure
 `state_command` report is insufficient to establish those remaining claims.
+
+Post-recovery intake now independently recomputes the traffic authority's full
+hash chain. The authority start binds the exact launch and proxy registration;
+every row binds its PID, start ticks, boot ID and monotonic timestamp. Restoration
+requires one adjacent restore intent/effect pair after the new coordinator
+starts, the same prepared predecessor generation/fence/snapshot, and no later
+route change before completion. The retained SQLite journal must extend the
+prepared prefix with an ordered, operation-bound native rollback receipt while
+leaving the before-effect close uncompleted. A state command or recovery summary
+cannot establish route restoration. The protocol issuer binds the new verifier
+bytes and the native adapter state probe no longer emits authoritative labels.
+
+The current client sends requests only after restart. Therefore lost requests,
+duplicate requests and whole-crash objective are unknown (`null`), with explicit
+`crash_window_coverage: missing`. These starts remain incomplete in aggregation;
+unknown does not count as a recovery success or falsification. The observed
+post-recovery loss count is derived from HTTP status and has that limited scope.
+A frozen independent client trace spanning the fault remains required. This
+change and its real CPU SIGKILL/SQLite/authority test provide no formal H3 starts,
+model performance, matched baseline recovery or Host admission.

@@ -9,11 +9,19 @@ import hashlib
 import json
 import random
 import statistics
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import jsonschema
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from experiments.formal_campaign.h3_authority_chain import (  # noqa: E402
+    snapshot_digest,
+    verify_native_recovery,
+    verify_recovery_events,
+)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -433,8 +441,40 @@ def _recompute_h3_metrics(
     if len(recovery) != 1 or recovery[0]["monotonic_ns"] < observed[0]["monotonic_ns"]:
         raise ValueError(f"{start_id} lacks one ordered recovery completion")
     recovery_ms = (recovery[0]["monotonic_ns"] - fault["monotonic_ns"]) / 1_000_000
-    final = recovery[0]["detail"]
-    objective = campaign_spec["objective"]
+    chain = raw.get("authority_chain")
+    restart = kinds.get("recovery-started", [])
+    if not isinstance(chain, dict) or len(restart) != 1:
+        raise ValueError(f"{start_id} lacks independent authority recovery chain")
+    manager = restart[0]["detail"].get("manager", {})
+    if manager.get("boot_id") != target["boot_id"] or (
+        manager.get("pid"),
+        manager.get("start_ticks"),
+    ) == (target["pid"], target["start_ticks"]):
+        raise ValueError(f"{start_id} recovery manager was not restarted")
+    verify_native_recovery(proof, chain["native_recovery"])
+    native = proof["native_state"]
+    expected_route = {
+        "generation": native["predecessor_generation"],
+        "fence": f"fence-{native['predecessor_generation']}",
+        "snapshot_sha256": snapshot_digest(json.loads(native["predecessor_json"])),
+    }
+    if chain["prepared_route"] != expected_route:
+        raise ValueError(
+            f"{start_id} authority predecessor differs from native prepare"
+        )
+    facts = verify_recovery_events(
+        chain["events"],
+        expected_proxy=chain["proxy_identity"],
+        registration_sha256=raw["proxy_registration_sha256"],
+        launch_id=start_id,
+        prepared_route=chain["prepared_route"],
+        fault_ns=fault["monotonic_ns"],
+        restart_ns=restart[0]["monotonic_ns"],
+        completion_ns=recovery[0]["monotonic_ns"],
+    )
+    final = facts
+    if recovery[0]["detail"].get("authority_facts") != facts:
+        raise ValueError(f"{start_id} recovery summary differs from authority bytes")
     request_events = kinds.get("request-result", [])
     if len(request_events) != campaign_spec["probe"]["request_count"]:
         raise ValueError(f"{start_id} request count differs from frozen probe")
@@ -476,41 +516,27 @@ def _recompute_h3_metrics(
     ids = [event["detail"]["request_id"] for event in request_events]
     if len(ids) != len(set(ids)):
         raise ValueError(f"{start_id} has duplicate request observations")
-    lost = sum(event["detail"]["outcome"] == "lost" for event in request_events)
-    duplicated = sum(
-        event["detail"]["outcome"] == "duplicated" for event in request_events
-    )
+    lost = sum(event["detail"].get("status_code") != 200 for event in request_events)
     unsupported_served = any(
         event["detail"]["outcome"] == "served"
         and event["detail"]["tuple_supported"] is False
         for event in request_events
     )
-    predecessor_preserved = final.get("predecessor_digest") == raw["pre_fault"][
-        "predecessor_digest"
-    ] and not kinds.get("predecessor-destroyed")
-    functional_correctness = bool(final.get("functional_correctness")) and all(
+    predecessor_preserved = facts["predecessor_preserved"] and not kinds.get(
+        "predecessor-destroyed"
+    )
+    functional_correctness = bool(request_events) and all(
         event["detail"]["functional_correctness"]
         for event in request_events
         if event["detail"]["outcome"] == "served"
     )
     identity_preserved = (
-        final.get("evidence_identity_sha256")
-        == raw["pre_fault"]["evidence_identity_sha256"]
+        chain["events"][0]["detail"]["authorization"].get("registration_sha256")
+        == raw["proxy_registration_sha256"]
     )
     operator_actions = len(kinds.get("operator-action", []))
     rollback = final.get("rollback_classification")
-    objective_met = (
-        recovery_ms <= objective["max_recovery_ms"]
-        and lost <= objective["max_lost_requests"]
-        and duplicated <= objective["max_duplicated_requests"]
-        and operator_actions <= objective["max_operator_actions"]
-        and final.get("final_route") == objective["expected_final_route"]
-        and rollback in objective["allowed_rollback_classifications"]
-        and not unsupported_served
-        and predecessor_preserved
-        and functional_correctness
-        and identity_preserved
-    )
+    objective_met = None  # Crash-window trace is absent; no failure is inferred.
     return {
         "injected_failure": True,
         "objective_met": objective_met,
@@ -519,8 +545,10 @@ def _recompute_h3_metrics(
         "functional_correctness": functional_correctness,
         "evidence_identity_preserved": identity_preserved,
         "recovery_ms": recovery_ms,
-        "lost_requests": lost,
-        "duplicated_requests": duplicated,
+        "lost_requests": None,
+        "duplicated_requests": None,
+        "post_recovery_observed_lost_requests": lost,
+        "crash_window_coverage": "missing",
         "operator_actions": operator_actions,
         "final_route": final["final_route"],
         "rollback_classification": rollback,
@@ -611,6 +639,11 @@ def _verify_h3_raw_artifact(
         raise ValueError(f"{record['start_id']} request results differ from raw H3")
     if process_document != raw["process_snapshot"]:
         raise ValueError(f"{record['start_id']} process snapshot differs from raw H3")
+    chain_document = _load_object(
+        (root / record["artifacts"]["authority_chain"]["path"]).resolve()
+    )
+    if chain_document != raw["authority_chain"]:
+        raise ValueError(f"{record['start_id']} authority chain differs from raw H3")
     if cleanup_document.get("cleanup") != record["cleanup"]:
         raise ValueError(f"{record['start_id']} cleanup report differs from record")
     recomputed = _recompute_h3_metrics(record, raw, campaign_spec)
@@ -1139,6 +1172,9 @@ def analyze_h3(
     missing, indexed = _validate_intake(
         protocol, "h3", records, artifact_root, campaign_spec
     )
+    for row in indexed.values():
+        if row["metrics"].get("objective_met") is None:
+            missing.append(f"{row['cell_id']}/{row['start_id']}/crash-window-trace")
     completed_cell: dict[str, Any] = {}
     cell = campaign_spec["cell_id"]
     if not any(item.startswith(f"{cell}/") for item in missing):

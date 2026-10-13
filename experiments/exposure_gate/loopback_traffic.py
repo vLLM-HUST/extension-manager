@@ -141,6 +141,7 @@ class _TrafficJournal:
         stat_fields = Path("/proc/self/stat").read_text().rsplit(")", 1)[1].split()
         self.start_ticks = int(stat_fields[19])
         self.pid = os.getpid()
+        self.boot_id = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
         self.sequence = 0
         self.previous = "sha256:" + "0" * 64
         self.fd = os.open(
@@ -161,6 +162,8 @@ class _TrafficJournal:
             "sequence": next_sequence,
             "previous_sha256": self.previous,
             "at_ns": time.time_ns(),
+            "monotonic_ns": time.monotonic_ns(),
+            "proxy_boot_id": self.boot_id,
             "proxy_pid": self.pid,
             "proxy_start_ticks": self.start_ticks,
             "kind": kind,
@@ -310,9 +313,7 @@ def observe_gate_transitions(path: Path) -> dict[str, Any]:
                             str(authorization["process_membership_sha256"])
                         )
                         is None
-                        or SHA256.fullmatch(
-                            str(authorization["registration_sha256"])
-                        )
+                        or SHA256.fullmatch(str(authorization["registration_sha256"]))
                         is None
                     )
                 )
@@ -558,11 +559,7 @@ class _HostAuthorization:
         try:
             descriptor = os.open(
                 claim_path,
-                os.O_WRONLY
-                | os.O_CREAT
-                | os.O_EXCL
-                | os.O_NOFOLLOW
-                | os.O_CLOEXEC,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
                 0o600,
             )
         except FileExistsError as exc:
@@ -713,6 +710,7 @@ class _Authority:
         candidate: tuple[str, int],
         journal: _TrafficJournal,
         observer: _HostAuthorization | None = None,
+        recovery_binding: dict[str, Any] | None = None,
     ):
         self.route = route
         self.grant = grant
@@ -721,7 +719,14 @@ class _Authority:
         self.journal = journal
         self.observer = observer
         self.lock = threading.Lock()
-        self.journal.record("authority.start", route)
+        binding = observer.binding() if observer is not None else {}
+        if recovery_binding is not None:
+            if observer is not None and observer.registration_sha256 is not None:
+                raise GateError("formal recovery binding cannot be overridden")
+            if binding and recovery_binding.get("launch_id") != binding["launch_id"]:
+                raise GateError("recovery launch binding differs from observer")
+            binding = binding | recovery_binding
+        self.journal.record("authority.start", route, authorization=binding)
 
     def _record(self, kind: str, route: RouteState, **detail: Any) -> None:
         try:
@@ -1010,6 +1015,7 @@ def main() -> None:
     parser.add_argument("--grant-token", type=int, required=True)
     parser.add_argument("--grant-expires-at", type=int, required=True)
     parser.add_argument("--observer-config", type=Path)
+    parser.add_argument("--recovery-binding", type=Path)
     args = parser.parse_args()
     predecessor = json.loads(args.predecessor_snapshot)
     if not isinstance(predecessor, dict) or not isinstance(
@@ -1034,6 +1040,9 @@ def main() -> None:
             ("127.0.0.1", args.candidate_port),
             journal,
             observer,
+            json.loads(args.recovery_binding.read_text())
+            if args.recovery_binding
+            else None,
         )
         if not 0 <= args.listen_port <= 65535:
             raise GateError("proxy listen port is invalid")
