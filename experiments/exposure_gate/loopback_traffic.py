@@ -8,6 +8,7 @@ It is not a production reverse proxy or a general deployment controller.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import http.client
 import json
@@ -19,6 +20,7 @@ import stat
 import struct
 import threading
 import time
+import uuid
 from contextlib import suppress
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -65,6 +67,9 @@ JOURNAL_KINDS = {
     "route.close_all",
     "request.admit",
     "request.reject",
+    "request.complete",
+    "request.error",
+    "request.duplicate",
 }
 
 
@@ -142,6 +147,7 @@ class _TrafficJournal:
         self.start_ticks = int(stat_fields[19])
         self.pid = os.getpid()
         self.boot_id = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+        self.write_lock = threading.Lock()
         self.sequence = 0
         self.previous = "sha256:" + "0" * 64
         self.fd = os.open(
@@ -156,6 +162,10 @@ class _TrafficJournal:
         )
 
     def record(self, kind: str, route: RouteState, **detail: Any) -> None:
+        with self.write_lock:
+            self._record_unlocked(kind, route, **detail)
+
+    def _record_unlocked(self, kind: str, route: RouteState, **detail: Any) -> None:
         next_sequence = self.sequence + 1
         event = {
             "schema": JOURNAL_SCHEMA,
@@ -711,6 +721,7 @@ class _Authority:
         journal: _TrafficJournal,
         observer: _HostAuthorization | None = None,
         recovery_binding: dict[str, Any] | None = None,
+        backend_registration: dict[str, Any] | None = None,
     ):
         self.route = route
         self.grant = grant
@@ -719,6 +730,8 @@ class _Authority:
         self.journal = journal
         self.observer = observer
         self.lock = threading.Lock()
+        self.seen_request_ids: set[str] = set()
+        self.backend_registration = backend_registration or {}
         binding = observer.binding() if observer is not None else {}
         if recovery_binding is not None:
             if observer is not None and observer.registration_sha256 is not None:
@@ -726,7 +739,13 @@ class _Authority:
             if binding and recovery_binding.get("launch_id") != binding["launch_id"]:
                 raise GateError("recovery launch binding differs from observer")
             binding = binding | recovery_binding
-        self.journal.record("authority.start", route, authorization=binding)
+        self.journal.record(
+            "authority.start",
+            route,
+            authorization=binding,
+            backend_registration_sha256="sha256:"
+            + hashlib.sha256(_canonical(self.backend_registration)).hexdigest(),
+        )
 
     def _record(self, kind: str, route: RouteState, **detail: Any) -> None:
         try:
@@ -839,6 +858,37 @@ class _Authority:
                 return {"route": asdict(self.route)}
         raise GateError("unknown traffic control operation")
 
+    def observe_backend(self, port: int) -> dict[str, Any] | None:
+        binding = self.backend_registration.get(str(port))
+        if binding is None:
+            return None
+        expected = binding["process_identity"]
+        fields = (
+            Path(f"/proc/{expected['pid']}/stat").read_text().rsplit(")", 1)[1].split()
+        )
+        actual = {
+            "pid": expected["pid"],
+            "start_ticks": int(fields[19]),
+            "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+        }
+        if fields[0] == "Z" or actual != expected:
+            raise GateError("registered backend process changed")
+        listeners = {
+            line.split()[9]
+            for line in Path("/proc/net/tcp").read_text().splitlines()[1:]
+            if line.split()[1].endswith(f":{port:04X}") and line.split()[3] == "0A"
+        }
+        owned = set()
+        for descriptor in Path(f"/proc/{expected['pid']}/fd").iterdir():
+            with suppress(FileNotFoundError):
+                link = os.readlink(descriptor)
+                if link.startswith("socket:["):
+                    owned.add(link[8:-1])
+        matching = listeners & owned
+        if len(matching) != 1:
+            raise GateError("registered backend does not own the listening endpoint")
+        return binding | {"listener_inode": next(iter(matching))}
+
     def _valid(self, value: dict[str, Any]) -> bool:
         try:
             supplied = LeaseGrant(**value["grant"])
@@ -899,6 +949,25 @@ class _ProxyHandler(BaseHTTPRequestHandler):
         if len(body) != body_size:
             self.send_error(400, "request body truncated")
             return
+        admission_id = uuid.uuid4().hex
+        request_id = self.headers.get("X-ECPA-Request-ID", "")
+        request_sha = "sha256:" + hashlib.sha256(body).hexdigest()
+        if request_id and re.fullmatch(r"[A-Za-z0-9_.:/-]{1,200}", request_id) is None:
+            self.send_error(400, "request identity invalid")
+            return
+        with self.server.authority.lock:
+            if request_id and request_id in self.server.authority.seen_request_ids:
+                self.server.authority._record(
+                    "request.duplicate",
+                    self.server.authority.route,
+                    request_id=request_id,
+                    admission_id=admission_id,
+                    request_sha256=request_sha,
+                )
+                self.send_error(409, "request identity already attempted")
+                return
+            if request_id:
+                self.server.authority.seen_request_ids.add(request_id)
         journal_failed = False
         with self.server.authority.lock:
             try:
@@ -908,6 +977,10 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                     "request.reject" if route.generation is None else "request.admit",
                     route,
                     method=self.command,
+                    path=self.path,
+                    request_id=request_id,
+                    admission_id=admission_id,
+                    request_sha256=request_sha,
                     observation_sha256=observation_sha256,
                 )
             except GateError:
@@ -930,13 +1003,31 @@ class _ProxyHandler(BaseHTTPRequestHandler):
                     self.command,
                     self.path,
                     body=body,
-                    headers={"Content-Type": self.headers.get("Content-Type", "")},
+                    headers={
+                        "Content-Type": self.headers.get("Content-Type", ""),
+                        "X-ECPA-Request-ID": request_id,
+                        "X-ECPA-Admission-ID": admission_id,
+                    },
                 )
                 response = connection.getresponse()
                 payload = response.read(MAX_BODY + 1)
                 if len(payload) > MAX_BODY:
                     raise GateError("backend response too large")
+                self.server.authority._record(
+                    "request.complete",
+                    route,
+                    request_id=request_id,
+                    admission_id=admission_id,
+                    request_sha256=request_sha,
+                    backend_host=backend[0],
+                    backend_port=backend[1],
+                    backend_identity=self.server.authority.observe_backend(backend[1]),
+                    status=response.status,
+                    body_base64=base64.b64encode(payload).decode(),
+                    body_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
+                )
                 self.send_response(response.status)
+                self.send_header("X-ECPA-Admission-ID", admission_id)
                 self.send_header("Content-Type", response.getheader("Content-Type", ""))
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
@@ -944,6 +1035,17 @@ class _ProxyHandler(BaseHTTPRequestHandler):
             finally:
                 connection.close()
         except (OSError, GateError):
+            with suppress(GateError):
+                self.server.authority._record(
+                    "request.error",
+                    "request.duplicate",
+                    route,
+                    request_id=request_id,
+                    admission_id=admission_id,
+                    request_sha256=request_sha,
+                    backend_host=backend[0],
+                    backend_port=backend[1],
+                )
             self.send_error(502, "backend unavailable")
 
     def log_message(self, _format: str, *_args: Any) -> None:
@@ -1016,6 +1118,7 @@ def main() -> None:
     parser.add_argument("--grant-expires-at", type=int, required=True)
     parser.add_argument("--observer-config", type=Path)
     parser.add_argument("--recovery-binding", type=Path)
+    parser.add_argument("--backend-registration", type=Path)
     args = parser.parse_args()
     predecessor = json.loads(args.predecessor_snapshot)
     if not isinstance(predecessor, dict) or not isinstance(
@@ -1042,6 +1145,9 @@ def main() -> None:
             observer,
             json.loads(args.recovery_binding.read_text())
             if args.recovery_binding
+            else None,
+            json.loads(args.backend_registration.read_text())
+            if args.backend_registration
             else None,
         )
         if not 0 <= args.listen_port <= 65535:
