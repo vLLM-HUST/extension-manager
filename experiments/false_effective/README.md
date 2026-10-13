@@ -269,6 +269,36 @@ Fixture commands require explicit test mode and are rejected from formal
 aggregation. A caller-provided `adapter_contract_verified` boolean is rejected;
 real runs require an exact command fingerprint from the code-reviewed registry.
 
+The registered H1 campaign is executed only through
+[`h1_formal_driver.py`](h1_formal_driver.py).  Its `check` command validates the
+official study, deployment, exact three-entry adapter registry, and research
+matrix mirror against the reviewed command candidate.  It must succeed before
+the driver clears any launch artifact or starts a process:
+
+```bash
+cd /root/extension-manager-h1-reachable-integration
+PYTHONPATH=src /root/ecpa-h1-pr54-stock-venv/bin/python \
+  experiments/false_effective/h1_formal_driver.py check
+```
+
+After that gate reports nine planned starts and the three registered adapter
+IDs, run the campaign with the same source tree and environment:
+
+```bash
+PYTHONPATH=src /root/ecpa-h1-pr54-stock-venv/bin/python \
+  experiments/false_effective/h1_formal_driver.py run \
+  --output /root/ecpa-h1-formal-real-20261013
+```
+
+The driver holds an exclusive campaign lock and follows the frozen Latin-square
+order.  On restart it validates and skips the contiguous prefix of recorded
+starts, including retained failed starts.  An interrupted start directory is
+left untouched and blocks automatic reuse.  Before a new schedule position it
+removes only recognized event journals, frozen Plan snapshots, quarantine
+records, fences, and locks; the registered event and quarantine directory
+inodes must remain unchanged.  Every returned complete or failed record is
+included in a new atomic cumulative formal-manifest generation.
+
 `raw-record.schema.json` is a start-level provenance extension beside the
 paper's `ecpa-result/v1`: it preserves the arm/status/null conventions while
 adding evidence class, measurement source, command lifecycle, and raw
