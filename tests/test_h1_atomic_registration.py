@@ -183,3 +183,21 @@ def test_transition_packet_rejects_split_write_set(tmp_path: Path) -> None:
     split["write_set_digest"] = digest_bytes(canonical(split["write_set"]))
     with pytest.raises(ValueError, match="split write set"):
         transaction.validate_transition(split, repository_root=root)
+
+
+def test_successful_commit_accepts_git_worktree_marker(tmp_path: Path) -> None:
+    root = _repository_copy(tmp_path)
+    git_directory = tmp_path / "real-git-dir"
+    git_directory.mkdir()
+    (root / ".git").write_text(f"gitdir: {git_directory}\n")
+    candidate_raw, issuance_raw = _current_inputs()
+    packet = transaction.build_transition(
+        candidate_raw=candidate_raw,
+        issuance_raw=issuance_raw,
+        repository_root=root,
+    )
+    transaction.commit_transition(packet, repository_root=root)
+    assert (git_directory / "ecpa-h1-registration.lock").is_file()
+    assert json.loads((root / transaction.STUDY_RELATIVE).read_text())["status"] == (
+        "admitted"
+    )

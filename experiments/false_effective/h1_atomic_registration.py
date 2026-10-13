@@ -387,7 +387,24 @@ def commit_transition(
 ) -> None:
     """Commit all members under one lock, rolling back every failed replace."""
     root = repository_root.resolve()
-    lock_path = root / ".git" / "ecpa-h1-registration.lock"
+    git_marker = root / ".git"
+    if git_marker.is_dir():
+        git_directory = git_marker
+    elif git_marker.is_file():
+        marker = git_marker.read_text().strip()
+        prefix = "gitdir: "
+        if not marker.startswith(prefix):
+            raise ValueError("worktree .git file does not name a git directory")
+        git_directory = Path(marker[len(prefix) :])
+        if not git_directory.is_absolute():
+            git_directory = (root / git_directory).resolve()
+        if not git_directory.is_dir():
+            raise ValueError("worktree git directory does not exist")
+    else:
+        # Tests and staged repository copies may intentionally omit Git metadata.
+        git_marker.mkdir(parents=True)
+        git_directory = git_marker
+    lock_path = git_directory / "ecpa-h1-registration.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open("a+b") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
