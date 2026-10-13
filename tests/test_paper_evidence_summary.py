@@ -54,6 +54,7 @@ INPUTS = (
     "experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/oracle.json",
     "experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/review-receipt.json",
     "experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/manager-prediction.json",
+    "experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013",
     "experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013",
     "experiments/real_mod_composition/verify_h2_compression_transaction.py",
     "paper/artifacts/h1-r5/formal-aggregate.json",
@@ -130,8 +131,8 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "h1_false_effective_numerator": 3,
         "h1_false_effective_denominator": 3,
         "h1_coverage": "0.5",
-        "h2_scored_cases": 4,
-        "h2_true_positive": 1,
+        "h2_scored_cases": 5,
+        "h2_true_positive": 2,
         "h2_true_negative": 3,
         "h2_false_positive": 0,
         "h2_false_negative": 0,
@@ -225,6 +226,22 @@ def test_generator_rejects_h2_external_authority_promotion(tmp_path: Path) -> No
     rewrite_json(prediction, lambda value: value.__setitem__("h2_complete", True))
 
     with pytest.raises(ValueError, match="remaining-surface evidence"):
+        generator.collect_summary(tmp_path)
+
+
+def test_generator_rejects_h2_scheduler_pair_runtime_promotion(
+    tmp_path: Path,
+) -> None:
+    generator = load_generator()
+    copy_inputs(tmp_path)
+    prediction = (
+        tmp_path
+        / "experiments/real_mod_composition/artifacts/"
+        "h2-pipeline-bidkv-oracle-20261013/manager-prediction.json"
+    )
+    rewrite_json(prediction, lambda value: value["runtime"].__setitem__("claim", True))
+
+    with pytest.raises(ValueError, match="scheduler-pair evidence"):
         generator.collect_summary(tmp_path)
 
 
