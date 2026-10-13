@@ -31,6 +31,7 @@ from vllm_hust_ext.exposure_gate import (
     LeaseGrant,
     RouteState,
 )
+from vllm_hust_ext.formal_proxy_membership import verify_formal_proxy_membership
 from vllm_hust_ext.host_evidence import EntryPointBinding
 from vllm_hust_ext.host_observer import observe_bound_invocations
 from vllm_hust_ext.plan_artifact import read_plan_artifact
@@ -47,6 +48,11 @@ AUTHORIZATION_FIELDS = {
     "candidate_generation",
     "membership_epoch",
     "target_set_sha256",
+}
+FORMAL_AUTHORIZATION_FIELDS = {
+    *AUTHORIZATION_FIELDS,
+    "process_membership_sha256",
+    "registration_sha256",
 }
 JOURNAL_KINDS = {
     "authority.start",
@@ -110,9 +116,12 @@ def frozen_target_set_sha256(values: list[dict[str, Any]]) -> str:
     ]
     if len(logical_slots) != len(set(logical_slots)):
         raise GateError("host authorization target set repeats a logical slot")
-    return "sha256:" + hashlib.sha256(
-        _canonical({"required_processes": canonical_targets})
-    ).hexdigest()
+    return (
+        "sha256:"
+        + hashlib.sha256(
+            _canonical({"required_processes": canonical_targets})
+        ).hexdigest()
+    )
 
 
 class _TrafficJournal:
@@ -279,7 +288,11 @@ def observe_gate_transitions(path: Path) -> dict[str, Any]:
                 or detail.get("candidate_generation") != route["generation"]
                 or detail.get("candidate_fence") != route["fence"]
                 or not isinstance(authorization, dict)
-                or set(authorization) != AUTHORIZATION_FIELDS
+                or frozenset(authorization)
+                not in {
+                    frozenset(AUTHORIZATION_FIELDS),
+                    frozenset(FORMAL_AUTHORIZATION_FIELDS),
+                }
                 or any(
                     not isinstance(authorization[field], str)
                     or not authorization[field]
@@ -290,6 +303,19 @@ def observe_gate_transitions(path: Path) -> dict[str, Any]:
                 or not isinstance(authorization["membership_epoch"], int)
                 or authorization["membership_epoch"] < 0
                 or SHA256.fullmatch(str(authorization["target_set_sha256"])) is None
+                or (
+                    frozenset(authorization) == frozenset(FORMAL_AUTHORIZATION_FIELDS)
+                    and (
+                        SHA256.fullmatch(
+                            str(authorization["process_membership_sha256"])
+                        )
+                        is None
+                        or SHA256.fullmatch(
+                            str(authorization["registration_sha256"])
+                        )
+                        is None
+                    )
+                )
                 or SHA256.fullmatch(str(detail.get("observation_sha256"))) is None
             ):
                 raise GateError("applied route open is not authority-bound")
@@ -365,9 +391,22 @@ class _HostAuthorization:
             "bindings",
             "required_processes",
         }
+        formal = isinstance(value, dict) and value.get("schema") == (
+            "ecpa-loopback-formal-host-authorization/v1"
+        )
+        if formal:
+            fields |= {
+                "process_membership",
+                "process_membership_sha256",
+                "registration",
+                "registration_sha256",
+            }
         if not isinstance(value, dict) or set(value) != fields:
             raise GateError("host authorization fields do not match schema")
-        if value["schema"] != "ecpa-loopback-host-authorization/v1":
+        if value["schema"] not in {
+            "ecpa-loopback-host-authorization/v1",
+            "ecpa-loopback-formal-host-authorization/v1",
+        }:
             raise GateError("unsupported host authorization schema")
         try:
             self.plan = read_plan_artifact(value["plan_path"]).plan
@@ -386,6 +425,14 @@ class _HostAuthorization:
                 EntryPointBinding(**binding) for binding in value["bindings"]
             )
             self.required_processes = tuple(value["required_processes"])
+            self.process_membership = (
+                tuple(value["process_membership"]) if formal else None
+            )
+            self.process_membership_sha256 = (
+                value["process_membership_sha256"] if formal else None
+            )
+            self.registration = value["registration"] if formal else None
+            self.registration_sha256 = value["registration_sha256"] if formal else None
         except (KeyError, TypeError, ValueError) as exc:
             raise GateError("host authorization values are invalid") from exc
         if (
@@ -412,9 +459,45 @@ class _HostAuthorization:
         derived_target_set = frozen_target_set_sha256(list(self.required_processes))
         if self.target_set_sha256 != derived_target_set:
             raise GateError("host authorization target-set digest changed")
+        if formal:
+            assert self.process_membership is not None
+            derived_membership = (
+                "sha256:"
+                + hashlib.sha256(
+                    _canonical({"process_membership": list(self.process_membership)})
+                ).hexdigest()
+            )
+            if self.process_membership_sha256 != derived_membership:
+                raise GateError("host authorization process-membership digest changed")
+            registration_fields = {
+                "schema",
+                "evidence_class",
+                "authority",
+                "proxy_command_digest",
+                "review_receipt_sha256",
+                "reviewer_kind",
+            }
+            if (
+                not isinstance(self.registration, dict)
+                or set(self.registration) != registration_fields
+                or self.registration["schema"] != "ecpa-formal-proxy-registration/v1"
+                or self.registration["evidence_class"] != "formal-real"
+                or self.registration["authority"] != "independent-loopback-proxy"
+                or self.registration["reviewer_kind"] != "automated-independent"
+                or SHA256.fullmatch(str(self.registration["proxy_command_digest"]))
+                is None
+                or SHA256.fullmatch(str(self.registration["review_receipt_sha256"]))
+                is None
+            ):
+                raise GateError("formal proxy registration is invalid")
+            derived_registration = (
+                "sha256:" + hashlib.sha256(_canonical(self.registration)).hexdigest()
+            )
+            if self.registration_sha256 != derived_registration:
+                raise GateError("formal proxy registration digest changed")
 
     def binding(self) -> dict[str, Any]:
-        return {
+        value = {
             "plan_id": self.plan.plan_id,
             "launch_id": self.launch_id,
             "controller_instance": self.controller_instance,
@@ -422,11 +505,26 @@ class _HostAuthorization:
             "membership_epoch": self.membership_epoch,
             "target_set_sha256": self.target_set_sha256,
         }
+        if self.process_membership_sha256 is not None:
+            value["process_membership_sha256"] = self.process_membership_sha256
+            value["registration_sha256"] = self.registration_sha256
+        return value
 
     def authorize(self, snapshot: dict[str, Any]) -> str:
         if any(snapshot.get(key) != value for key, value in self.binding().items()):
             raise GateError("candidate route is not bound to host authorization")
         try:
+            if self.process_membership is not None:
+                verify_formal_proxy_membership(
+                    self.root,
+                    expected_directory_identity=self.directory_identity,
+                    execution_identity={
+                        "plan_id": self.plan.plan_id,
+                        "launch_id": self.launch_id,
+                        "controller_instance": self.controller_instance,
+                    },
+                    members=list(self.process_membership),
+                )
             observation = observe_bound_invocations(
                 self.root,
                 expected_directory_identity=self.directory_identity,
@@ -562,9 +660,7 @@ class _Authority:
             return self.observer.authorize(self.route.snapshot)
         except Exception:
             self.route = RouteState(None, "closed", None)
-            self._record(
-                "route.close_all", self.route, reason="host observation lost"
-            )
+            self._record("route.close_all", self.route, reason="host observation lost")
             return None
 
     def _authorize_candidate(
@@ -624,9 +720,7 @@ class _Authority:
                     candidate_fence=fence,
                     observation_sha256=observation_sha256,
                     authorization=(
-                        self.observer.binding()
-                        if self.observer is not None
-                        else None
+                        self.observer.binding() if self.observer is not None else None
                     ),
                 )
                 self.route = candidate_route
