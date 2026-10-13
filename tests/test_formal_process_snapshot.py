@@ -1,4 +1,4 @@
-"""Synthetic host bytes exercise identity mechanics, not formal H1 qualification."""
+ÚznÛéºÉ¢Šwè"""Synthetic host bytes exercise identity mechanics, not formal H1 qualification."""
 
 import base64
 import copy
@@ -74,6 +74,54 @@ def test_snapshot_accepts_same_launch_preassignment_loader_events():
     crossed = mutated(preliminary, lambda v: v.update(launch_id="launch:old"))
     with pytest.raises(ValueError, match="cross-launch"):
         derive_snapshot(SLOTS, EXECUTION, [receipt(crossed), required])
+
+
+def test_snapshot_accepts_runtime_effect_and_rejects_wrong_scheduler_controller():
+    required = host_event()
+    effective = mutated(
+        required,
+        lambda v: v.update(
+            event="effective",
+            observation_kind="runtime_effective",
+            occurrence_id="cmpl-after-freeze",
+        ),
+    )
+    rows = derive_snapshot(
+        SLOTS, EXECUTION, [receipt(required), receipt(effective)]
+    )
+    assert len(rows) == 1
+
+    def scheduler_event(controller):
+        value = json.loads(required)
+        value.update(
+            event="invoked",
+            observation_kind="scheduler_dispatch",
+            occurrence_id=1,
+            controller_instance_id=controller,
+            invocation_seq=1,
+        )
+        material = json.dumps(
+            [
+                value["process"]["host"],
+                value["process"]["start_identity"],
+                value["process"]["process_epoch"],
+                value["plan_id"],
+                value["launch_id"],
+                controller,
+                1,
+            ],
+            separators=(",", ":"),
+        ).encode()
+        value["dispatch_id"] = hashlib.sha256(material).hexdigest()
+        value["event_id"] = event_id(value)
+        return json.dumps(value, separators=(",", ":")).encode()
+
+    with pytest.raises(ValueError, match="cross-launch"):
+        derive_snapshot(
+            SLOTS,
+            EXECUTION,
+            [receipt(required), receipt(scheduler_event("controller:other"))],
+        )
 
 
 @pytest.mark.parametrize(

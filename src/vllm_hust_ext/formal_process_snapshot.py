@@ -1,4 +1,4 @@
-"""Two-stage formal process identity, derived from retained host bytes.
+ÚznÛéºÉ¢Šwè"""Two-stage formal process identity, derived from retained host bytes.
 
 This validates unsigned host journals inside the declared trusted experiment
 boundary. It does not upgrade the same-UID journal to a cryptographic authority.
@@ -83,7 +83,8 @@ def derive_snapshot(
             or event["launch_id"] != execution["launch_id"]
             or event["binding_status"] != "bound"
             or (
-                event["observation_kind"] != "loader_lifecycle"
+                event["observation_kind"]
+                in {"scheduler_resolution", "scheduler_dispatch"}
                 and event["controller_instance_id"] != execution["controller_instance"]
             )
         ):
