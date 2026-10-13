@@ -93,6 +93,146 @@ def source_digests(files: list[dict]) -> dict:
     return result
 
 
+def native_fact_predicate(
+    raw: bytes,
+    sender: dict,
+    spec: dict,
+    *,
+    accepted_monotonic_ns: int | None,
+    mappings: dict,
+    mapping_stamps: dict,
+    upload_stamps: dict,
+    upload_counts: dict,
+) -> tuple:
+    """Same pure source/field/predicate/chronology gate for live and raw replay.
+
+    None accept time retains legacy static validation, never full chronology.
+    This function performs no filesystem, PID, clock or network reads.
+    """
+    if accepted_monotonic_ns is not None and (
+        type(accepted_monotonic_ns) is not int or accepted_monotonic_ns <= 0
+    ):
+        raise ValueError("native collector accept clock is invalid")
+    phases = {x["external_request_id"]: x for x in spec["phases"]}
+    fact = json.loads(raw)
+    if not isinstance(fact, dict):
+        raise ValueError("native raw fact is not an object")
+    common_fields = {
+        "schema",
+        "process",
+        "launch_id",
+        "plan_id",
+        "monotonic_ns",
+    }
+    mapping_fields = common_fields | {
+        "external_request_id",
+        "runtime_request_id",
+    }
+    upload_fields = common_fields | {
+        "observed_after_barrier_monotonic_ns",
+        "runtime_request_id",
+        "device",
+        "uploaded_rows",
+        "uploaded_rows_sha256",
+        "scope",
+        "kv_tensor_equivalence",
+        "attention_consumed_observed_tensor",
+        "full_generation_quality",
+    }
+    if set(fact) != (
+        mapping_fields if fact.get("schema") == MAPPING else upload_fields
+    ):
+        raise ValueError("native fact fields do not match a supported source schema")
+    if set(fact.get("process", {})) != set(sender["process"]):
+        raise ValueError("native process fields differ from frozen Host source")
+    if canonical(fact) != raw:
+        raise ValueError("native raw bytes are noncanonical or replayed")
+    if any(fact.get("process", {}).get(k) != v for k, v in sender["process"].items()):
+        raise ValueError("native sender role/process differs from kernel registration")
+    if (
+        fact.get("plan_id") != spec["native_plan_id"]
+        or fact.get("launch_id") != spec["native_launch_id"]
+    ):
+        raise ValueError("native plan/launch differs from frozen scope")
+    now = accepted_monotonic_ns
+    stamp = fact.get("monotonic_ns")
+    if (
+        type(stamp) is not int
+        or stamp < spec["frozen_monotonic_ns"]
+        or (now is not None and (stamp > now or now - stamp > spec["max_event_age_ns"]))
+    ):
+        raise ValueError("native event is stale or from another monotonic epoch")
+    runtime = fact.get("runtime_request_id")
+    if not isinstance(runtime, str) or not runtime:
+        raise ValueError("native runtime request identity is absent")
+    if fact.get("schema") == MAPPING:
+        if sender["process"]["role"] != "api-server":
+            raise ValueError("request mapping sender is not native API")
+        external = fact.get("external_request_id")
+        phase = phases.get(external)
+        if (
+            phase is None
+            or runtime in mappings
+            or any(x["external_request_id"] == external for x in mappings.values())
+        ):
+            raise ValueError("actual native API mapping is unknown or repeated")
+        update = ("mapping", runtime)
+    elif fact.get("schema") == UPLOAD:
+        if sender["process"]["role"] != "worker" or runtime not in mappings:
+            raise ValueError("GPU upload lacks native API mapping or worker source")
+        phase = mappings[runtime]
+        if stamp < mapping_stamps[runtime]:
+            raise ValueError("upload predates actual native API request mapping")
+        rank = sender["process"]["ordinal"]
+        if upload_counts.get((runtime, rank), 0) >= spec["max_uploads_per_rank"]:
+            raise ValueError("native upload exceeds frozen finite per-rank bound")
+        after = fact.get("observed_after_barrier_monotonic_ns")
+        if type(after) is int and after <= upload_stamps.get((runtime, rank), 0):
+            raise ValueError("native upload barrier timestamp is replayed")
+        rows = fact.get("uploaded_rows")
+        if (
+            type(after) is not int
+            or not stamp <= after
+            or (now is not None and after > now)
+            or not isinstance(rows, list)
+            or not rows
+            or fact.get("uploaded_rows_sha256") != sha(canonical(rows))
+            or not isinstance(fact.get("device"), str)
+            or re.fullmatch(r"npu:[0-9]+", fact["device"]) is None
+            or fact.get("scope") != "NPU-block-table-prefix-readback-only"
+            or any(
+                k not in fact or fact[k] is not None
+                for k in (
+                    "kv_tensor_equivalence",
+                    "attention_consumed_observed_tensor",
+                    "full_generation_quality",
+                )
+            )
+        ):
+            raise ValueError("native uploaded-row evidence is unsupported or promoted")
+        slots = set()
+        for row in rows:
+            if (
+                set(row) != {"group", "row", "blocks"}
+                or type(row["group"]) is not int
+                or row["group"] < 0
+                or type(row["row"]) is not int
+                or row["row"] < 0
+                or not isinstance(row["blocks"], list)
+                or not row["blocks"]
+                or any(type(x) is not int or x < 0 for x in row["blocks"])
+                or (row["group"], row["row"]) in slots
+            ):
+                raise ValueError(
+                    "native uploaded row has no exact physical block binding"
+                )
+            slots.add((row["group"], row["row"]))
+        update = ("upload", rank)
+    else:
+        raise ValueError("native schema is unsupported")
+    return fact, phase, update
+
+
 class Collector:
     def __init__(self, spec_path: Path, journal_path: Path):
         raw, _ = read_private(spec_path, 0o600)
@@ -243,6 +383,8 @@ class Collector:
         self._append(
             {
                 "kind": "collector.start",
+                "started_monotonic_ns": time.monotonic_ns(),
+                "intake_predicate_schema": "ecpa-native-semantic-intake/v2",
                 "spec_sha256": sha(raw),
                 "collector": self.collector_identity,
                 "collector_source_sha256": sha(Path(__file__).read_bytes()),
@@ -297,147 +439,25 @@ class Collector:
             ):
                 raise ValueError("kernel peer argv changed")
             sources = source_digests(sender["source_files"])
-            fact = json.loads(raw)
-            common_fields = {
-                "schema",
-                "process",
-                "launch_id",
-                "plan_id",
-                "monotonic_ns",
-            }
-            mapping_fields = common_fields | {
-                "external_request_id",
-                "runtime_request_id",
-            }
-            upload_fields = common_fields | {
-                "observed_after_barrier_monotonic_ns",
-                "runtime_request_id",
-                "device",
-                "uploaded_rows",
-                "uploaded_rows_sha256",
-                "scope",
-                "kv_tensor_equivalence",
-                "attention_consumed_observed_tensor",
-                "full_generation_quality",
-            }
-            if set(fact) != (
-                mapping_fields if fact.get("schema") == MAPPING else upload_fields
-            ):
-                raise ValueError(
-                    "native fact fields do not match a supported source schema"
-                )
-            if set(fact.get("process", {})) != set(sender["process"]):
-                raise ValueError("native process fields differ from frozen Host source")
-            if canonical(fact) != raw or sha(raw) in self.seen_raw:
-                raise ValueError("native raw bytes are noncanonical or replayed")
-            if any(
-                fact.get("process", {}).get(k) != v
-                for k, v in sender["process"].items()
-            ):
-                raise ValueError(
-                    "native sender role/process differs from kernel registration"
-                )
-            if (
-                fact.get("plan_id") != self.spec["native_plan_id"]
-                or fact.get("launch_id") != self.spec["native_launch_id"]
-            ):
-                raise ValueError("native plan/launch differs from frozen scope")
-            now = time.monotonic_ns()
-            stamp = fact.get("monotonic_ns")
-            if (
-                type(stamp) is not int
-                or stamp < self.spec["frozen_monotonic_ns"]
-                or stamp > now
-                or now - stamp > self.spec["max_event_age_ns"]
-            ):
-                raise ValueError(
-                    "native event is stale or from another monotonic epoch"
-                )
-            runtime = fact.get("runtime_request_id")
-            if not isinstance(runtime, str) or not runtime:
-                raise ValueError("native runtime request identity is absent")
-            if fact.get("schema") == MAPPING:
-                if sender["process"]["role"] != "api-server":
-                    raise ValueError("request mapping sender is not native API")
-                external = fact.get("external_request_id")
-                phase = self.phases.get(external)
-                if (
-                    phase is None
-                    or runtime in self.maps
-                    or any(
-                        x["external_request_id"] == external for x in self.maps.values()
-                    )
-                ):
-                    raise ValueError("actual native API mapping is unknown or repeated")
-                update = ("mapping", runtime)
-            elif fact.get("schema") == UPLOAD:
-                if sender["process"]["role"] != "worker" or runtime not in self.maps:
-                    raise ValueError(
-                        "GPU upload lacks native API mapping or worker source"
-                    )
-                phase = self.maps[runtime]
-                if stamp < self.mapping_stamps[runtime]:
-                    raise ValueError(
-                        "upload predates actual native API request mapping"
-                    )
-                rank = sender["process"]["ordinal"]
-                if (
-                    self.upload_counts.get((runtime, rank), 0)
-                    >= self.spec["max_uploads_per_rank"]
-                ):
-                    raise ValueError(
-                        "native upload exceeds frozen finite per-rank bound"
-                    )
-                after = fact.get("observed_after_barrier_monotonic_ns")
-                if type(after) is int and after <= self.upload_stamps.get(
-                    (runtime, rank), 0
-                ):
-                    raise ValueError("native upload barrier timestamp is replayed")
-                rows = fact.get("uploaded_rows")
-                if (
-                    type(after) is not int
-                    or not stamp <= after <= now
-                    or not isinstance(rows, list)
-                    or not rows
-                    or fact.get("uploaded_rows_sha256") != sha(canonical(rows))
-                    or not isinstance(fact.get("device"), str)
-                    or re.fullmatch(r"npu:[0-9]+", fact["device"]) is None
-                    or fact.get("scope") != "NPU-block-table-prefix-readback-only"
-                    or any(
-                        k not in fact or fact[k] is not None
-                        for k in (
-                            "kv_tensor_equivalence",
-                            "attention_consumed_observed_tensor",
-                            "full_generation_quality",
-                        )
-                    )
-                ):
-                    raise ValueError(
-                        "native uploaded-row evidence is unsupported or promoted"
-                    )
-                slots = set()
-                for row in rows:
-                    if (
-                        set(row) != {"group", "row", "blocks"}
-                        or type(row["group"]) is not int
-                        or row["group"] < 0
-                        or type(row["row"]) is not int
-                        or row["row"] < 0
-                        or not isinstance(row["blocks"], list)
-                        or not row["blocks"]
-                        or any(type(x) is not int or x < 0 for x in row["blocks"])
-                        or (row["group"], row["row"]) in slots
-                    ):
-                        raise ValueError(
-                            "native uploaded row has no exact physical block binding"
-                        )
-                    slots.add((row["group"], row["row"]))
-                update = ("upload", rank)
-            else:
-                raise ValueError("native schema is unsupported")
+            if sha(raw) in self.seen_raw:
+                raise ValueError("native raw bytes are replayed")
+            accepted_ns = time.monotonic_ns()
+            fact, phase, update = native_fact_predicate(
+                raw,
+                sender,
+                self.spec,
+                accepted_monotonic_ns=accepted_ns,
+                mappings=self.maps,
+                mapping_stamps=self.mapping_stamps,
+                upload_stamps=self.upload_stamps,
+                upload_counts=self.upload_counts,
+            )
+            runtime = fact["runtime_request_id"]
+            stamp = fact["monotonic_ns"]
             event = self._append(
                 {
                     "kind": "native.accepted",
+                    "accepted_monotonic_ns": accepted_ns,
                     "raw_base64": base64.b64encode(raw).decode(),
                     "raw_sha256": sha(raw),
                     "peer": {"pid": pid, "uid": uid, "gid": gid},
@@ -651,7 +671,11 @@ def verify_journal(
     start = events[0]
     if (
         start["spec_sha256"] != sha(spec_raw)
-        or start["collector_source_sha256"] != sha(Path(__file__).read_bytes())
+        or start["collector_source_sha256"]
+        not in {
+            sha(Path(__file__).read_bytes()),
+            "135a3a9f06f9b2e7afe12a377ae3947a7b96801924fc09b853c836c12d65bf77",
+        }
         or spec.get("classification") != "CPU_REVIEW_CANDIDATE_ONLY"
         or spec.get("formal_producer_registration") is not False
     ):
@@ -659,6 +683,12 @@ def verify_journal(
     previous = "0" * 64
     seen_raw = set()
     mappings = {}
+    mapping_stamps = {}
+    chronology_complete = (
+        start.get("intake_predicate_schema") == "ecpa-native-semantic-intake/v2"
+        and type(start.get("started_monotonic_ns")) is int
+    )
+    last_accepted_ns = start.get("started_monotonic_ns")
     ranks = {}
     upload_stamps = {}
     counts = {}
@@ -695,33 +725,38 @@ def verify_journal(
         ):
             raise ValueError("authority raw source/peer/request scope differs")
         seen_raw.add(sha(raw))
+        accepted_ns = event.get("accepted_monotonic_ns")
+        if accepted_ns is not None:
+            start_ns = start.get("started_monotonic_ns")
+            if (
+                type(start_ns) is not int
+                or type(accepted_ns) is not int
+                or accepted_ns < start_ns
+                or (last_accepted_ns is not None and accepted_ns < last_accepted_ns)
+            ):
+                raise ValueError("native accept clock violates collector sequence")
+            last_accepted_ns = accepted_ns
+        else:
+            chronology_complete = False
+        fact, phase, update = native_fact_predicate(
+            raw,
+            sender,
+            spec,
+            accepted_monotonic_ns=accepted_ns,
+            mappings=mappings,
+            mapping_stamps=mapping_stamps,
+            upload_stamps=upload_stamps,
+            upload_counts=counts,
+        )
         runtime = fact["runtime_request_id"]
-        if fact["schema"] == MAPPING:
-            phase = expected_phases.get(fact["external_request_id"])
-            if (
-                sender["process"]["role"] != "api-server"
-                or not phase
-                or runtime in mappings
-            ):
-                raise ValueError("authority raw native API mapping is invalid")
+        if update[0] == "mapping":
             mappings[runtime] = phase
-        elif fact["schema"] == UPLOAD:
-            phase = mappings.get(runtime)
-            rank = sender["process"]["ordinal"]
-            if (
-                sender["process"]["role"] != "worker"
-                or not phase
-                or fact["observed_after_barrier_monotonic_ns"]
-                <= upload_stamps.get((runtime, rank), 0)
-                or counts.get((runtime, rank), 0) >= spec["max_uploads_per_rank"]
-                or fact["uploaded_rows_sha256"] != sha(canonical(fact["uploaded_rows"]))
-            ):
-                raise ValueError("authority raw upload mapping or rank is invalid")
+            mapping_stamps[runtime] = fact["monotonic_ns"]
+        else:
+            rank = update[1]
             ranks.setdefault(runtime, set()).add(rank)
             upload_stamps[(runtime, rank)] = fact["observed_after_barrier_monotonic_ns"]
             counts[(runtime, rank)] = counts.get((runtime, rank), 0) + 1
-        else:
-            raise ValueError("authority raw native schema is unsupported")
         if phase != event["phase"] or runtime != event["runtime_request_id"]:
             raise ValueError("authority raw challenge join differs")
     complete = sum(ranks.get(runtime) == {0, 1} for runtime in mappings)
@@ -738,8 +773,13 @@ def verify_journal(
         "native_API_mappings": len(mappings),
         "observed_two_rank_raw_phases": complete,
         "complete_two_rank_transport_phases": complete
-        if acknowledged_prefix is not None
+        if acknowledged_prefix is not None and chronology_complete
         else None,
+        "native_chronology_status": "verified"
+        if chronology_complete
+        else "unverified-missing-accept-clock",
+        "runtime_collector_source_sha256": start["collector_source_sha256"],
+        "analysis_source_sha256": sha(Path(__file__).read_bytes()),
         "durable_ACK_status": "verified-authenticated-prefix"
         if acknowledged_prefix is not None
         else "unverified",

@@ -508,3 +508,107 @@ def test_exact_raw_upload_replay_is_rejected_but_fresh_step_is_acknowledged(runn
     assert "rejected" in command(run, 1, fact)
     assert "ack" in command(run, 1, upload())
     assert len(run["journal"].read_bytes().splitlines()) == 4
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "cpu-device",
+        "quality-true",
+        "wrong-scope",
+        "empty-rows",
+        "bool-block",
+        "before-map",
+        "after-accept",
+        "stamp-after-barrier",
+        "missing-field",
+    ],
+)
+def test_portable_predicate_rejects_rehashed_unsupported_native_facts(
+    running, mutation
+):
+    run = running
+    assert "ack" in command(run, 0, mapping())
+    assert "ack" in command(run, 1, upload())
+    assert "ack" in command(run, 2, upload())
+    events = [json.loads(x) for x in run["journal"].read_bytes().splitlines()]
+    raw = json.loads(base64.b64decode(events[2]["raw_base64"]))
+    if mutation == "cpu-device":
+        raw["device"] = "cpu"
+    if mutation == "quality-true":
+        raw["full_generation_quality"] = True
+    if mutation == "wrong-scope":
+        raw["scope"] = "anything"
+    if mutation == "empty-rows":
+        raw["uploaded_rows"] = []
+    if mutation == "bool-block":
+        raw["uploaded_rows"][0]["blocks"][0] = True
+    if mutation == "before-map":
+        mapping_raw = json.loads(base64.b64decode(events[1]["raw_base64"]))
+        raw["monotonic_ns"] = mapping_raw["monotonic_ns"] - 1
+    if mutation == "after-accept":
+        raw["observed_after_barrier_monotonic_ns"] = (
+            events[2]["accepted_monotonic_ns"] + 1
+        )
+    if mutation == "stamp-after-barrier":
+        raw["monotonic_ns"] = raw["observed_after_barrier_monotonic_ns"] + 1
+    if mutation == "missing-field":
+        raw.pop("attention_consumed_observed_tensor")
+    if "uploaded_rows" in raw:
+        raw["uploaded_rows_sha256"] = sha(canonical(raw["uploaded_rows"]))
+    encoded = canonical(raw)
+    events[2]["raw_base64"] = base64.b64encode(encoded).decode()
+    events[2]["raw_sha256"] = sha(encoded)
+    previous = "0" * 64
+    for event in events:
+        event["previous_sha256"] = previous
+        event["event_sha256"] = sha(
+            canonical({k: v for k, v in event.items() if k != "event_sha256"})
+        )
+        previous = event["event_sha256"]
+    path = run["root"] / "portable-tamper.jsonl"
+    path.write_bytes(b"".join(canonical(x) + b"\n" for x in events))
+    with pytest.raises(ValueError):
+        verify_journal(
+            run["spec_path"],
+            path,
+            acknowledged_prefix={
+                "next_sequence": len(events),
+                "last_event_sha256": previous,
+            },
+        )
+
+
+def test_legacy_missing_accept_clocks_are_unverified_even_with_rehashed_prefix(running):
+    run = running
+    assert "ack" in command(run, 0, mapping())
+    assert "ack" in command(run, 1, upload())
+    assert "ack" in command(run, 2, upload())
+    events = [json.loads(x) for x in run["journal"].read_bytes().splitlines()]
+    events[0]["collector_source_sha256"] = (
+        "135a3a9f06f9b2e7afe12a377ae3947a7b96801924fc09b853c836c12d65bf77"
+    )
+    events[0].pop("started_monotonic_ns")
+    events[0].pop("intake_predicate_schema")
+    previous = "0" * 64
+    for event in events:
+        event.pop("accepted_monotonic_ns", None)
+        event["previous_sha256"] = previous
+        event["event_sha256"] = sha(
+            canonical({k: v for k, v in event.items() if k != "event_sha256"})
+        )
+        previous = event["event_sha256"]
+    path = run["root"] / "legacy-no-clock.jsonl"
+    path.write_bytes(b"".join(canonical(x) + b"\n" for x in events))
+    result = verify_journal(
+        run["spec_path"],
+        path,
+        acknowledged_prefix={
+            "next_sequence": len(events),
+            "last_event_sha256": previous,
+        },
+    )
+    assert result["observed_two_rank_raw_phases"] == 1
+    assert result["native_chronology_status"] == "unverified-missing-accept-clock"
+    assert result["complete_two_rank_transport_phases"] is None
+    assert result["GPU_semantic_qualification"] is None
