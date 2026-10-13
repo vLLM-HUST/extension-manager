@@ -16,10 +16,10 @@ from test_formal_process_snapshot import (
 )
 from test_host_observer import BINDING, PLAN, host_event
 
+from experiments.exposure_gate.loopback_traffic import _HostAuthorization
 from experiments.false_effective.formal_proxy import (
     prepare_formal_proxy_authorization,
 )
-from experiments.exposure_gate.loopback_traffic import _HostAuthorization
 from vllm_hust_ext.formal_process_snapshot import make_transition
 from vllm_hust_ext.formal_proxy_membership import derive_formal_proxy_membership
 from vllm_hust_ext.plan_artifact import plan_artifact_bytes
