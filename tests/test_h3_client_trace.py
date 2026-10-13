@@ -215,11 +215,47 @@ def test_real_continuous_http_stop_resume_backend_and_unknown_execution(tmp_path
             assert result["formal_result"] is False
             (tmp_path / "verification.json").write_bytes(canonical(result))
             (tmp_path / "fault-markers.json").write_bytes(canonical(kwargs))
+            for label in ("client", "authority"):
+                missing = tmp_path / (label + "-missing.jsonl")
+                paths = (
+                    (missing, authority_journal)
+                    if label == "client"
+                    else (client_trace, missing)
+                )
+                absent = verify_window(spec, *paths, **kwargs)
+                assert absent["coverage"] == "incomplete"
+                assert absent["lost_requests"] is None
+                assert absent["formal_result"] is False
+                missing.write_bytes(b"")
+                assert verify_window(spec, *paths, **kwargs)["lost_requests"] is None
+                missing.write_bytes(b'{"partial":')
+                assert verify_window(spec, *paths, **kwargs)["lost_requests"] is None
+            from experiments.exposure_gate.loopback_traffic import read_traffic_journal
+
+            authority_events = read_traffic_journal(authority_journal)
+            no_authority_start = tmp_path / "no-authority-start.jsonl"
+            rechain(no_authority_start, copy.deepcopy(authority_events[1:]))
+            assert (
+                verify_window(spec, client_trace, no_authority_start, **kwargs)[
+                    "lost_requests"
+                ]
+                is None
+            )
             original = read_client_trace(client_trace)
             incomplete = tmp_path / "incomplete.jsonl"
             rechain(incomplete, copy.deepcopy(original[:-1]))
             assert (
                 verify_window(spec, incomplete, authority_journal, **kwargs)[
+                    "lost_requests"
+                ]
+                is None
+            )
+            wrong_stop = copy.deepcopy(original)
+            wrong_stop[-1]["detail"]["request_count"] -= 1
+            bad_end = tmp_path / "bad-end.jsonl"
+            rechain(bad_end, wrong_stop)
+            assert (
+                verify_window(spec, bad_end, authority_journal, **kwargs)[
                     "lost_requests"
                 ]
                 is None
