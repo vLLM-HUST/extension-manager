@@ -46,10 +46,12 @@ stale, inert, or conflicting configuration. We present ECPA, an inference-system
 extension contract and runtime. Contracts declare capabilities, resource and
 lifecycle authority, dependencies, process coverage, failure policy, and
 verifiable effect conditions. A compiler turns multiple contracts into an
-immutable execution plan; a transactional runtime prepares, activates,
-observes, exposes, and rolls back that plan. Authority-owned evidence discharges
-plan obligations, and an ExposureGate makes a generation externally visible
-only after fresh evidence covers its epoch-scoped targets. We derive the model
+immutable execution plan; the protocol orders prepare, activate, observe,
+expose, and rollback phases. Authority-owned evidence discharges
+plan obligations, and the design specifies an ExposureGate that should make a
+generation externally visible only after fresh evidence covers its
+epoch-scoped targets.  The reference implementation does not yet enforce that
+traffic-boundary condition.  We derive the model
 from the plugin page's source-bound population of \ECPAWorkshopMods{} MODs,
 spanning scheduling, speculative decoding, KV data paths, model execution,
 communication, and observability.  We implement a host-neutral
@@ -112,15 +114,18 @@ transactions stop at a typed adapter, while host and provider authorities send
 effect evidence back across that boundary.  Neither the adapter nor an
 individual plugin can open the traffic gate by self-report.
 
-Our safety property is: \emph{no activation is exposed as effective unless
+Our intended safety property is: \emph{no activation is exposed as effective unless
 every required plan obligation in the current epoch has fresh evidence from
 the authority that can observe its planned effect}.  Process-scoped obligations
 also require coverage of their frozen target set.  ECPA is not the first
 plugin system, a deployment controller, or a software-supply-chain attestation
-scheme.  Its contribution is an evidence-bound activation transaction for
+scheme.  Its contribution is an evidence-bound activation protocol for
 extensions whose effect spans multiple inference processes and authority
 domains.  Existing plugin APIs, controllers, and provenance systems are inputs
-to that transaction, not components that ECPA replaces.
+to that protocol, not components that ECPA replaces.  The completed H1 cell
+shows that the reference runtime does not yet realize this property, so the
+present contribution is the contract, protocol, and falsifiable test method,
+not a validated prevention mechanism.
 
 The contract, compiler, coordinator, and evidence protocol do not name a host
 runtime or plugin package.  We evaluate them through a deep study on one
@@ -953,7 +958,8 @@ serving-engine memory and prediction pipelines
 \cite{vllm-pagedattention,pretzel}.  DistServe separates prefill from decoding,
 while Llumnix migrates requests and their in-memory state across instances
 \cite{distserve,llumnix}; Sarathi-Serve changes the scheduling of prefill and
-decode work \cite{sarathi-serve}.  These results motivate the heterogeneous
+decode work, and dLoRA dynamically places and merges LoRA adapters
+\cite{sarathi-serve,dlora}.  These results motivate the heterogeneous
 scheduler, KV, process, and routing surfaces that independently packaged
 extensions now modify.  Our question is narrower than improving those
 algorithms: whether a declared extension plan has actually taken effect in
@@ -962,15 +968,20 @@ the planned overhead comparison must hold the host algorithm and workload
 fixed across loading, manual integration, and ECPA arms; it cannot claim the throughput
 improvements reported by these serving systems.
 
-\textbf{Control-plane reconciliation.}  Envoy xDS separates configuration
-delivery and ACK/NACK \cite{envoy-xds}.  An ACK establishes protocol-level
+\textbf{Control-plane reconciliation.}  Acto tests whether operators reach
+declared end states, while Anvil verifies eventual stable reconciliation
+\cite{acto,anvil}.  Envoy xDS separates configuration delivery and ACK/NACK
+\cite{envoy-xds}.  An ACK establishes protocol-level
 acceptance of a resource, not that an application-specific effect occurred in
 every downstream inference worker.  Kubernetes Device Plugins and CSI define
 specialized registration and resource/storage lifecycles
 \cite{k8s-device-plugin,csi-spec}; Kubernetes generations and conditions help
 controllers distinguish desired from observed state \cite{k8s-api-conventions}.
-ECPA borrows that discipline but contributes an activation commit spanning
-plugin, provider, and worker authorities.  It is not a general reconciler.
+ECPA borrows that discipline but specifies a narrower activation commit whose
+obligations span plugin, provider, and worker authorities.  Acto's state oracle
+is the closest testing analogue; ECPA additionally asks which authority can
+observe each effect and whether every frozen process epoch is covered.  H1
+shows that the current runtime does not yet enforce the final exposure step.
 
 \textbf{Consistent update and dynamic upgrade.}  Consistent network updates
 use versioned configurations and controlled exposure to prevent packets from
@@ -989,10 +1000,14 @@ fresh evidence.
 extension points around container lifecycle \cite{oci-runtime}; they do not
 negotiate semantic capabilities or prove application-level invocation.
 in-toto binds software-supply-chain steps and artifacts to authorized actors
-\cite{in-toto}, while SPIFFE/SPIRE issue workload identities
+\cite{in-toto}; CamFlow captures whole-system data provenance at the OS boundary
+\cite{camflow}; and SPIFFE/SPIRE issue workload identities
 \cite{spiffe,spire}.  These systems can authenticate ECPA artifacts and evidence
 producers.  They do not by themselves determine whether a planned extension
-became effective, and ECPA does not claim their cryptographic or identity
+became effective in a frozen set of serving processes.  Leases provide the
+historical time-bounded authority primitive \cite{leases}; ECPA uses epochs and
+fences for freshness but does not claim a new lease protocol.  ECPA does not
+claim these systems' capture, cryptographic, identity, or consistency
 properties.
 
 \section{Limitations and Discussion}
