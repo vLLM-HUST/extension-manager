@@ -24,15 +24,15 @@ from vllm_hust_ext.host_observer import parse_linux_start_ticks
 from vllm_hust_ext.plan_artifact import read_plan_artifact
 
 
-def verify_archive(path: Path) -> dict:
+def verify_archive(path: Path, *, expected_model: str = "ecpa-h3-model") -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         with tarfile.open(path, "r:gz") as archive:
             archive.extractall(root, filter="data")
-        return verify(root)
+        return verify(root, expected_model=expected_model)
 
 
-def verify(root: Path) -> dict:
+def verify(root: Path, *, expected_model: str = "ecpa-h3-model") -> dict:
     def load(name):
         return json.loads((root / name).read_text())
 
@@ -83,6 +83,8 @@ def verify(root: Path) -> dict:
         argv = c["argv"]
         if argv[argv.index("--tensor-parallel-size") + 1] != "2":
             raise ValueError("TP2 command missing")
+        if argv[argv.index("--served-model-name") + 1] != expected_model:
+            raise ValueError("served model differs from frozen qualification oracle")
         observation = load(c["label"] + "/invocation-observation.json")
         if not observation["complete_coverage"]:
             raise ValueError("Host invocation coverage incomplete")
@@ -175,7 +177,7 @@ def verify(root: Path) -> dict:
         body = json.loads(http["body"])
         if (
             http["status"] != 200
-            or body["model"] != "ecpa-h3-model"
+            or body["model"] != expected_model
             or body["usage"]["completion_tokens"] <= 0
             or body["choices"][0]["message"]["content"].strip() != marker
             or http["request"]["messages"][0]["content"] != "Reply exactly " + marker
