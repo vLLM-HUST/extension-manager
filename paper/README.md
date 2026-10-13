@@ -131,7 +131,8 @@ A provisional anonymous review copy can be rendered outside the repository:
 python3 paper/scripts/render_anonymous.py \
   --output /absolute/private/review-directory \
   --alias ExampleOnlyChangeMe \
-  --title 'A New Nonidentifying Paper Title'
+  --title 'A New Nonidentifying Paper Title' \
+  --tectonic /absolute/path/to/tectonic
 ```
 
 Replace the example alias and title with private, unpublished values. The
@@ -142,3 +143,19 @@ it does **not** remove identity by implication from distinctive incidents,
 release numbers, corpus counts, citations, or figure content. Human authors
 must review and edit that private copy before treating it as a submission PDF;
 it must never be committed as a purportedly anonymous artifact.
+
+The private build now renames internal TeX macros as well as rendered system
+names and replaces the two identifying prototype/incident Git commits with
+stable snapshot labels. Public reference citations and measured values remain
+unchanged. The command saves `pdf-audit.json` and
+`private-build-manifest.json`, binding the builder, source, compiler version,
+private TeX inputs and PDF by SHA-256. That manifest is private provenance;
+only `main.pdf` is a candidate review artifact. Do not publish the private
+alias, title, directory, transformed inputs, or provenance manifest.
+
+The anonymous PDF audit also inspects XML metadata, annotation contents,
+link targets, outlines, and author metadata, and rejects embedded files.
+Passing these machine checks establishes removal of the listed public
+identifiers on those surfaces. It does not certify anonymity by implication,
+research completion, or submission readiness; H1's falsification and H2--H4's
+incomplete evidence remain in the generated private copy.

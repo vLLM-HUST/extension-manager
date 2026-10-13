@@ -8,6 +8,9 @@ implication, claims, references, and final formatting before submission.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import os
 import re
 import shutil
 import subprocess
@@ -51,12 +54,18 @@ def prepare(output: Path, *, alias: str, title: str) -> Path:
     if source.count(accountability) != 1:
         raise ValueError("accountability comment changed; review the transform")
     source = source.replace(accountability, "")
-    source = re.sub(r"(?<!\\)\bECPA\b", alias, source)
+    # Rename internal commands too: the private source must not disclose the alias.
+    source = source.replace(r"\ECPA", r"\ReviewData")
+    source = source.replace("ECPA", alias).replace("ecpa", "review")
+    source = source.replace(
+        "3e57b2f75cffffd26dda0df4d9bcac890cfe99fc", "host-snapshot-A"
+    )
+    source = source.replace("3201e133", "incident-snapshot-B")
     source = source.replace("vLLM-HUST", "prototype host")
     article = "an" if alias[0].lower() in "aeiou" else "a"
     source = source.replace(f"an {alias}-controlled", f"{article} {alias}-controlled")
     source = source.replace("prototype host host", "prototype host")
-    for forbidden in ("vLLM-HUST", "ShuhaoZhangTony", PUBLIC_TITLE):
+    for forbidden in ("ECPA", "vLLM-HUST", "ShuhaoZhangTony", "张书豪", PUBLIC_TITLE):
         if forbidden in source:
             raise ValueError(f"public identifier remains in TeX: {forbidden}")
     output.mkdir(parents=True, exist_ok=False)
@@ -64,9 +73,9 @@ def prepare(output: Path, *, alias: str, title: str) -> Path:
     (output / "main.tex").write_text(source, encoding="utf-8")
     for name in ("references.bib", "usenix2019_v3.sty"):
         shutil.copyfile(PAPER / name, output / name)
-    shutil.copyfile(
-        PAPER / "generated/evidence-summary.tex",
-        output / "generated/evidence-summary.tex",
+    generated = (PAPER / "generated/evidence-summary.tex").read_text(encoding="utf-8")
+    (output / "generated/evidence-summary.tex").write_text(
+        generated.replace("ECPA", "ReviewData"), encoding="utf-8"
     )
     return output / "main.tex"
 
@@ -76,6 +85,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--alias", required=True)
     parser.add_argument("--title", required=True)
+    parser.add_argument("--tectonic", default=os.environ.get("TECTONIC", "tectonic"))
     arguments = parser.parse_args()
     subprocess.run(
         [
@@ -94,9 +104,11 @@ def main() -> int:
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
     subprocess.run(
-        ["tectonic", "--keep-logs", main_tex.name], cwd=main_tex.parent, check=True
+        [arguments.tectonic, "--keep-logs", main_tex.name],
+        cwd=main_tex.parent,
+        check=True,
     )
-    subprocess.run(
+    audit = subprocess.run(
         [
             sys.executable,
             str(PAPER / "scripts/audit_pdf.py"),
@@ -105,6 +117,42 @@ def main() -> int:
         ],
         cwd=main_tex.parent,
         check=True,
+        capture_output=True,
+        text=True,
+    )
+    result = json.loads(audit.stdout)
+    result["pdf"] = "main.pdf"
+    (main_tex.parent / "pdf-audit.json").write_text(
+        json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+    # Local provenance only: never include this file in a blind submission.
+    names = (
+        "main.tex",
+        "references.bib",
+        "usenix2019_v3.sty",
+        "generated/evidence-summary.tex",
+        "main.pdf",
+        "pdf-audit.json",
+    )
+    manifest = {
+        "schema": "private-anonymous-build-v1",
+        "compiler": subprocess.check_output(
+            [arguments.tectonic, "--version"], text=True
+        ).strip(),
+        "builder_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "audit_sha256": hashlib.sha256(
+            (PAPER / "scripts/audit_pdf.py").read_bytes()
+        ).hexdigest(),
+        "source_sha256": hashlib.sha256((PAPER / "main.tex").read_bytes()).hexdigest(),
+        "files": {
+            name: hashlib.sha256((main_tex.parent / name).read_bytes()).hexdigest()
+            for name in names
+        },
+        "claim": "listed identity checks pass; implication anonymity unproven",
+        "submission_file": "main.pdf",
+    }
+    (main_tex.parent / "private-build-manifest.json").write_text(
+        json.dumps(manifest, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
     return 0
 
