@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h2-real-two-mod-tp2-pair-preflight-summary/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "captured_utc", "classification", "formal_h2_result",
+    "performance_result", "score_eligible", "hardware", "model",
+    "source_commits", "wheel_sha256", "additional_runtime_dependency",
+    "calibration", "orders", "retained_failed_attempts", "scientific_boundary"
+  ],
+  "properties": {
+    "schema": {"const": "ecpa-h2-real-two-mod-tp2-pair-preflight-summary/v1"},
+    "captured_utc": {"type": "string", "format": "date-time"},
+    "classification": {"const": "real-model-serving-activation-preflight-not-formal-h2-or-performance"},
+    "formal_h2_result": {"const": false},
+    "performance_result": {"const": false},
+    "score_eligible": {"const": false},
+    "hardware": {
+      "type": "object", "additionalProperties": false,
+      "required": ["accelerator", "allocated_physical_devices", "tensor_parallel_size"],
+      "properties": {
+        "accelerator": {"const": "Ascend 910B2"},
+        "allocated_physical_devices": {
+          "type": "array", "items": {"type": "integer"}, "minItems": 2,
+          "maxItems": 2, "uniqueItems": true
+        },
+        "tensor_parallel_size": {"const": 2}
+      }
+    },
+    "model": {"type": "string", "minLength": 1},
+    "source_commits": {"$ref": "#/definitions/pinnedMap"},
+    "wheel_sha256": {"$ref": "#/definitions/pinnedMap"},
+    "additional_runtime_dependency": {
+      "type": "object", "additionalProperties": false,
+      "required": ["accelerate_version", "reason"],
+      "properties": {
+        "accelerate_version": {"const": "1.11.0"},
+        "reason": {"const": "exact current-mount calibration generation"}
+      }
+    },
+    "calibration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["current_mount_generated", "model_source_fingerprint_gate_honored", "path", "sha256"],
+      "properties": {
+        "current_mount_generated": {"const": true},
+        "model_source_fingerprint_gate_honored": {"const": true},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/definitions/digest"}
+      }
+    },
+    "orders": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["order", "success", "health_status", "completion_status", "completion_nonempty", "kvcompress_cache_bound_log", "profiler_request_finished_observed", "profiler_trace_record_count", "cleanup_proven", "npu_process_tables_empty", "port_refused_after_stop", "raw_manifest_sha256", "result_path", "result_sha256"],
+        "properties": {
+          "order": {"enum": ["profiler-then-kvcompress", "kvcompress-then-profiler"]},
+          "success": {"const": true},
+          "health_status": {"const": 200},
+          "completion_status": {"const": 200},
+          "completion_nonempty": {"const": true},
+          "kvcompress_cache_bound_log": {"const": true},
+          "profiler_request_finished_observed": {"const": true},
+          "profiler_trace_record_count": {"type": "integer", "minimum": 1},
+          "cleanup_proven": {"const": true},
+          "npu_process_tables_empty": {"const": true},
+          "port_refused_after_stop": {"const": true},
+          "raw_manifest_sha256": {"$ref": "#/definitions/digest"},
+          "result_path": {"type": "string", "minLength": 1},
+          "result_sha256": {"$ref": "#/definitions/digest"}
+        }
+      }
+    },
+    "retained_failed_attempts": {
+      "type": "array", "minItems": 3,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["path", "reason"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1},
+          "cleanup_proven": {"const": true}
+        }
+      }
+    },
+    "scientific_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["established", "not_established"],
+      "properties": {
+        "established": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "not_established": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+      }
+    }
+  },
+  "definitions": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "pinnedMap": {
+      "type": "object", "additionalProperties": false,
+      "required": ["ascend", "host", "kvcompress", "lifecycle_profiler"],
+      "properties": {
+        "ascend": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+        "host": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+        "kvcompress": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+        "lifecycle_profiler": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}
+      }
+    }
+  }
+}

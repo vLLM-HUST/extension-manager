@@ -79,6 +79,25 @@ not a runtime-effective result or an H2/H4 score input.  Run
 validate its schema, byte identity, exact source/Host bindings, both orders,
 and those fail-closed boundaries.
 
+## Real TP2 two-MOD activation preflight
+
+`artifacts/h2-real-pair-tp2-preflight-20261013.json` advances that exact
+KVCompress/lifecycle-profiler pair through real Qwen2.5-14B TP2 serving on two
+Ascend 910B2 devices. Both isolated installation orders reached health and a
+nonempty completion, the profiler observed `request_finished`, KVCompress
+reported binding its cache path, and cleanup emptied both NPU process tables.
+The artifact retains the two model-fingerprint failures and the failed first
+calibration attempt rather than discarding them.
+
+This remains an activation preflight. It does not show that a compression
+transaction occurred, supply an independent H2 correctness/ownership oracle,
+run matched control/candidate repetitions, or measure latency or throughput.
+Accordingly `formal_h2_result`, `performance_result`, and `score_eligible` are
+all false. Run
+`python experiments/real_mod_composition/verify_real_pair_preflight.py` to
+verify the source summary's exact SHA-256, strict schema, both installation
+orders, retained failure ledger, and required non-claims.
+
 `score_admission.py` enforces that boundary mechanically. With the checked-in
 artifacts it exits 2 and reports `INCOMPLETE`: all three runtime artifacts are
 preflights, the independent real-MOD oracle is absent, and neither frozen
