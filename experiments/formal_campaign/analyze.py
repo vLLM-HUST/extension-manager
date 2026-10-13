@@ -42,6 +42,33 @@ def load_protocol(root: Path = ROOT) -> dict[str, Any]:
     return protocol
 
 
+def load_h4_campaign(path: Path) -> dict[str, Any]:
+    campaign = _load_object(path)
+    if campaign.get("schema") != "ecpa-h4-minimal-matched-cell-campaign/v1":
+        raise ValueError("H4 campaign uses an unsupported schema")
+    required = {
+        "campaign_id",
+        "cell_id",
+        "arms",
+        "schedule",
+        "fixed_identity",
+        "workload",
+    }
+    missing = sorted(required - campaign.keys())
+    if missing:
+        raise ValueError(f"H4 campaign lacks {', '.join(missing)}")
+    campaign["_sha256"] = _digest_bytes(path)
+    campaign["_path"] = str(path.resolve())
+    campaign["arms_by_id"] = {item["id"]: item for item in campaign["arms"]}
+    workload_path = (path.parent / campaign["workload"]["path"]).resolve()
+    if _digest_bytes(workload_path) != campaign["workload"]["sha256"]:
+        raise ValueError("H4 workload digest differs from frozen campaign")
+    campaign["workload"] = _load_object(workload_path) | {
+        "sha256": campaign["workload"]["sha256"]
+    }
+    return campaign
+
+
 def load_records(path: Path, root: Path = ROOT) -> list[dict[str, Any]]:
     schema = _load_object(root / "record.schema.json")
     jsonschema.Draft7Validator.check_schema(schema)
@@ -108,11 +135,225 @@ def _verify_artifacts(record: dict[str, Any], artifact_root: Path) -> None:
         )
 
 
+def _digest_bytes(path: Path) -> str:
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _canonical_digest(value: Any) -> str:
+    encoded = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode()
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def _load_h4_raw_schema(root: Path = ROOT) -> dict[str, Any]:
+    schema = _load_object(root / "h4-raw-artifact.schema.json")
+    jsonschema.Draft7Validator.check_schema(schema)
+    return schema
+
+
+def _verify_h4_receipt(
+    record: dict[str, Any], receipt_path: Path, campaign_spec: dict[str, Any]
+) -> dict[str, Any]:
+    receipt = _load_object(receipt_path)
+    schema = _load_object(ROOT / "h4-deployment-receipt.schema.json")
+    jsonschema.Draft7Validator.check_schema(schema)
+    errors = sorted(
+        jsonschema.Draft7Validator(schema).iter_errors(receipt),
+        key=lambda error: list(error.path),
+    )
+    if errors:
+        raise ValueError(
+            f"{record['start_id']} deployment receipt: {errors[0].message}"
+        )
+    expected = {
+        "campaign_id": record["campaign_id"],
+        "cell_id": record["cell_id"],
+        "manager_commit": record["identity"]["manager_commit"],
+        "host_commit": record["identity"]["host_commit"],
+        "accelerator_commit": record["identity"]["accelerator_commit"],
+        "plugin_commits": record["identity"]["plugin_commits"],
+        "model_digest": record["identity"]["model_digest"],
+        "workload_digest": record["identity"]["workload_digest"],
+        "hardware": record["identity"]["hardware"],
+        "topology": record["identity"]["topology"],
+    }
+    for name, value in expected.items():
+        if receipt.get(name) != value:
+            raise ValueError(f"{record['start_id']} receipt {name} is not bound")
+    if receipt["campaign_sha256"] != campaign_spec["_sha256"]:
+        raise ValueError(f"{record['start_id']} receipt campaign digest differs")
+    if receipt["arm_command_digests"].keys() != set(campaign_spec["arms_by_id"]):
+        raise ValueError(f"{record['start_id']} receipt does not cover all arms")
+    return receipt
+
+
+def _duration_ms(interval: dict[str, int]) -> float:
+    if interval["end_ns"] < interval["start_ns"]:
+        raise ValueError("monotonic interval ends before it starts")
+    return (interval["end_ns"] - interval["start_ns"]) / 1_000_000
+
+
+def _recompute_h4_metrics(
+    record: dict[str, Any], raw: dict[str, Any], campaign_spec: dict[str, Any]
+) -> dict[str, Any]:
+    start_id = record["start_id"]
+    bindings = {
+        "campaign_id": record["campaign_id"],
+        "cell_id": record["cell_id"],
+        "start_id": start_id,
+        "arm": record["arm"],
+        "repetition": record["repetition"],
+        "arm_order": record["arm_order"],
+        "workload_digest": record["identity"]["workload_digest"],
+        "deployment_receipt_sha256": record["deployment"]["receipt_sha256"],
+    }
+    for name, expected in bindings.items():
+        if raw.get(name) != expected:
+            raise ValueError(f"{start_id} raw artifact {name} is not bound")
+    if raw["process_identity"] != record["process_identity"]:
+        raise ValueError(f"{start_id} raw process identity differs")
+    if record["status"] == "complete" and (
+        record["process_identity"]["server_pid"] is None
+        or record["process_identity"]["server_start_ticks"] is None
+    ):
+        raise ValueError(f"{start_id} complete start lacks server process identity")
+    for label, expected in raw["artifact_sha256"].items():
+        if record["artifacts"][label]["sha256"] != expected:
+            raise ValueError(f"{start_id} raw artifact manifest differs for {label}")
+
+    phases = raw["startup_phases"]
+    order = [
+        "discovery",
+        "validation",
+        "planning",
+        "rendering",
+        "evidence_setup",
+        "worker_loading",
+    ]
+    cursor = raw["startup_start_ns"]
+    phase_ms: dict[str, float] = {}
+    for phase in order:
+        interval = phases[phase]
+        if interval["start_ns"] != cursor:
+            raise ValueError(f"{start_id} startup phases overlap or contain a gap")
+        phase_ms[phase] = _duration_ms(interval)
+        cursor = interval["end_ns"]
+    if cursor != raw["ready_ns"]:
+        raise ValueError(f"{start_id} startup phases do not end at readiness")
+    total_ms = (raw["ready_ns"] - raw["startup_start_ns"]) / 1_000_000
+    if abs(sum(phase_ms.values()) - total_ms) > 1.0:
+        raise ValueError(f"{start_id} startup phase sum differs from total")
+    phase_ms["total"] = total_ms
+
+    workload = campaign_spec["workload"]
+    requests = raw["requests"]
+    warmups = [item for item in requests if item["kind"] == "warmup"]
+    measured = [item for item in requests if item["kind"] == "measured"]
+    if len(warmups) != workload["warmup_requests"]:
+        raise ValueError(f"{start_id} warmup request count differs")
+    if len(measured) != workload["measured_requests"]:
+        raise ValueError(f"{start_id} measured request count differs")
+    ids = [item["request_id"] for item in requests]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"{start_id} request IDs are not unique")
+    for item in requests:
+        if item["complete_ns"] < item["dispatch_ns"]:
+            raise ValueError(f"{start_id} request has negative latency")
+    successful = [
+        item
+        for item in measured
+        if item["status_code"] == workload["success_status"]
+        and (item["response_nonempty"] or not workload["require_nonempty_completion"])
+    ]
+    if len(successful) < workload["min_successful_measured_requests"]:
+        raise ValueError(f"{start_id} has too few successful measured requests")
+    first_dispatch = min(item["dispatch_ns"] for item in measured)
+    last_complete = max(item["complete_ns"] for item in measured)
+    elapsed_seconds = (last_complete - first_dispatch) / 1_000_000_000
+    if elapsed_seconds <= 0:
+        raise ValueError(f"{start_id} measured window is not positive")
+    latencies = [
+        (item["complete_ns"] - item["dispatch_ns"]) / 1_000_000 for item in successful
+    ]
+    resources = raw["resources"]
+    return {
+        "startup_phases_ms": phase_ms,
+        "throughput": len(successful) / elapsed_seconds,
+        "latency_median_ms": _percentile(latencies, 0.50),
+        "latency_p95_ms": _percentile(latencies, 0.95),
+        "latency_p99_ms": _percentile(latencies, 0.99),
+        "cpu_ms": resources["cpu_ms"],
+        "host_memory_bytes": resources["peak_host_rss_bytes"],
+        "device_memory_bytes": resources["peak_device_memory_bytes"],
+        "process_messages": resources["process_messages"],
+        "evidence_bytes": resources["evidence_bytes"],
+        "gate_open_ms": resources.get("gate_open_ms"),
+        "failure_detection_ms": resources.get("failure_detection_ms"),
+        "rollback_ms": resources.get("rollback_ms"),
+        "recovery_ms": resources.get("recovery_ms"),
+    }
+
+
+def _verify_h4_raw_artifact(
+    record: dict[str, Any], artifact_root: Path, campaign_spec: dict[str, Any]
+) -> None:
+    root = artifact_root.resolve()
+    binding = record["artifacts"].get("raw_measurement")
+    if not isinstance(binding, dict):
+        raise ValueError(f"{record['start_id']} lacks a raw H4 measurement")
+    path = (root / binding["path"]).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise ValueError(f"{record['start_id']} raw H4 measurement is missing")
+    if _digest_bytes(path) != binding["sha256"]:
+        raise ValueError(f"{record['start_id']} raw H4 measurement digest differs")
+    raw = _load_object(path)
+    errors = sorted(
+        jsonschema.Draft7Validator(_load_h4_raw_schema()).iter_errors(raw),
+        key=lambda error: list(error.path),
+    )
+    if errors:
+        raise ValueError(
+            f"{record['start_id']} raw H4 measurement: {errors[0].message}"
+        )
+    _verify_h4_receipt(
+        record,
+        (root / record["artifacts"]["deployment_receipt"]["path"]).resolve(),
+        campaign_spec,
+    )
+    request_path = (root / record["artifacts"]["request_results"]["path"]).resolve()
+    process_path = (root / record["artifacts"]["process_snapshot"]["path"]).resolve()
+    cleanup_path = (root / record["artifacts"]["cleanup_report"]["path"]).resolve()
+    request_document = _load_object(request_path)
+    if (
+        request_document.get("start_id") != record["start_id"]
+        or request_document.get("requests") != raw["requests"]
+    ):
+        raise ValueError(f"{record['start_id']} request artifact differs from raw")
+    process_document = _load_object(process_path)
+    if (
+        process_document.get("start_id") != record["start_id"]
+        or process_document.get("process_identity") != raw["process_identity"]
+    ):
+        raise ValueError(f"{record['start_id']} process snapshot differs from raw")
+    cleanup_document = _load_object(cleanup_path)
+    if (
+        cleanup_document.get("start_id") != record["start_id"]
+        or cleanup_document.get("cleanup") != record["cleanup"]
+    ):
+        raise ValueError(f"{record['start_id']} cleanup report differs from record")
+    if record["status"] == "complete":
+        recomputed = _recompute_h4_metrics(record, raw, campaign_spec)
+        if _canonical_digest(recomputed) != _canonical_digest(record["metrics"]):
+            raise ValueError(f"{record['start_id']} metrics differ from raw evidence")
+
+
 def _validate_intake(
     protocol: dict[str, Any],
     campaign: str,
     records: list[dict[str, Any]],
     artifact_root: Path,
+    campaign_spec: dict[str, Any] | None = None,
 ) -> tuple[list[str], dict[tuple[str, int, str], dict[str, Any]]]:
     definition = protocol[campaign]
     expected_campaign = definition["campaign_id"]
@@ -134,6 +375,14 @@ def _validate_intake(
         if key in indexed:
             raise ValueError(f"duplicate formal start for {key}")
         _verify_artifacts(row, artifact_root)
+        if campaign == "h4":
+            if campaign_spec is None:
+                raise ValueError("H4 intake requires the frozen campaign spec")
+            if row["campaign_id"] != campaign_spec["campaign_id"]:
+                raise ValueError(f"{row['start_id']} differs from frozen campaign")
+            if row["cell_id"] != campaign_spec["cell_id"]:
+                raise ValueError(f"{row['start_id']} differs from frozen cell")
+            _verify_h4_raw_artifact(row, artifact_root, campaign_spec)
         indexed[key] = row
 
     missing = [
@@ -154,6 +403,17 @@ def _validate_intake(
         receipts = {row["deployment"]["receipt_sha256"] for row in cell_rows}
         if len(receipts) != 1:
             raise ValueError(f"{cell} has mixed deployment registration receipts")
+    if campaign == "h4":
+        for label in (
+            "raw_measurement",
+            "raw_log",
+            "request_results",
+            "process_snapshot",
+            "cleanup_report",
+        ):
+            digests = [row["artifacts"][label]["sha256"] for row in records]
+            if len(digests) != len(set(digests)):
+                raise ValueError(f"H4 {label} artifacts are reused across starts")
     return missing, indexed
 
 
@@ -203,6 +463,109 @@ def _effect(
             numerator = left - right if direction == "increase" else right - left
             values.append(100 * numerator / right)
     return values
+
+
+def _summarize_h4_cells(
+    protocol: dict[str, Any],
+    indexed: dict[tuple[str, int, str], dict[str, Any]],
+    cells: list[str],
+    rows: list[dict[str, Any]],
+    *,
+    overall_complete: bool,
+) -> dict[str, Any]:
+    definition = protocol["h4"]
+    confidence = definition["confidence"]
+
+    def summarize(values: list[float]) -> dict[str, Any]:
+        return _paired_summary(
+            values,
+            seed=confidence["seed"],
+            resamples=confidence["resamples"],
+            level=confidence["level"],
+        )
+
+    failed = [row["start_id"] for row in rows if row["status"] == "failed"]
+    cleanup_failures = [
+        row["start_id"] for row in rows if not all(row["cleanup"].values())
+    ]
+    if failed or cleanup_failures:
+        return {
+            "status": "falsified",
+            "formal_result": True,
+            "campaign_complete": overall_complete,
+            "starts": len(rows),
+            "failed_starts": failed,
+            "cleanup_failures": cleanup_failures,
+            "metrics": None,
+        }
+    thresholds = definition["thresholds"]
+    summaries: dict[str, Any] = {}
+    violated = False
+    for cell in cells:
+        startup_percent = _effect(
+            indexed,
+            [cell],
+            "ecpa",
+            "manual-integration",
+            lambda row: row["metrics"]["startup_phases_ms"]["total"],
+            "increase",
+        )
+        startup_absolute = [
+            indexed[(cell, repetition, "ecpa")]["metrics"]["startup_phases_ms"]["total"]
+            - indexed[(cell, repetition, "manual-integration")]["metrics"][
+                "startup_phases_ms"
+            ]["total"]
+            for repetition in range(1, 4)
+        ]
+        throughput = _effect(
+            indexed,
+            [cell],
+            "ecpa",
+            "manual-integration",
+            lambda row: row["metrics"]["throughput"],
+            "regression",
+        )
+        p99 = _effect(
+            indexed,
+            [cell],
+            "ecpa",
+            "manual-integration",
+            lambda row: row["metrics"]["latency_p99_ms"],
+            "increase",
+        )
+        values = {
+            "ecpa_vs_manual_startup_percent": summarize(startup_percent),
+            "ecpa_vs_manual_startup_absolute_ms": summarize(startup_absolute),
+            "ecpa_vs_manual_throughput_regression_percent": summarize(throughput),
+            "ecpa_vs_manual_p99_regression_percent": summarize(p99),
+        }
+        values["threshold_violation"] = (
+            (
+                values["ecpa_vs_manual_startup_percent"]["median"]
+                > thresholds["startup_percent"]
+                and values["ecpa_vs_manual_startup_absolute_ms"]["median"]
+                > thresholds["startup_absolute_ms"]
+            )
+            or (
+                values["ecpa_vs_manual_throughput_regression_percent"]["median"]
+                > thresholds["throughput_regression_percent"]
+            )
+            or (
+                values["ecpa_vs_manual_p99_regression_percent"]["median"]
+                > thresholds["latency_p99_regression_percent"]
+            )
+        )
+        violated = violated or values["threshold_violation"]
+        summaries[cell] = values
+    return {
+        "status": "falsified" if violated else "supported",
+        "formal_result": True,
+        "campaign_complete": overall_complete,
+        "starts": len(rows),
+        "failed_starts": [],
+        "cleanup_failures": [],
+        "metrics": {"cells": summaries},
+    }
 
 
 def analyze_h3(
@@ -296,9 +659,21 @@ def analyze_h4(
     protocol: dict[str, Any],
     records: list[dict[str, Any]],
     artifact_root: Path,
+    campaign_spec: dict[str, Any],
 ) -> dict[str, Any]:
-    missing, indexed = _validate_intake(protocol, "h4", records, artifact_root)
+    missing, indexed = _validate_intake(
+        protocol, "h4", records, artifact_root, campaign_spec
+    )
     definition = protocol["h4"]
+    cell = campaign_spec["cell_id"]
+    cell_missing = [item for item in missing if item.startswith(f"{cell}/")]
+    if not cell_missing:
+        cell_rows = [row for row in indexed.values() if row["cell_id"] == cell]
+        cell_result = _summarize_h4_cells(
+            protocol, indexed, [cell], cell_rows, overall_complete=False
+        )
+    else:
+        cell_result = None
     if missing:
         return {
             "schema": "ecpa-formal-campaign-summary/v1",
@@ -309,6 +684,7 @@ def analyze_h4(
             "required_starts": len(definition["required_cells"]) * 9,
             "missing": missing,
             "metrics": None,
+            "completed_cells": ({cell: cell_result} if cell_result else {}),
         }
     rows = list(indexed.values())
     failed_starts = [row["start_id"] for row in rows if row["status"] == "failed"]
@@ -489,12 +865,19 @@ def main() -> int:
     parser.add_argument("--campaign", choices=("h3", "h4"), required=True)
     parser.add_argument("--records", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
+    parser.add_argument("--campaign-spec", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     protocol = load_protocol()
     records = load_records(args.records)
-    analyzer = analyze_h3 if args.campaign == "h3" else analyze_h4
-    summary = analyzer(protocol, records, args.artifact_root)
+    if args.campaign == "h3":
+        summary = analyze_h3(protocol, records, args.artifact_root)
+    else:
+        if args.campaign_spec is None:
+            parser.error("--campaign-spec is required for H4")
+        summary = analyze_h4(
+            protocol, records, args.artifact_root, load_h4_campaign(args.campaign_spec)
+        )
     rendered = json.dumps(summary, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.write_text(rendered)

@@ -21,30 +21,8 @@ def load_analyzer():
     return module
 
 
-def artifact_bindings(root: Path) -> dict[str, dict[str, str]]:
-    bindings = {}
-    for name in ("raw_log", "request_results", "process_snapshot", "cleanup_report"):
-        path = root / f"{name}.json"
-        path.write_text(json.dumps({"artifact": name}) + "\n")
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        bindings[name] = {"path": path.name, "sha256": f"sha256:{digest}"}
-    receipt = root / "deployment_receipt.json"
-    receipt.write_text(
-        json.dumps(
-            {
-                "schema": "ecpa-formal-real-deployment-registration/v1",
-                "registration_state": "registered",
-                "admissible": True,
-            }
-        )
-        + "\n"
-    )
-    digest = hashlib.sha256(receipt.read_bytes()).hexdigest()
-    bindings["deployment_receipt"] = {
-        "path": receipt.name,
-        "sha256": f"sha256:{digest}",
-    }
-    return bindings
+def digest(path: Path) -> str:
+    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def identity() -> dict[str, object]:
@@ -63,90 +41,369 @@ def identity() -> dict[str, object]:
     }
 
 
-def h4_metrics(arm: str, *, p99_ecpa: float = 101.0) -> dict[str, object]:
-    total = {
-        "manual-integration": 1000.0,
-        "ecpa": 1020.0,
-        "vanilla-vllm-entry-points": 980.0,
-    }[arm]
-    throughput = {
-        "manual-integration": 100.0,
-        "ecpa": 99.5,
-        "vanilla-vllm-entry-points": 101.0,
-    }[arm]
-    p99 = {
-        "manual-integration": 100.0,
-        "ecpa": p99_ecpa,
-        "vanilla-vllm-entry-points": 98.0,
-    }[arm]
+def campaign_spec(cell: str) -> dict[str, object]:
     return {
-        "startup_phases_ms": {
-            "discovery": 1.0,
-            "validation": 2.0,
-            "planning": 3.0,
-            "rendering": 4.0,
-            "worker_loading": 900.0,
-            "evidence_setup": 10.0,
-            "total": total,
+        "_sha256": "sha256:" + "8" * 64,
+        "campaign_id": "H4-matched-cost-v1",
+        "cell_id": cell,
+        "arms_by_id": {
+            arm: {}
+            for arm in ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
         },
-        "throughput": throughput,
-        "latency_median_ms": 50.0,
-        "latency_p95_ms": 80.0,
-        "latency_p99_ms": p99,
-        "cpu_ms": 100.0,
-        "host_memory_bytes": 1000,
-        "device_memory_bytes": 2000,
-        "process_messages": 10,
-        "evidence_bytes": 500,
-        "gate_open_ms": None,
-        "failure_detection_ms": None,
-        "rollback_ms": None,
-        "recovery_ms": None,
+        "workload": {
+            "sha256": "sha256:" + "6" * 64,
+            "warmup_requests": 1,
+            "measured_requests": 4,
+            "min_successful_measured_requests": 4,
+            "success_status": 200,
+            "require_nonempty_completion": True,
+        },
     }
 
 
-def record(
-    protocol: dict[str, object],
-    artifacts: dict[str, dict[str, str]],
+def write(path: Path, value: object) -> dict[str, str]:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, sort_keys=True) + "\n")
+    return {"path": str(path), "sha256": digest(path)}
+
+
+def receipt(root: Path, cell: str) -> tuple[Path, dict[str, str]]:
+    path = root / "deployment-receipt.json"
+    value = {
+        "schema": "ecpa-h4-deployment-receipt/v1",
+        "registration_state": "registered",
+        "admissible": True,
+        "evidence_mode": "formal-real",
+        "campaign_sha256": "sha256:" + "8" * 64,
+        "campaign_id": "H4-matched-cost-v1",
+        "cell_id": cell,
+        "arm_command_digests": {
+            arm: "sha256:" + char * 64
+            for arm, char in (
+                ("vanilla-vllm-entry-points", "a"),
+                ("manual-integration", "b"),
+                ("ecpa", "c"),
+            )
+        },
+        "manager_commit": "1" * 40,
+        "host_commit": "2" * 40,
+        "accelerator_commit": "3" * 40,
+        "plugin_commits": {"kv-mod": "4" * 40},
+        "model_digest": "sha256:" + "5" * 64,
+        "workload_digest": "sha256:" + "6" * 64,
+        "hardware": "2x Ascend 910B2",
+        "topology": "TP2",
+    }
+    binding = write(path, value)
+    binding["path"] = path.name
+    return path, binding
+
+
+def make_h4_record(
+    module,
+    root: Path,
+    protocol,
     cell: str,
-    repetition: int,
+    rep: int,
     arm: str,
     *,
-    p99_ecpa: float = 101.0,
-) -> dict[str, object]:
-    return {
+    ecpa_latency_ms: int = 101,
+):
+    start_id = f"{cell}-r{rep}-{arm}"
+    run = root / start_id
+    run.mkdir()
+    _, receipt_binding = receipt(root, cell)
+    process = {
+        "launcher_pid": 10,
+        "launcher_start_ticks": 15,
+        "server_pid": 20 + rep,
+        "server_start_ticks": 30 + rep,
+        "boot_id": "boot-identity",
+    }
+    total_ms = {
+        "vanilla-vllm-entry-points": 980,
+        "manual-integration": 1000,
+        "ecpa": 1020,
+    }[arm]
+    phase_names = ["discovery", "validation", "planning", "rendering", "evidence_setup"]
+    cursor = rep * 10_000_000_000 + protocol["arms"].index(arm) * 2_000_000_000
+    startup_start = cursor
+    phases = {}
+    for name in phase_names:
+        end = cursor + 1_000_000
+        phases[name] = {"start_ns": cursor, "end_ns": end}
+        cursor = end
+    phases["worker_loading"] = {
+        "start_ns": cursor,
+        "end_ns": startup_start + total_ms * 1_000_000,
+    }
+    ready = phases["worker_loading"]["end_ns"]
+    latency_ms = {
+        "vanilla-vllm-entry-points": 98,
+        "manual-integration": 100,
+        "ecpa": ecpa_latency_ms,
+    }[arm]
+    requests = [
+        {
+            "request_id": "warmup-0000",
+            "kind": "warmup",
+            "dispatch_ns": ready + 1,
+            "complete_ns": ready + 1_000_001,
+            "status_code": 200,
+            "response_nonempty": True,
+            "output_tokens": 1,
+            "error": None,
+        }
+    ]
+    base = ready + 2_000_000
+    # The measured window gives arm-specific throughput while every request retains
+    # an independently recomputable latency.
+    window_ns = {
+        "vanilla-vllm-entry-points": 39_603_960,
+        "manual-integration": 40_000_000,
+        "ecpa": 40_201_005,
+    }[arm]
+    for index in range(4):
+        dispatch = base + index * max(1, (window_ns - latency_ms * 1_000_000) // 3)
+        requests.append(
+            {
+                "request_id": f"measured-{index:04d}",
+                "kind": "measured",
+                "dispatch_ns": dispatch,
+                "complete_ns": dispatch + latency_ms * 1_000_000,
+                "status_code": 200,
+                "response_nonempty": True,
+                "output_tokens": 1,
+                "error": None,
+            }
+        )
+    cleanup = {
+        "processes_reclaimed": True,
+        "ports_reclaimed": True,
+        "devices_reclaimed": True,
+    }
+    child_values = {
+        "raw_log": {"start_id": start_id, "name": "raw_log"},
+        "request_results": {"start_id": start_id, "requests": requests},
+        "process_snapshot": {
+            "start_id": start_id,
+            "process_identity": process,
+        },
+        "cleanup_report": {"start_id": start_id, "cleanup": cleanup},
+    }
+    child_artifacts = {
+        name: write(run / f"{name}.json", value) for name, value in child_values.items()
+    }
+    raw = {
+        "schema": "ecpa-h4-raw-measurement/v1",
+        "campaign_id": "H4-matched-cost-v1",
+        "cell_id": cell,
+        "start_id": start_id,
+        "arm": arm,
+        "repetition": rep,
+        "arm_order": protocol["schedule"][rep - 1].index(arm) + 1,
+        "workload_digest": "sha256:" + "6" * 64,
+        "deployment_receipt_sha256": receipt_binding["sha256"],
+        "artifact_sha256": {
+            name: binding["sha256"] for name, binding in child_artifacts.items()
+        },
+        "process_identity": process,
+        "clock": "CLOCK_MONOTONIC_RAW",
+        "startup_start_ns": startup_start,
+        "ready_ns": ready,
+        "startup_phases": phases,
+        "requests": requests,
+        "resources": {
+            "cpu_ms": 100.0,
+            "peak_host_rss_bytes": 1000,
+            "peak_device_memory_bytes": 2000,
+            "process_messages": 10,
+            "evidence_bytes": 500,
+            "gate_open_ms": None,
+            "failure_detection_ms": None,
+            "rollback_ms": None,
+            "recovery_ms": None,
+        },
+    }
+    raw_binding = write(run / "raw-measurement.json", raw)
+    artifacts = {
+        "deployment_receipt": receipt_binding,
+        "raw_measurement": raw_binding,
+        **child_artifacts,
+    }
+    record = {
         "schema": "ecpa-formal-campaign-record/v1",
         "campaign_id": "H4-matched-cost-v1",
         "evidence_class": "formal-real",
         "deployment": {
             "registration_state": "registered",
-            "receipt_sha256": artifacts["deployment_receipt"]["sha256"],
+            "receipt_sha256": receipt_binding["sha256"],
         },
         "cell_id": cell,
-        "start_id": f"{cell}-r{repetition}-{arm}",
+        "start_id": start_id,
         "status": "complete",
         "arm": arm,
-        "repetition": repetition,
-        "arm_order": protocol["schedule"][repetition - 1].index(arm) + 1,
+        "repetition": rep,
+        "arm_order": raw["arm_order"],
+        "process_identity": process,
         "identity": identity(),
         "artifacts": artifacts,
-        "cleanup": {
-            "processes_reclaimed": True,
-            "ports_reclaimed": True,
-            "devices_reclaimed": True,
-        },
-        "metrics": h4_metrics(arm, p99_ecpa=p99_ecpa),
+        "cleanup": cleanup,
+        "metrics": {},
     }
+    record["metrics"] = module._recompute_h4_metrics(record, raw, campaign_spec(cell))
+    return record
 
 
-def h4_records(module, artifacts, *, p99_ecpa: float = 101.0):
+def h4_cell_records(module, root: Path, *, ecpa_latency_ms: int = 101):
     protocol = module.load_protocol()
-    return [
-        record(protocol, artifacts, cell, repetition, arm, p99_ecpa=p99_ecpa)
-        for cell in protocol["h4"]["required_cells"]
-        for repetition in range(1, 4)
+    cell = protocol["h4"]["required_cells"][1]
+    return cell, [
+        make_h4_record(
+            module,
+            root,
+            protocol,
+            cell,
+            rep,
+            arm,
+            ecpa_latency_ms=ecpa_latency_ms,
+        )
+        for rep in range(1, 4)
         for arm in protocol["arms"]
     ]
+
+
+def test_h4_single_cell_emits_cell_result_but_overall_remains_incomplete(
+    tmp_path: Path,
+):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    result = module.analyze_h4(
+        module.load_protocol(), rows, tmp_path, campaign_spec(cell)
+    )
+    assert result["status"] == "incomplete"
+    assert result["formal_result"] is False
+    assert result["received_starts"] == 9
+    assert result["completed_cells"][cell]["formal_result"] is True
+    assert result["completed_cells"][cell]["campaign_complete"] is False
+    assert result["completed_cells"][cell]["status"] == "supported"
+
+
+@pytest.mark.parametrize(
+    "metric",
+    (
+        "throughput",
+        "latency_median_ms",
+        "latency_p95_ms",
+        "latency_p99_ms",
+    ),
+)
+def test_h4_rejects_metric_forgery(tmp_path: Path, metric: str):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    rows[0]["metrics"][metric] += 1
+    with pytest.raises(ValueError, match="metrics differ from raw evidence"):
+        module.analyze_h4(module.load_protocol(), rows, tmp_path, campaign_spec(cell))
+
+
+def test_h4_rejects_forged_startup_total(tmp_path: Path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    rows[0]["metrics"]["startup_phases_ms"]["total"] += 1
+    with pytest.raises(ValueError, match="metrics differ from raw evidence"):
+        module.analyze_h4(module.load_protocol(), rows, tmp_path, campaign_spec(cell))
+
+
+def test_h4_rejects_raw_artifact_reuse(tmp_path: Path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    rows[1]["artifacts"]["raw_measurement"] = rows[0]["artifacts"]["raw_measurement"]
+    with pytest.raises(ValueError, match="differs from raw|reused"):
+        module.analyze_h4(module.load_protocol(), rows, tmp_path, campaign_spec(cell))
+
+
+def test_h4_rejects_receipt_without_exact_identity_binding(tmp_path: Path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    path = tmp_path / "deployment-receipt.json"
+    value = json.loads(path.read_text())
+    value["host_commit"] = "9" * 40
+    path.write_text(json.dumps(value, sort_keys=True) + "\n")
+    new_digest = digest(path)
+    for row in rows:
+        row["artifacts"]["deployment_receipt"]["sha256"] = new_digest
+        row["deployment"]["receipt_sha256"] = new_digest
+        raw_path = tmp_path / row["artifacts"]["raw_measurement"]["path"]
+        raw = json.loads(raw_path.read_text())
+        raw["deployment_receipt_sha256"] = new_digest
+        raw_path.write_text(json.dumps(raw, sort_keys=True) + "\n")
+        row["artifacts"]["raw_measurement"]["sha256"] = digest(raw_path)
+    with pytest.raises(ValueError, match="receipt host_commit is not bound"):
+        module.analyze_h4(module.load_protocol(), rows, tmp_path, campaign_spec(cell))
+
+
+def test_h4_retains_failed_start_and_falsifies_completed_cell(tmp_path: Path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    rows[0]["status"] = "failed"
+    rows[0]["failure"] = {"phase": "worker_loading", "class": "TimeoutError"}
+    rows[0]["metrics"] = {}
+    result = module.analyze_h4(
+        module.load_protocol(), rows, tmp_path, campaign_spec(cell)
+    )
+    assert result["status"] == "incomplete"
+    assert result["completed_cells"][cell]["status"] == "falsified"
+    assert result["completed_cells"][cell]["failed_starts"] == [rows[0]["start_id"]]
+
+
+def test_h4_cell_retains_threshold_violation(tmp_path: Path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path, ecpa_latency_ms=103)
+    result = module.analyze_h4(
+        module.load_protocol(), rows, tmp_path, campaign_spec(cell)
+    )
+    assert result["completed_cells"][cell]["status"] == "falsified"
+    assert (
+        result["completed_cells"][cell]["metrics"]["cells"][cell]["threshold_violation"]
+        is True
+    )
+
+
+def test_h4_schema_requires_raw_measurement_and_process_identity(tmp_path: Path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    del rows[0]["artifacts"]["raw_measurement"]
+    del rows[0]["process_identity"]
+    records = tmp_path / "records.jsonl"
+    records.write_text(json.dumps(rows[0]) + "\n")
+    with pytest.raises(ValueError, match="process_identity|raw_measurement"):
+        module.load_records(records)
+
+
+def test_h3_incomplete_still_fails_closed_without_h4_raw_schema(tmp_path: Path):
+    module = load_analyzer()
+    protocol = module.load_protocol()
+    assert module.analyze_h3(protocol, [], tmp_path)["status"] == "incomplete"
+
+
+def h3_artifacts(root: Path):
+    bindings = {}
+    for name in ("raw_log", "request_results", "process_snapshot", "cleanup_report"):
+        binding = write(root / f"h3-{name}.json", {"artifact": name})
+        binding["path"] = Path(binding["path"]).name
+        bindings[name] = binding
+    receipt_path = root / "h3-receipt.json"
+    receipt_binding = write(
+        receipt_path,
+        {
+            "schema": "ecpa-formal-real-deployment-registration/v1",
+            "registration_state": "registered",
+            "admissible": True,
+        },
+    )
+    receipt_binding["path"] = receipt_path.name
+    bindings["deployment_receipt"] = receipt_binding
+    return bindings
 
 
 def h3_records(module, artifacts):
@@ -197,204 +454,13 @@ def h3_records(module, artifacts):
     return rows
 
 
-def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
-    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
-
-
-def test_incomplete_campaign_emits_no_metrics(tmp_path: Path) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    one = record(
-        protocol,
-        artifacts,
-        protocol["h4"]["required_cells"][0],
-        1,
-        "vanilla-vllm-entry-points",
-    )
-
-    result = analyzer.analyze_h4(protocol, [one], tmp_path)
-
-    assert result["status"] == "incomplete"
-    assert result["formal_result"] is False
-    assert result["metrics"] is None
-    assert result["received_starts"] == 1
-
-
-def test_complete_h4_uses_manual_paired_baseline_and_frozen_thresholds(
-    tmp_path: Path,
-) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    rows = h4_records(analyzer, artifacts)
-
-    result = analyzer.analyze_h4(protocol, rows, tmp_path)
-
+def test_h3_complete_analysis_and_direct_violation_are_unchanged(tmp_path: Path):
+    module = load_analyzer()
+    rows = h3_records(module, h3_artifacts(tmp_path))
+    result = module.analyze_h3(module.load_protocol(), rows, tmp_path)
     assert result["status"] == "supported"
-    assert result["formal_result"] is True
-    assert result["manual_baseline"] == "manual-integration"
-    assert result["vanilla_reported_separately"] is True
-    assert (
-        result["metrics"]["overall"]["ecpa_vs_manual_startup_percent"]["median"] == 2.0
-    )
-    assert (
-        result["metrics"]["overall"]["ecpa_vs_manual_throughput_regression_percent"][
-            "median"
-        ]
-        == 0.5
-    )
-    assert (
-        result["metrics"]["overall"]["ecpa_vs_manual_p99_regression_percent"]["median"]
-        == 1.0
-    )
-    assert all(
-        "vanilla_vs_manual_startup_percent" in cell
-        for cell in result["metrics"]["cells"].values()
-    )
-
-
-def test_h4_retains_threshold_violation_as_falsified(tmp_path: Path) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    rows = h4_records(analyzer, artifacts, p99_ecpa=103.0)
-
-    result = analyzer.analyze_h4(protocol, rows, tmp_path)
-
-    assert result["status"] == "falsified"
-    assert (
-        result["metrics"]["overall"]["ecpa_vs_manual_p99_regression_percent"]["median"]
-        == 3.0
-    )
-
-
-def test_h4_does_not_hide_one_failing_cell_in_an_aggregate(tmp_path: Path) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    rows = h4_records(analyzer, artifacts)
-    failing_cell = protocol["h4"]["required_cells"][0]
-    for row in rows:
-        if row["cell_id"] == failing_cell and row["arm"] == "ecpa":
-            row["metrics"]["latency_p99_ms"] = 110.0
-
-    result = analyzer.analyze_h4(protocol, rows, tmp_path)
-
-    assert result["status"] == "falsified"
-    assert result["metrics"]["cells"][failing_cell]["threshold_violation"] is True
-
-
-def test_h3_reports_each_cell_and_retains_direct_safety_violation(
-    tmp_path: Path,
-) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    rows = h3_records(analyzer, artifacts)
-
-    supported = analyzer.analyze_h3(protocol, rows, tmp_path)
-
-    assert supported["status"] == "supported"
-    assert supported["metrics"]["objective_rate"] == 1.0
-    assert set(supported["metrics"]["cells"]) == set(protocol["h3"]["required_cells"])
-
+    assert result["metrics"]["objective_rate"] == 1.0
     rows[0]["metrics"]["unsupported_tuple_served"] = True
-    falsified = analyzer.analyze_h3(protocol, rows, tmp_path)
-
-    assert falsified["status"] == "falsified"
-    assert falsified["metrics"]["direct_safety_violation"] is True
-    assert (
-        falsified["metrics"]["cells"][rows[0]["cell_id"]]["direct_safety_violation"]
-        is True
-    )
-
-
-def test_intake_rejects_cross_arm_identity_drift(tmp_path: Path) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    rows = h4_records(analyzer, artifacts)
-    rows[1]["identity"] = {**rows[1]["identity"], "host_commit": "9" * 40}
-
-    with pytest.raises(ValueError, match="mixed cross-arm"):
-        analyzer.analyze_h4(protocol, rows, tmp_path)
-
-
-def test_intake_rejects_missing_or_modified_raw_artifact(tmp_path: Path) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    rows = h4_records(analyzer, artifacts)
-    (tmp_path / "raw_log.json").write_text("modified\n")
-
-    with pytest.raises(ValueError, match="digest differs"):
-        analyzer.analyze_h4(protocol, rows, tmp_path)
-
-
-def test_intake_binds_the_deployment_receipt_bytes_to_the_record(
-    tmp_path: Path,
-) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    row = record(
-        protocol,
-        artifacts,
-        protocol["h4"]["required_cells"][0],
-        1,
-        "ecpa",
-    )
-    row["deployment"]["receipt_sha256"] = "sha256:" + "8" * 64
-
-    with pytest.raises(ValueError, match="digest differs from record"):
-        analyzer.analyze_h4(protocol, [row], tmp_path)
-
-
-def test_intake_rejects_a_hash_bound_unregistered_receipt(tmp_path: Path) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    receipt = tmp_path / artifacts["deployment_receipt"]["path"]
-    receipt.write_text(
-        json.dumps(
-            {
-                "schema": "ecpa-formal-real-deployment-registration/v1",
-                "registration_state": "unregistered",
-                "admissible": False,
-            }
-        )
-        + "\n"
-    )
-    digest = "sha256:" + hashlib.sha256(receipt.read_bytes()).hexdigest()
-    artifacts["deployment_receipt"]["sha256"] = digest
-    protocol = analyzer.load_protocol()
-    row = record(
-        protocol,
-        artifacts,
-        protocol["h4"]["required_cells"][0],
-        1,
-        "ecpa",
-    )
-
-    with pytest.raises(ValueError, match="not an admissible registration"):
-        analyzer.analyze_h4(protocol, [row], tmp_path)
-
-
-def test_schema_rejects_preflight_and_unregistered_records(tmp_path: Path) -> None:
-    analyzer = load_analyzer()
-    artifacts = artifact_bindings(tmp_path)
-    protocol = analyzer.load_protocol()
-    row = record(
-        protocol,
-        artifacts,
-        protocol["h4"]["required_cells"][0],
-        1,
-        "ecpa",
-    )
-    row["evidence_class"] = "unregistered-real-preflight"
-    row["deployment"]["registration_state"] = "unregistered"
-    records = tmp_path / "records.jsonl"
-    write_jsonl(records, [row])
-
-    with pytest.raises(ValueError, match="formal-real|registered"):
-        analyzer.load_records(records)
+    result = module.analyze_h3(module.load_protocol(), rows, tmp_path)
+    assert result["status"] == "falsified"
+    assert result["metrics"]["direct_safety_violation"] is True

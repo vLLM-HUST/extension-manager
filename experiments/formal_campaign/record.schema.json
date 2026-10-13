@@ -18,6 +18,7 @@
     },
     "cell_id": {"type": "string", "minLength": 1},
     "start_id": {"type": "string", "minLength": 1},
+    "process_identity": {"$ref": "#/definitions/processIdentity"},
     "status": {"enum": ["complete", "failed"]},
     "arm": {"enum": ["vanilla-vllm-entry-points", "manual-integration", "ecpa"]},
     "repetition": {"type": "integer", "minimum": 1, "maximum": 3},
@@ -50,6 +51,7 @@
         "request_results": {"$ref": "#/definitions/artifact"},
         "process_snapshot": {"$ref": "#/definitions/artifact"},
         "cleanup_report": {"$ref": "#/definitions/artifact"}
+        ,"raw_measurement": {"$ref": "#/definitions/artifact"}
       }
     },
     "cleanup": {
@@ -73,9 +75,22 @@
   "allOf": [
     {"if": {"properties": {"status": {"const": "failed"}}}, "then": {"required": ["failure"], "properties": {"failure": {"type": "object"}}}},
     {"if": {"properties": {"campaign_id": {"const": "H3-transactional-recovery-v1"}}}, "then": {"properties": {"metrics": {"$ref": "#/definitions/h3metrics"}}}},
+    {"if": {"properties": {"campaign_id": {"const": "H4-matched-cost-v1"}}}, "then": {"required": ["process_identity"], "properties": {"artifacts": {"required": ["raw_measurement"]}}}},
     {"if": {"properties": {"campaign_id": {"const": "H4-matched-cost-v1"}, "status": {"const": "complete"}}}, "then": {"properties": {"metrics": {"$ref": "#/definitions/h4metrics"}}}}
   ],
   "definitions": {
+    "processIdentity": {
+      "type": "object",
+      "required": ["launcher_pid", "launcher_start_ticks", "server_pid", "server_start_ticks", "boot_id"],
+      "properties": {
+        "launcher_pid": {"type": "integer", "minimum": 1},
+        "launcher_start_ticks": {"type": "integer", "minimum": 1},
+        "server_pid": {"type": ["integer", "null"], "minimum": 1},
+        "server_start_ticks": {"type": ["integer", "null"], "minimum": 1},
+        "boot_id": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
     "artifact": {
       "type": "object",
       "required": ["path", "sha256"],

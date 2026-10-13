@@ -9,6 +9,7 @@ Run the intake before using any number in the paper:
 
 ```bash
 python3 experiments/formal_campaign/analyze.py \
+  --campaign-spec /absolute/path/to/frozen-h4-campaign.json \
   --records /absolute/path/to/records.jsonl \
   --artifact-root /absolute/path/to/raw-artifacts \
   --output /absolute/path/to/validated-summary.json
@@ -20,8 +21,31 @@ registered deployment receipt, raw log, request results, process snapshot, and
 cleanup report. The receipt bytes must match the digest in the record and must
 contain an admissible, registered deployment. Records from
 preflight, simulation, fixtures, or an unregistered deployment are rejected.
+For H4, every start must also bind a named `ecpa-h4-deployment-receipt/v1`
+receipt and a unique `ecpa-h4-raw-measurement/v1` artifact. The gate checks the
+campaign, cell, arm, workload, receipt, process epoch, and child artifact
+bindings. It recomputes startup phases, throughput, and latency quantiles from
+raw monotonic timestamps; copied summary metrics are never authoritative.
 The analyzer verifies artifact bytes and exact cross-arm identity equality. It
-retains failed starts and refuses to emit metrics for an incomplete campaign.
+retains failed starts and keeps the overall campaign incomplete when only one
+nine-start cell is complete, while emitting that cell's independently labeled
+formal result.
+
+After an exact three-arm deployment receipt exists, execute the frozen Latin
+square with:
+
+```bash
+python3 experiments/formal_campaign/run_h4.py \
+  --campaign /absolute/path/to/campaign.json \
+  --deployment-receipt /absolute/path/to/deployment-receipt.json \
+  --launch-spec /absolute/path/to/launch-spec.json \
+  --output-root /absolute/path/to/h4-runs
+```
+
+`run_h4.py` records `CLOCK_MONOTONIC_RAW` phase and request timestamps, every
+response outcome, process identity, CPU/RSS/NPU memory samples, evidence
+counts, and process/port/device cleanup. `--validate-only` checks all frozen
+bindings without launching a server.
 
 H4 pairs ECPA with the manual-integration arm by cell and repetition.  It
 reports paired startup, throughput, and p99 effects with a deterministic 95%
