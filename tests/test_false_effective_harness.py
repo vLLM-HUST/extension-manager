@@ -41,6 +41,7 @@ from harness import (  # noqa: E402
     canonical,
     conflict_metrics,
     digest_file,
+    matched_identity_metadata,
     oracle,
     project_paper_result,
     run_command,
@@ -683,6 +684,20 @@ def test_matched_arm_metadata_mismatch_is_rejected(tmp_path):
     records[-1]["identity"]["model"] = "different"
     with pytest.raises(ValueError, match="relabelled|metadata mismatch|fixture-only"):
         validate_batch(records, tmp_path, formal=True)
+
+
+def test_matched_metadata_uses_logical_slots_not_dynamic_process_epochs():
+    first = {
+        "model": "same",
+        "required_processes": [
+            {"host": "host-a", "role": "worker", "ordinal": 0, "process_epoch": 1}
+        ],
+    }
+    second = copy.deepcopy(first)
+    second["required_processes"][0]["process_epoch"] = 99
+    assert matched_identity_metadata(first) == matched_identity_metadata(second)
+    second["required_processes"][0]["ordinal"] = 1
+    assert matched_identity_metadata(first) != matched_identity_metadata(second)
 
 
 def test_unbalanced_order_is_rejected(tmp_path):
@@ -2032,6 +2047,19 @@ def test_ecpa_offline_validator_binds_manager_target_observer_and_plan(
             "controller_instance": controller,
         },
         "managed_binding": binding,
+        "prelaunch_snapshot": {
+            "schema": "ecpa-formal-logical-snapshot/v1",
+            "execution_identity": {
+                "plan_id": binding["plan_id"],
+                "launch_id": launch_id,
+                "controller_instance": controller,
+            },
+            "logical_slots": [],
+            "logical_slots_digest": "sha256:" + "0" * 64,
+            "prepared_at_ns": 1,
+            "plan_raw_base64": base64.b64encode(plan_path.read_bytes()).decode(),
+            "plan_raw_sha256": runner_module.digest_file(plan_path),
+        },
         "lifecycle_fact_processes": lifecycle_process_records(
             verification["lifecycle_fact_commands"]
         ),
@@ -2043,6 +2071,51 @@ def test_ecpa_offline_validator_binds_manager_target_observer_and_plan(
     }
     harness_module.validate_formal_adapter_verification(record, command)
 
+    artifact_root = tmp_path / "completed-start"
+    artifact_root.mkdir()
+    retained_path = (artifact_root / "execution-plan.json").resolve()
+    retained_path.write_bytes(Path(binding["plan_path"]).read_bytes())
+    retained_record = copy.deepcopy(record)
+    retained_record["artifacts"] = {"execution_plan": "execution-plan.json"}
+    retained_command = copy.deepcopy(command)
+    old_path = binding["plan_path"]
+    retained_command["argv"] = [
+        str(retained_path) if value == old_path else value
+        for value in retained_command["argv"]
+    ]
+    retained_command["sut_process"]["argv"] = retained_command["argv"]
+    retained_command["managed_binding"]["plan_path"] = str(retained_path)
+    harness_module.validate_formal_adapter_verification(
+        retained_record, retained_command, artifact_root
+    )
+    retained_raw = retained_path.read_bytes()
+    retained_path.chmod(0o600)
+    retained_path.write_bytes(retained_raw + b" ")
+    with pytest.raises(ValueError, match="retained Plan snapshot"):
+        harness_module.validate_formal_adapter_verification(
+            retained_record, retained_command, artifact_root
+        )
+    retained_path.write_bytes(retained_raw)
+    retained_path.unlink()
+    with pytest.raises(ValueError, match="retained Plan snapshot"):
+        harness_module.validate_formal_adapter_verification(
+            retained_record, retained_command, artifact_root
+        )
+    retained_path.write_bytes(retained_raw)
+
+    # A later start clears the shared launch workspace.  The completed start
+    # remains independently valid from its persistent Plan artifact.  Legacy
+    # completed records remain valid from the exact bytes in command.json.
+    frozen_plan = Path(binding["plan_path"])
+    frozen_plan.parent.chmod(0o700)
+    frozen_plan.unlink()
+    frozen_plan.parent.rmdir()
+    event_dir.rmdir()
+    harness_module.validate_formal_adapter_verification(
+        retained_record, retained_command, artifact_root
+    )
+    harness_module.validate_formal_adapter_verification(record, command)
+
     changed_target = copy.deepcopy(command)
     changed_target["sut_process"]["argv"][-1] = "different-target.py"
     with pytest.raises(ValueError, match="managed ECPA argv"):
@@ -2051,8 +2124,22 @@ def test_ecpa_offline_validator_binds_manager_target_observer_and_plan(
     changed_plan["managed_binding"]["plan_sha256"] = "sha256:forged"
     with pytest.raises(ValueError, match="Plan binding"):
         harness_module.validate_formal_adapter_verification(record, changed_plan)
+    changed_retained_plan = copy.deepcopy(command)
+    changed_retained_plan["prelaunch_snapshot"]["plan_raw_base64"] += "A"
+    with pytest.raises(ValueError, match="retained Plan snapshot"):
+        harness_module.validate_formal_adapter_verification(
+            record, changed_retained_plan
+        )
+    changed_retained_digest = copy.deepcopy(command)
+    changed_retained_digest["prelaunch_snapshot"]["plan_raw_sha256"] = (
+        "sha256:" + "0" * 64
+    )
+    with pytest.raises(ValueError, match="retained Plan snapshot"):
+        harness_module.validate_formal_adapter_verification(
+            record, changed_retained_digest
+        )
     changed_event_directory = copy.deepcopy(command)
-    changed_event_directory["managed_binding"]["host_event_directory"]["inode"] += 1
+    changed_event_directory["managed_binding"]["host_event_directory"]["inode"] = -1
     with pytest.raises(ValueError, match="Plan binding"):
         harness_module.validate_formal_adapter_verification(
             record, changed_event_directory
