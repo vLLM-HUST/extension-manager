@@ -95,16 +95,8 @@ def main():
             "predecessor_digest": state["predecessor_digest"],
             "evidence_identity_sha256": s["evidence_identity_sha256"],
             "route": route,
-            "final_route": "predecessor"
-            if route["generation"] == state["predecessor_generation"]
-            and route["fence"] == f"fence-{state['predecessor_generation']}"
-            else "closed",
-            "rollback_classification": json.loads((root / "recovery.json").read_text())[
-                "rollback_classification"
-            ]
-            if (root / "recovery.json").exists()
-            else None,
-            "functional_correctness": False,
+            "native_journal_state": state,
+            "recovery_summary_is_authoritative": False,
             "prepare_barrier": json.loads(barrier.read_text())
             if barrier.exists()
             else None,

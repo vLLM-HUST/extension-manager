@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib.util
 import json
@@ -630,7 +631,7 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
         for name, value in children.items()
     }
     raw = {
-        "schema": "ecpa-h3-raw-recovery/v1",
+        "schema": "ecpa-h3-raw-recovery/v2",
         "evidence_class": "formal-real",
         "campaign_sha256": campaign["_sha256"],
         "campaign_id": "H3-transactional-recovery-v1",
@@ -715,6 +716,102 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
         "request_results": request_results,
         "process_snapshot": process_snapshot,
     }
+    # Synthetic regression only: independent trace shape, never formal evidence.
+    proxy = {"pid": 9000, "start_ticks": 42, "boot_id": target["boot_id"]}
+    route = {
+        "generation": 0,
+        "fence": "fence-0",
+        "snapshot_sha256": "sha256:"
+        + hashlib.sha256(b'{"snapshot":{"generation":0}}').hexdigest(),
+    }
+    chain_events = []
+    previous = "sha256:" + "0" * 64
+    for i, (kind, ns, detail) in enumerate(
+        [
+            (
+                "authority.start",
+                900_000_000,
+                {
+                    "authorization": {
+                        "launch_id": start_id,
+                        "registration_sha256": proxy_sha,
+                    }
+                },
+            ),
+            ("route.restore.intent", 1_160_000_000, {"generation": 0}),
+            ("route.restore.applied", 1_170_000_000, {}),
+        ],
+        1,
+    ):
+        e = {
+            "schema": "ecpa-loopback-route-journal/v1",
+            "sequence": i,
+            "previous_sha256": previous,
+            "kind": kind,
+            "monotonic_ns": ns,
+            "at_ns": ns,
+            "detail": detail,
+            "route": route,
+            **{"proxy_" + k: v for k, v in proxy.items()},
+        }
+        previous = (
+            "sha256:"
+            + hashlib.sha256(
+                json.dumps(e, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+        )
+        chain_events.append(e)
+    chain = {"events": chain_events, "proxy_identity": proxy, "prepared_route": route}
+    raw_journal = root / f"{start_id}-authority.raw.jsonl"
+    raw_journal.write_text(
+        "".join(
+            json.dumps(e, sort_keys=True, separators=(",", ":")) + "\n"
+            for e in chain_events
+        )
+    )
+    raw_journal.chmod(0o600)
+    bindings["authority_journal"] = {
+        "path": raw_journal.name,
+        "sha256": "sha256:" + hashlib.sha256(raw_journal.read_bytes()).hexdigest(),
+    }
+    chain_binding = write_artifact(root / f"{start_id}-authority-chain.json", chain)
+    bindings["authority_chain"] = chain_binding
+    raw["authority_chain"] = chain
+    raw["artifact_sha256"]["authority_chain"] = chain_binding["sha256"]
+    raw["artifact_sha256"]["authority_journal"] = bindings["authority_journal"][
+        "sha256"
+    ]
+    raw["events"].insert(
+        2,
+        {
+            "sequence": 3,
+            "monotonic_ns": 1_150_000_000,
+            "kind": "recovery-started",
+            "detail": {
+                "manager": {
+                    "pid": 9001,
+                    "start_ticks": 43,
+                    "boot_id": target["boot_id"],
+                }
+            },
+        },
+    )
+    for i, e in enumerate(raw["events"], 1):
+        e["sequence"] = i
+    from experiments.formal_campaign.h3_authority_chain import verify_recovery_events
+
+    raw["events"][-1]["detail"] = {
+        "authority_facts": verify_recovery_events(
+            chain_events,
+            expected_proxy=proxy,
+            registration_sha256=proxy_sha,
+            launch_id=start_id,
+            prepared_route=route,
+            fault_ns=1_000_000_000,
+            restart_ns=1_150_000_000,
+            completion_ns=1_300_000_000,
+        )
+    }
     raw_binding = write_artifact(root / f"{start_id}-raw-recovery.json", raw)
     artifacts = {
         "deployment_receipt": receipt_binding,
@@ -778,12 +875,47 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
             "intent_operation_id": "unit-intent",
         },
         "native_rows": native_rows,
-        "native_state": {"predecessor_digest": predecessor},
+        "native_state": {
+            "predecessor_digest": predecessor,
+            "predecessor_generation": 0,
+            "predecessor_json": '{"generation":0}',
+            "candidate_generation": 1,
+        },
         "target_session": process["launcher_pid"],
         "verified_monotonic_ns": 2,
     }
     raw_binding = write_artifact(root / f"{start_id}-raw.json", raw)
     record["artifacts"]["raw_recovery"] = raw_binding
+    proof = raw["events"][0]["detail"]["prepare_proof"]
+    recovery_rows = copy.deepcopy(proof["native_rows"])
+    for operation, kind, opid in [
+        ("rollback", "intent", "rollback-id"),
+        ("rollback", "receipt", "rollback-id"),
+    ]:
+        recovery_rows.append(
+            {
+                "seq": len(recovery_rows) + 1,
+                "operation": operation,
+                "kind": kind,
+                "operation_id": opid,
+            }
+        )
+    raw["authority_chain"]["native_recovery"] = {
+        "native_rows": recovery_rows,
+        "native_state": proof["native_state"]
+        | {"state": "ROLLED_BACK", "route_generation": 0, "route_fence": "fence-0"},
+    }
+    chain_binding = write_artifact(
+        root / f"{start_id}-authority-chain.json", raw["authority_chain"]
+    )
+    record["artifacts"]["authority_chain"] = chain_binding
+    raw["artifact_sha256"]["authority_chain"] = chain_binding["sha256"]
+    raw["artifact_sha256"]["authority_journal"] = bindings["authority_journal"][
+        "sha256"
+    ]
+    record["artifacts"]["raw_recovery"] = write_artifact(
+        root / f"{start_id}-raw-recovery.json", raw
+    )
     record["metrics"] = module._recompute_h3_metrics(record, raw, campaign)
     return record, campaign, raw
 
@@ -794,7 +926,7 @@ def test_h3_requires_raw_metrics_and_rejects_metric_forgery(tmp_path: Path) -> N
     row, campaign, _ = h3_record(analyzer, tmp_path)
     incomplete = analyzer.analyze_h3(protocol, [row], tmp_path, campaign)
     assert incomplete["status"] == "incomplete"
-    row["metrics"]["objective_met"] = False
+    row["metrics"]["objective_met"] = True
     with pytest.raises(ValueError, match="metrics differ from raw evidence"):
         analyzer.analyze_h3(protocol, [row], tmp_path, campaign)
 

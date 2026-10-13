@@ -48,6 +48,8 @@
       "properties": {
         "deployment_receipt": {"$ref": "#/definitions/artifact"},
         "authority_registration": {"$ref": "#/definitions/artifact"},
+        "authority_chain": {"$ref": "#/definitions/artifact"},
+        "authority_journal": {"$ref": "#/definitions/artifact"},
         "raw_log": {"$ref": "#/definitions/artifact"},
         "request_results": {"$ref": "#/definitions/artifact"},
         "process_snapshot": {"$ref": "#/definitions/artifact"},
@@ -116,14 +118,16 @@
       "required": ["injected_failure", "objective_met", "unsupported_tuple_served", "predecessor_preserved", "functional_correctness", "evidence_identity_preserved", "recovery_ms", "lost_requests", "duplicated_requests", "operator_actions", "final_route", "rollback_classification"],
       "properties": {
         "injected_failure": {"type": "boolean"},
-        "objective_met": {"type": "boolean"},
+        "objective_met": {"type": ["boolean", "null"]},
         "unsupported_tuple_served": {"type": "boolean"},
         "predecessor_preserved": {"type": "boolean"},
         "functional_correctness": {"type": "boolean"},
         "evidence_identity_preserved": {"type": "boolean"},
         "recovery_ms": {"type": ["number", "null"], "minimum": 0},
-        "lost_requests": {"type": "integer", "minimum": 0},
-        "duplicated_requests": {"type": "integer", "minimum": 0},
+        "lost_requests": {"type": ["integer", "null"], "minimum": 0},
+        "duplicated_requests": {"type": ["integer", "null"], "minimum": 0},
+        "post_recovery_observed_lost_requests": {"type": "integer", "minimum": 0},
+        "crash_window_coverage": {"const": "missing"},
         "operator_actions": {"type": "integer", "minimum": 0},
         "final_route": {"type": "string", "minLength": 1},
         "rollback_classification": {"enum": ["automatic-restoration", "failed-safe", "bounded-operator-action", "not-applicable"]}

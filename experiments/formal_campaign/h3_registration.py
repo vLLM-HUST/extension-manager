@@ -24,6 +24,7 @@ PROTOCOL_FILES = {
     for name in (
         "analyze.py",
         "h3_phase_barrier.py",
+        "h3_authority_chain.py",
         "h3_native_prepare.py",
         "h3-authority-registration.schema.json",
         "h3-campaign.schema.json",

@@ -1,10 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "ecpa-h3-raw-recovery/v1",
+  "$id": "ecpa-h3-raw-recovery/v2",
   "type": "object",
-  "required": ["schema", "evidence_class", "campaign_sha256", "campaign_id", "cell_id", "start_id", "arm", "repetition", "arm_order", "deployment_receipt_sha256", "authority_registration_sha256", "proxy_registration_sha256", "process_identity", "fault_target", "pre_fault", "artifact_sha256", "events", "request_results", "process_snapshot"],
+  "required": ["schema", "evidence_class", "campaign_sha256", "campaign_id", "cell_id", "start_id", "arm", "repetition", "arm_order", "deployment_receipt_sha256", "authority_registration_sha256", "proxy_registration_sha256", "process_identity", "fault_target", "pre_fault", "artifact_sha256", "events", "request_results", "process_snapshot", "authority_chain"],
   "properties": {
-    "schema": {"const": "ecpa-h3-raw-recovery/v1"},
+    "schema": {"const": "ecpa-h3-raw-recovery/v2"},
     "evidence_class": {"const": "formal-real"},
     "campaign_sha256": {"$ref": "#/definitions/digest"},
     "campaign_id": {"const": "H3-transactional-recovery-v1"},
@@ -29,12 +29,14 @@
     },
     "artifact_sha256": {
       "type": "object",
-      "required": ["raw_log", "request_results", "process_snapshot", "cleanup_report"],
+      "required": ["raw_log", "request_results", "process_snapshot", "cleanup_report", "authority_chain", "authority_journal"],
       "properties": {
         "raw_log": {"$ref": "#/definitions/digest"},
         "request_results": {"$ref": "#/definitions/digest"},
         "process_snapshot": {"$ref": "#/definitions/digest"},
-        "cleanup_report": {"$ref": "#/definitions/digest"}
+        "cleanup_report": {"$ref": "#/definitions/digest"},
+        "authority_chain": {"$ref": "#/definitions/digest"},
+        "authority_journal": {"$ref": "#/definitions/digest"}
       },
       "additionalProperties": false
     },
@@ -54,7 +56,8 @@
       }
     },
     "request_results": {"type": "object"},
-    "process_snapshot": {"type": "object"}
+    "process_snapshot": {"type": "object"},
+    "authority_chain": {"type": "object"}
   },
   "definitions": {
     "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
