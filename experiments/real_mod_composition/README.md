@@ -42,3 +42,18 @@ of their KV-state semantics are required before scoring the case.
 Do not add these results to H2 precision/recall or the paper's formal-real
 table until an independent oracle, complete host/provider checks and process-
 owned execution evidence exist. The 31-case synthetic corpus remains separate.
+
+## Exact-wheel installation-order campaign
+
+`runtime_campaign.json` freezes source commits, trees, the two locally built
+wheel byte digests, exact plugin entry points, the vLLM/vLLM-Ascend 0.23.3
+target, and both installation orders for the KVCompress/Knorm case. Its oracle
+and all measurement fields intentionally remain unset.
+
+Run `install_order_probe.py --wheel-dir DIR --output RESULT.json` with those
+exact wheel bytes. The probe checks wheel digests and entry-point metadata,
+then installs each order into a separate empty venv and observes distribution
+metadata without importing either plugin. Its result is useful packaging and
+order preparation only. It cannot establish static compatibility, activation
+readiness, host execution, runtime effect, or an oracle label, and it is always
+emitted with `score_eligible: false`.
