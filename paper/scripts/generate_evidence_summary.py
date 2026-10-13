@@ -491,8 +491,10 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     ):
         raise ValueError("H2 remaining-surface evidence is invalid or overclaimed")
 
-    counts["true_negative"] += 1
-    scored.append(external_case)
+    # Preserve historical aggregates; the supplied diagnosis is not detection.
+    from experiments.real_mod_composition.h2_scoring_input_audit import verify
+
+    scoring_audit = verify(root)
 
     scheduler_sources = scheduler_campaign.get("sources")
     scheduler_host = scheduler_campaign.get("host")
@@ -585,6 +587,10 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
 
     counts["true_positive"] += 1
     scored.append(scheduler_oracle)
+    if scoring_audit["corrected_definite_subset"] != {
+        "case_count": len(scored), **counts
+    }:
+        raise ValueError("H2 current score disagrees with independent input audit")
     tp, tn = counts["true_positive"], counts["true_negative"]
     fp, fn = counts["false_positive"], counts["false_negative"]
     admit_precision = tp / (tp + fp)
@@ -888,6 +894,99 @@ def validate_h3_model_qualification(root: Path) -> dict[str, int]:
     }
 
 
+def validate_h3_client_window(root: Path) -> dict[str, int]:
+    """Recompute bounded real delivery facts; never a formal H3 recovery score."""
+    import tarfile
+
+    from experiments.formal_campaign.h3_model_client_window import verify_archive
+
+    package = (
+        root / "experiments/formal_campaign/artifacts/h3-model-client-window-20261013"
+    )
+    manifest = load_json(package, "manifest.json")
+    archives = manifest["archives"]
+    if set(archives) != {"raw.tar.gz", "failed-chat-cpu-preflight.tar.gz"}:
+        raise ValueError("H3 client window archive inventory changed")
+    for name, binding in archives.items():
+        raw = (package / name).read_bytes()
+        if (
+            len(raw) != binding["bytes"]
+            or hashlib.sha256(raw).hexdigest() != binding["sha256"]
+        ):
+            raise ValueError("H3 client window archive changed")
+    verifiers = manifest["portable_verifier_sha256"]
+    if set(verifiers) != {
+        "experiments/formal_campaign/h3_model_client_window.py",
+        "experiments/formal_campaign/h3_model_qualification.py",
+    } or any(
+        hashlib.sha256((root / name).read_bytes()).hexdigest() != sha
+        for name, sha in verifiers.items()
+    ):
+        raise ValueError("H3 client window analysis source changed")
+    recomputed = verify_archive(package / "raw.tar.gz")
+    window = recomputed["finite_delivery_window"]
+    with tarfile.open(package / "raw.tar.gz", "r:gz") as archive:
+        raw_files = sum(item.isfile() for item in archive.getmembers())
+        stream = archive.extractfile("runtime-source-binding.json")
+        if stream is None:
+            raise ValueError("H3 client window runtime binding missing")
+        runtime = json.load(stream)
+    if (
+        manifest["classification"] != "QUALIFIED_NONFORMAL"
+        or recomputed["classification"] != "QUALIFIED_NONFORMAL"
+        or recomputed["passed"] is not True
+        or raw_files != 186
+        or manifest["raw_files"] != raw_files
+        or manifest["model_request_count"] != 60
+        or window["request_count"] != 60
+        or manifest["phase_markers"] != 7
+        or recomputed["phase_marker_completions"] != 7
+        or runtime["commit"] != "3a55952299655d8319c49f34efa59946fc30d63f"
+        or manifest["runtime_manager_commit"] != runtime["commit"]
+        or manifest["cpu_preflight_source"]
+        != "394d4dd0491dc0d29f10d5a10e754cd0230cc891"
+        or manifest["portable_analysis_base_commit"]
+        != "e948a7bf5750d7124582761033ba1f3a7c0c35a2"
+        or window["coverage"] != "complete-finite-delivery-window"
+        or any(
+            window[key] != 0
+            for key in (
+                "lost_requests",
+                "duplicate_admissions",
+                "reused_successful_response_ids",
+            )
+        )
+        or recomputed["candidate_exposed"] is not False
+        or recomputed["observed_delivered_generations"] != [0]
+        or len(manifest["failed_attempts"]) != 1
+        or manifest["failed_attempts"][0]["archive"]
+        != "failed-chat-cpu-preflight.tar.gz"
+        or any(
+            manifest[key] is not False or recomputed[key] is not False
+            for key in (
+                "formal_result",
+                "matched_three_arm_result",
+                "performance_result",
+            )
+        )
+        or any(
+            manifest[key] is not None or window[key] is not None
+            for key in ("duplicated_requests", "backend_execution_duplicates")
+        )
+        or manifest["full_objective_satisfied"] is not None
+        or recomputed["full_objective_satisfied"] is not None
+        or recomputed["backend_side_effect_exactly_once"] is not None
+    ):
+        raise ValueError("H3 client window qualification boundary changed")
+    return {
+        "h3_window_requests": window["request_count"],
+        "h3_window_deadline_loss": window["lost_requests"],
+        "h3_window_duplicate_admissions": window["duplicate_admissions"],
+        "h3_window_reused_response_ids": window["reused_successful_response_ids"],
+        "h3_window_raw_files": raw_files,
+        "h3_window_failed_cpu_attempts": len(manifest["failed_attempts"]),
+    }
+
 def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     workshop = load_json(root, "docs/corpus/workshop-mods.json")
     workshop_metadata = load_json(
@@ -930,6 +1029,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     real_gate = validate_real_invocation_gate(root)
     h3_native = validate_h3_native_support(root)
     h3_model = validate_h3_model_qualification(root)
+    h3_window = validate_h3_client_window(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -1416,6 +1516,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         **real_gate,
         **h3_native,
         **h3_model,
+        **h3_window,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -1496,6 +1597,12 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPAHThreeModelRawFiles", "h3_model_raw_files"),
         ("ECPAHThreeModelFailedAttempts", "h3_model_failed_attempts"),
         ("ECPAHThreePrepareNABaselines", "h3_prepare_na_baselines"),
+        ("ECPAHThreeWindowRequests", "h3_window_requests"),
+        ("ECPAHThreeWindowDeadlineLoss", "h3_window_deadline_loss"),
+        ("ECPAHThreeWindowDuplicateAdmissions", "h3_window_duplicate_admissions"),
+        ("ECPAHThreeWindowReusedResponseIds", "h3_window_reused_response_ids"),
+        ("ECPAHThreeWindowRawFiles", "h3_window_raw_files"),
+        ("ECPAHThreeWindowFailedCpuAttempts", "h3_window_failed_cpu_attempts"),
         ("ECPARealGateFailedAttempts", "real_gate_failed_attempts"),
         ("ECPARealGateCompleteCoverage", "real_gate_complete_coverage"),
         ("ECPARealGatePartialCoverage", "real_gate_partial_coverage"),

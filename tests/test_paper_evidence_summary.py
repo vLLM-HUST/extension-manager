@@ -11,6 +11,12 @@ from jsonschema import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
+    "experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013",
+    "experiments/real_mod_composition/h2_scoring_input_audit.py",
+    "experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/snapshots/production-stack-provider-manifest.json",
+    "experiments/formal_campaign/artifacts/h3-model-client-window-20261013",
+    "experiments/formal_campaign/h3_model_client_window.py",
+    "experiments/formal_campaign/h3_model_qualification.py",
     "experiments/formal_campaign/artifacts/h3-model-qualification-20261013",
     "experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013",
     "docs/corpus/plugin-workshop-metadata.snapshot.json",
@@ -134,9 +140,9 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "h1_false_effective_numerator": 3,
         "h1_false_effective_denominator": 3,
         "h1_coverage": "0.5",
-        "h2_scored_cases": 5,
+        "h2_scored_cases": 4,
         "h2_true_positive": 2,
-        "h2_true_negative": 3,
+        "h2_true_negative": 2,
         "h2_false_positive": 0,
         "h2_false_negative": 0,
         "h2_admit_precision": "1.0",
@@ -157,6 +163,12 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "h3_model_marker_completions": 7,
         "h3_model_raw_files": 156,
         "h3_model_failed_attempts": 3,
+        "h3_window_requests": 60,
+        "h3_window_deadline_loss": 0,
+        "h3_window_duplicate_admissions": 0,
+        "h3_window_reused_response_ids": 0,
+        "h3_window_raw_files": 186,
+        "h3_window_failed_cpu_attempts": 1,
         "real_gate_failed_attempts": 4,
         "real_gate_complete_coverage": "1.0",
         "real_gate_partial_coverage": "0.5",
@@ -672,3 +684,57 @@ def test_h3_model_paper_rejects_changed_failed_archive(tmp_path):
     archive.write_bytes(archive.read_bytes() + b"changed")
     with pytest.raises(ValueError, match="archive changed"):
         generator.validate_h3_model_qualification(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("formal_result", True),
+        ("matched_three_arm_result", True),
+        ("performance_result", True),
+        ("duplicated_requests", 0),
+        ("backend_execution_duplicates", 0),
+        ("full_objective_satisfied", True),
+        ("runtime_manager_commit", "f" * 40),
+    ],
+)
+def test_h3_window_paper_rejects_qualification_promotion(tmp_path, field, value):
+    generator = load_generator()
+    prefix = Path(
+        "experiments/formal_campaign/artifacts/h3-model-client-window-20261013"
+    )
+    package = tmp_path / prefix
+    shutil.copytree(ROOT / prefix, package)
+    manifest = json.loads((package / "manifest.json").read_text())
+    for name in manifest["portable_verifier_sha256"]:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / name, target)
+    rewrite_json(package / "manifest.json", lambda row: row.update({field: value}))
+    with pytest.raises(ValueError, match="qualification boundary changed"):
+        generator.validate_h3_client_window(tmp_path)
+
+
+def test_h3_window_paper_rejects_failed_cpu_archive_tampering(tmp_path):
+    generator = load_generator()
+    prefix = Path(
+        "experiments/formal_campaign/artifacts/h3-model-client-window-20261013"
+    )
+    package = tmp_path / prefix
+    shutil.copytree(ROOT / prefix, package)
+    archive = package / "failed-chat-cpu-preflight.tar.gz"
+    archive.write_bytes(archive.read_bytes() + b"changed")
+    with pytest.raises(ValueError, match="archive changed"):
+        generator.validate_h3_client_window(tmp_path)
+
+
+@pytest.mark.parametrize("field", ["score_eligible", "historical_oracle_preserved"])
+def test_h2_report_consumption_cannot_be_promoted(tmp_path, field):
+    copy_inputs(tmp_path)
+    path = tmp_path / (
+        "experiments/real_mod_composition/artifacts/"
+        "h2-scoring-input-audit-20261013/audit.json"
+    )
+    rewrite_json(path, lambda value: value.update({field: not value[field]}))
+    with pytest.raises(ValueError, match="H2 scoring input audit"):
+        load_generator().collect_summary(tmp_path)
