@@ -24,10 +24,17 @@ from .host_event_sink import read_events
 CAPTURE_SCHEMA = "ecpa-formal-observer-capture/v1"
 MAX_CAPTURE_BYTES = 64 * 1024
 MAX_JOURNAL_BYTES = 1024 * 1024
-CONTRACT_FLAGS = {
-    "entry-points-unmanaged": "--enable-entrypoints",
-    "explicit-manual-hooks": "--manual-hooks",
-    "manager-controlled-activation": "--enable-ecpa-manager",
+CONTRACT_TOKENS = {
+    "entry-points-unmanaged": ("--enable-entrypoints",),
+    "explicit-manual-hooks": ("--manual-hooks",),
+    "manager-controlled-activation": (
+        "formal-run",
+        "--plan",
+        "--launch-id",
+        "--controller-instance",
+        "--host-event-dir",
+        "--",
+    ),
 }
 
 
@@ -166,8 +173,10 @@ def observe(args: argparse.Namespace, capture: dict[str, Any]) -> dict[str, Any]
         _positive_integer(_environment("ECPA_SUT_PID"), "SUT pid")
     )
     contract = _environment("ECPA_EXPECTED_CONTRACT")
-    flag = CONTRACT_FLAGS.get(contract)
-    if flag is None or flag not in sut_identity["argv"]:
+    required_tokens = CONTRACT_TOKENS.get(contract)
+    if required_tokens is None or any(
+        token not in sut_identity["argv"] for token in required_tokens
+    ):
         raise FormalObserverError("SUT argv does not establish the activation path")
 
     records = read_events(

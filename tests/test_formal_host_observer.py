@@ -50,7 +50,21 @@ def _inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> argparse.Namespa
             return {
                 "pid": pid,
                 "start_ticks": 999,
-                "argv": ["vllm", "serve", "--enable-ecpa-manager"],
+                "argv": [
+                    "vllm-hust-ext",
+                    "formal-run",
+                    "--plan",
+                    "plan.json",
+                    "--launch-id",
+                    "launch:one",
+                    "--controller-instance",
+                    "controller:one",
+                    "--host-event-dir",
+                    "/events",
+                    "--",
+                    "vllm",
+                    "serve",
+                ],
             }
         assert pid == frozen["pid"]
         return {
@@ -103,7 +117,20 @@ def test_observer_rejects_execution_or_live_process_identity_drift(
         lambda pid: {
             "pid": pid,
             "start_ticks": 999,
-            "argv": ["vllm", "--enable-ecpa-manager"],
+            "argv": [
+                "vllm-hust-ext",
+                "formal-run",
+                "--plan",
+                "plan.json",
+                "--launch-id",
+                "launch:one",
+                "--controller-instance",
+                "controller:one",
+                "--host-event-dir",
+                "/events",
+                "--",
+                "vllm",
+            ],
         },
     )
     with pytest.raises(FormalObserverError, match="frozen identity"):
