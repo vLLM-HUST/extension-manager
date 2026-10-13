@@ -159,3 +159,14 @@ Passing these machine checks establishes removal of the listed public
 identifiers on those surfaces. It does not certify anonymity by implication,
 research completion, or submission readiness; H1's falsification and H2--H4's
 incomplete evidence remain in the generated private copy.
+
+
+The independent HTTP authority now has retained real Qwen TP2 invocation-only
+qualification: incomplete worker journals block with 503, restored journals
+admit one real completion with 200, and renewed coverage loss revokes with 503.
+The evidence generator independently verifies the sealed 95-file raw archive,
+including four failed/aborted attempts, and recomputes the qualification before
+rendering its counts. It remains `QUALIFIED_NONFORMAL`: the Host candidate is
+unmerged; it supplies no effectiveness semantics, H1 prevention, formal H3/H4,
+rollback, performance, quality, or correctness result. H1 remains falsified at
+9/9 starts; H2 remains a partial n=5 subset; the overall decision is NO-GO.

@@ -71,6 +71,9 @@ EVIDENCE_INPUTS := \
 	$(shell find ../experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013 -type f | sort) \
 	../experiments/real_mod_composition/verify_h2_compression_transaction.py \
 	$(shell find ../experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013 -type f | sort) \
+	../experiments/exposure_gate/qualification_verify.py \
+	../experiments/exposure_gate/loopback_traffic.py \
+	$(shell find ../experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013 -type f | sort) \
 	../experiments/transaction_model/explore.py \
 	../experiments/transaction_model/artifacts/result-summary.json \
 	../experiments/transaction_model/result-summary.schema.json \
