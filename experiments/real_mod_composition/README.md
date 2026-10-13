@@ -147,6 +147,24 @@ performance benefit. One admitted case could not establish H2 corpus
 precision/recall; rejected real cases and the remaining corpus would still be
 required.
 
+The corrected revision-2 campaign and both reruns are retained under
+`artifacts/h2-profiler-kvcompress-formal-r2-20261013/`. Unlike the excluded r1
+attempts, the r2 Manager planner receipt binds the frozen campaign digest before
+launch, and both requests use the served name rendered from that campaign. The
+gate consumes the detailed `ecpa-h2-independent-source-oracle/v2` directly. It
+rehashes its independent receipt and verifier, the prior independent source
+review receipt/review/verifier, and the frozen source commit/tree/blob mappings;
+the compatibility wrapper is not an input.
+
+`score-admission.json` records `ADMITTED` for this one compatible case in both
+installation orders. The checked-in test reconstructs that decision from the
+portable raw artifacts rather than trusting the saved score. The observed
+workload still has maximum model length 2048 below the KVCompress threshold
+9216. This is a real compatible host-execution and lifecycle-observation record,
+not evidence of a compression transaction, compression correctness, or
+performance. H2 remains incomplete until the real admit/reject corpus meets its
+precision/recall target; H3 and H4 are unaffected.
+
 ## Exact-wheel installation-order campaign
 
 `runtime_campaign.json` freezes source commits, trees, the two locally built
