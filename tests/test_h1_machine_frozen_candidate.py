@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path("experiments/false_effective")
 CANDIDATE_ROOT = ROOT / "deployment-candidates"
 CANDIDATE = CANDIDATE_ROOT / "h1-machine-frozen-inputs-20261013.json"
+QUALIFICATION = CANDIDATE_ROOT / "h1-reachable-stack-tp2-qualification-20261013.json"
 SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 
@@ -27,6 +28,7 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     for source in candidate["sources"].values():
         assert GIT_SHA.fullmatch(source["commit"])
         assert GIT_SHA.fullmatch(source["tree"])
+        assert source["repository_reachable"] is True
 
     for section in ("workload", "fault"):
         record = candidate[section]
@@ -37,6 +39,18 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert model["file_count"] == 14
 
     assert SHA256.fullmatch(candidate["installed_environment"]["digest"])
+    assert candidate["installed_environment"]["candidate_applicable"] is False
+    qualification = _load(QUALIFICATION)
+    environment = candidate["candidate_environment"]
+    assert environment["status"] == "exact-reachable-stack-functional-tp2-qualified"
+    assert environment["digest"] == qualification["environment"]["digest"]
+    assert environment["formal_registration_eligible"] is False
+    assert environment["required_source_commits"] == {
+        name: source["commit"] for name, source in candidate["sources"].items()
+    }
+    assert environment["wheel_sha256"] == qualification["environment"]["wheel_sha256"]
+    assert environment["packages"] == qualification["environment"]["packages"]
+    assert environment["qualification_receipt_sha256"] == _digest(QUALIFICATION)
     versions = candidate["installed_environment"]["versions"]
     assert versions["vllm"].endswith("+gb093ae009.empty")
     assert versions["vllm_ascend"].endswith("+hust.20260903.4.gfd70a5c81")
@@ -44,17 +58,28 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert versions["ascend_driver"] == "25.2.1"
     assert SHA256.fullmatch(candidate["container"]["image_id"])
     assert candidate["container"]["authority"] == "kubernetes-pod-status"
-    assert SHA256.fullmatch(candidate["activation_probe"]["artifact_sha256"])
+    assert candidate["activation_probe"] == {
+        "formal_h1_start": False,
+        "all_three_arms_passed": True,
+        "artifact_sha256": _digest(QUALIFICATION),
+        "status": "exact-reachable-stack-functional-qualification-passed",
+    }
     observer = candidate["production_observer"]
+    assert observer["reachable_stack_tp2_qualification"]["status"] == "passed"
+    assert observer["reachable_stack_tp2_qualification"]["formal_h1_starts"] == 0
+    assert observer["reachable_stack_tp2_qualification"]["performance_result"] is False
     assert observer["console_script"] == "ecpa-formal-observer"
     assert observer["authority"] == "host-observer"
     assert observer["accepts_sut_truth"] is False
     assert observer["accepts_sut_causal_ack"] is False
     assert observer["formal_h1_start"] is False
     preflight = observer["real_tp2_preflight"]
+    assert preflight["candidate_applicable"] is False
     for field in ("result_sha256", "observer_result_sha256", "process_snapshot_sha256"):
         assert SHA256.fullmatch(preflight[field])
-    assert preflight["classification"].startswith("unregistered-")
+    assert preflight["classification"] == (
+        "historical-different-source-stack-unregistered-preflight"
+    )
     assert preflight["formal_h1_start"] is False
     assert preflight["performance_result"] is False
     assert preflight["membership_freeze"] == "passed"
@@ -64,6 +89,7 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert preflight["coverage"] == 0.5
     assert preflight["cleanup_proven"] is True
     three_arm = observer["three_arm_real_tp2_preflights"]
+    assert three_arm["candidate_applicable"] is False
     assert three_arm["formal_h1_starts"] == 0
     assert three_arm["performance_results"] is False
     assert set(three_arm["arms"]) == {
@@ -88,10 +114,18 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert hardware["physical_device_ids"] == hardware["npu_smi_device_ids"] == [3, 6]
     assert hardware["runtime_logical_device_ids"] == [0, 1]
     assert (
-        hardware["runtime_visibility_policy"]
-        == "inherit-container-device-assignment"
+        hardware["runtime_visibility_policy"] == "inherit-container-device-assignment"
     )
     assert hardware["explicit_ascend_rt_visible_devices"] is None
+
+    assert candidate["sources"]["runtime"]["commit"].startswith("973d9ef5")
+    assert candidate["sources"]["mod"]["commit"].startswith("e343fc5c")
+    assert candidate["sources"]["manager"]["commit"].startswith("b734a923")
+    assert candidate["sources"]["accelerator_plugin"]["commit"].startswith("87358402")
+    assert (
+        candidate["sources"]["accelerator_plugin"]["qualification"]
+        == "exact-qwen2.5-7b-eager-tp2-passed"
+    )
 
 
 def test_machine_candidate_does_not_admit_the_formal_study() -> None:

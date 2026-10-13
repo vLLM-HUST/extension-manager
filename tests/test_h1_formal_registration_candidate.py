@@ -11,6 +11,9 @@ from jsonschema import ValidationError
 ROOT = Path("experiments/false_effective").resolve()
 CANDIDATE_ROOT = ROOT / "deployment-candidates"
 CANDIDATE_PATH = CANDIDATE_ROOT / "h1-formal-registration-commands-20261013.json"
+REVIEWED_CANDIDATE_PATH = (
+    CANDIDATE_ROOT / "h1-formal-registration-commands-reviewed-20261013.json"
+)
 DRY_RUN_PATH = (
     CANDIDATE_ROOT / "h1-formal-registration-transition-dry-run-20261013.json"
 )
@@ -34,7 +37,7 @@ def test_checked_candidate_freezes_exact_three_arm_five_source_nine_start_plan()
     registration.validate_candidate(candidate, live=False)
 
     assert candidate["experiment_manager_identity"]["commit"] == (
-        "9f075f8e70da574fb90bdd392cf7c7e424c75972"
+        "b734a923a566f3d1b07b22e087fdbab796b3b1d9"
     )
     assert candidate["formal_h1_starts"] == 0
     assert candidate["admissible"] is False
@@ -50,6 +53,8 @@ def test_checked_candidate_freezes_exact_three_arm_five_source_nine_start_plan()
 
     source_digests = {}
     for arm in candidate["arms"]:
+        expected_executable = "python" if arm["arm"] == "ecpa" else "ecpa-host-launch"
+        assert Path(arm["runner_arguments"]["executable"]).name == expected_executable
         assert len(arm["lifecycle_fact_commands"]) == 5
         for phase, command in arm["lifecycle_fact_commands"].items():
             source_digests.setdefault(phase, set()).add(command["digest"])
@@ -57,6 +62,21 @@ def test_checked_candidate_freezes_exact_three_arm_five_source_nine_start_plan()
         assert receipt["activation_contract"] == arm["activation_contract"]
         assert arm["registry_candidate"]["admission"] is None
     assert all(len(digests) == 1 for digests in source_digests.values())
+    assert candidate["declared_identity"]["environment_digest"] == (
+        "sha256:50ad1f54bc29cd29ddd0c4ff27b00e4eb123f4b5710bb547aea533672f51547d"
+    )
+    assert (
+        "exact-runtime-accelerator-support-matrix-unqualified"
+        not in candidate["remaining_blockers"]
+    )
+    assert (
+        "exact-reachable-stack-environment-not-frozen"
+        not in candidate["remaining_blockers"]
+    )
+    assert all(
+        source["repository_reachable"] is True
+        for source in candidate["declared_identity"]["software"].values()
+    )
 
 
 def test_candidate_inputs_bind_repository_bytes() -> None:
@@ -74,7 +94,7 @@ def test_candidate_inputs_bind_repository_bytes() -> None:
 
 
 def test_transition_dry_run_is_blocked_and_does_not_mutate_official_files() -> None:
-    candidate = _candidate()
+    candidate = json.loads(REVIEWED_CANDIDATE_PATH.read_text())
     official = (
         ROOT / "first-formal-real-study.json",
         ROOT / "first-formal-real-deployment.json",
@@ -86,7 +106,9 @@ def test_transition_dry_run_is_blocked_and_does_not_mutate_official_files() -> N
     assert report["ready"] is False
     assert report["official_files_mutated"] is False
     assert report["partial_transition_allowed"] is False
-    assert report["candidate_digest"] == digest_bytes(CANDIDATE_PATH.read_bytes())
+    assert report["candidate_digest"] == digest_bytes(
+        REVIEWED_CANDIDATE_PATH.read_bytes()
+    )
     assert report["atomic_write_set"] == [
         "first-formal-real-study.json",
         "first-formal-real-deployment.json",
@@ -136,6 +158,21 @@ def test_candidate_rejects_machine_promotion_and_review_substitution() -> None:
 
 def test_candidate_rejects_command_and_source_registration_drift() -> None:
     candidate = _candidate()
+    old_launcher = copy.deepcopy(candidate)
+    old_launcher["arms"][0]["runner_arguments"]["executable"] = (
+        "/tmp/vllm-kv-materialization-serve"
+    )
+    with pytest.raises(ValueError, match="Manager host launcher"):
+        registration.validate_candidate(old_launcher, live=False)
+
+    script_target = copy.deepcopy(candidate)
+    ecpa = script_target["arms"][2]
+    ecpa["runner_arguments"]["executable"] = (
+        "/root/ecpa-h1-reachable-candidate-venv/bin/ecpa-host-launch"
+    )
+    with pytest.raises(ValueError, match="direct venv Python ELF"):
+        registration.validate_candidate(script_target, live=False)
+
     stale = copy.deepcopy(candidate)
     stale["arms"][0]["commands"]["sut"]["digest"] = "sha256:" + "0" * 64
     with pytest.raises(ValueError, match="registration digest drifted"):

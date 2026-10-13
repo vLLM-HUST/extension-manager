@@ -49,10 +49,10 @@ INPUTS = {
 }
 SCHEMA = "ecpa-h1-formal-registration-candidate/v1"
 CLASSIFICATION = "deployment-bound-non-admitting-command-candidate"
-EXPERIMENT_MANAGER_COMMIT = "9f075f8e70da574fb90bdd392cf7c7e424c75972"
-EXPERIMENT_MANAGER_TREE = "91ebc43a7a82bbc561ad3ed9f94bd02ac72c2a12"
+EXPERIMENT_MANAGER_COMMIT = "b734a923a566f3d1b07b22e087fdbab796b3b1d9"
+EXPERIMENT_MANAGER_TREE = "62d3cf4899dff86661a9debb78fa1257cb029775"
 EXPERIMENT_MANAGER_NOTE = (
-    "binary used by the frozen H1 experiment stack; repository main may advance"
+    "merged Manager source for the non-admitting reachable-stack candidate"
 )
 ARMS = (
     ("vanilla-vllm-entry-points", "vanilla", 8187),
@@ -74,10 +74,7 @@ FIXED_ENVIRONMENT = {
     "VLLM_WORKER_MULTIPROC_METHOD": "spawn",
     "VLLM_WORKER_SHUTDOWN_TIMEOUT_SECONDS": "12",
 }
-MACHINE_BLOCKERS = (
-    "runtime-and-mod-candidates-not-repository-reachable",
-    "exact-runtime-accelerator-support-matrix-unqualified",
-)
+MACHINE_BLOCKERS: tuple[str, ...] = ()
 INDEPENDENT_BLOCKERS = (
     "producer-admission-receipt-not-issued",
     "commands-not-independently-reviewed",
@@ -85,6 +82,7 @@ INDEPENDENT_BLOCKERS = (
     "observer-independence-not-independently-reviewed",
     "artifact-retention-not-independently-reviewed",
 )
+AUTOMATED_REVIEW_BLOCKERS = INDEPENDENT_BLOCKERS[1:]
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -325,7 +323,7 @@ def _declared_identity() -> dict[str, Any]:
         "dataset": "fixed-single-request-no-external-dataset",
         "workload": copy.deepcopy(machine["workload"]),
         "software": copy.deepcopy(machine["sources"]),
-        "observer": "vllm_hust_ext.formal_host_observer@manager-9f075f8e",
+        "observer": "vllm_hust_ext.formal_host_observer@manager-b734a923",
         "plugin_commits": {
             "kv_materialization": machine["sources"]["mod"]["commit"],
             "vllm_ascend": machine["sources"]["accelerator_plugin"]["commit"],
@@ -335,7 +333,7 @@ def _declared_identity() -> dict[str, Any]:
         "fault": copy.deepcopy(machine["fault"]),
         "warm_state": machine["hardware"]["warm_state"],
         "container_digest": machine["container"]["image_id"],
-        "environment_digest": machine["installed_environment"]["digest"],
+        "environment_digest": machine["candidate_environment"]["digest"],
         "gpu": "none",
         "npu": {
             "device_family": machine["hardware"]["device_family"],
@@ -367,7 +365,7 @@ def build_candidate(
     inputs = prepare_workspace(workspace)
     venv = venv.absolute()
     binaries = {
-        "baseline": venv / "bin/vllm-kv-materialization-serve",
+        "host_launcher": venv / "bin/ecpa-host-launch",
         "manager": venv / "bin/vllm-hust-ext",
         "python": venv / "bin/python",
         "observer": venv / "bin/ecpa-formal-observer",
@@ -386,6 +384,12 @@ def build_candidate(
         arguments = _serve_arguments(port)
         commands: dict[str, Any] = {}
         if isinstance(adapter, ECPAAdapter):
+            # The Manager launch pipe occupies fd 3 in the target.  Launch the
+            # interpreter ELF directly: using the Python ``ecpa-host-launch``
+            # console script here makes multiprocessing treat that script as
+            # its main path and inherit the pipe during spawn, which deadlocks
+            # the managed launch.  The Manager-owned environment still selects
+            # the ECPA activation contract inside vLLM.
             target_arguments = ["-m", "vllm.entrypoints.cli.main", *arguments]
             commands["manager"] = _fingerprint(binaries["manager"], [])
             commands["target"] = _fingerprint(binaries["python"], target_arguments)
@@ -396,12 +400,12 @@ def build_candidate(
             )
         else:
             final_arguments = [*arguments, *adapter.activation_arguments]
-            commands["sut"] = _fingerprint(binaries["baseline"], final_arguments)
-            launch_executable = binaries["baseline"]
+            commands["sut"] = _fingerprint(binaries["host_launcher"], final_arguments)
+            launch_executable = binaries["host_launcher"]
             launch_arguments = arguments
             probe, probe_observation = _activation_probe(
                 adapter,
-                binaries["baseline"],
+                binaries["host_launcher"],
                 arguments,
                 execute=execute_probes,
             )
@@ -560,6 +564,10 @@ def build_candidate(
                 "remains 0/9."
             ),
             "Machine-derived command digests do not substitute for independent review.",
+            (
+                "The exact-stack receipt is a functional qualification only; it is "
+                "not a formal H1 start or a performance result."
+            ),
         ],
     }
     validate_candidate(candidate, live=True)
@@ -592,8 +600,21 @@ def validate_candidate(value: dict[str, Any], *, live: bool) -> None:
         "note": EXPERIMENT_MANAGER_NOTE,
     }:
         raise ValueError("H1 experiment manager identity drifted")
-    if set(value.get("independent_reviews", {}).values()) != {None}:
-        raise ValueError("independent review cannot be machine asserted")
+    reviews = value.get("independent_reviews", {})
+    review_receipt = value.get("automated_review_receipt")
+    if reviews and all(item is None for item in reviews.values()):
+        if review_receipt is not None:
+            raise ValueError("unreviewed candidate carries a review receipt")
+        expected_blockers = {*MACHINE_BLOCKERS, *INDEPENDENT_BLOCKERS}
+    elif all(isinstance(item, dict) for item in reviews.values()):
+        if not isinstance(review_receipt, dict):
+            raise ValueError("reviewed candidate is missing its review receipt")
+        from h1_automated_review import validate_reviewed_candidate
+
+        validate_reviewed_candidate(value, live=live)
+        expected_blockers = {*MACHINE_BLOCKERS, INDEPENDENT_BLOCKERS[0]}
+    else:
+        raise ValueError("candidate review state is partial")
     arms = value.get("arms")
     if not isinstance(arms, list) or [row.get("arm") for row in arms] != [
         item[0] for item in ARMS
@@ -610,6 +631,7 @@ def validate_candidate(value: dict[str, Any], *, live: bool) -> None:
         "service-shutdown": "shutdown-process",
     }
     for row in arms:
+        runner = row.get("runner_arguments", {})
         sources = row.get("lifecycle_fact_commands")
         if not isinstance(sources, dict) or set(sources) != set(
             FORMAL_LIFECYCLE_FACT_SOURCES
@@ -638,6 +660,14 @@ def validate_candidate(value: dict[str, Any], *, live: bool) -> None:
         }:
             raise ValueError("candidate lifecycle source registration digest drifted")
         if row["arm"] == "ecpa":
+            target = row["commands"]["target"]
+            if (
+                Path(runner.get("executable", "")).name != "python"
+                or target["executable"] != runner["executable"]
+                or target["arguments"][:2] != ["-m", "vllm.entrypoints.cli.main"]
+                or target["argument_files"]
+            ):
+                raise ValueError("ECPA target must bind the direct venv Python ELF")
             if (
                 registry.get("manager_command_digest")
                 != row["commands"]["manager"]["digest"]
@@ -647,8 +677,21 @@ def validate_candidate(value: dict[str, Any], *, live: bool) -> None:
                 raise ValueError(
                     "candidate managed command registration digest drifted"
                 )
-        elif registry.get("sut_command_digest") != row["commands"]["sut"]["digest"]:
-            raise ValueError("candidate baseline command registration digest drifted")
+        else:
+            if Path(runner.get("executable", "")).name != "ecpa-host-launch":
+                raise ValueError(
+                    "baseline target does not bind the Manager host launcher"
+                )
+            if Path(row["commands"]["sut"]["arguments"][0]).name != (
+                "ecpa-host-launch"
+            ):
+                raise ValueError(
+                    "baseline target does not bind the Manager host launcher"
+                )
+            if registry.get("sut_command_digest") != row["commands"]["sut"]["digest"]:
+                raise ValueError(
+                    "candidate baseline command registration digest drifted"
+                )
         for fingerprint in [*row["commands"].values(), *sources.values()]:
             _validate_fingerprint(fingerprint, live=live)
         probe = row.get("activation_probe_observation")
@@ -702,9 +745,7 @@ def validate_candidate(value: dict[str, Any], *, live: bool) -> None:
         != sorted([arm for arm, _, _ in ARMS] * 3)
     ):
         raise ValueError("candidate nine-start schedule drifted")
-    if set(value.get("remaining_blockers", [])) != set(
-        (*MACHINE_BLOCKERS, *INDEPENDENT_BLOCKERS)
-    ):
+    if set(value.get("remaining_blockers", [])) != expected_blockers:
         raise ValueError("candidate blocker boundary drifted")
     if live:
         if _load_canonical(REGISTRY_PATH) != {

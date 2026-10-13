@@ -1,28 +1,37 @@
 {
   "schema": "ecpa-h1-machine-frozen-input-candidate/v1",
   "classification": "unregistered-machine-facts-not-formal-real",
-  "captured_at": "2026-10-13T09:38:00Z",
+  "captured_at": "2026-10-13T11:30:00Z",
   "sources": {
     "runtime": {
       "repository": "vLLM-HUST/vllm-hust",
-      "commit": "b093ae0096a4ee801064f7a3673d42383e89f5c7",
-      "tree": "dd66f7b4b1844a19211894706786832aef63d5ff"
+      "commit": "973d9ef5acd2b9beb03e399dec1511a41fc941b5",
+      "tree": "9bc1a9a7dceab8bf1002a5ec5f735e5b454f11af",
+      "remote_ref": "refs/heads/main",
+      "repository_reachable": true
     },
     "accelerator_plugin": {
       "repository": "vLLM-HUST/vllm-ascend-hust",
-      "commit": "fd70a5c818363ee4357604e637e36fb52860ccca",
-      "tree": "40760a184f20adbc9b7993f72940028ec229626c"
+      "commit": "873584026f8a683ac73523f15127569e9f6ab34b",
+      "tree": "3a21eb6bec128786be61d3739268b93fda1095ac",
+      "remote_ref": "refs/pull/54/head",
+      "repository_reachable": true,
+      "qualification": "exact-qwen2.5-7b-eager-tp2-passed"
     },
     "manager": {
       "repository": "vLLM-HUST/extension-manager",
-      "commit": "9f075f8e70da574fb90bdd392cf7c7e424c75972",
-      "tree": "91ebc43a7a82bbc561ad3ed9f94bd02ac72c2a12",
-      "wheel_sha256": "sha256:ec7d718a92361f77da53095547ae3ab407eabce9d471e6cc2e5f859bb69173da"
+      "commit": "b734a923a566f3d1b07b22e087fdbab796b3b1d9",
+      "tree": "62d3cf4899dff86661a9debb78fa1257cb029775",
+      "wheel_sha256": "sha256:f08b2b2b4028565c43f6c73d0d0c5130e4c3124522284cacadad99e06ff99f79",
+      "remote_ref": "refs/heads/main",
+      "repository_reachable": true
     },
     "mod": {
       "repository": "vLLM-HUST/vllm-hust-kv-materialization-arrival-control",
-      "commit": "9728ccd9df68c654aaf541bb7565c0bd3f85b983",
-      "tree": "ea6911c6e0b8a0d7ff66d3078397dd4c615a3364"
+      "commit": "e343fc5ce6b4c64611a79df5d797b3db12cd6dac",
+      "tree": "9c64ec82cbd8c1751433131bacbbe506101e8d42",
+      "remote_ref": "refs/heads/main",
+      "repository_reachable": true
     }
   },
   "installed_environment": {
@@ -41,6 +50,14 @@
       "triton_ascend": "3.6.0+git92513dba",
       "cann_runtime": "9.1.0",
       "ascend_driver": "25.2.1"
+    },
+    "candidate_applicable": false,
+    "classification": "historical-local-stack-preflight-environment",
+    "source_tuple": {
+      "runtime": "b093ae0096a4ee801064f7a3673d42383e89f5c7",
+      "accelerator_plugin": "fd70a5c818363ee4357604e637e36fb52860ccca",
+      "manager": "9f075f8e70da574fb90bdd392cf7c7e424c75972",
+      "mod": "9728ccd9df68c654aaf541bb7565c0bd3f85b983"
     }
   },
   "container": {
@@ -71,7 +88,8 @@
   "activation_probe": {
     "formal_h1_start": false,
     "all_three_arms_passed": true,
-    "artifact_sha256": "sha256:8aa3b3e51911c7ce3fa780fc45942b18397065679758f39db5f5824517069d8a"
+    "artifact_sha256": "sha256:8a8cdee6cd2729ecbaecc6bad7a5353793203fb2237e9d71700e10e659147451",
+    "status": "exact-reachable-stack-functional-qualification-passed"
   },
   "hardware": {
     "device_family": "Ascend 910B2",
@@ -98,11 +116,12 @@
     "formal_h1_starts": 0,
     "formal_h1_required_starts": 9,
     "blockers": [
-      "runtime-and-mod-candidates-not-repository-reachable",
-      "exact-runtime-accelerator-support-matrix-unqualified",
-      "adapter-registry-empty",
-      "independent-command-and-observer-reviews-absent"
-    ]
+      "producer-admission-receipt-not-issued",
+      "adapter-registry-empty"
+    ],
+    "exact_environment_frozen": true,
+    "exact_runtime_accelerator_profile_qualified": true,
+    "qualification_receipt_sha256": "sha256:8a8cdee6cd2729ecbaecc6bad7a5353793203fb2237e9d71700e10e659147451"
   },
   "production_observer": {
     "console_script": "ecpa-formal-observer",
@@ -120,11 +139,12 @@
       "targeted_harness_tests": 125,
       "full_repository_tests": 704,
       "ci_run": 154,
-      "ci_conclusion": "success"
+      "ci_conclusion": "success",
+      "candidate_manager_commit": "b734a923a566f3d1b07b22e087fdbab796b3b1d9"
     },
     "formal_h1_start": false,
     "real_tp2_preflight": {
-      "classification": "unregistered-real-tp2-production-observer-preflight",
+      "classification": "historical-different-source-stack-unregistered-preflight",
       "formal_h1_start": false,
       "performance_result": false,
       "result_sha256": "sha256:ed78d28566ba99a8e83468da3e0f37d2f982f34c09245553155ef3f7bf8119f2",
@@ -140,10 +160,11 @@
         1
       ],
       "coverage": 0.5,
-      "cleanup_proven": true
+      "cleanup_proven": true,
+      "candidate_applicable": false
     },
     "three_arm_real_tp2_preflights": {
-      "classification": "unregistered-three-arm-real-tp2-production-observer-preflights",
+      "classification": "historical-different-source-stack-unregistered-preflight",
       "formal_h1_starts": 0,
       "performance_results": false,
       "common_observation": {
@@ -175,7 +196,59 @@
           "observer_result_sha256": "sha256:7f8afdbf894132922dd0990d541e3945ab44647ca4810e6283744794a3290455",
           "process_snapshot_sha256": "sha256:4cb4dbcf2dcfe796d1555401ba3e70c3196b434eaf2f1290a398bbcf3b7c5067"
         }
-      }
+      },
+      "candidate_applicable": false
+    },
+    "reachable_stack_tp2_qualification": {
+      "status": "passed",
+      "classification": "functional-qualification-not-formal-h1-or-performance",
+      "formal_h1_starts": 0,
+      "performance_result": false,
+      "receipt": "h1-reachable-stack-tp2-qualification-20261013.json",
+      "receipt_sha256": "sha256:8a8cdee6cd2729ecbaecc6bad7a5353793203fb2237e9d71700e10e659147451",
+      "environment_digest": "sha256:50ad1f54bc29cd29ddd0c4ff27b00e4eb123f4b5710bb547aea533672f51547d",
+      "source_commits": {
+        "accelerator_plugin": "873584026f8a683ac73523f15127569e9f6ab34b",
+        "host": "973d9ef5acd2b9beb03e399dec1511a41fc941b5",
+        "manager": "b734a923a566f3d1b07b22e087fdbab796b3b1d9",
+        "mod": "e343fc5ce6b4c64611a79df5d797b3db12cd6dac"
+      },
+      "required_profile": "Qwen2.5-7B-Instruct/single-host/Ascend-910B2/TP2/eager/KV-materialization",
+      "result_sha256": {
+        "vanilla-vllm-entry-points": "sha256:ae6d3dd8135eac6634817f4d77125c9e803db4aba4dbc20d0812e85b9b4b772e",
+        "manual-integration": "sha256:6018755b62a4e1f109d66496147b4380d4af1e58716bce8fc36ed16d2908ae8d",
+        "ecpa": "sha256:06dcd5cf8324648316289afe7a3d9e91de459788d696cd54318319d1183e0489"
+      },
+      "rejected_script_target_result_sha256": "sha256:f8a3e2bcb435833bd4861a8492c27d2fd91e6580b19a38ff26942438d413edbd"
     }
+  },
+  "candidate_environment": {
+    "status": "exact-reachable-stack-functional-tp2-qualified",
+    "digest": "sha256:50ad1f54bc29cd29ddd0c4ff27b00e4eb123f4b5710bb547aea533672f51547d",
+    "formal_registration_eligible": false,
+    "required_source_commits": {
+      "runtime": "973d9ef5acd2b9beb03e399dec1511a41fc941b5",
+      "accelerator_plugin": "873584026f8a683ac73523f15127569e9f6ab34b",
+      "manager": "b734a923a566f3d1b07b22e087fdbab796b3b1d9",
+      "mod": "e343fc5ce6b4c64611a79df5d797b3db12cd6dac"
+    },
+    "wheel_sha256": {
+      "accelerator_plugin": "sha256:16438dc60e86c7bc4741a3520d80d5f9de54676daabe2035ebff0d6b2dceefcf",
+      "host": "sha256:97b27b347889d6e140415e674509519f2ed65848cc51e4b888189fb28f29671a",
+      "manager": "sha256:f08b2b2b4028565c43f6c73d0d0c5130e4c3124522284cacadad99e06ff99f79",
+      "mod": "sha256:581caaff07a610bfc3ce9280c315e9548b532fb119731d14fff002aea6825b1c",
+      "triton_ascend": "sha256:10c14f7de72854a94827d41b6a9cf2fc5ce1c2fd94690895a6d0c8f9ccb3459d"
+    },
+    "packages": {
+      "torch": "2.13.0+cpu",
+      "torch-npu": "2.13.0rc1",
+      "triton-ascend": "3.6.0+git92513dba",
+      "vllm": "0.31.1.post1.dev163+g973d9ef5a.empty",
+      "vllm-ascend": "0.25.1rc2.dev872+hust.20260903.4.g873584026",
+      "vllm-hust-ext": "0.3.0",
+      "vllm-kv-materialization": "0.1.0"
+    },
+    "qualification_receipt": "h1-reachable-stack-tp2-qualification-20261013.json",
+    "qualification_receipt_sha256": "sha256:8a8cdee6cd2729ecbaecc6bad7a5353793203fb2237e9d71700e10e659147451"
   }
 }

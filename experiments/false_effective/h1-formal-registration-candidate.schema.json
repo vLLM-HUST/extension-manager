@@ -2,6 +2,18 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
     "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "reviewRef": {
+      "type": "object",
+      "required": ["reviewer_kind", "human_review", "check_id", "verdict", "receipt_digest"],
+      "properties": {
+        "reviewer_kind": {"const": "automated-independent"},
+        "human_review": {"const": false},
+        "check_id": {"enum": ["commands", "activation_paths", "observer_independence", "artifact_retention"]},
+        "verdict": {"const": "PASS"},
+        "receipt_digest": {"$ref": "#/definitions/digest"}
+      },
+      "additionalProperties": false
+    },
     "fingerprint": {
       "type": "object",
       "required": ["executable", "executable_resolved", "executable_device", "executable_inode", "executable_sha256", "arguments", "argument_files", "digest"],
@@ -88,13 +100,14 @@
       "type": "object",
       "required": ["commands", "activation_paths", "observer_independence", "artifact_retention"],
       "properties": {
-        "commands": {"type": "null"},
-        "activation_paths": {"type": "null"},
-        "observer_independence": {"type": "null"},
-        "artifact_retention": {"type": "null"}
+        "commands": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/reviewRef"}]},
+        "activation_paths": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/reviewRef"}]},
+        "observer_independence": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/reviewRef"}]},
+        "artifact_retention": {"oneOf": [{"type": "null"}, {"$ref": "#/definitions/reviewRef"}]}
       },
       "additionalProperties": false
     },
+    "automated_review_receipt": {"type": "object"},
     "remaining_blockers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
     "non_claims": {"type": "array", "minItems": 4, "items": {"type": "string"}}
   },
