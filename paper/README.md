@@ -39,8 +39,9 @@ All paper builds use Tectonic's XeTeX engine and integrated BibTeX pass;
 `make` and `make tectonic` are equivalent. Do not add a parallel `latexmk`,
 `pdflatex`, or system-TeX build path. The vendored USENIX style selects only
 engine-supported `microtype`, `inputenc`, and `breakurl` behavior. Override the
-executable with `TECTONIC=/path` when needed. `main.pdf` and intermediate files
-are ignored by Git.
+executable with `TECTONIC=/path` when needed. Set `PYTHON=/path/to/venv/bin/python`
+to run evidence validation and PDF auditing in a specific environment.
+`main.pdf` and intermediate files are ignored by Git.
 
 Evidence rules:
 

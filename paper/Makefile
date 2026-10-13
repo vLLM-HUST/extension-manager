@@ -1,4 +1,5 @@
 TECTONIC ?= tectonic
+PYTHON ?= python3
 EVIDENCE_SUMMARY := generated/evidence-summary.tex
 EVIDENCE_INPUTS := \
 	../docs/corpus/plugin-workshop-metadata.snapshot.json \
@@ -67,15 +68,15 @@ EVIDENCE_INPUTS := \
 all: main.pdf
 
 $(EVIDENCE_SUMMARY): scripts/generate_evidence_summary.py $(EVIDENCE_INPUTS)
-	python3 scripts/generate_evidence_summary.py
+	$(PYTHON) scripts/generate_evidence_summary.py
 
 evidence-summary: $(EVIDENCE_SUMMARY)
 
 check-evidence-summary:
-	python3 scripts/generate_evidence_summary.py --check
+	$(PYTHON) scripts/generate_evidence_summary.py --check
 
 check-research-matrix:
-	python3 ../scripts/validate_research_matrix.py
+	$(PYTHON) ../scripts/validate_research_matrix.py
 
 main.pdf: main.tex references.bib $(EVIDENCE_SUMMARY) check-research-matrix
 	$(TECTONIC) --keep-logs main.tex
@@ -83,10 +84,10 @@ main.pdf: main.tex references.bib $(EVIDENCE_SUMMARY) check-research-matrix
 tectonic: main.pdf
 
 audit-pdf: main.pdf
-	python3 scripts/audit_pdf.py main.pdf
+	$(PYTHON) scripts/audit_pdf.py main.pdf
 
 validate-results: check-evidence-summary check-research-matrix
-	python3 scripts/validate_results.py artifacts/results.example.json
+	$(PYTHON) scripts/validate_results.py artifacts/results.example.json
 
 clean:
 	$(RM) main.pdf main.log main.blg main.aux main.bcf main.run.xml main.synctex.gz
