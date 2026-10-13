@@ -87,9 +87,33 @@ def test_transition_dry_run_is_blocked_and_does_not_mutate_official_files() -> N
     assert report["official_files_mutated"] is False
     assert report["partial_transition_allowed"] is False
     assert report["candidate_digest"] == digest_bytes(CANDIDATE_PATH.read_bytes())
+    assert report["atomic_write_set"] == [
+        "first-formal-real-study.json",
+        "first-formal-real-deployment.json",
+        "verified-adapters.json",
+    ]
+    assert report["atomic_write_set_digest"] == digest_bytes(
+        canonical(report["atomic_write_set_members"])
+    )
+    assert {
+        row["path"]: row["before_sha256"] for row in report["atomic_write_set_members"]
+    } == report["official_file_digests_before"]
     assert report["unsatisfied_preconditions"] == candidate["remaining_blockers"]
     assert {path: path.read_bytes() for path in official} == before
     assert json.loads(DRY_RUN_PATH.read_text()) == report
+
+
+def test_transition_dry_run_rejects_a_split_or_stale_write_set() -> None:
+    report = registration.transition_dry_run(_candidate(), live=False)
+    split = copy.deepcopy(report)
+    split["atomic_write_set_members"].pop()
+    with pytest.raises(ValueError, match="member order or coverage drifted"):
+        registration.validate_transition_dry_run(split)
+
+    stale = copy.deepcopy(report)
+    stale["atomic_write_set_members"][0]["before_sha256"] = "sha256:" + "0" * 64
+    with pytest.raises(ValueError, match="not jointly bound"):
+        registration.validate_transition_dry_run(stale)
 
 
 def test_candidate_rejects_machine_promotion_and_review_substitution() -> None:

@@ -725,21 +725,89 @@ def validate_candidate(value: dict[str, Any], *, live: bool) -> None:
 def transition_dry_run(value: dict[str, Any], *, live: bool) -> dict[str, Any]:
     """Describe the all-or-nothing official write set without changing it."""
     validate_candidate(value, live=live)
-    paths = (STUDY_PATH, DEPLOYMENT_PATH, REGISTRY_PATH)
-    before = {str(path.relative_to(HERE)): digest_file(path) for path in paths}
+    members = (
+        ("study", STUDY_PATH),
+        ("deployment", DEPLOYMENT_PATH),
+        ("registry", REGISTRY_PATH),
+    )
+    before = {str(path.relative_to(HERE)): digest_file(path) for _, path in members}
+    write_set = [
+        {
+            "role": role,
+            "path": str(path.relative_to(HERE)),
+            "before_sha256": before[str(path.relative_to(HERE))],
+        }
+        for role, path in members
+    ]
     unsatisfied = list(value["remaining_blockers"])
-    return {
+    report = {
         "schema": "ecpa-h1-registration-transition-dry-run/v1",
         "candidate_schema": value["schema"],
         "candidate_digest": digest_bytes(canonical(value) + b"\n"),
         "ready": not unsatisfied,
         "official_files_mutated": False,
         "atomic_write_set": list(before),
+        "atomic_write_set_members": write_set,
+        "atomic_write_set_digest": digest_bytes(canonical(write_set)),
         "official_file_digests_before": before,
+        "required_post_transition_invariants": [
+            "study.status=admitted-and-admissible",
+            "deployment.study_id=study.study_id",
+            "deployment.bindings.study_sha256=sha256(canonical-study)",
+            "deployment.registration_state=registered-and-admissible",
+            "registry.adapters=exact-three-candidate-arm-registrations",
+            "study-deployment-registry-written-in-one-transaction",
+        ],
         "machine_preconditions": copy.deepcopy(value["machine_checks"]),
         "unsatisfied_preconditions": unsatisfied,
         "partial_transition_allowed": False,
     }
+    validate_transition_dry_run(report)
+    return report
+
+
+def validate_transition_dry_run(value: dict[str, Any]) -> None:
+    """Reject reports that omit or split an official registration document."""
+    expected_paths = [
+        "first-formal-real-study.json",
+        "first-formal-real-deployment.json",
+        "verified-adapters.json",
+    ]
+    if value.get("atomic_write_set") != expected_paths:
+        raise ValueError(
+            "transition dry-run does not cover the exact official write set"
+        )
+    members = value.get("atomic_write_set_members")
+    if (
+        not isinstance(members, list)
+        or [row.get("path") for row in members] != expected_paths
+    ):
+        raise ValueError("transition dry-run member order or coverage drifted")
+    if [row.get("role") for row in members] != ["study", "deployment", "registry"]:
+        raise ValueError("transition dry-run member roles drifted")
+    before = value.get("official_file_digests_before")
+    if (
+        not isinstance(before, dict)
+        or {row.get("path"): row.get("before_sha256") for row in members} != before
+    ):
+        raise ValueError("transition dry-run member digests are not jointly bound")
+    if value.get("atomic_write_set_digest") != digest_bytes(canonical(members)):
+        raise ValueError("transition dry-run write-set digest is stale")
+    required = {
+        "study.status=admitted-and-admissible",
+        "deployment.study_id=study.study_id",
+        "deployment.bindings.study_sha256=sha256(canonical-study)",
+        "deployment.registration_state=registered-and-admissible",
+        "registry.adapters=exact-three-candidate-arm-registrations",
+        "study-deployment-registry-written-in-one-transaction",
+    }
+    if set(value.get("required_post_transition_invariants", [])) != required:
+        raise ValueError("transition dry-run cross-document invariants drifted")
+    if (
+        value.get("official_files_mutated") is not False
+        or value.get("partial_transition_allowed") is not False
+    ):
+        raise ValueError("transition dry-run must remain non-mutating and indivisible")
 
 
 def main() -> None:
