@@ -26,6 +26,17 @@ def test_makefile_uses_tectonic_for_every_paper_build() -> None:
     assert "pdflatex" not in makefile.lower()
 
 
+def test_makefile_uses_configurable_python_for_validation_and_audit() -> None:
+    makefile = (ROOT / "paper/Makefile").read_text()
+
+    assert "PYTHON ?= python3" in makefile
+    assert "\tpython3 " not in makefile
+    assert "\t$(PYTHON) scripts/audit_pdf.py main.pdf" in makefile
+    assert "\t$(PYTHON) scripts/generate_evidence_summary.py" in makefile
+    assert "\t$(PYTHON) ../scripts/validate_research_matrix.py" in makefile
+    assert "\t$(PYTHON) scripts/validate_results.py" in makefile
+
+
 def test_title_states_the_problem_and_solution_without_relying_on_acronym() -> None:
     paper = (ROOT / "paper/main.tex").read_text()
 

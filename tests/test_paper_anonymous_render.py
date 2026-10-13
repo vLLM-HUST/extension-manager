@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
+from unittest.mock import call
 
 import pytest
 
@@ -77,3 +78,51 @@ def test_prepare_refuses_repository_or_existing_output(tmp_path: Path) -> None:
             alias="ReviewSystem",
             title="Evidence Bound Inference Extensions",
         )
+
+
+def test_main_reuses_current_python_for_validation_and_pdf_audit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    renderer = load_renderer()
+    output = tmp_path / "private-paper"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(SCRIPT),
+            "--output",
+            str(output),
+            "--alias",
+            "ReviewSystem",
+            "--title",
+            "Evidence Bound Inference Extensions",
+        ],
+    )
+    calls = []
+
+    def record_run(command, **kwargs):
+        calls.append(call(command, **kwargs))
+
+    monkeypatch.setattr(renderer.subprocess, "run", record_run)
+
+    assert renderer.main() == 0
+    assert calls[0] == call(
+        [
+            "make",
+            "-C",
+            str(renderer.PAPER),
+            f"PYTHON={sys.executable}",
+            "check-evidence-summary",
+        ],
+        check=True,
+    )
+    assert calls[-1] == call(
+        [
+            sys.executable,
+            str(renderer.PAPER / "scripts/audit_pdf.py"),
+            "main.pdf",
+            "--anonymous",
+        ],
+        cwd=output,
+        check=True,
+    )

@@ -11,6 +11,7 @@ import argparse
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 PAPER = Path(__file__).resolve().parents[1]
@@ -76,7 +77,16 @@ def main() -> int:
     parser.add_argument("--alias", required=True)
     parser.add_argument("--title", required=True)
     arguments = parser.parse_args()
-    subprocess.run(["make", "-C", str(PAPER), "check-evidence-summary"], check=True)
+    subprocess.run(
+        [
+            "make",
+            "-C",
+            str(PAPER),
+            f"PYTHON={sys.executable}",
+            "check-evidence-summary",
+        ],
+        check=True,
+    )
     try:
         main_tex = prepare(
             arguments.output, alias=arguments.alias, title=arguments.title
@@ -87,7 +97,12 @@ def main() -> int:
         ["tectonic", "--keep-logs", main_tex.name], cwd=main_tex.parent, check=True
     )
     subprocess.run(
-        ["python3", str(PAPER / "scripts/audit_pdf.py"), "main.pdf", "--anonymous"],
+        [
+            sys.executable,
+            str(PAPER / "scripts/audit_pdf.py"),
+            "main.pdf",
+            "--anonymous",
+        ],
         cwd=main_tex.parent,
         check=True,
     )
