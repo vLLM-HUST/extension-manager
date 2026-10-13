@@ -14,14 +14,23 @@ from vllm_hust_ext import runtime_activation as activation
 
 
 @pytest.fixture(autouse=True)
-def clean_activation_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in (
+def clean_activation_environment():
+    names = (
         "ECPA_ACTIVATION_CONTRACT",
         activation.MANUAL_BOOTSTRAP_FLAG,
         "VLLM_PLUGINS",
         "VLLMHUST_EXT_ENABLED_BUNDLES",
-    ):
-        monkeypatch.delenv(name, raising=False)
+        "PYTHONPATH",
+    )
+    saved = {name: os.environ.get(name) for name in names}
+    for name in names:
+        os.environ.pop(name, None)
+    yield
+    for name, value in saved.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
 
 
 @pytest.mark.parametrize(
@@ -38,10 +47,10 @@ def test_activation_probe_is_exact_and_does_not_import_vllm(
         ["serve", "model", *options, activation.FORMAL_PROBE]
     )
     assert (parsed, arguments, probe) == (contract, ["serve", "model"], True)
-    assert activation.probe_receipt(contract)["entry_point"] == {
-        "group": activation.ENTRY_POINT_GROUP,
-        "name": activation.ENTRY_POINT_NAME,
-        "value": activation.ENTRY_POINT_VALUE,
+    assert activation.probe_receipt(contract) == {
+        "accepted_options": sorted(options),
+        "activation_contract": contract,
+        "schema": "ecpa-activation-probe/v1",
     }
 
 
@@ -107,6 +116,7 @@ def test_manual_patch_invokes_exact_callable_without_selecting_its_entry_point(
     activation.configure_activation("explicit-manual-hooks")
     plugins.load_general_plugins()  # type: ignore[attr-defined]
 
+    assert os.environ["VLLMHUST_EXT_ENABLED_BUNDLES"] == activation.EXTENSION_ID
     assert calls == [
         ("invoke", "ascend"),
         ("entry-point", "ascend"),
