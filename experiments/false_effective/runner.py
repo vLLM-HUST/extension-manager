@@ -58,7 +58,11 @@ from vllm_hust_ext.formal_process_snapshot import (
 from vllm_hust_ext.formal_process_snapshot import (
     digest as snapshot_digest,
 )
-from vllm_hust_ext.host_event_sink import read_events
+from vllm_hust_ext.host_event_sink import (
+    HostEventSinkError,
+    JournalEvent,
+    read_events,
+)
 from vllm_hust_ext.manager_controller import (
     ACTIVATION_CONTRACT as MANAGED_ACTIVATION_CONTRACT,
 )
@@ -1581,6 +1585,76 @@ def _read_events(path: Path) -> tuple[list[dict[str, Any]], str | None]:
         return [], f"observer result unavailable or invalid: {type(exc).__name__}"
 
 
+PARTIAL_FINAL_RECORD = "host event journal has a partial final record"
+HOST_EVENT_READ_ATTEMPTS = 3
+
+
+def _journal_snapshot(root: Path) -> tuple[tuple[str, int, int, int, int], ...]:
+    """Capture identity and content metadata without following journal symlinks."""
+    rows = []
+    with os.scandir(root) as entries:
+        for entry in entries:
+            if not entry.name.endswith(".jsonl"):
+                continue
+            metadata = entry.stat(follow_symlinks=False)
+            rows.append(
+                (
+                    entry.name,
+                    metadata.st_dev,
+                    metadata.st_ino,
+                    metadata.st_size,
+                    metadata.st_mtime_ns,
+                )
+            )
+    return tuple(sorted(rows))
+
+
+def _same_journals_changed(
+    before: tuple[tuple[str, int, int, int, int], ...],
+    after: tuple[tuple[str, int, int, int, int], ...],
+) -> bool:
+    """Return true only when existing journal inodes changed content metadata."""
+    if len(before) != len(after):
+        return False
+    same_inodes = all(
+        left[:3] == right[:3] for left, right in zip(before, after, strict=True)
+    )
+    return same_inodes and any(
+        left[3:] != right[3:] for left, right in zip(before, after, strict=True)
+    )
+
+
+def _read_host_events(
+    root: Path,
+    expected_identity: tuple[int, int],
+    *,
+    max_total_bytes: int,
+    deadline: float,
+) -> tuple[JournalEvent, ...]:
+    """Retry only an in-flight partial append to the same journal inodes."""
+    for attempt in range(HOST_EVENT_READ_ATTEMPTS):
+        before = _journal_snapshot(root)
+        try:
+            return read_events(
+                root,
+                expected_identity,
+                max_total_bytes=max_total_bytes,
+            )
+        except HostEventSinkError as exc:
+            if str(exc) != PARTIAL_FINAL_RECORD:
+                raise
+            after = _journal_snapshot(root)
+            now = time.monotonic()
+            if (
+                attempt + 1 >= HOST_EVENT_READ_ATTEMPTS
+                or now >= deadline
+                or not _same_journals_changed(before, after)
+            ):
+                raise
+            time.sleep(min(0.01, max(0, deadline - now)))
+    raise AssertionError("host event read attempt loop did not return")
+
+
 def _terminate_process(
     child: subprocess.Popen[Any] | None,
     *,
@@ -1637,10 +1711,11 @@ def freeze_formal_processes(
     while True:
         if sut.poll() is not None:
             raise ValueError("SUT exited before process membership freeze")
-        records = read_events(
+        records = _read_host_events(
             Path(context["host_event_dir"]),
             (context["device"], context["inode"]),
             max_total_bytes=1024 * 1024,
+            deadline=deadline,
         )
         receipts = [
             {
@@ -1896,13 +1971,14 @@ def _run_start_impl(
                 and phase != "service-shutdown"
             ):
                 try:
-                    records = read_events(
+                    records = _read_host_events(
                         Path(process_snapshot_context["host_event_dir"]),
                         (
                             process_snapshot_context["device"],
                             process_snapshot_context["inode"],
                         ),
                         max_total_bytes=1024 * 1024,
+                        deadline=time.monotonic() + timeout_s,
                     )
                     # A quarantined journal may vanish intentionally. The freeze
                     # retains its bytes; a new epoch can never replace that slot.
