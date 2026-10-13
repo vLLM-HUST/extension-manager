@@ -55,6 +55,17 @@ throughput regression, and 2% for p99 latency regression.  Vanilla entry-point
 loading is reported as a separate comparison and is never substituted for the
 manual cost baseline.
 
+H3 requires an exact-stack cell campaign and a deployment receipt that binds
+the campaign digest, exact software/model/workload identity, parent-process
+registration, and the authority-owned exposure gate. Each start must carry a
+unique `raw_recovery` event chain. The analyzer binds the fault target by
+PID, `/proc` start ticks, and boot ID; checks event order; and recomputes loss,
+duplication, recovery time, route, predecessor preservation, correctness, and
+rollback classification. It rejects edited metrics and artifacts replayed
+between starts. `run_h3.py` executes one process-crash cell from frozen launch,
+PID-file, HTTP-probe, authority state-probe, and cleanup-probe commands. Fixture
+output is test evidence only and cannot satisfy a production deployment receipt.
+
 H3 evaluates every injected failure, including failed runs.  Unsupported
 tuples serving traffic or loss of the predecessor plan falsifies H3 directly;
 otherwise at least 95% of injections must meet the preregistered automatic
