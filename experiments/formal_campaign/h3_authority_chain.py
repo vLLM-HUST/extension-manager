@@ -101,6 +101,14 @@ def verify_recovery_events(
         raise ValueError("authority recovery registration is not start bound")
     if start["monotonic_ns"] >= fault_ns or start["route"] != prepared_route:
         raise ValueError("authority predecessor was not established before fault")
+    for event in events:
+        if event["monotonic_ns"] <= completion_ns and (
+            event["route"] != prepared_route
+            or event["kind"] in {"route.open.intent", "route.open.applied"}
+        ):
+            raise ValueError(
+                "before-effect recovery exposed or changed the prepared predecessor"
+            )
     restored = [e for e in events if e["kind"] == "route.restore.applied"]
     intents = [e for e in events if e["kind"] == "route.restore.intent"]
     if len(restored) != 1 or len(intents) != 1:

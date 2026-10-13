@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
 import json
 import os
 import signal
@@ -229,6 +230,34 @@ def test_real_native_prepare_kill_recovery_and_replay_rejection(tmp_path: Path):
             facts = verify_recovery_chain(tmp_path / "authority.jsonl", **kwargs)
             assert facts["final_route"] == "predecessor"
             assert facts["rollback_classification"] == "RESTORED_STRONG"
+            # Rehash a semantically false trace: final restore alone must not
+            # conceal candidate exposure during this before-effect crash cell.
+            exposed = copy.deepcopy(trace)
+            inserted = copy.deepcopy(exposed[0])
+            inserted.update(
+                kind="route.open.applied",
+                monotonic_ns=fault_ns + 1,
+                route={
+                    "generation": 1,
+                    "fence": "gate-1",
+                    "snapshot_sha256": "sha256:" + "f" * 64,
+                },
+                detail={},
+            )
+            exposed.insert(1, inserted)
+            previous = "sha256:" + "0" * 64
+            for index, event in enumerate(exposed, 1):
+                event.update(sequence=index, previous_sha256=previous)
+                previous = (
+                    "sha256:"
+                    + hashlib.sha256(
+                        json.dumps(
+                            event, sort_keys=True, separators=(",", ":")
+                        ).encode()
+                    ).hexdigest()
+                )
+            with pytest.raises(ValueError, match="before-effect recovery"):
+                verify_recovery_events(exposed, **kwargs)
             for wrong in (
                 {"launch_id": "other-launch"},
                 {"registration_sha256": "sha256:" + "f" * 64},
