@@ -11,6 +11,7 @@ from jsonschema import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
+    "experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013",
     "docs/corpus/plugin-workshop-metadata.snapshot.json",
     "docs/corpus/workshop-mods.json",
     "docs/corpus/workshop-mods.schema.json",
@@ -149,6 +150,8 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "real_gate_completions": 1,
         "real_gate_blocked_requests": 2,
         "real_gate_raw_files": 95,
+        "h3_native_sources": 5,
+        "h3_prepare_na_baselines": 2,
         "real_gate_failed_attempts": 4,
         "real_gate_complete_coverage": "1.0",
         "real_gate_partial_coverage": "0.5",
@@ -612,3 +615,26 @@ def test_real_gate_summary_rejects_changed_archive(tmp_path):
     archive.write_bytes(archive.read_bytes() + b"tampered")
     with pytest.raises(ValueError, match="archive changed"):
         generator.validate_real_invocation_gate(tmp_path)
+
+
+def test_h3_native_support_rejects_source_and_oracle_tampering(tmp_path):
+    generator = load_generator()
+    prefix = Path(
+        "experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013"
+    )
+    target = tmp_path / prefix
+    shutil.copytree(ROOT / prefix, target)
+    assert generator.validate_h3_native_support(tmp_path) == {
+        "h3_native_sources": 5, "h3_prepare_na_baselines": 2,
+    }
+    source = target / "manager-runtime_activation.py.source"
+    source.write_bytes(source.read_bytes() + b"\n# changed\n")
+    with pytest.raises(ValueError, match="source bytes changed"):
+        generator.validate_h3_native_support(tmp_path)
+    shutil.copyfile(ROOT / prefix / source.name, source)
+    oracle = target / "oracle.json"
+    data = json.loads(oracle.read_text())
+    data["original_cell"]["completion"] = "complete"
+    oracle.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="oracle changed"):
+        generator.validate_h3_native_support(tmp_path)

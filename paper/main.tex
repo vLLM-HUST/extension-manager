@@ -992,35 +992,40 @@ this is \code{QUALIFIED\_NONFORMAL}, invocation-only.  It establishes no
 effective semantics, H1 prevention, formal H3/H4, rollback, performance,
 model quality, or output correctness.
 
+The H3 oracle binds \ECPAHThreeNativeSources{} exact source snapshots.
+Both baseline activation paths lack a durable Manager transaction, so their
+\code{manager-crash-afterprepare} phases are not applicable
+(\ECPAHThreePrepareNABaselines{} arms).  Empty metrics retain the incomplete
+original cell; separately registered worker-crash/full-relaunch cannot replace
+it.  Host worker death shuts down the executor, without native replacement.
+
+The ECPA verifier checks live launch/proxy identities, the authority hash chain,
+adjacent restore intent/effect, predecessor route and SQLite rollback prefix;
+it rejects before-effect candidate exposure.  Real CPU and fixture HTTP tests
+establish control-chain behavior only.  Post-restart clients leave whole-window
+loss, duplication and recovery objective unknown.  Matched arms and a registered
+fault-spanning client trace remain required; formal H3/H4 runs remain zero.
+
 \subsection{Preliminary Evidence and Missing Results}
-At the incident's pre-fix baseline, 66 CPU tests pass.  On commit
-\code{3201e133}, those tests also pass despite the namespace change.  A clean
-installed-package probe then observes one Mooncake entry point in the documented
-group, zero in the changed group, and zero discovered bundles.  This is a real
-counterexample to ``unit tests plus installation imply activation,'' and it has
-been retained as the M0 negative fixture rather than merged.
+The incident's pre-fix and namespace-modified implementations both pass 66 CPU
+tests.  The installed-package probe nonetheless finds one Mooncake entry point
+in the documented group, none in the changed group, and zero bundles.  This
+retained M0 negative fixture demonstrates that tests and installation alone
+do not imply activation.
 
-The early modeled L2 seed additionally contains \ECPAPlannerCases{}
-frozen composition cases over \ECPAPlannerSeedExtensions{} seed extensions.
-The compiler matches all \ECPAPlannerAdmits{} admits and \ECPAPlannerRejects{}
-rejects, including reject classes, after independent oracle review.  Exact
-repository commits, root trees, and \ECPASourceObjects{} cited Git objects
-across \ECPASourceRepositories{} repositories
-bind that fixture to inspected source.  These numbers measure conformance to
-the modeled taxonomy, not H2, real conflict prevalence, or runtime
-effectiveness.
+The modeled L2 seed has \ECPAPlannerCases{} cases over
+\ECPAPlannerSeedExtensions{} extensions; all \ECPAPlannerAdmits{} admits
+and \ECPAPlannerRejects{} rejects match the independent oracle.
+\ECPASourceObjects{} cited Git objects across \ECPASourceRepositories{}
+repositories bind this taxonomy conformance result to source, not to H2
+prevalence or runtime effectiveness.
 
-The partial-worker-coverage H1 cell is measured.  H2 has only the five-case
-partial result above, while H3 and H4 have zero formal runs.  The single
-release qualification is
-reported separately and cannot populate a formal cell.  Table and figure
-generators refuse to replace missing values with zero.  The H1 result shows
-that complete evidence collection can expose a failed prevention property: in
-this implementation, Manager-controlled activation alone did not revoke the
-effective claim after evidence coverage fell to 0.5.  A real authority-owned
-ExposureGate must still complete registered formal validation of effect
-obligations before the paper can claim prevention at a traffic boundary.
-The current overall submission decision therefore remains \code{NO-GO}.
+H1 is measured and falsified: Manager activation did not revoke the effective
+claim when coverage fell to 0.5.  H2 remains the partial five-case subset;
+H3/H4 have zero formal runs.  Qualification cannot populate formal cells,
+and generators reject zero-filled missing values.  Registered effect-obligation
+validation at a real traffic authority remains required before claiming
+prevention.  The overall decision remains \code{NO-GO}.
 
 \section{Related Work}
 \textbf{Inference and module plugins.}  vLLM's Plugin System loads registered
@@ -1104,14 +1109,10 @@ change, or tighter accepted values require a major change and a deprecation
 window.  Providers remain translators and observers; adopting the manifest
 does not transfer runtime or external-service authority.
 
-The standardization path is deliberately evidence-gated: stabilize the
-internal contract; validate diverse plugins; obtain maintained adoption in
-independent host and extension repositories; submit an upstream RFC and incorporate public
-feedback; demonstrate interoperability between independently written
-implementations; and only then establish neutral governance and evolution.
-A de-facto-standard claim additionally requires external users, public
-conformance results, compatibility history, and governance beyond one
-repository.  Until then, ``standardizable contract'' is the strongest claim.
+Standardization requires independent maintained host/extension adoption,
+public RFC feedback, interoperability between independent implementations,
+compatibility history, external users and neutral governance.  Until those
+evidence gates pass, ``standardizable contract'' is the strongest claim.
 
 \subsection{Evidence and External Validity}
 Evidence has cost and can itself fail.  A synchronous per-request proof would
@@ -1123,7 +1124,7 @@ otherwise a disappearing worker could make success vacuous.
 
 Conflict taxonomies can be incomplete.  Precision and recall are measured
 against an independently labeled oracle, but that oracle may miss semantic
-interactions.  The current real-source subset has only four scored cases and
+interactions.  The current real-source subset has only \ECPAHTwoScoredCases{} scored cases and
 does not cover several required conflict surfaces.  We mitigate this with
 explicit unknown/unverified outcomes and negative cells, not a universal
 composability claim.  Deterministic rollback

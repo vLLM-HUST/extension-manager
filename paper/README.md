@@ -170,3 +170,15 @@ rendering its counts. It remains `QUALIFIED_NONFORMAL`: the Host candidate is
 unmerged; it supplies no effectiveness semantics, H1 prevention, formal H3/H4,
 rollback, performance, quality, or correctness result. H1 remains falsified at
 9/9 starts; H2 remains a partial n=5 subset; the overall decision is NO-GO.
+
+
+H3 native phase support is bound by `validate_h3_native_support` in the evidence
+generator to the independent frozen oracle and five exact source snapshots.
+The generated baseline not-applicable count describes phase semantics only,
+not runtime recovery. Both baseline manager-crash-afterprepare arms remain
+incomplete; a shared worker fault requires a separately registered cell.
+The post-recovery verifier checks the actual authority chain and SQLite prefix,
+including forbidden before-effect candidate exposure. CPU fixture checks prove
+control-chain behavior only. Whole-fault-window loss, duplication and objective
+remain unknown without a client trace across the fault. H3/H4 formal runs remain
+zero and the submission decision remains NO-GO; no r4 success is asserted.
