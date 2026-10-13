@@ -17,6 +17,7 @@ from typing import Any
 
 import jsonschema
 from analyze import _recompute_h3_metrics
+from h3_registration import canonical, command_digest
 
 ROOT = Path(__file__).resolve().parent
 
@@ -98,6 +99,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--campaign-spec", type=Path, required=True)
     parser.add_argument("--deployment-receipt", type=Path, required=True)
+    parser.add_argument("--authority-registration", type=Path, required=True)
     parser.add_argument("--arm", required=True)
     parser.add_argument("--repetition", type=int, choices=(1, 2, 3), required=True)
     parser.add_argument("--arm-order", type=int, choices=(1, 2, 3), required=True)
@@ -113,21 +115,56 @@ def main() -> int:
     campaign_sha = digest(args.campaign_spec)
     if receipt["campaign_sha256"] != campaign_sha:
         raise ValueError("deployment receipt is not bound to campaign")
-    if receipt["authority"] != {
-        "kind": receipt["authority"]["kind"],
-        "parent_process_registration": True,
-        "exposure_gate": True,
-    }:
-        raise ValueError("H3 requires parent registration and exposure authority")
+    authority = load(args.authority_registration)
+    authority_schema = load(ROOT / "h3-authority-registration.schema.json")
+    jsonschema.Draft7Validator(authority_schema).validate(authority)
+    if digest(args.authority_registration) != receipt["authority_registration_sha256"]:
+        raise ValueError("authority registration differs from deployment receipt")
+    if authority["campaign_sha256"] != campaign_sha:
+        raise ValueError("authority registration is not bound to campaign")
+    expected_arm_digests = {
+        item["id"]: command_digest(item["launch_command"]) for item in campaign["arms"]
+    }
+    if receipt["arm_command_digests"] != expected_arm_digests:
+        raise ValueError("deployment receipt arm commands differ from campaign")
+    if (
+        receipt["fault_command_digest"]
+        != "sha256:" + hashlib.sha256(canonical(campaign["fault"])).hexdigest()
+    ):
+        raise ValueError("deployment receipt fault command differs from campaign")
+    if receipt["state_command_digest"] != command_digest(
+        campaign["probe"]["state_command"]
+    ):
+        raise ValueError("deployment receipt state command differs from campaign")
+    if receipt["cleanup_command_digest"] != command_digest(
+        campaign["probe"]["cleanup_command"]
+    ):
+        raise ValueError("deployment receipt cleanup command differs from campaign")
     arm = next((item for item in campaign["arms"] if item["id"] == args.arm), None)
     if arm is None:
         raise ValueError("arm is not frozen in campaign")
 
     out = args.output_dir.resolve()
+    start_id = f"{campaign['cell_id']}-r{args.repetition}-{args.arm}"
+    authority_start = next(
+        (item for item in authority["starts"] if item["start_id"] == start_id), None
+    )
+    if authority_start is None:
+        raise ValueError("authority registration lacks this start")
+    if Path(authority_start["run_directory"]).resolve() != out:
+        raise ValueError("authority-owned proxy run directory differs")
+    if receipt["authority"]["endpoint"] != authority["authority_endpoint"]:
+        raise ValueError("authority endpoint differs from deployment receipt")
+    if (
+        receipt["authority"]["start_proxy_registration_digests"].get(start_id)
+        != authority_start["proxy_registration_sha256"]
+    ):
+        raise ValueError("authority-owned proxy identity differs")
     out.mkdir(parents=True, exist_ok=False)
     receipt_copy = out / "deployment-receipt.json"
     receipt_copy.write_bytes(args.deployment_receipt.read_bytes())
-    start_id = f"{campaign['cell_id']}-r{args.repetition}-{args.arm}"
+    authority_copy = out / "authority-registration.json"
+    authority_copy.write_bytes(args.authority_registration.read_bytes())
     log_path = out / "raw.log"
     log_file = log_path.open("wb")
     launcher: subprocess.Popen[bytes] | None = None
@@ -248,6 +285,8 @@ def main() -> int:
         "repetition": args.repetition,
         "arm_order": args.arm_order,
         "deployment_receipt_sha256": digest(args.deployment_receipt),
+        "authority_registration_sha256": digest(authority_copy),
+        "proxy_registration_sha256": authority_start["proxy_registration_sha256"],
         "process_identity": process_record,
         "fault_target": target,
         "pre_fault": {
@@ -264,6 +303,10 @@ def main() -> int:
         "deployment_receipt": {
             "path": receipt_copy.name,
             "sha256": digest(receipt_copy),
+        },
+        "authority_registration": {
+            "path": authority_copy.name,
+            "sha256": digest(authority_copy),
         },
         **bindings,
         "raw_recovery": raw_binding,

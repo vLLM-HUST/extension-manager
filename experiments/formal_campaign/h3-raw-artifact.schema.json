@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "ecpa-h3-raw-recovery/v1",
   "type": "object",
-  "required": ["schema", "evidence_class", "campaign_sha256", "campaign_id", "cell_id", "start_id", "arm", "repetition", "arm_order", "deployment_receipt_sha256", "process_identity", "fault_target", "pre_fault", "artifact_sha256", "events", "request_results", "process_snapshot"],
+  "required": ["schema", "evidence_class", "campaign_sha256", "campaign_id", "cell_id", "start_id", "arm", "repetition", "arm_order", "deployment_receipt_sha256", "authority_registration_sha256", "proxy_registration_sha256", "process_identity", "fault_target", "pre_fault", "artifact_sha256", "events", "request_results", "process_snapshot"],
   "properties": {
     "schema": {"const": "ecpa-h3-raw-recovery/v1"},
     "evidence_class": {"const": "formal-real"},
@@ -14,6 +14,8 @@
     "repetition": {"type": "integer", "minimum": 1, "maximum": 3},
     "arm_order": {"type": "integer", "minimum": 1, "maximum": 3},
     "deployment_receipt_sha256": {"$ref": "#/definitions/digest"},
+    "authority_registration_sha256": {"$ref": "#/definitions/digest"},
+    "proxy_registration_sha256": {"$ref": "#/definitions/digest"},
     "process_identity": {"$ref": "#/definitions/processIdentity"},
     "fault_target": {"$ref": "#/definitions/targetIdentity"},
     "pre_fault": {

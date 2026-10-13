@@ -411,12 +411,35 @@ def write_artifact(path: Path, value: object) -> dict[str, str]:
 
 
 def h3_campaign(cell: str) -> dict[str, object]:
+    arms = [
+        {
+            "id": arm,
+            "launch_command": ["launch", arm],
+            "fault_target_pid_file": f"/{arm}.pid",
+        }
+        for arm in ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
+    ]
     return {
         "_sha256": "sha256:" + "8" * 64,
         "campaign_id": "H3-transactional-recovery-v1",
         "cell_id": cell,
         "fixed_identity": identity(),
-        "fault": {"id": "kill-manager", "target_role": "manager"},
+        "arms": arms,
+        "fault": {
+            "id": "kill-manager",
+            "signal": "SIGKILL",
+            "target_role": "manager",
+            "target_exit_timeout_s": 5,
+        },
+        "probe": {
+            "health_url": "http://127.0.0.1:8187/health",
+            "request_url": "http://127.0.0.1:8187/request",
+            "request_count": 1,
+            "state_command": ["state"],
+            "cleanup_command": ["cleanup"],
+            "ready_timeout_s": 5,
+            "request_timeout_s": 5,
+        },
         "objective": {
             "max_recovery_ms": 1000,
             "max_lost_requests": 0,
@@ -453,12 +476,68 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
         "ports_reclaimed": True,
         "devices_reclaimed": True,
     }
+    proxy = {
+        "schema": "ecpa-formal-proxy-registration/v1",
+        "evidence_class": "formal-real",
+        "authority": "independent-loopback-proxy",
+        "proxy_command_digest": "sha256:" + "c" * 64,
+        "review_receipt_sha256": "sha256:" + "d" * 64,
+        "reviewer_kind": "automated-independent",
+        "proxy_source_sha256": "sha256:" + "e" * 64,
+        "public_port": 8187,
+        "backend_port": 18187,
+        "predecessor_port": 28187,
+        "grant_holder": "formal-runner",
+        "grant_token": 1,
+        "grant_expires_at": 4102444800,
+    }
+    proxy_sha = module._canonical_digest(proxy)
+    starts = [
+        {
+            "start_id": f"{cell}-r{number}-{candidate}",
+            "arm": candidate,
+            "repetition": number,
+            "run_directory": f"/runs/{cell}-r{number}-{candidate}",
+            "proxy_registration": proxy,
+            "proxy_registration_sha256": proxy_sha,
+        }
+        for number in range(1, 4)
+        for candidate in ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
+    ]
+    authority = {
+        "schema": "ecpa-h3-authority-registration/v1",
+        "registration_state": "reviewed",
+        "evidence_class": "formal-real",
+        "campaign_sha256": campaign["_sha256"],
+        "authority_endpoint": "http://127.0.0.1:8187/request",
+        "state_command_digest": module._canonical_digest({"argv": ["state"]}),
+        "cleanup_command_digest": module._canonical_digest({"argv": ["cleanup"]}),
+        "starts": starts,
+    }
+    authority["review"] = {
+        "reviewer_kind": "automated-independent",
+        "verdict": "APPROVED",
+        "subject_sha256": module._canonical_digest(authority),
+    }
+    authority_binding = write_artifact(root / f"{start_id}-authority.json", authority)
+    host_admission = {
+        "schema": "ecpa-host-source-admission/v1",
+        "repository": "vLLM-HUST/vllm-hust",
+        "remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+        "candidate_commit": "2" * 40,
+        "main_commit": "2" * 40,
+        "candidate_reachable": True,
+        "candidate_merged_to_main": True,
+    }
     receipt = {
-        "schema": "ecpa-h3-deployment-receipt/v1",
+        "schema": "ecpa-h3-deployment-receipt/v2",
         "registration_state": "registered",
         "admissible": True,
         "evidence_mode": "formal-real",
         "campaign_sha256": campaign["_sha256"],
+        "authority_registration_sha256": authority_binding["sha256"],
+        "host_source_admission_sha256": module._canonical_digest(host_admission),
+        "host_source_admission": host_admission,
         "campaign_id": "H3-transactional-recovery-v1",
         "cell_id": cell,
         **{
@@ -474,10 +553,30 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
                 "topology",
             )
         },
+        "arm_command_digests": {
+            row["id"]: module._canonical_digest({"argv": row["launch_command"]})
+            for row in campaign["arms"]
+        },
+        "fault_command_digest": module._canonical_digest(campaign["fault"]),
+        "state_command_digest": module._canonical_digest({"argv": ["state"]}),
+        "cleanup_command_digest": module._canonical_digest({"argv": ["cleanup"]}),
         "authority": {
-            "kind": "host",
+            "kind": "host-plus-independent-loopback-proxy",
             "parent_process_registration": True,
             "exposure_gate": True,
+            "endpoint": "http://127.0.0.1:8187/request",
+            "start_proxy_registration_digests": {
+                row["start_id"]: row["proxy_registration_sha256"] for row in starts
+            },
+        },
+        "issuer": {
+            "kind": "ecpa-h3-registration-transition/v1",
+            "manager_repository": "vLLM-HUST/extension-manager",
+            "manager_remote": "https://github.com/vLLM-HUST/extension-manager.git",
+            "host_repository": "vLLM-HUST/vllm-hust",
+            "host_remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+            "manager_main_commit": "1" * 40,
+            "host_main_commit": "2" * 40,
         },
     }
     receipt_binding = write_artifact(root / f"{start_id}-receipt.json", receipt)
@@ -507,6 +606,8 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
         "repetition": rep,
         "arm_order": protocol["schedule"][rep - 1].index(arm) + 1,
         "deployment_receipt_sha256": receipt_binding["sha256"],
+        "authority_registration_sha256": authority_binding["sha256"],
+        "proxy_registration_sha256": proxy_sha,
         "process_identity": process,
         "fault_target": target,
         "pre_fault": {
@@ -559,6 +660,7 @@ def h3_record(module, root: Path, *, arm: str = "ecpa", rep: int = 1):
     raw_binding = write_artifact(root / f"{start_id}-raw-recovery.json", raw)
     artifacts = {
         "deployment_receipt": receipt_binding,
+        "authority_registration": authority_binding,
         "raw_recovery": raw_binding,
         **bindings,
     }

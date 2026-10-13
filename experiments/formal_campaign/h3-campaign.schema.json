@@ -20,6 +20,7 @@
       }
     },
     "fixed_identity": {"type": "object"},
+    "protocol_binding": {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}},
     "fault": {
       "type": "object", "required": ["id", "signal", "target_role", "target_exit_timeout_s"],
       "properties": {
