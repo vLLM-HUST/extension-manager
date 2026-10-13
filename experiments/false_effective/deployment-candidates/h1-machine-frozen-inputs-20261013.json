@@ -69,7 +69,17 @@
     ],
     "process_tables_empty": true,
     "topology": "single-host TP2 eager",
-    "warm_state": "cold"
+    "warm_state": "cold",
+    "npu_smi_device_ids": [
+      3,
+      6
+    ],
+    "runtime_logical_device_ids": [
+      0,
+      1
+    ],
+    "runtime_visibility_policy": "inherit-container-device-assignment",
+    "explicit_ascend_rt_visible_devices": null
   },
   "qualification": {
     "registration_state": "unregistered",

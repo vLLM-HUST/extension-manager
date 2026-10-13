@@ -58,6 +58,14 @@ def test_h1_machine_candidate_binds_repository_inputs() -> None:
     assert preflight["observed_worker_ordinals"] == [1]
     assert preflight["coverage"] == 0.5
     assert preflight["cleanup_proven"] is True
+    hardware = candidate["hardware"]
+    assert hardware["physical_device_ids"] == hardware["npu_smi_device_ids"] == [3, 6]
+    assert hardware["runtime_logical_device_ids"] == [0, 1]
+    assert (
+        hardware["runtime_visibility_policy"]
+        == "inherit-container-device-assignment"
+    )
+    assert hardware["explicit_ascend_rt_visible_devices"] is None
 
 
 def test_machine_candidate_does_not_admit_the_formal_study() -> None:

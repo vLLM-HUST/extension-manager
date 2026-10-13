@@ -45,8 +45,7 @@ the host-owned process snapshot.
 
 The current allocation exposes two healthy Ascend 910B2 devices as physical
 IDs 3 and 6, with no NPU processes at capture time. The proposed topology is a
-single-host TP2 eager cold start. Physical IDs are allocation-local and must be
-rechecked immediately before every start.
+single-host TP2 eager cold start. The allocation reports NPU IDs 3 and 6 through `npu-smi`, while CANN exposes them to worker processes as logical IDs 0 and 1. The successful run inherited the container device assignment and left `ASCEND_RT_VISIBLE_DEVICES` unset. Passing the `npu-smi` IDs through that variable fails `aclInit` with an invalid logical device ID. Both views are allocation-local and must be rechecked immediately before every start.
 
 ## Remaining admission blockers
 
