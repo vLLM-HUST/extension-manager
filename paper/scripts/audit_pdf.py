@@ -16,6 +16,10 @@ PUBLIC_IDENTIFIERS = (
     "intellistream",
     "ShuhaoZhangTony",
     "From Enabled to Effective",
+    "extension-manager",
+    "张书豪",
+    "3e57b2f75cffffd26dda0df4d9bcac890cfe99fc",
+    "3201e133",
 )
 
 
@@ -91,8 +95,30 @@ def audit(path: Path, *, anonymous: bool = False) -> dict[str, object]:
             searchable = (
                 "\n".join(all_text)
                 + "\n"
-                + json.dumps(document.metadata, sort_keys=True)
+                + json.dumps(document.metadata, sort_keys=True, ensure_ascii=False)
+                + "\n"
+                + document.get_xml_metadata()
+                + "\n"
+                + json.dumps(document.get_toc(), ensure_ascii=False)
+                + "\n"
+                + "\n".join(
+                    json.dumps(page.get_links(), ensure_ascii=False, default=str)
+                    + "\n"
+                    + "\n".join(
+                        json.dumps(annotation.info, ensure_ascii=False)
+                        for annotation in (page.annots() or [])
+                    )
+                    for page in document
+                )
             )
+            if document.embfile_count():
+                errors.append("anonymous PDF must not contain embedded files")
+            author = (document.metadata.get("author") or "").strip()
+            if author and author.casefold() not in (
+                "anonymous",
+                "anonymous submission",
+            ):
+                errors.append("anonymous PDF has an identifying author field")
             for identifier in PUBLIC_IDENTIFIERS:
                 if identifier.casefold() in searchable.casefold():
                     errors.append(f"public identifier remains: {identifier}")
