@@ -13,6 +13,7 @@ from typing import Any, cast
 
 from .ecpa_model import canonical_bytes
 from .host_evidence import parse_host_event
+from .plan_artifact import parse_plan_artifact
 
 
 def digest(value: Any) -> str:
@@ -188,6 +189,8 @@ def validate_runner_snapshots(
             "logical_slots",
             "logical_slots_digest",
             "prepared_at_ns",
+            "plan_raw_base64",
+            "plan_raw_sha256",
         }
         or prelaunch["schema"] != "ecpa-formal-logical-snapshot/v1"
         or prelaunch["execution_identity"] != execution
@@ -197,6 +200,22 @@ def validate_runner_snapshots(
         or not isinstance(prelaunch["prepared_at_ns"], int)
     ):
         raise ValueError("prelaunch logical snapshot differs from frozen slots")
+    plan_raw = base64.b64decode(prelaunch["plan_raw_base64"], validate=True)
+    plan = parse_plan_artifact(plan_raw)
+    if (
+        prelaunch["plan_raw_sha256"] != "sha256:" + hashlib.sha256(plan_raw).hexdigest()
+        or plan.plan_id != execution["plan_id"]
+    ):
+        raise ValueError("prelaunch execution Plan identity differs")
+    hosts = {row["host"] for row in slots}
+    declared = {(row["role"], row["ordinal"]) for row in slots}
+    obligated = {
+        (row.role, ordinal)
+        for row in plan.obligations
+        for ordinal in row.required_ordinals
+    }
+    if len(hosts) != 1 or declared != obligated:
+        raise ValueError("prelaunch slots differ from frozen Plan obligations")
     frozen_at = command["process_transition"]["frozen_at_ns"]
     try:
         launched = command["monotonic_start_ns"]

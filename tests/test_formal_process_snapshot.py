@@ -20,6 +20,7 @@ from vllm_hust_ext.formal_process_snapshot import (
     validate_slots,
     validate_transition,
 )
+from vllm_hust_ext.plan_artifact import plan_artifact_bytes
 
 sys.path.insert(0, str(Path("experiments/false_effective").resolve()))
 import runner  # noqa: E402
@@ -153,6 +154,9 @@ def test_offline_runner_binds_both_snapshots_and_transition_times():
             "logical_slots": SLOTS,
             "logical_slots_digest": transition["logical_slots_digest"],
             "prepared_at_ns": 10,
+            "plan_raw_base64": base64.b64encode(plan_artifact_bytes(PLAN)).decode(),
+            "plan_raw_sha256": "sha256:"
+            + hashlib.sha256(plan_artifact_bytes(PLAN)).hexdigest(),
         },
         "monotonic_start_ns": 20,
         "phase_bounds": {"service-ready": [110, 120]},

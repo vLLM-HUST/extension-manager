@@ -2237,7 +2237,9 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
     if dynamic_membership:
         import inspect
 
-        from test_host_observer import event_id, host_event
+        from test_host_observer import PLAN, event_id, host_event
+
+        from vllm_hust_ext.plan_artifact import plan_artifact_bytes
 
         event_root = (tmp_path / "host-events").resolve()
         event_root.mkdir(mode=0o700)
@@ -2247,6 +2249,13 @@ os.write(int(os.environ['ECPA_OBSERVER_FD']), b'{"events":[]}')
             "device": metadata.st_dev,
             "inode": metadata.st_ino,
         }
+        snapshot_context["plan_raw_base64"] = base64.b64encode(
+            plan_artifact_bytes(PLAN)
+        ).decode()
+        snapshot_context["plan_raw_sha256"] = runner_module.digest_bytes(
+            plan_artifact_bytes(PLAN)
+        )
+        execution["plan_id"] = PLAN.plan_id
         identity["required_process_slots"] = [
             {k: row[k] for k in ("host", "role", "ordinal")}
             for row in identity.pop("required_processes")

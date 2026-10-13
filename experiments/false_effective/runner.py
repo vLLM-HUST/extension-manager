@@ -1707,6 +1707,8 @@ def _run_start_impl(
                 "logical_slots": slots,
                 "logical_slots_digest": snapshot_digest(slots),
                 "prepared_at_ns": time.monotonic_ns(),
+                "plan_raw_base64": process_snapshot_context["plan_raw_base64"],
+                "plan_raw_sha256": process_snapshot_context["plan_raw_sha256"],
             }
         sut_start = time.monotonic_ns()
         sut = popen_pinned(
@@ -2563,6 +2565,17 @@ def run_formal_start(
                     ],
                 }
             )
+        frozen_plan = read_plan_artifact(
+            binding["plan_path"]
+            if isinstance(adapter, ECPAAdapter)
+            else frozen_plan_path
+        )
+        process_snapshot_context.update(
+            {
+                "plan_raw_base64": base64.b64encode(frozen_plan.raw).decode(),
+                "plan_raw_sha256": digest_bytes(frozen_plan.raw),
+            }
+        )
         fact_commands = verification.get("lifecycle_fact_commands")
         if fact_commands is not None:
             fault_arguments = fact_commands["fault-injected"]["arguments"]
