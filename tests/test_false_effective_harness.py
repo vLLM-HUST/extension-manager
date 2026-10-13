@@ -2107,6 +2107,7 @@ def test_ecpa_offline_validator_binds_manager_target_observer_and_plan(
     # remains independently valid from its persistent Plan artifact.  Legacy
     # completed records remain valid from the exact bytes in command.json.
     frozen_plan = Path(binding["plan_path"])
+    frozen_plan.parent.chmod(0o700)
     frozen_plan.unlink()
     frozen_plan.parent.rmdir()
     event_dir.rmdir()
