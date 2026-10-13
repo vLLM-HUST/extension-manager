@@ -90,12 +90,15 @@ interfaces with distinct activation contracts. The runner starts the SUT and
 observer as different processes and records both argv/PID/start identities.
 Only the observer inherits a dedicated anonymous result-pipe write FD. The SUT
 uses `close_fds`, receives no result path/FD or observer-control environment,
-and its stdout cannot become formal truth. Each instruction carries a random
-challenge and sequence plus a runner-generated plan ID, launch ID, controller
-instance, and invocation ID. An ACK proves only that this process answered that
-instruction; it is not evidence that the requested workload, fault, hook, or
-policy effect occurred. Formal-real observer instructions do not include the
-SUT stdout response, and a formal observation carrying `causal_ack` is rejected.
+and its stdout cannot become formal truth. Formal SUT stdin is `/dev/null`;
+stdout and stderr go directly to raw files, so a service that emits more than a
+pipe buffer does not deadlock phase execution. Only interface fixtures use
+stdin instructions and SUT ACKs. The formal path invokes the five separately
+pinned sources with a fresh challenge/sequence/invocation identity and advances
+only on their credentialed receipts. A failed prerequisite prevents workload
+and fault execution; cleanup is still requested. The runner requests shutdown
+before the independent monitor proves termination. Formal observations carrying
+`causal_ack` remain rejected.
 Readiness, workload completion, fault application, effect capture, and shutdown
 instead carry exact canonical receipt bytes from their declared probe, driver,
 actuator, host observer, or process monitor. Those bytes and their digest bind
@@ -151,12 +154,35 @@ described above. Every event must carry the same
 plan/launch/controller/invocation identity. Linux process identity is PID plus
 `/proc/PID/stat` start ticks and exact `/proc/PID/cmdline` argv. The runner reads
 start ticks both before and after argv to reject PID-reuse races, and each
-evidence source records the SUT identity it saw. A formal run must additionally freeze a non-empty
-`required_processes` target snapshot (host, role, ordinal, and process epoch)
-in the runner-bound identity. The runner validates exact fields, values, and
-uniqueness before it executes the registered activation probe or starts the
-SUT, so an invalid target set cannot launch and be rejected only after the
-experiment. `plugin-invoked` carries the distinct
+evidence source records the SUT identity it saw. Before launch, a formal run
+freezes `required_process_slots` containing only host, role and ordinal, and
+checks the slots against execution Plan obligations. Prefilled process epochs
+are rejected. Each arm requires a private, initially empty host-event directory
+and an execution Plan. After launch, the runner waits within its declared timeout
+for complete host-assigned membership, reads exact PID/start-ticks from live
+Linux processes, and freezes `required_processes` with the newly emitted epochs.
+This occurs before the readiness source and before any workload, fault or effect
+capture. The observer receives `ECPA_PROCESS_SNAPSHOT_PATH` as an immutable
+experiment input; the SUT does not receive it. Command receipts bind the
+prelaunch logical snapshot, postlaunch process snapshot, their digests, raw
+host-event bytes and transition times. Offline validation reconstructs both
+snapshots; completed legacy rows lacking this transition are rejected.
+Missing slots, duplicate Linux identities, multiple epochs/replacement, replay,
+wrong authority and cross-launch evidence fail closed. Live identity and journal
+membership are rechecked before each phase; intentional quarantine cannot shrink
+the frozen target set. The registered fault descriptor must use
+`ecpa-evidence-quarantine-fault/v2`, whose target is a logical slot: the actuator
+resolves its epoch from the frozen source request. The v1 actuator remains only
+for existing non-formal integrations and tests.
+
+`readiness-http` polls transient startup failures for `--startup-timeout`
+(default 600 seconds, maximum 3600), with an independently bounded per-request
+`--timeout`. The runner's source timeout must cover that pinned startup budget;
+registration must freeze the actual startup policy. Oversized evidence and
+redirects fail immediately. The new CPU process tests establish execution and
+identity mechanics only; they are neither formal H1 nor performance results.
+
+`plugin-invoked` carries the distinct
 host-assigned process identities observed at the real effect boundary. The
 oracle derives coverage from those identities and rejects caller- or
 observer-reported coverage that does not match; a controller ACK therefore

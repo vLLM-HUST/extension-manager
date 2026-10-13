@@ -397,12 +397,20 @@ def test_journal_capture_requires_bound_dispatch_for_controller(monkeypatch, tmp
         )
 
 
-def test_partial_coverage_fault_quarantines_one_worker_journal(monkeypatch, tmp_path):
+@pytest.mark.parametrize("logical", [False, True])
+def test_partial_coverage_fault_quarantines_one_worker_journal(
+    monkeypatch, tmp_path, logical
+):
     transaction_calls = mock_quarantine_transaction(monkeypatch)
     request = partial_coverage_request()
     descriptor_path, descriptor_raw, descriptor = write_fault_descriptor(
         tmp_path, request
     )
+    if logical:
+        descriptor["schema"] = "ecpa-evidence-quarantine-fault/v2"
+        descriptor["target"].pop("process_epoch")
+        descriptor_raw = canonical_bytes(descriptor) + b"\n"
+        descriptor_path.write_bytes(descriptor_raw)
     target = lifecycle_event(descriptor, request, ordinal=0, journal="target.jsonl")
     peer = lifecycle_event(descriptor, request, ordinal=1, journal="peer.jsonl")
     reads = iter(([target, peer], [peer]))
@@ -757,3 +765,56 @@ def test_request_rejects_noncanonical_bytes(tmp_path):
 
     assert completed.returncode == 2
     assert b"not canonical or bound" in completed.stderr
+
+
+def test_readiness_retries_transient_startup_and_preserves_audit(monkeypatch):
+    attempts = []
+    audit = {}
+
+    def probe(*args, **kwargs):
+        attempts.append(kwargs["timeout"])
+        if len(attempts) == 1:
+            raise source.LifecycleSourceError("formal HTTP source request failed")
+        return 200, b"ready"
+
+    monkeypatch.setattr(source, "_http", probe)
+    monkeypatch.setattr(source, "_audit", lambda kind, **values: audit.update(values))
+    assert (
+        source._readiness(
+            SimpleNamespace(
+                url="http://127.0.0.1:9/health",
+                timeout=1,
+                status=200,
+                startup_timeout=0.5,
+                poll_interval=0.01,
+            ),
+            request_for("service-ready"),
+        )
+        is True
+    )
+    assert len(attempts) == 2
+    assert audit["attempts"] == 2
+
+
+def test_readiness_deadline_and_invalid_evidence_fail_closed(monkeypatch):
+    monkeypatch.setattr(source, "_http", lambda *args, **kwargs: (503, b"loading"))
+    args = SimpleNamespace(
+        url="http://127.0.0.1:9/health",
+        timeout=1,
+        status=200,
+        startup_timeout=0.08,
+        poll_interval=0.01,
+    )
+    started = time.monotonic()
+    with pytest.raises(source.LifecycleSourceError, match="startup deadline"):
+        source._readiness(args, request_for("service-ready"))
+    assert time.monotonic() - started < 0.5
+
+    def oversized(*args, **kwargs):
+        raise source.LifecycleSourceError(
+            "formal HTTP response exceeds the evidence limit"
+        )
+
+    monkeypatch.setattr(source, "_http", oversized)
+    with pytest.raises(source.LifecycleSourceError, match="evidence limit"):
+        source._readiness(args, request_for("service-ready"))

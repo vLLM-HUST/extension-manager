@@ -268,12 +268,42 @@ def _audit(kind: str, **values: Any) -> None:
 def _readiness(args: argparse.Namespace, request: dict[str, Any]) -> bool:
     if request["fact"] != "service-ready":
         raise LifecycleSourceError("readiness source received another phase")
-    status, payload = _http(args.url, timeout=args.timeout, method="GET")
-    if status != args.status:
-        raise LifecycleSourceError("readiness endpoint returned an unexpected status")
+    budget = getattr(args, "startup_timeout", 600.0)
+    if isinstance(budget, bool) or not 0.05 <= budget <= 3600:
+        raise LifecycleSourceError("startup timeout must be within [0.05, 3600]")
+    interval = getattr(args, "poll_interval", 0.25)
+    if isinstance(interval, bool) or not 0.01 <= interval <= 5:
+        raise LifecycleSourceError("readiness poll interval must be within [0.01, 5]")
+    _timeout(args.timeout)
+    _local_http_url(args.url)
+    deadline = time.monotonic() + budget
+    attempts = 0
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining < 0.05:
+            raise LifecycleSourceError("readiness startup deadline exceeded")
+        attempts += 1
+        try:
+            status, payload = _http(
+                args.url, timeout=min(args.timeout, remaining), method="GET"
+            )
+        except LifecycleSourceError as exc:
+            # Retry only transient transport/deadline failures. Invalid URLs,
+            # redirects and oversized evidence must still fail closed.
+            if str(exc) not in {
+                "formal HTTP source request failed",
+                "formal HTTP source exceeded its wall-clock deadline",
+            }:
+                raise
+        else:
+            if status == args.status:
+                break
+        time.sleep(min(interval, max(0, deadline - time.monotonic())))
     _audit(
         "http-readiness",
         status=status,
+        attempts=attempts,
+        startup_timeout=budget,
         response_bytes=len(payload),
         response_base64=base64.b64encode(payload).decode(),
         response_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
@@ -402,10 +432,19 @@ def _partial_coverage_fault_locked(
             "target",
             "entry_point",
         }
-        or descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v1"
+        or descriptor.get("schema")
+        not in {
+            "ecpa-evidence-quarantine-fault/v1",
+            "ecpa-evidence-quarantine-fault/v2",
+        }
         or descriptor.get("scenario") != request["scenario"]
         or not isinstance(target, dict)
-        or set(target) != {"host", "role", "ordinal", "process_epoch"}
+        or set(target)
+        != (
+            {"host", "role", "ordinal"}
+            if descriptor.get("schema") == "ecpa-evidence-quarantine-fault/v2"
+            else {"host", "role", "ordinal", "process_epoch"}
+        )
         or target.get("role") != "worker"
         or not isinstance(target.get("host"), str)
         or not target["host"]
@@ -414,7 +453,11 @@ def _partial_coverage_fault_locked(
             isinstance(target.get(field), bool)
             or not isinstance(target.get(field), int)
             or target[field] < 0
-            for field in ("ordinal", "process_epoch")
+            for field in (
+                ("ordinal",)
+                if "process_epoch" not in target
+                else ("ordinal", "process_epoch")
+            )
         )
         or not isinstance(entry_point, dict)
         or set(entry_point) != {"group", "name", "value"}
@@ -426,6 +469,16 @@ def _partial_coverage_fault_locked(
         )
     ):
         raise LifecycleSourceError("fault descriptor is not bound or canonical")
+
+    if descriptor["schema"] == "ecpa-evidence-quarantine-fault/v2":
+        matches = [
+            row
+            for row in request["required_processes"]
+            if all(row[field] == target[field] for field in target)
+        ]
+        if len(matches) != 1:
+            raise LifecycleSourceError("logical fault target is not uniquely frozen")
+        target = dict(matches[0])
 
     required = {
         (item["host"], item["role"], item["ordinal"], item["process_epoch"])
@@ -940,6 +993,8 @@ def build_parser() -> argparse.ArgumentParser:
     readiness.add_argument("--url", required=True)
     readiness.add_argument("--status", type=int, default=200)
     readiness.add_argument("--timeout", type=float, default=10.0)
+    readiness.add_argument("--startup-timeout", type=float, default=600.0)
+    readiness.add_argument("--poll-interval", type=float, default=0.25)
     workload = commands.add_parser("workload-http")
     workload.add_argument("--url", required=True)
     workload.add_argument("--request", required=True)

@@ -49,6 +49,15 @@ from vllm_hust_ext.formal_adapter_admission import (
     FORMAL_ADAPTER_REGISTRY_SCHEMA,
     validate_formal_adapter_admission,
 )
+from vllm_hust_ext.formal_process_snapshot import (
+    derive_snapshot,
+    make_transition,
+    validate_slots,
+)
+from vllm_hust_ext.formal_process_snapshot import (
+    digest as snapshot_digest,
+)
+from vllm_hust_ext.host_event_sink import read_events
 from vllm_hust_ext.manager_controller import (
     ACTIVATION_CONTRACT as MANAGED_ACTIVATION_CONTRACT,
 )
@@ -428,11 +437,11 @@ def verified_scenario_binding(
         not isinstance(descriptor, dict)
         or raw != canonical(descriptor) + b"\n"
         or set(descriptor) != {"schema", "scenario", "target", "entry_point"}
-        or descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v1"
+        or descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v2"
         or descriptor.get("scenario") != scenario_id
         or descriptor.get("entry_point") != entry_point
         or not isinstance(target, dict)
-        or set(target) != {"host", "role", "ordinal", "process_epoch"}
+        or set(target) != {"host", "role", "ordinal"}
         or target.get("role") != "worker"
         or not isinstance(target.get("host"), str)
         or not target["host"]
@@ -441,7 +450,7 @@ def verified_scenario_binding(
             isinstance(target.get(field), bool)
             or not isinstance(target.get(field), int)
             or target[field] < 0
-            for field in ("ordinal", "process_epoch")
+            for field in ("ordinal",)
         )
         or descriptor_digest != actual_digest
         or binding.get("descriptor_sha256") != actual_digest
@@ -1568,7 +1577,7 @@ def _terminate_process(
 
 def _run_start(*args: Any, **kwargs: Any) -> dict[str, Any]:
     """Run one start while guaranteeing child and descriptor cleanup."""
-    resources: dict[str, Any] = {"children": [], "fds": set()}
+    resources: dict[str, Any] = {"children": [], "fds": set(), "streams": []}
     try:
         return _run_start_impl(*args, _resources=resources, **kwargs)
     finally:
@@ -1585,6 +1594,53 @@ def _run_start(*args: Any, **kwargs: Any) -> dict[str, Any]:
                         else CHILD_TERMINATION_GRACE_S
                     ),
                 )
+
+        for stream in resources["streams"]:
+            stream.close()
+
+
+def freeze_formal_processes(
+    context: dict[str, Any],
+    execution: dict[str, str],
+    slots: Any,
+    sut: subprocess.Popen[Any],
+    timeout_s: float,
+) -> dict[str, Any]:
+    """Wait for complete host-assigned membership, then pin live Linux identity."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        if sut.poll() is not None:
+            raise ValueError("SUT exited before process membership freeze")
+        records = read_events(
+            Path(context["host_event_dir"]),
+            (context["device"], context["inode"]),
+            max_total_bytes=1024 * 1024,
+        )
+        receipts = [
+            {
+                "raw_base64": base64.b64encode(row.raw).decode(),
+                "raw_sha256": digest_bytes(row.raw),
+            }
+            for row in records
+        ]
+        try:
+            processes = derive_snapshot(slots, execution, receipts)
+        except ValueError as exc:
+            if str(exc) != "snapshot is missing required logical process slots":
+                raise
+        else:
+            for process in processes:
+                live = linux_process_identity(process["pid"])
+                if live["start_ticks"] != process["start_ticks"] or not live["argv"]:
+                    raise ValueError(
+                        "host process snapshot differs from live Linux identity"
+                    )
+            return make_transition(
+                slots, execution, receipts, frozen_at_ns=time.monotonic_ns()
+            )
+        if time.monotonic() >= deadline:
+            raise ValueError("process membership freeze deadline exceeded")
+        time.sleep(min(0.05, max(0, deadline - time.monotonic())))
 
 
 def _run_start_impl(
@@ -1609,6 +1665,7 @@ def _run_start_impl(
     sut_executable_fingerprint: dict[str, Any] | None = None,
     observer_executable_fingerprint: dict[str, Any] | None = None,
     fixture_handshake: bool = False,
+    process_snapshot_context: dict[str, Any] | None = None,
     _resources: dict[str, Any],
 ) -> dict[str, Any]:
     start_id = f"{scenario['id']}-r{repetition}-{arm}"
@@ -1630,19 +1687,38 @@ def _run_start_impl(
             for key, value in env.items()
             if not key.startswith("ECPA_OBSERVER_")
             and not key.startswith("ECPA_RUNNER_")
-            and key != "ECPA_FROZEN_SCENARIO"
+            and key not in {"ECPA_FROZEN_SCENARIO", "ECPA_PROCESS_SNAPSHOT_PATH"}
         }
         if fixture_handshake:
             sut_env["ECPA_FIXTURE_HANDSHAKE"] = "1"
+        formal_sources = evidence_class == "formal-real"
+        sut_output = None
+        sut_error = None
+        if formal_sources:
+            sut_output = (run_dir / "stdout.bin").open("wb")
+            sut_error = (run_dir / "stderr.bin").open("wb")
+            _resources["streams"].extend((sut_output, sut_error))
+        prelaunch_snapshot = None
+        if process_snapshot_context is not None:
+            slots = validate_slots(identity["required_process_slots"])
+            prelaunch_snapshot = {
+                "schema": "ecpa-formal-logical-snapshot/v1",
+                "execution_identity": dict(execution_identity),
+                "logical_slots": slots,
+                "logical_slots_digest": snapshot_digest(slots),
+                "prepared_at_ns": time.monotonic_ns(),
+                "plan_raw_base64": process_snapshot_context["plan_raw_base64"],
+                "plan_raw_sha256": process_snapshot_context["plan_raw_sha256"],
+            }
         sut_start = time.monotonic_ns()
         sut = popen_pinned(
             argv,
             sut_executable_fingerprint,
             cwd=run_dir,
             env=sut_env,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdin=subprocess.DEVNULL if formal_sources else subprocess.PIPE,
+            stdout=sut_output if formal_sources else subprocess.PIPE,
+            stderr=sut_error if formal_sources else subprocess.PIPE,
             text=True,
             close_fds=True,
         )
@@ -1667,6 +1743,31 @@ def _run_start_impl(
             "device": sut_identity.pop("executable_device"),
             "inode": sut_identity.pop("executable_inode"),
         }
+        process_transition = None
+        process_transition_error = None
+        if formal_sources and process_snapshot_context is not None:
+            try:
+                process_transition = freeze_formal_processes(
+                    process_snapshot_context,
+                    execution_identity,
+                    identity["required_process_slots"],
+                    sut,
+                    timeout_s,
+                )
+                identity["required_processes"] = [
+                    {
+                        key: row[key]
+                        for key in ("host", "role", "ordinal", "process_epoch")
+                    }
+                    for row in process_transition["processes"]
+                ]
+                # Immutable experiment input for the independently registered
+                # observer, never passed to the SUT or used as an effect verdict.
+                snapshot_path = run_dir / "process-snapshot.json"
+                snapshot_path.write_bytes(canonical(process_transition) + b"\n")
+                snapshot_path.chmod(0o400)
+            except (OSError, ValueError, RuntimeError) as exc:
+                process_transition_error = str(exc)
         sut_lines: list[str] = []
 
         def await_fixture_ready(child: subprocess.Popen[Any], expected: str) -> str:
@@ -1687,6 +1788,8 @@ def _run_start_impl(
         read_fd, write_fd = os.pipe()
         _resources["fds"].update((read_fd, write_fd))
         observer_env = dict(env)
+        if process_transition is not None:
+            observer_env["ECPA_PROCESS_SNAPSHOT_PATH"] = str(snapshot_path.resolve())
         if fixture_handshake:
             observer_env["ECPA_FIXTURE_HANDSHAKE"] = "1"
         observer_env["ECPA_OBSERVER_FD"] = str(write_fd)
@@ -1750,47 +1853,96 @@ def _run_start_impl(
         lifecycle_fact_errors: dict[str, str] = {}
 
         def drive(phase: str, instruction: str, sequence: int) -> bool:
+            if (
+                process_transition is not None
+                and process_snapshot_context is not None
+                and phase != "service-shutdown"
+            ):
+                try:
+                    records = read_events(
+                        Path(process_snapshot_context["host_event_dir"]),
+                        (
+                            process_snapshot_context["device"],
+                            process_snapshot_context["inode"],
+                        ),
+                        max_total_bytes=1024 * 1024,
+                    )
+                    # A quarantined journal may vanish intentionally. The freeze
+                    # retains its bytes; a new epoch can never replace that slot.
+                    receipts = {
+                        row["raw_sha256"]: row
+                        for row in process_transition["host_receipts"]
+                    }
+                    for row in records:
+                        receipts[digest_bytes(row.raw)] = {
+                            "raw_base64": base64.b64encode(row.raw).decode(),
+                            "raw_sha256": digest_bytes(row.raw),
+                        }
+                    current = derive_snapshot(
+                        identity["required_process_slots"],
+                        execution_identity,
+                        list(receipts.values()),
+                    )
+                    if current != process_transition["processes"]:
+                        raise ValueError("process membership changed after freeze")
+                    for row in current:
+                        live = linux_process_identity(row["pid"])
+                        if (
+                            live["start_ticks"] != row["start_ticks"]
+                            or not live["argv"]
+                        ):
+                            raise ValueError("frozen process is gone or replaced")
+                except (ValueError, OSError, RuntimeError) as exc:
+                    lifecycle_fact_errors[phase] = str(exc)
+                    return False
             start = time.monotonic_ns()
             challenge = secrets.token_hex(16)
             invocation_id = f"{execution_identity['launch_id']}:{sequence}:{challenge}"
-            if sut.stdin is not None:
-                try:
-                    sut.stdin.write(
-                        json.dumps(
-                            {
-                                "command": instruction,
-                                "phase": phase,
-                                "sequence": sequence,
-                                "challenge": challenge,
-                                **execution_identity,
-                                "invocation_id": invocation_id,
-                            }
+            # Only controlled interface fixtures implement the stdin/ACK protocol.
+            # Formal sources prove phases over their own credentialed channel.
+            line = ""
+            causal = False
+            if not formal_sources:
+                if sut.stdin is not None:
+                    try:
+                        sut.stdin.write(
+                            json.dumps(
+                                {
+                                    "command": instruction,
+                                    "phase": phase,
+                                    "sequence": sequence,
+                                    "challenge": challenge,
+                                    **execution_identity,
+                                    "invocation_id": invocation_id,
+                                }
+                            )
+                            + "\n"
                         )
-                        + "\n"
-                    )
-                    sut.stdin.flush()
-                except BrokenPipeError:
-                    pass
-            ready, _, _ = select.select([sut.stdout], [], [], timeout_s)
-            line = sut.stdout.readline().strip() if ready and sut.stdout else ""
+                        sut.stdin.flush()
+                    except BrokenPipeError:
+                        pass
+                ready, _, _ = select.select([sut.stdout], [], [], timeout_s)
+                line = sut.stdout.readline().strip() if ready and sut.stdout else ""
+                ack_end = time.monotonic_ns()
+                if line:
+                    sut_lines.append(line)
+                try:
+                    acknowledgement = json.loads(line)
+                except ValueError:
+                    acknowledgement = {}
+                causal = (
+                    acknowledgement.get("phase") == phase
+                    and acknowledgement.get("sequence") == sequence
+                    and acknowledgement.get("challenge") == challenge
+                    and acknowledgement.get("plan_id") == execution_identity["plan_id"]
+                    and acknowledgement.get("launch_id")
+                    == execution_identity["launch_id"]
+                    and acknowledgement.get("controller_instance")
+                    == execution_identity["controller_instance"]
+                    and acknowledgement.get("invocation_id") == invocation_id
+                    and acknowledgement.get("ack") is True
+                )
             ack_end = time.monotonic_ns()
-            if line:
-                sut_lines.append(line)
-            try:
-                acknowledgement = json.loads(line)
-            except ValueError:
-                acknowledgement = {}
-            causal = (
-                acknowledgement.get("phase") == phase
-                and acknowledgement.get("sequence") == sequence
-                and acknowledgement.get("challenge") == challenge
-                and acknowledgement.get("plan_id") == execution_identity["plan_id"]
-                and acknowledgement.get("launch_id") == execution_identity["launch_id"]
-                and acknowledgement.get("controller_instance")
-                == execution_identity["controller_instance"]
-                and acknowledgement.get("invocation_id") == invocation_id
-                and acknowledgement.get("ack") is True
-            )
             invocation = {
                 "phase": phase,
                 "sequence": sequence,
@@ -1802,7 +1954,7 @@ def _run_start_impl(
             phase_invocations.append(invocation)
             if evidence_class == "formal-real":
                 command_fingerprint = (lifecycle_fact_commands or {}).get(phase)
-                if causal and command_fingerprint is not None:
+                if command_fingerprint is not None:
                     try:
                         fact_event, fact_process = run_lifecycle_fact_source(
                             phase,
@@ -1831,6 +1983,7 @@ def _run_start_impl(
                         lifecycle_fact_events.append(fact_event)
                         lifecycle_fact_processes[phase] = fact_process
                         invocation["fact_collected"] = True
+                        causal = True
                     except (OSError, ValueError) as exc:
                         lifecycle_fact_errors[phase] = type(exc).__name__
                         causal = False
@@ -1854,12 +2007,36 @@ def _run_start_impl(
             phase_bounds[phase] = [start, time.monotonic_ns()]
             return causal
 
-        phase_ok = drive("service-ready", "ready", 1)
-        phase_ok &= drive("workload-complete", "workload", 2)
-        phase_ok &= drive("fault-injected", f"fault {scenario['id']}", 3)
-        phase_ok &= drive("observer-captured", "observe", 4)
+        phase_ok = process_transition_error is None
+        if phase_ok:
+            phase_ok = drive("service-ready", "ready", 1)
+        if formal_sources:
+            # A failed prerequisite must not trigger a workload or fault actuator.
+            for phase, instruction, sequence in (
+                ("workload-complete", "workload", 2),
+                ("fault-injected", f"fault {scenario['id']}", 3),
+                ("observer-captured", "observe", 4),
+            ):
+                if not phase_ok:
+                    break
+                phase_ok = drive(phase, instruction, sequence)
+        else:
+            phase_ok &= drive("workload-complete", "workload", 2)
+            phase_ok &= drive("fault-injected", f"fault {scenario['id']}", 3)
+            phase_ok &= drive("observer-captured", "observe", 4)
         exited_before_shutdown = sut.poll() is not None
-        phase_ok &= drive("service-shutdown", "shutdown", 5)
+        if formal_sources and not exited_before_shutdown:
+            # Ask the managed leader to stop before the independent monitor
+            # proves termination. The source cannot truthfully prove a live SUT dead.
+            sut.terminate()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                sut.wait(
+                    timeout=max(timeout_s, MANAGED_TERMINATION_GRACE_S)
+                    if managed_binding is not None
+                    else timeout_s
+                )
+        if process_transition_error is None:
+            phase_ok &= drive("service-shutdown", "shutdown", 5)
         phase_ok &= not exited_before_shutdown
         if observer.stdin is not None:
             observer.stdin.close()
@@ -1901,8 +2078,13 @@ def _run_start_impl(
         remaining_stdout, remaining_stderr = sut.communicate()
         if remaining_stdout:
             sut_lines.extend(remaining_stdout.splitlines())
-        (run_dir / "stdout.bin").write_text("\n".join(sut_lines) + "\n")
-        (run_dir / "stderr.bin").write_text(remaining_stderr or "")
+        if not formal_sources:
+            (run_dir / "stdout.bin").write_text("\n".join(sut_lines) + "\n")
+            (run_dir / "stderr.bin").write_text(remaining_stderr or "")
+        else:
+            assert sut_output is not None and sut_error is not None
+            sut_output.flush()
+            sut_error.flush()
         (run_dir / "observer-stdout.bin").write_text(observed_stdout)
         (run_dir / "observer-stderr.bin").write_text(observed_stderr)
         result_bytes = b""
@@ -1963,6 +2145,9 @@ def _run_start_impl(
                 "linux_identity": observer_identity,
                 "executable_identity": observer_executable_identity,
             },
+            "prelaunch_snapshot": prelaunch_snapshot,
+            "process_transition": process_transition,
+            "process_transition_error": process_transition_error,
             "phase_bounds": phase_bounds,
             "phase_invocations": phase_invocations,
             "execution_identity": execution_identity,
@@ -2183,14 +2368,14 @@ def run_reference_start(
 
 
 def validate_managed_plan_coverage(
-    plan_path: str | Path, frozen_targets: tuple[tuple[str, str, int, int], ...]
+    plan_path: str | Path, frozen_targets: tuple[tuple[str, str, int], ...]
 ) -> None:
     """Fail closed for the first single-host formal-real topology."""
     artifact = read_plan_artifact(plan_path)
-    hosts = {host for host, _, _, _ in frozen_targets}
+    hosts = {host for host, _, _ in frozen_targets}
     if len(hosts) != 1:
         raise ValueError("managed ECPA formal-real currently requires one host")
-    declared = {(role, ordinal) for _, role, ordinal, _ in frozen_targets}
+    declared = {(role, ordinal) for _, role, ordinal in frozen_targets}
     obligated = {
         (obligation.role, ordinal)
         for obligation in artifact.plan.obligations
@@ -2269,18 +2454,28 @@ def run_formal_start(
             "controller_instance": "controller:" + secrets.token_hex(16),
         }
     else:
-        frozen_targets = validate_required_process_snapshot(
-            identity.get("required_processes")
+        if "required_process_slots" not in identity:
+            validate_required_process_snapshot(identity.get("required_processes"))
+            raise ValueError("formal logical slots must not contain prelaunch epochs")
+        if "required_processes" in identity:
+            raise ValueError("formal logical slots must not contain prelaunch epochs")
+        logical_slots = validate_slots(identity["required_process_slots"])
+        identity["required_process_slots"] = logical_slots
+        frozen_targets = tuple(
+            (row["host"], row["role"], row["ordinal"]) for row in logical_slots
         )
-        identity["required_processes"] = [
-            {
-                "host": host,
-                "role": role,
-                "ordinal": ordinal,
-                "process_epoch": process_epoch,
-            }
-            for host, role, ordinal, process_epoch in frozen_targets
-        ]
+        if host_event_dir is None:
+            raise ValueError("formal-real requires a host event directory")
+        event_root = Path(host_event_dir)
+        # A private launch directory must start empty of event receipts.
+        if read_events(event_root, max_total_bytes=1024 * 1024):
+            raise ValueError("formal launch host journal must have no prior events")
+        metadata = event_root.stat()
+        process_snapshot_context = {
+            "host_event_dir": str(event_root),
+            "device": metadata.st_dev,
+            "inode": metadata.st_ino,
+        }
         if isinstance(adapter, ECPAAdapter):
             if not adapter_verification_id:
                 raise ValueError(
@@ -2341,18 +2536,62 @@ def run_formal_start(
                 verification["sut_command"]["executable"],
                 *verification["sut_command"]["arguments"],
             ]
-            plan_material = {
-                "protocol_digest": digest_bytes(canonical(protocol)),
-                "scenario_digest": digest_bytes(canonical(scenario)),
-                "arm": adapter.arm,
-                "activation_contract": adapter.activation_contract,
-                "declared_identity": identity | {"adapter_verification": verification},
-            }
+            if execution_plan_path is None:
+                raise ValueError("formal-real baseline requires an execution Plan")
+            validate_managed_plan_coverage(execution_plan_path, frozen_targets)
+            frozen_plan_path, baseline_artifact = _freeze_plan_snapshot(
+                event_root, read_plan_artifact(execution_plan_path)
+            )
             execution_identity = {
-                "plan_id": digest_bytes(canonical(plan_material)),
+                "plan_id": baseline_artifact.plan_id,
                 "launch_id": "launch:" + secrets.token_hex(16),
                 "controller_instance": "controller:" + secrets.token_hex(16),
             }
+        if not isinstance(adapter, ECPAAdapter):
+            env.update(
+                {
+                    "VLLM_ECPA_PLAN_ID": execution_identity["plan_id"],
+                    "VLLM_ECPA_LAUNCH_ID": execution_identity["launch_id"],
+                    "VLLM_ECPA_EVIDENCE_SINK": (
+                        "vllm_hust_ext.host_event_sink:append_event"
+                    ),
+                    "VLLM_ECPA_EVIDENCE_STRICT": "1",
+                    "ECPA_HOST_EVENT_DIR": str(event_root),
+                    "ECPA_HOST_EVENT_FSYNC": "1",
+                    "ECPA_HOST_EVENT_DEVICE": str(metadata.st_dev),
+                    "ECPA_HOST_EVENT_INODE": str(metadata.st_ino),
+                    "ECPA_CONTROLLER_INSTANCE": execution_identity[
+                        "controller_instance"
+                    ],
+                }
+            )
+        frozen_plan = read_plan_artifact(
+            binding["plan_path"]
+            if isinstance(adapter, ECPAAdapter)
+            else frozen_plan_path
+        )
+        process_snapshot_context.update(
+            {
+                "plan_raw_base64": base64.b64encode(frozen_plan.raw).decode(),
+                "plan_raw_sha256": digest_bytes(frozen_plan.raw),
+            }
+        )
+        fact_commands = verification.get("lifecycle_fact_commands")
+        if fact_commands is not None:
+            fault_arguments = fact_commands["fault-injected"]["arguments"]
+            descriptor_path = Path(
+                fault_arguments[fault_arguments.index("--descriptor") + 1]
+            )
+            descriptor_raw = descriptor_path.read_bytes()
+            descriptor = json.loads(descriptor_raw)
+            if (
+                descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v2"
+                or descriptor.get("target") not in logical_slots
+                or descriptor_raw != canonical(descriptor) + b"\n"
+            ):
+                raise ValueError(
+                    "formal fault descriptor must freeze a logical slot, not an epoch"
+                )
         evidence_class = "formal-real"
         measurement_source = "registry-pinned-host-evidence-observer"
         observer_launch_argv = [
@@ -2395,6 +2634,9 @@ def run_formal_start(
             verification.get("observer_command") if verification is not None else None
         ),
         fixture_handshake=fixture_handshake,
+        process_snapshot_context=(
+            process_snapshot_context if not fixture_mode else None
+        ),
     )
 
 

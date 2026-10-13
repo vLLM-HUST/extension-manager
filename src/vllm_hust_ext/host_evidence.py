@@ -21,11 +21,12 @@ from .attestation.profile import (
 from .ecpa_model import Plan
 
 HOST_SCHEMA = "vllm-hust-plugin-evidence/0.1"
-EVENTS = {"discovered", "resolved", "invoked", "failed", "skipped"}
+EVENTS = {"discovered", "resolved", "invoked", "failed", "skipped", "effective"}
 OBSERVATION_KINDS = {
     "loader_lifecycle",
     "scheduler_resolution",
     "scheduler_dispatch",
+    "runtime_effective",
 }
 
 
@@ -208,7 +209,7 @@ def parse_host_event(raw: bytes) -> dict[str, Any]:
             or dispatch_id is not None
         ):
             _invalid("scheduler resolution identity is inconsistent")
-    else:
+    elif observation_kind == "scheduler_dispatch":
         if (
             value["event"] != "invoked"
             or not isinstance(controller_instance_id, str)
@@ -230,6 +231,32 @@ def parse_host_event(raw: bytes) -> dict[str, Any]:
         ).encode()
         if dispatch_id != hashlib.sha256(material).hexdigest():
             _invalid("scheduler dispatch identity digest is inconsistent")
+    else:
+        if (
+            value["event"] != "effective"
+            or occurrence_id is None
+            or controller_instance_id is not None
+        ):
+            _invalid("runtime effective identity is inconsistent")
+        if isinstance(occurrence_id, int):
+            if invocation_seq != occurrence_id:
+                _invalid("runtime effective integer occurrence is inconsistent")
+            material = json.dumps(
+                [
+                    process["host"],
+                    process["start_identity"],
+                    process["process_epoch"],
+                    value["plan_id"],
+                    value["launch_id"],
+                    None,
+                    occurrence_id,
+                ],
+                separators=(",", ":"),
+            ).encode()
+            if dispatch_id != hashlib.sha256(material).hexdigest():
+                _invalid("runtime effective occurrence digest is inconsistent")
+        elif invocation_seq is not None or dispatch_id is not None:
+            _invalid("runtime effective string occurrence is inconsistent")
     event_material_items = [
         process["host"],
         process["pid"],

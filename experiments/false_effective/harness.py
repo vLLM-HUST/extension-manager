@@ -17,6 +17,10 @@ from vllm_hust_ext.formal_adapter_admission import (
     FORMAL_ADAPTER_REGISTRY_SCHEMA,
     validate_formal_adapter_admission,
 )
+from vllm_hust_ext.formal_process_snapshot import (
+    validate_runner_snapshots,
+    validate_transition,
+)
 from vllm_hust_ext.plan_artifact import read_plan_artifact
 from vllm_hust_ext.process_supervisor import FORMAL_SHUTDOWN_GRACE_SECONDS
 
@@ -368,11 +372,20 @@ def validate_formal_adapter_verification(
         not isinstance(descriptor, dict)
         or descriptor_raw != canonical(descriptor) + b"\n"
         or set(descriptor) != {"schema", "scenario", "target", "entry_point"}
-        or descriptor.get("schema") != "ecpa-evidence-quarantine-fault/v1"
+        or descriptor.get("schema")
+        not in {
+            "ecpa-evidence-quarantine-fault/v1",
+            "ecpa-evidence-quarantine-fault/v2",
+        }
         or descriptor.get("scenario") != scenario
         or descriptor.get("entry_point") != registered_binding.get("entry_point")
         or not isinstance(target, dict)
-        or set(target) != {"host", "role", "ordinal", "process_epoch"}
+        or set(target)
+        != (
+            {"host", "role", "ordinal"}
+            if descriptor.get("schema") == "ecpa-evidence-quarantine-fault/v2"
+            else {"host", "role", "ordinal", "process_epoch"}
+        )
         or target.get("role") != "worker"
         or not isinstance(target.get("host"), str)
         or not target["host"]
@@ -381,7 +394,11 @@ def validate_formal_adapter_verification(
             isinstance(target.get(field), bool)
             or not isinstance(target.get(field), int)
             or target[field] < 0
-            for field in ("ordinal", "process_epoch")
+            for field in (
+                ("ordinal",)
+                if "process_epoch" not in target
+                else ("ordinal", "process_epoch")
+            )
         )
         or digest_bytes(descriptor_raw) != registered_binding.get("descriptor_sha256")
         or fault_arguments[digest_positions[0] + 1]
@@ -782,7 +799,7 @@ def run_command(
 def validate_required_process_snapshot(
     required: Any,
 ) -> tuple[tuple[str, str, int, int], ...]:
-    """Validate and freeze the logical target identity before a formal launch."""
+    """Validate the postlaunch target snapshot with exact host-assigned epochs."""
     required_fields = {"host", "role", "ordinal", "process_epoch"}
     if not isinstance(required, list) or not required:
         raise ValueError("formal target process snapshot is missing")
@@ -914,6 +931,35 @@ def formal_process_coverage(
     if not set(observed_keys).issubset(required_keys):
         reasons.append("formal effect process is outside the target snapshot")
         return None
+
+    if "required_process_slots" in record.get("identity", {}):
+        try:
+            frozen = validate_transition(
+                record.get("command", {}).get("process_transition"),
+                record["identity"]["required_process_slots"],
+                record.get("command", {}).get("execution_identity", {}),
+            )
+            by_slot = {
+                (row["host"], row["role"], row["ordinal"]): row for row in frozen
+            }
+            if any(
+                any(
+                    row[field]
+                    != by_slot[(row["host"], row["role"], row["ordinal"])][field]
+                    for field in (
+                        "process_epoch",
+                        "pid",
+                        "start_ticks",
+                        "start_identity",
+                    )
+                )
+                for row in observed
+            ):
+                reasons.append("formal effect process replaced its frozen identity")
+                return None
+        except (ValueError, KeyError, TypeError) as exc:
+            reasons.append(f"formal process transition invalid: {exc}")
+            return None
 
     invoked = invoked_event.get("value") if invoked_event else None
     if not isinstance(invoked, bool) or invoked != bool(observed_keys):
@@ -1075,7 +1121,10 @@ def oracle(scenario: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
             != len(lifecycle)
             or len({item.get("invocation_id") for item in invocation_rows})
             != len(lifecycle)
-            or any(not item.get("acknowledged") for item in invocation_rows)
+            or (
+                record.get("evidence_class") != "formal-real"
+                and any(not item.get("acknowledged") for item in invocation_rows)
+            )
             or (
                 record.get("evidence_class") == "formal-real"
                 and any(not item.get("fact_collected") for item in invocation_rows)
@@ -1369,6 +1418,9 @@ def validate_record(
                         "formal adapter verification is not registry-owned"
                     )
                 validate_formal_adapter_verification(record, command)
+                if record["status"] == "complete":
+                    validate_runner_snapshots(record["identity"], command)
+
             semantic = {
                 name: record["identity"]["semantic_environment"].get(name)
                 for name in SEMANTIC_ENV

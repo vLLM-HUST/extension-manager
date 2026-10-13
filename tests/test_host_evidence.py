@@ -198,6 +198,38 @@ def scheduler_event(**changes):
     return json.dumps(value, separators=(",", ":")).encode()
 
 
+def runtime_effective_event(base_occurrence_id=1, **changes):
+    occurrence_id = base_occurrence_id
+    value = json.loads(raw_event())
+    value.update(
+        {
+            "event": "effective",
+            "observation_kind": "runtime_effective",
+            "occurrence_id": occurrence_id,
+            "controller_instance_id": None,
+            "invocation_seq": occurrence_id if isinstance(occurrence_id, int) else None,
+        }
+    )
+    if isinstance(occurrence_id, int):
+        material = json.dumps(
+            [
+                value["process"]["host"],
+                value["process"]["start_identity"],
+                value["process"]["process_epoch"],
+                value["plan_id"],
+                value["launch_id"],
+                None,
+                occurrence_id,
+            ],
+            separators=(",", ":"),
+        ).encode()
+        value["dispatch_id"] = hashlib.sha256(material).hexdigest()
+    value.update(changes)
+    if "event_id" not in changes:
+        value["event_id"] = computed_event_id(value)
+    return json.dumps(value, separators=(",", ":")).encode()
+
+
 def test_exact_raw_bytes_are_preserved_and_bound_to_plan():
     raw = raw_event()
     receipt = translate(raw)
@@ -265,6 +297,46 @@ def test_current_vllm_scheduler_dispatch_is_causally_validated():
         expires_at=1_800_000_060,
     )
     assert receipt.statement.event == "invoked"
+
+
+@pytest.mark.parametrize("occurrence_id", [17, "request-17"])
+def test_current_vllm_runtime_effective_event_is_causally_validated(occurrence_id):
+    raw = runtime_effective_event(occurrence_id)
+    event = parse_host_event(raw)
+    schema = json.loads(
+        open("spec/0.1/host-plugin-evidence.schema.json").read()  # noqa: SIM115
+    )
+    assert not list(Draft7Validator(schema).iter_errors(event))
+    assert event["event"] == "effective"
+    assert event["observation_kind"] == "runtime_effective"
+    assert event["occurrence_id"] == occurrence_id
+    assert event["controller_instance_id"] is None
+
+
+@pytest.mark.parametrize(
+    ("occurrence_id", "mutation", "schema_valid"),
+    [
+        (1, {"event": "invoked"}, False),
+        (1, {"controller_instance_id": "controller-1"}, False),
+        (1, {"invocation_seq": 2}, True),
+        (1, {"dispatch_id": "0" * 64}, True),
+        ("request-1", {"invocation_seq": 1}, False),
+        ("request-1", {"dispatch_id": "0" * 64}, False),
+        ("request-1", {"occurrence_id": None}, False),
+    ],
+)
+def test_runtime_effective_causal_mutations_are_rejected(
+    occurrence_id, mutation, schema_valid
+):
+    raw = runtime_effective_event(occurrence_id, **mutation)
+    with pytest.raises(AttestationError):
+        parse_host_event(raw)
+    schema = json.loads(
+        open("spec/0.1/host-plugin-evidence.schema.json").read()  # noqa: SIM115
+    )
+    assert (
+        not list(Draft7Validator(schema).iter_errors(json.loads(raw)))
+    ) is schema_valid
 
 
 @pytest.mark.parametrize(
