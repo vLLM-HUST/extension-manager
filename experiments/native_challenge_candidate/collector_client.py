@@ -146,7 +146,9 @@ def authenticate(socket_path, descriptor, spec_path, collector_source_path):
     }
 
 
-def read_verified_phase(spec_path, journal_path, phase, expected_status):
+def read_verified_phase(
+    spec_path, journal_path, phase, expected_status, *, require_kv=False
+):
     """Consume source-authenticated native facts; never infer internal suffixes."""
     from experiments.exposure_gate import native_semantic_collector as collector
 
@@ -188,6 +190,19 @@ def read_verified_phase(spec_path, journal_path, phase, expected_status):
         and start["archive_identity"] == expected_status["status"]["archive_identity"],
         "journal not owned by authenticated collector",
     )
+    return phase_join(
+        events,
+        phase,
+        verified,
+        require_kv=require_kv,
+        collector_spec=json.loads(private_read(spec_path)),
+    )
+
+
+def phase_join(events, phase, verified, *, require_kv=False, collector_spec=None):
+    """Pure phase join after verified raw replay; no live PID or source reads."""
+    from experiments.exposure_gate import native_semantic_collector as collector
+
     expected_phase = {
         k: phase[k]
         for k in (
@@ -230,7 +245,40 @@ def read_verified_phase(spec_path, journal_path, phase, expected_status):
         {e["process"]["ordinal"] for e in uploads} == {0, 1},
         "native two-rank coverage incomplete",
     )
-    return {
+    kv_projections = []
+    if require_kv:
+        spec = collector_spec
+        require(
+            spec["schema"] == collector.KV_SPEC
+            and spec["kv_requirements"].get(phase["phase_id"])
+            == phase["kv_requirements"],
+            "KV phase predicate is not preregistered",
+        )
+        require(
+            type(verified.get("complete_two_rank_KV_projection_upload_phases")) is int
+            and verified["complete_two_rank_KV_projection_upload_phases"] > 0,
+            "durable KV metadata/upload aggregate incomplete",
+        )
+        kv_projections = [
+            json.loads(base64.b64decode(e["raw_base64"]))
+            for e in selected
+            if json.loads(base64.b64decode(e["raw_base64"]))["schema"]
+            == collector.PROJECTION
+        ]
+        require(
+            len(kv_projections) == 2
+            and {p["process"]["ordinal"] for p in kv_projections} == {0, 1}
+            and all(p["runtime_request_id"] == runtime for p in kv_projections),
+            "selected-phase native KV projection coverage incomplete",
+        )
+        require(
+            all(
+                any(collector.projection_upload_match(p, u) for u in uploads)
+                for p in kv_projections
+            ),
+            "selected-phase later same-worker destination upload incomplete",
+        )
+    result = {
         "classification": CLASSIFICATION,
         "formal_result": False,
         "phase_id": phase["phase_id"],
@@ -245,3 +293,8 @@ def read_verified_phase(spec_path, journal_path, phase, expected_status):
         "full_objective_satisfied": None,
         "journal_sha256": verified["journal_sha256"],
     }
+    if require_kv:
+        result["KV_MOD_metadata_upload_binding_observed"] = True
+        result["source_authenticated_KV_projection_records"] = len(kv_projections)
+        result["KV_metadata_upload_scope"] = collector.PROJECTION_SCOPE
+    return result

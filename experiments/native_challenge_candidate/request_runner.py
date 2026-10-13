@@ -90,6 +90,10 @@ def make_recipe(phase_targets, sources):
 
 
 def validate(recipe):
+    if recipe.get("schema") == "ecpa-native-kv-challenge-campaign/v1":
+        from .kv_request_runner import validate_kv
+
+        return validate_kv(recipe)
     require(
         recipe["schema"] == SCHEMA
         and recipe["classification"] == CLASSIFICATION
@@ -193,12 +197,22 @@ def validate(recipe):
         )
 
 
-def require_phase_registration(phase, collector_spec):
+def require_phase_registration(phase, collector_spec, *, kv_requirements=None):
     """Scope match only; caller must separately authenticate the collector peer."""
     require(
-        collector_spec["schema"] == "ecpa-native-semantic-collector-prereg/v1",
+        collector_spec["schema"]
+        == (
+            "ecpa-native-kv-semantic-collector-prereg/v1"
+            if kv_requirements is not None
+            else "ecpa-native-semantic-collector-prereg/v1"
+        ),
         "collector schema changed",
     )
+    if kv_requirements is not None:
+        require(
+            collector_spec["kv_requirements"].get(phase["phase_id"]) == kv_requirements,
+            "frozen KV projection requirement differs",
+        )
     matches = [
         p for p in collector_spec["phases"] if p["phase_id"] == phase["phase_id"]
     ]
@@ -254,13 +268,39 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
         "duplicate_requests": None,
         "full_objective_satisfied": None,
     }
+    if recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1":
+        result.update(
+            KV_MOD_metadata_upload_binding_observed=None,
+            KV_MOD_semantic_obligation_satisfied=None,
+            GPU_semantic_qualification=None,
+        )
     try:
         request = urllib.request.Request(
             phase["url"], data=raw_request, headers=phase["headers"]
         )
+        sent_ns = time.monotonic_ns()
         with urllib.request.urlopen(request, timeout=timeout) as response:
             body, status = response.read(), response.status
         (output / "response.bin").write_bytes(body)
+        if recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1":
+            from .collector_client import identity
+
+            (output / "response-metadata.json").write_bytes(
+                canonical(
+                    {
+                        "schema": "ecpa-observed-KV-HTTP-response/v1",
+                        "status": status,
+                        "headers": list(response.headers.items()),
+                        "url": response.geturl(),
+                        "request_sha256": sha(raw_request),
+                        "response_sha256": sha(body),
+                        "sent_monotonic_ns": sent_ns,
+                        "received_monotonic_ns": time.monotonic_ns(),
+                        "client": identity(os.getpid()),
+                        "client_source_sha256": sha(Path(__file__).read_bytes()),
+                    }
+                )
+            )
         result["status"] = status
         result["response_sha256"] = sha(body)
         data = json.loads(body)
@@ -282,6 +322,15 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
             and choice["finish_reason"] == "stop",
             "phase challenge task_oracle_failed",
         )
+        if recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1":
+            require(
+                data["usage"]["prompt_tokens"]
+                == phase["tokenization"]["prompt_token_count"]
+                and type(data["usage"]["completion_tokens"]) is int
+                and data["usage"]["completion_tokens"]
+                >= phase["minimum_completion_tokens"],
+                "actual KV prompt/decode token window differs",
+            )
         result["rpc_task_passed"] = True
     except urllib.error.HTTPError as exc:
         body = exc.read()
@@ -309,9 +358,14 @@ def execute_with_collector(
 
     validate(recipe)
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
+    kv = recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1"
     try:
         collector_spec = json.loads(private_read(spec_path))
-        require_phase_registration(phase, collector_spec)
+        require_phase_registration(
+            phase,
+            collector_spec,
+            kv_requirements=phase["kv_requirements"] if kv else None,
+        )
         before = authenticate(socket_path, descriptor, spec_path, collector_source_path)
     except (OSError, ValueError, KeyError) as exc:
         output.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -341,10 +395,17 @@ def execute_with_collector(
     try:
         after = authenticate(socket_path, descriptor, spec_path, collector_source_path)
         (output / "collector-after.json").write_bytes(canonical(after))
-        joined = read_verified_phase(spec_path, journal_path, phase, after)
+        joined = read_verified_phase(
+            spec_path, journal_path, phase, after, require_kv=kv
+        )
         (output / "native-transport-join.json").write_bytes(canonical(joined))
         result["native_request_upload_transport_join"] = True
         result["native_join_status"] = "authenticated-durable-transport-only"
+        if kv:
+            result["native_join_status"] = (
+                "authenticated-KV-metadata-upload-binding-only"
+            )
+            result["KV_MOD_metadata_upload_binding_observed"] = True
         result["missing_evidence"] = []
         result["KV_MOD_semantic_obligation_satisfied"] = None
         result["GPU_semantic_qualification"] = None
