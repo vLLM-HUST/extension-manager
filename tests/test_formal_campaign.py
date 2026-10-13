@@ -69,12 +69,27 @@ def write(path: Path, value: object) -> dict[str, str]:
 
 def receipt(root: Path, cell: str) -> tuple[Path, dict[str, str]]:
     path = root / "deployment-receipt.json"
+    host_admission = {
+        "schema": "ecpa-host-source-admission/v1",
+        "repository": "vLLM-HUST/vllm-hust",
+        "remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+        "candidate_commit": "2" * 40,
+        "main_commit": "2" * 40,
+        "candidate_reachable": True,
+        "candidate_merged_to_main": True,
+    }
     value = {
         "schema": "ecpa-h4-deployment-receipt/v1",
         "registration_state": "registered",
         "admissible": True,
         "evidence_mode": "formal-real",
         "campaign_sha256": "sha256:" + "8" * 64,
+        "launch_spec_sha256": "sha256:" + "9" * 64,
+        "host_source_admission_sha256": "sha256:"
+        + hashlib.sha256(
+            json.dumps(host_admission, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "host_source_admission": host_admission,
         "campaign_id": "H4-matched-cost-v1",
         "cell_id": cell,
         "arm_command_digests": {
@@ -93,6 +108,15 @@ def receipt(root: Path, cell: str) -> tuple[Path, dict[str, str]]:
         "workload_digest": "sha256:" + "6" * 64,
         "hardware": "2x Ascend 910B2",
         "topology": "TP2",
+        "issuer": {
+            "kind": "ecpa-h4-registration-transition/v1",
+            "manager_repository": "vLLM-HUST/extension-manager",
+            "manager_remote": "https://github.com/vLLM-HUST/extension-manager.git",
+            "host_repository": "vLLM-HUST/vllm-hust",
+            "host_remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+            "manager_main_commit": "1" * 40,
+            "host_main_commit": "2" * 40,
+        },
     }
     binding = write(path, value)
     binding["path"] = path.name

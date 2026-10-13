@@ -51,6 +51,10 @@ def campaign_file(root: Path) -> Path:
                 "schema": "ecpa-h4-minimal-matched-cell-campaign/v1",
                 "campaign_id": "H4-matched-cost-v1",
                 "cell_id": "compatible-resource-pair.sampled-invocation",
+                "planned_starts": 9,
+                "formal_h4_result": False,
+                "performance_result": False,
+                "score_eligible": False,
                 "arms": [
                     {"id": arm}
                     for arm in (
@@ -104,12 +108,24 @@ def campaign_file(root: Path) -> Path:
 
 def exact_receipt(runner, campaign, launch):
     fixed = campaign["fixed_identity"]
+    host_admission = {
+        "schema": "ecpa-host-source-admission/v1",
+        "repository": "vLLM-HUST/vllm-hust",
+        "remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+        "candidate_commit": fixed["host_commit"],
+        "main_commit": fixed["host_commit"],
+        "candidate_reachable": True,
+        "candidate_merged_to_main": True,
+    }
     return {
         "schema": "ecpa-h4-deployment-receipt/v1",
         "registration_state": "registered",
         "admissible": True,
         "evidence_mode": "formal-real",
         "campaign_sha256": campaign["_sha256"],
+        "launch_spec_sha256": runner.canonical_digest(launch),
+        "host_source_admission_sha256": runner.canonical_digest(host_admission),
+        "host_source_admission": host_admission,
         "campaign_id": campaign["campaign_id"],
         "cell_id": campaign["cell_id"],
         "arm_command_digests": {
@@ -126,6 +142,15 @@ def exact_receipt(runner, campaign, launch):
         "workload_digest": campaign["workload"]["sha256"],
         "hardware": fixed["hardware"],
         "topology": fixed["topology"],
+        "issuer": {
+            "kind": "ecpa-h4-registration-transition/v1",
+            "manager_repository": "vLLM-HUST/extension-manager",
+            "manager_remote": "https://github.com/vLLM-HUST/extension-manager.git",
+            "host_repository": "vLLM-HUST/vllm-hust",
+            "host_remote": "https://github.com/vLLM-HUST/vllm-hust.git",
+            "manager_main_commit": fixed["manager_commit"],
+            "host_main_commit": fixed["host_commit"],
+        },
     }
 
 

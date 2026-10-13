@@ -42,6 +42,24 @@ python3 experiments/formal_campaign/run_h4.py \
   --output-root /absolute/path/to/h4-runs
 ```
 
+The receipt is issued by the repository transition, not authored by hand:
+
+```bash
+python3 experiments/formal_campaign/h4_registration.py \
+  --campaign /absolute/path/to/campaign.json \
+  --launch-spec /absolute/path/to/launch-spec.json \
+  --manager-repo /absolute/path/to/extension-manager \
+  --host-repo /absolute/path/to/vllm-hust \
+  --output /absolute/path/to/deployment-receipt.json
+```
+
+Issuance fetches both remote `main` branches, requires the frozen Manager and
+Host commits to be ancestors of those heads, verifies the historical protocol
+bytes named by the campaign, validates the complete campaign/launch shape, and
+atomically creates a new receipt. It refuses to replace an existing receipt.
+A local Host commit, a pull-request ref, or a functional preflight cannot issue
+the receipt. Receipt issuance starts no server and produces no H4 result.
+
 `run_h4.py` records `CLOCK_MONOTONIC_RAW` phase and request timestamps, every
 response outcome, process identity, CPU/RSS/NPU memory samples, evidence
 counts, and process/port/device cleanup. `--validate-only` checks all frozen
