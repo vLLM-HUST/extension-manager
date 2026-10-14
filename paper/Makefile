@@ -101,7 +101,7 @@ EVIDENCE_INPUTS := \
 	../src/vllm_hust_ext/contract_compiler.py \
 	../src/vllm_hust_ext/formal_lifecycle_source.py
 
-.PHONY: all clean evidence-summary check-evidence-summary check-research-matrix tectonic audit-pdf validate-results
+.PHONY: all clean evidence-summary check-evidence-summary check-attention-source-summary check-research-matrix tectonic audit-pdf validate-results
 all: main.pdf
 
 $(EVIDENCE_SUMMARY): scripts/generate_evidence_summary.py $(EVIDENCE_INPUTS)
@@ -115,7 +115,15 @@ check-evidence-summary:
 check-research-matrix:
 	$(PYTHON) ../scripts/validate_research_matrix.py
 
-main.pdf: main.tex references.bib $(EVIDENCE_SUMMARY) check-research-matrix
+ATTENTION_SUMMARY := generated/attention-source-summary.tex
+
+$(ATTENTION_SUMMARY): scripts/generate_attention_source_summary.py ../experiments/formal_campaign/verify_attention_source_drained_observation.py $(wildcard ../experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/*)
+	$(PYTHON) scripts/generate_attention_source_summary.py
+
+check-attention-source-summary:
+	$(PYTHON) scripts/generate_attention_source_summary.py --check
+
+main.pdf: main.tex references.bib $(EVIDENCE_SUMMARY) $(ATTENTION_SUMMARY) check-research-matrix
 	$(TECTONIC) --keep-logs main.tex
 
 tectonic: main.pdf
