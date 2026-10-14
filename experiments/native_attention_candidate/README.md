@@ -131,3 +131,39 @@ hash), contexts, nonce, and cohort. Do not modify the R1 environment, source,
 wheel, recipe, or evidence. The full c435/fcbb patch builder remains available
 for clean reconstruction. This fix has no new NPU result and does not register
 a formal semantic producer or alter the formal gate.
+
+## Vendor format boundary after attention R2
+
+R2 retained HTTP500, 56 typed materializations and zero OP receipts. It passed
+the earlier metadata binding guard, then failed strict cache-view type checks
+after a native call and stream synchronization. No actual R2 OP descriptor was
+retained; its format value must not be filled in retrospectively. A separate
+real two-device, model-free diagnostic confirmed that the installed SDK getter
+returns exact `torch_npu.npu._format.Format`, an `IntEnum`, whereas the typed
+writer already converts that value to a plain integer. The tiny diagnostic's
+format was NCDHW30, not evidence of R2's unrecorded native format.
+
+The new source boundary accepts only exact Python `int` or the exact initialized
+vendor `Format` class from pinned `_format.py` bytes
+`8abe7bea6817f25d2360aee783afae16fe7fe2aaa46a04e7b7b865e7f2039488`.
+It converts the latter to a wire integer; bool, foreign enums, floats, strings,
+UNDEFINED and unknown codes reject. Known format codes do not imply supported
+cache layout: existing actual/reference format equality, storage/pointer/offset,
+shape/stride, selected-byte digest, layer/rank/ACK and source-clock checks remain.
+The portable pure predicate also rejects unknown wire codes.
+
+Rejection exceptions include at most 8KiB of real bounded field types and value
+representations, with actual/reference cache views and relevant control/clock
+fields. This is log-only diagnostic text captured in original backend stdout,
+not a private durable artifact, source ACK, OP receipt or qualification. A failed
+source check publishes no successful OP fact.
+
+`python -m experiments.native_attention_candidate.build_format_boundary_patch
+--output NEW_DIRECTORY` emits the Host-only patch against clean Host a222 and
+observer bb11. Its manifest pins the required vendor source file. Audit a new
+Host commit/wheel/installed bytes and unchanged Ascend postimages/ELFs, perform
+the prospective actual ND2/shared-storage/flatten ABI preflight, then freeze a
+fresh recipe/declaration/context/nonce/cohort. Preserve R2 originals. CPU tests
+execute the actual pinned vendor enum and patch function with mocked native
+callbacks; neither those tests nor the tiny ABI diagnostic is model/OP evidence.
+There is no new hardware OP result or formal producer registration in this fix.
