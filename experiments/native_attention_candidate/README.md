@@ -167,3 +167,23 @@ fresh recipe/declaration/context/nonce/cohort. Preserve R2 originals. CPU tests
 execute the actual pinned vendor enum and patch function with mocked native
 callbacks; neither those tests nor the tiny ABI diagnostic is model/OP evidence.
 There is no new hardware OP result or formal producer registration in this fix.
+
+
+A separate prospective source-drain profile preserves the entire phase journal.
+The R3 hardware run returned HTTP 200 and passed its task check, but its actual
+ACK covered 260 of 262 records; that run remains a failed qualification.
+`phase_drain.py` records each synchronous source publication ACK and emits a
+worker-owned closure only after the real finished request has been removed from
+the runner and input batch. The collector rejects publications after closure
+and reports a sealed full prefix only after both TP ranks close.
+
+`build_drain_source_patch.py` emits the Host-only patch against clean Host 5fff.
+`drain_consumer.py` requires a new recipe declaration and private drain policy,
+retains all raw records and authenticated status polls, and waits for explicit
+source completion within the frozen phase budget. Effect facts must still occur
+inside the HTTP interval; only the separately verified source-close control
+records may follow the HTTP response. The legacy consumer and undeclared recipes
+retain their prior acceptance rules. CPU Unix/HTTP fixtures exercise the live
+handshake with mocked native facts; they are not hardware results or formal
+producer registration. A fresh Host wheel, source inventory, nonce and cohort
+are required before a new hardware attempt.

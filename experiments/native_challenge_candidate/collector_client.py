@@ -50,7 +50,9 @@ def private_read(path):
         os.close(fd)
 
 
-def authenticate(socket_path, descriptor, spec_path, collector_source_path):
+def authenticate(
+    socket_path, descriptor, spec_path, collector_source_path, *, drain_policy_path=None
+):
     """Validate kernel peer, independent launch descriptor, source and identities."""
     expected = descriptor["collector"]
     require(
@@ -130,6 +132,20 @@ def authenticate(socket_path, descriptor, spec_path, collector_source_path):
         for k, v in status.items()
         if k not in {"acknowledged_prefix", "issued_monotonic_ns"}
     }
+    if drain_policy_path is not None:
+        policy_raw = private_read(Path(drain_policy_path))
+        drain = status.get("source_drain")
+        require(
+            isinstance(drain, dict)
+            and set(drain) == {"schema", "policy_sha256", "runtimes"}
+            and drain["schema"] == "ecpa-native-attention-source-drain-policy/v1"
+            and drain["policy_sha256"] == sha(policy_raw)
+            and isinstance(drain["runtimes"], dict)
+            and json.loads(policy_raw)["native_spec_sha256"]
+            == descriptor["spec_sha256"],
+            "authenticated source drain extension differs",
+        )
+        core_status.pop("source_drain")
     require(
         core_status
         == {
