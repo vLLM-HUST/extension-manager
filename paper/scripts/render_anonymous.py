@@ -73,10 +73,15 @@ def prepare(output: Path, *, alias: str, title: str) -> Path:
     (output / "main.tex").write_text(source, encoding="utf-8")
     for name in ("references.bib", "usenix2019_v3.sty"):
         shutil.copyfile(PAPER / name, output / name)
-    generated = (PAPER / "generated/evidence-summary.tex").read_text(encoding="utf-8")
-    (output / "generated/evidence-summary.tex").write_text(
-        generated.replace("ECPA", "ReviewData"), encoding="utf-8"
-    )
+    for relative in re.findall(r"\\input\{(generated/[^}]+\.tex)\}", source):
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("generated input path must stay inside the paper")
+        generated = (PAPER / path).read_text(encoding="utf-8")
+        (output / path).parent.mkdir(parents=True, exist_ok=True)
+        (output / path).write_text(
+            generated.replace("ECPA", "ReviewData"), encoding="utf-8"
+        )
     return output / "main.tex"
 
 
@@ -97,6 +102,17 @@ def main() -> int:
         ],
         check=True,
     )
+    if (PAPER / "generated/attention-source-summary.tex").exists():
+        subprocess.run(
+            [
+                "make",
+                "-C",
+                str(PAPER),
+                f"PYTHON={sys.executable}",
+                "check-attention-source-summary",
+            ],
+            check=True,
+        )
     try:
         main_tex = prepare(
             arguments.output, alias=arguments.alias, title=arguments.title
@@ -133,6 +149,11 @@ def main() -> int:
         "generated/evidence-summary.tex",
         "main.pdf",
         "pdf-audit.json",
+    )
+    names += tuple(
+        str(path.relative_to(main_tex.parent))
+        for path in sorted((main_tex.parent / "generated").glob("*.tex"))
+        if str(path.relative_to(main_tex.parent)) not in names
     )
     manifest = {
         "schema": "private-anonymous-build-v1",

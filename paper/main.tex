@@ -17,6 +17,7 @@
 \definecolor{ecpared}{HTML}{F7D8D8}
 \definecolor{ecpagray}{HTML}{ECEFF3}
 \input{generated/evidence-summary.tex}
+\input{generated/attention-source-summary.tex}
 \raggedbottom
 \setlength{\emergencystretch}{2em}
 \def\UrlBreaks{\do\/\do-\do\_}
@@ -991,18 +992,19 @@ to \ECPANativeTransportUploads{} NPU uploads
 ACK and cleanup replay retains \ECPANativeTransportFailedAttempts{} failed startup.
 This qualifies transport only.
 
-A separate KV TP2 trial returns the exact two-copy nonce (1,201 prompt and
+A KV TP2 trial returns the exact two-copy nonce (1,201 prompt,
 \ECPAKVMetadataCompletionTokens{} completion tokens), with
 \ECPAKVMetadataProjections{} projections and \ECPAKVMetadataUploads{} uploads.
-Its preregistered clock policy verifies the final-prefix ACK across six archived
-modules, preserving \ECPAKVMetadataLateIntakes{} late intakes and the old
-strict-window rejection. A new nonformal TP2 trial returns
-\ECPASelectedKVCompletionTokens{} completion tokens and joins
-\ECPASelectedKVReceipts{} selected logical K/V byte records across
-\ECPASelectedKVLayersPerRank{} named layers per rank to HTTP and the final ACK.
-All \ECPASelectedKVRawRecords{} raw rows and full receiver payloads replay from
-exact sources. Full physical storage, attention, full quality and performance
-remain unknown; these trials establish no prevention or formal H3/H4 result.
+Its frozen final-prefix ACK policy replays six modules and
+\ECPAKVMetadataLateIntakes{} late intakes; the old strict-window rejection remains.
+A fresh nonformal trial joins \ECPASelectedKVReceipts{} logical K/V byte records
+across \ECPASelectedKVLayersPerRank{} layers per rank to HTTP/ACK
+(\ECPASelectedKVCompletionTokens{} completion tokens). All
+\ECPASelectedKVRawRecords{} rows and receiver bytes replay from frozen sources.
+A further source-drained trial joins \ECPAAttentionCompletionReceipts{} native
+completions and \ECPAAttentionWorkerClosures{} closures in a
+\ECPAAttentionSourceRecords{}-row final ACK. Full storage, numerical correctness,
+full quality and performance remain unknown; none proves prevention or formal H3/H4.
 
 The H3 oracle binds \ECPAHThreeNativeSources{} source snapshots.
 \ECPAHThreePrepareNABaselines{} baseline arms lack a durable Manager transaction;
@@ -1154,13 +1156,13 @@ composability claim.  Deterministic rollback
 can restore manager-owned inputs, not external data or services; bounded
 operator action is therefore a first-class outcome.
 
-The single-host, single-manager SQLite reference coordinator has durable
-plans, WAL/receipts, epochs, fenced replay, generation CAS and rollback.
-Deterministic traces exercise its semantics; one pinned vLLM-HUST/Ascend launch
-demonstrates native observers and owned cleanup.  Separate real TP2 trials qualify
-HTTP invocation gating, KV metadata/ACKs and selected logical KV bytes. None establishes a production
-attestation trust root, elastic membership, formal effectiveness, broader
-recovery or overhead.  SQLite is an implementation choice, not a requirement.
+The single-host SQLite coordinator implements durable plans, receipts, epochs,
+fenced replay, generation CAS and rollback. Deterministic traces test these
+semantics; one pinned vLLM-HUST/Ascend launch demonstrates native observers and
+owned cleanup. Narrow TP2 qualifications cover invocation gating, KV
+metadata/bytes and native argument completion. None establishes production
+attestation, elastic membership, formal effectiveness, recovery or overhead.
+SQLite remains an implementation choice.
 Stop or reframe the paper as an engineering report if runtime intent cannot
 be separated from effect, conflict thresholds remain unmet after one correction
 cycle, rollback loses the predecessor, or overhead exceeds the frozen bounds.
@@ -1172,11 +1174,9 @@ is conditional on ownership and may fail safe.  This adversarial design oracle
 establishes no production control plane, distributed transaction, physical
 exactly-once guarantee or performance result.
 
-External validity is bounded by this single-runtime study.  Deep validation
-across multiple extension classes, process roles, versions/topologies, and injected
-failures can show that the mechanism is not tied to one plugin, but cannot show
-that an independent inference framework adopts the same abstractions.
-Cross-runtime validation is deferred future work.  Accordingly, neither this
+External validity is limited to this runtime. Multi-extension, process-role,
+version, topology and fault tests can show breadth here; cross-runtime adoption
+remains future work. Accordingly, neither this
 paper nor the \ECPAWorkshopMods{}-MOD page population
 supports a cross-framework or industry-standard claim.
 
