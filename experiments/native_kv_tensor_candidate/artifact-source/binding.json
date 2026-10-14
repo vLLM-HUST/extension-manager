@@ -28,23 +28,28 @@
     {
       "path": "vllm/plugins/native_tensor_artifact_transport.py",
       "source": "artifact_transport.py",
-      "sha256": "0f10fdf950dcf0dfbd1a87c81b494dcf7fd2a5c474dcdb47f0a3f9eb096c5cf8"
+      "sha256": "0571301b98cef1569eb6010a0b5d4659b96ec7556f18a875e0ea806b26613fcb"
     },
     {
       "path": "vllm/plugins/native_tensor_artifact_bootstrap.py",
       "source": "artifact_bootstrap.py",
-      "sha256": "af5d9952577e9f0eb81c38a0655faa6f257d628aeceb547cd6ce69dfadc28f24"
+      "sha256": "85b9a5226980fa92c1fea9357c72c831b943a851c23922ef1d4cb8ff26053211"
     },
     {
       "path": "vllm/plugins/native_tensor_witness.py",
       "source": "witness.py",
       "sha256": "a00d761a0bbee5dd1e7d627a5d8bf6a25b70ec23ffe5fe98eb754c747423c4e7"
+    },
+    {
+      "path": "vllm/plugins/native_tensor_runtime_contract.py",
+      "source": "runtime_contract.py",
+      "sha256": "c129a5a9b8349c9fe079cf6c9548a5681ed7c3e0fa22d14697c57ab1c25a5aa0"
     }
   ],
   "Host_existing_collector_sha256": "6b3e76d2f49e2c1360a898d06912bd745a4bf799abafe71c1f360e5a8c8fb925",
   "KV_plan_source_sha256": "81c4f5590955c807ddd2647c6b2a511e5dade177f7e478d5a34ecd27668a4cae",
   "patch_sha256": {
-    "host-private-tensor-artifact.patch": "1ba046ad2f04ec0b886fd9c847535e8f5cee1a9b3b8544c1b71050556d9145a5",
+    "host-private-tensor-artifact.patch": "ef139fa323c13fb16804fd17460e0a974633dc035cac749c51282658e45485af",
     "kv-private-tensor-artifact.patch": "7b1e38482e1717936500516642ed3bd98879ec45bfdac249d46fef7d1326b44e"
   }
 }

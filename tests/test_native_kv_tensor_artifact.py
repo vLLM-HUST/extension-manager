@@ -174,6 +174,10 @@ def run(tmp_path, request):
                 Path(transport.__file__),
                 Path(witness.__file__),
             ]
+            if getattr(request, "param", None) == "runtime-cpu-denial":
+                from experiments.native_kv_tensor_candidate import runtime_contract
+
+                sources.append(Path(runtime_contract.__file__))
             senders.append(
                 dict(
                     process=process,
@@ -230,6 +234,9 @@ def run(tmp_path, request):
                 phase=dict(layer_indices=[0], semantic_anchor=129, physical_anchor=3)
             ),
         )
+        if getattr(request, "param", None) == "runtime-cpu-denial":
+            policy["schema"] = transport.RUNTIME_POLICY
+            policy["classification"] = "REAL_RUNTIME_UNQUALIFIED"
         policy_path = tmp_path / "policy.json"
         policy_path.write_bytes(native.canonical(policy))
         policy_path.chmod(0o600)
@@ -594,3 +601,28 @@ def test_actual_collector_artifact_fsync_failure_has_no_ack_or_completion(run):
     result = transport.verify_archive(run["spec"], run["policy"], run["journal"])
     assert result["durable_artifact_join_complete"] is False
     assert result["acknowledged_prefix_status"] == "unknown"
+
+
+@pytest.mark.parametrize("run", ["runtime-cpu-denial"], indirect=True)
+def test_actual_cpu_worker_bootstrap_runtime_policy_refuses_cpu_tensor_files(run):
+    from experiments.native_kv_tensor_candidate import artifact_bootstrap
+
+    assert "ack" in command(run, 0, "mapping")
+    context = run["root"] / "runtime-context.json"
+    artifact_bootstrap.write_context(
+        context,
+        spec_path=run["spec"],
+        policy_path=run["policy"],
+        ready=run["ready"],
+        source_files=run["senders"][1]["source_files"],
+    )
+    result = command(run, 1, "bootstrap", context=str(context), fact=fact(0))
+    assert "rejects CPU" in result["rejected"]
+    assert len(run["journal"].read_bytes().splitlines()) == 3
+    assert not list(Path(run["dirs"][str(run["procs"][1].pid)]["path"]).iterdir())
+    result = transport.verify_archive(
+        run["spec"], run["policy"], run["journal"], acknowledged_prefix=seal(run)
+    )
+    assert result["classification"] == "REAL_RUNTIME_UNQUALIFIED"
+    assert result["durable_artifact_join_complete"] is False
+    assert result["GPU_qualification"] is result["attention_consumption"] is None
