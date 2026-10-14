@@ -300,6 +300,9 @@
         }
       },
       "additionalProperties": false
+    },
+    "source_provenance_policy": {
+      "type": "object"
     }
   },
   "additionalProperties": false

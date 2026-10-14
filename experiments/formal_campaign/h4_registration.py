@@ -20,6 +20,13 @@ from urllib.parse import urlparse
 
 from jsonschema import Draft7Validator
 
+try:
+    from experiments.formal_campaign import source_provenance
+except ModuleNotFoundError as error:
+    if error.name not in {"experiments", "experiments.formal_campaign"}:
+        raise
+    import source_provenance
+
 HERE = Path(__file__).resolve().parent
 ARMS = ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
 PHASES = ("discovery", "validation", "planning", "rendering", "evidence_setup")
@@ -287,11 +294,30 @@ def main() -> None:
     parser.add_argument("--manager-remote", default="origin")
     parser.add_argument("--host-repo", type=Path, required=True)
     parser.add_argument("--host-remote", default="origin")
+    parser.add_argument(
+        "--source-repositories",
+        type=Path,
+        required=True,
+        help="actual checkout/remote locations for every declared component",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     campaign_raw = args.campaign.read_bytes()
     campaign = load_object(campaign_raw, "campaign")
     fixed = campaign.get("fixed_identity", {})
+    policy = campaign.get("source_provenance_policy")
+    if policy is None:
+        raise ValueError("new issuance requires preregistered source_provenance_policy")
+    locations = json.loads(args.source_repositories.read_text())
+    for role in ("manager", "host"):
+        if locations.get(role) != {
+            "path": str(getattr(args, role + "_repo")),
+            "remote": getattr(args, role + "_remote"),
+        }:
+            raise ValueError(
+                "source locations differ from issuer Manager/Host checkout"
+            )
+    observation = source_provenance.observe_sources(fixed, policy, locations)
     manager_source = observe_merged_source(
         args.manager_repo,
         args.manager_remote,
@@ -312,6 +338,17 @@ def main() -> None:
         manager_source=manager_source,
         host_source=host_source,
     )
+    receipt = source_provenance.upgrade_receipt(
+        receipt,
+        campaign,
+        observation,
+        source_provenance.bind_protocol_source(
+            args.manager_repo, fixed["manager_commit"], "h4"
+        ),
+    )
+    Draft7Validator(
+        json.loads((HERE / "h4-deployment-receipt-v2.schema.json").read_text())
+    ).validate(receipt)
     atomic_write_new(args.output, receipt)
     print(
         json.dumps(
