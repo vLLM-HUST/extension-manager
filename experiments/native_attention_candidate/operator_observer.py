@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import time
+from enum import IntEnum
 
 SCHEMA = "ecpa-native-cached-attention-operator-source-candidate/v1"
 _publisher = None
@@ -140,6 +141,140 @@ def bind_actual_input_batch(runner, metadata, *, eager):
         }
 
 
+# Explicit exact vendor codes, excluding UNDEFINED. New/unknown formats are not
+# silently mapped to a known storage layout by integer coercion.
+_VENDOR_FORMAT_SOURCE_SHA256 = (
+    "8abe7bea6817f25d2360aee783afae16fe7fe2aaa46a04e7b7b865e7f2039488"
+)
+_NPU_FORMAT_CODES = frozenset(
+    {0, 1, 2, 3, 4, 12, 16, 27, 29, 30, 32, 33, 35, 47, 50, 51, 52, 53, 54}
+)
+
+
+class SourceObservationRejected(ValueError):
+    """Bounded real rejected descriptors, never an OP receipt or source ACK."""
+
+    def __init__(self, reason, fields, *, stage):
+        self.diagnostic = {
+            "schema": "ecpa-native-attention-source-rejection/v1",
+            "classification": "SOURCE_REJECTION_ONLY",
+            "stage": stage,
+            "reason": str(reason)[:256],
+            "actual_fields": fields,
+            "OP_receipt": False,
+            "formal_registration": False,
+        }
+        encoded = canonical(self.diagnostic)
+        require(len(encoded) <= 8192, "source rejection diagnostic exceeds bound")
+        super().__init__(str(reason)[:256] + "; diagnostic=" + encoded.decode())
+
+
+def _field_descriptor(value):
+    return {
+        "python_type": (type(value).__module__ + "." + type(value).__qualname__)[:80],
+        "value_repr": repr(value)[:80],
+    }
+
+
+def canonical_native_format(value):
+    """Only a plain int or this actual vendor Format is a wire integer."""
+    if type(value) is int:
+        code = value
+    else:
+        if not isinstance(value, IntEnum):
+            raise SourceObservationRejected(
+                "native NPU format type unsupported",
+                {"npu_format": _field_descriptor(value)},
+                stage="cache-view-format",
+            )
+        try:
+            from pathlib import Path
+
+            import torch_npu.npu._format as vendor_format
+
+            Format = vendor_format.Format
+            actual_vendor_source = Path(vendor_format.__file__).read_bytes()
+            actual_source_sha = sha(actual_vendor_source)
+            if actual_source_sha != _VENDOR_FORMAT_SOURCE_SHA256:
+                raise SourceObservationRejected(
+                    "native vendor format source bytes changed",
+                    {
+                        "actual_source_sha256": _field_descriptor(actual_source_sha),
+                        "expected_source_sha256": _field_descriptor(
+                            _VENDOR_FORMAT_SOURCE_SHA256
+                        ),
+                        "npu_format": _field_descriptor(value),
+                    },
+                    stage="cache-view-format",
+                )
+        except (ImportError, OSError) as exc:
+            raise SourceObservationRejected(
+                "native vendor format source unavailable",
+                {"npu_format": _field_descriptor(value)},
+                stage="cache-view-format",
+            ) from exc
+        if Format is None or type(value) is not Format:
+            raise SourceObservationRejected(
+                "native NPU format type unsupported",
+                {"npu_format": _field_descriptor(value)},
+                stage="cache-view-format",
+            )
+        code = int(value)
+    if code not in _NPU_FORMAT_CODES:
+        raise SourceObservationRejected(
+            "native NPU format code unsupported",
+            {"npu_format": _field_descriptor(value)},
+            stage="cache-view-format",
+        )
+    return code
+
+
+def _cache_rejection_fields(observed, materialization):
+    fields = {}
+    for label, rows in (
+        ("actual", observed["native_arguments"]["cache_views"]),
+        (
+            "reference",
+            {k: v["after"] for k, v in materialization["cache_views"].items()},
+        ),
+    ):
+        for kind, view in rows.items():
+            fields[label + "." + kind] = {
+                name: _field_descriptor(value)
+                for name, value in view.items()
+                if name
+                in {
+                    "device",
+                    "dtype",
+                    "shape",
+                    "stride",
+                    "data_ptr",
+                    "storage_ptr",
+                    "storage_offset",
+                    "npu_format",
+                }
+            }
+    fields["runtime_request_id"] = _field_descriptor(observed["runtime_request_id"])
+    fields["layer_name"] = _field_descriptor(observed["layer_name"])
+    for name in ("block_table_rows", "sequence_lengths"):
+        fields["native_arguments." + name] = _field_descriptor(
+            observed["native_arguments"][name]
+        )
+    for name in (
+        "actual_cpu_block_ids",
+        "metadata_seq_lengths_kv",
+        "metadata_bound_monotonic_ns",
+        "native_entry_readback_started_ns",
+        "native_entry_readback_completed_ns",
+        "native_call_started_ns",
+        "native_call_returned_ns",
+        "native_stream_completed_ns",
+        "monotonic_ns",
+    ):
+        fields[name] = _field_descriptor(observed[name])
+    return fields
+
+
 def cache_view(tensor):
     return {
         "device": str(tensor.device),
@@ -149,7 +284,7 @@ def cache_view(tensor):
         "data_ptr": tensor.data_ptr(),
         "storage_ptr": tensor.untyped_storage().data_ptr(),
         "storage_offset": tensor.storage_offset(),
-        "npu_format": _get_format(tensor)
+        "npu_format": canonical_native_format(_get_format(tensor))
         if str(tensor.device).startswith("npu:")
         else None,
     }
@@ -383,7 +518,7 @@ def verify_observation(value, materialization):
             and type(actual["storage_offset"]) is int
             and actual["storage_offset"] >= 0
             and type(actual["npu_format"]) is int
-            and actual["npu_format"] >= 0,
+            and actual["npu_format"] in _NPU_FORMAT_CODES,
             "native cache view fields/types unsupported",
         )
         require(
@@ -527,7 +662,14 @@ def observe_native_call(operator, native_call, arguments, *, metadata, layer_nam
         "device": str(after.device),
     }
     observed["monotonic_ns"] = time.monotonic_ns()
-    verify_observation(observed, fact)
+    try:
+        verify_observation(observed, fact)
+    except ValueError as exc:
+        raise SourceObservationRejected(
+            str(exc),
+            _cache_rejection_fields(observed, fact),
+            stage="after-native-completion-validation",
+        ) from exc
     _publisher(observed)  # Failure propagates; no return is an authority ACK claim.
     _observed.add(key_id)
     return result

@@ -1,7 +1,7 @@
 {
   "classification": "ACTUAL_TORCH_CPU_SOURCE_BYTE_READER_AUDIT",
   "torch_version": "2.13.0+cpu",
-  "operator_source_sha256": "bb11fd7d71026fee0bc94bf329f762f3b5de56b6f5528dba96ffc908fc549c1f",
+  "operator_source_sha256": "dfc01a62aa931bc998dba59133574a78130cbfe00ee29df980a5049db6c5bd28",
   "cases": {
     "torch.float16-contiguous": {
       "actual_reader_equals_independent_binary16": true,
