@@ -2,6 +2,8 @@ TECTONIC ?= tectonic
 PYTHON ?= python3
 EVIDENCE_SUMMARY := generated/evidence-summary.tex
 EVIDENCE_INPUTS := \
+	../experiments/formal_campaign/verify_kv_selected_tensor_observation.py \
+	$(shell find ../experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014 -type f | sort) \
 	../experiments/formal_campaign/verify_kv_postack_metadata.py \
 	../experiments/formal_campaign/verify_kv_strict_pair_partial.py \
 	../experiments/formal_campaign/verify_kv_disabled_diagnostic.py \

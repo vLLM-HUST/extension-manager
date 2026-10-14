@@ -1029,6 +1029,69 @@ def validate_kv_metadata(root: Path) -> dict[str, int]:
     }
 
 
+def validate_selected_kv_tensor(root: Path) -> dict[str, int]:
+    """Replay finite selected logical bytes; keep full quality and formal unknown."""
+    from experiments.formal_campaign.verify_kv_selected_tensor_observation import (
+        verify_archive,
+    )
+
+    source = root / (
+        "experiments/formal_campaign/verify_kv_selected_tensor_observation.py"
+    )
+    if hashlib.sha256(source.read_bytes()).hexdigest() != (
+        "841e009511a4d2417be480123eb3960399d5ba4a46fd26119bd69724bcac83cc"
+    ):
+        raise ValueError("selected KV analysis source changed")
+    package = root / (
+        "experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014"
+    )
+    manifest = load_json(package, "manifest.json")
+    if manifest["archive_sha256"] != (
+        "f704e8d1e7bd35d99ecf0ebfbe6671d2e8baf8133a326b5df5dc935447846548"
+    ):
+        raise ValueError("selected KV archive identity changed")
+    observed = verify_archive(package / "manifest.json", package)
+    task = observed["model_task"]
+    if (
+        observed["classification"] != "REAL_RUNTIME_UNQUALIFIED"
+        or observed["actual_hardware_transport_observed"] is not True
+        or observed["selected_logical_KV_byte_observation"] is not True
+        or observed["mixed_typed_HTTP_ACK_join"] is not True
+        or observed["tensor_receipts"] != 56
+        or observed["all_named_Qwen_layers_per_rank"] != 28
+        or observed["whole_mixed_journal_rows"] != 201
+        or task["model_task_passed"] is not True
+        or task["HTTP_status"] != 200
+        or task["prompt_tokens"] != 1201
+        or task["completion_tokens"] != 69
+        or task["finish_reason"] != "stop"
+        or observed["ACK_time_contract"]["policy"]
+        != "source-fact-in-http-final-prefix-ack-v1"
+        or observed["ACK_time_contract"][
+            "recorded_client_authentication_window_verified"
+        ] is not True
+        or observed["formal_result"] is not False
+        or observed["performance_result"] is not False
+        or observed["formal_H3_starts"] != 0
+        or observed["formal_H4_starts"] != 0
+        or observed["fresh_OS_peer_authentication_performed"] is not False
+        or observed["late_observations_not_preregistration"] is not True
+        or any(observed[k] is not None for k in (
+            "all_physical_storage_equivalence", "attention_consumption",
+            "full_model_quality", "lost_requests", "duplicate_requests",
+            "full_objective_satisfied",
+        ))
+    ):
+        raise ValueError("selected KV finite observation boundary changed")
+    return {
+        "selected_kv_trials": 1,
+        "selected_kv_receipts": observed["tensor_receipts"],
+        "selected_kv_layers_per_rank": observed["all_named_Qwen_layers_per_rank"],
+        "selected_kv_raw_records": observed["whole_mixed_journal_rows"],
+        "selected_kv_completion_tokens": task["completion_tokens"],
+    }
+
+
 def validate_h3_client_window(root: Path) -> dict[str, int]:
     """Recompute bounded real delivery facts; never a formal H3 recovery score."""
     import tarfile
@@ -1168,6 +1231,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     h3_window = validate_h3_client_window(root)
     native_transport = validate_native_interface(root)
     kv_metadata = validate_kv_metadata(root)
+    selected_kv = validate_selected_kv_tensor(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -1657,6 +1721,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         **h3_window,
         **native_transport,
         **kv_metadata,
+        **selected_kv,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -1748,6 +1813,11 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPAKVMetadataUploads", "kv_metadata_uploads"),
         ("ECPAKVMetadataCompletionTokens", "kv_metadata_completion_tokens"),
         ("ECPAKVMetadataLateIntakes", "kv_metadata_late_intakes"),
+        ("ECPASelectedKVTrials", "selected_kv_trials"),
+        ("ECPASelectedKVReceipts", "selected_kv_receipts"),
+        ("ECPASelectedKVLayersPerRank", "selected_kv_layers_per_rank"),
+        ("ECPASelectedKVRawRecords", "selected_kv_raw_records"),
+        ("ECPASelectedKVCompletionTokens", "selected_kv_completion_tokens"),
         ("ECPAHThreeWindowRequests", "h3_window_requests"),
         ("ECPAHThreeWindowDeadlineLoss", "h3_window_deadline_loss"),
         ("ECPAHThreeWindowDuplicateAdmissions", "h3_window_duplicate_admissions"),

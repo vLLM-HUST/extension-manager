@@ -991,15 +991,18 @@ to \ECPANativeTransportUploads{} NPU uploads
 ACK and cleanup replay retains \ECPANativeTransportFailedAttempts{} failed startup.
 This qualifies transport only.
 
-A separately frozen KV TP2 trial returns the exact two-copy nonce
-(1,201 prompt tokens, \ECPAKVMetadataCompletionTokens{} completion tokens).
-Replay retains \ECPAKVMetadataProjections{} materialized-row projections,
-\ECPAKVMetadataUploads{} uploads and \ECPAKVMetadataLateIntakes{} late intakes.
-Their facts lie within HTTP; a preregistered source-clock/final-prefix policy
-verifies the durable ACK across six archived runtime modules.  This single
-nonformal metadata observation leaves KV tensor equivalence, attention,
-full quality and performance unknown.  The old strict-window rejection is retained.
-None of these trials establishes prevention, formal H3/H4 or the full objective.
+A separate KV TP2 trial returns the exact two-copy nonce (1,201 prompt and
+\ECPAKVMetadataCompletionTokens{} completion tokens), with
+\ECPAKVMetadataProjections{} projections and \ECPAKVMetadataUploads{} uploads.
+Its preregistered clock policy verifies the final-prefix ACK across six archived
+modules, preserving \ECPAKVMetadataLateIntakes{} late intakes and the old
+strict-window rejection. A new nonformal TP2 trial returns
+\ECPASelectedKVCompletionTokens{} completion tokens and joins
+\ECPASelectedKVReceipts{} selected logical K/V byte records across
+\ECPASelectedKVLayersPerRank{} named layers per rank to HTTP and the final ACK.
+All \ECPASelectedKVRawRecords{} raw rows and full receiver payloads replay from
+exact sources. Full physical storage, attention, full quality and performance
+remain unknown; these trials establish no prevention or formal H3/H4 result.
 
 The H3 oracle binds \ECPAHThreeNativeSources{} source snapshots.
 \ECPAHThreePrepareNABaselines{} baseline arms lack a durable Manager transaction;
@@ -1155,7 +1158,7 @@ The single-host, single-manager SQLite reference coordinator has durable
 plans, WAL/receipts, epochs, fenced replay, generation CAS and rollback.
 Deterministic traces exercise its semantics; one pinned vLLM-HUST/Ascend launch
 demonstrates native observers and owned cleanup.  Separate real TP2 trials qualify
-HTTP invocation gating and KV metadata/ACKs.  None establishes a production
+HTTP invocation gating, KV metadata/ACKs and selected logical KV bytes. None establishes a production
 attestation trust root, elastic membership, formal effectiveness, broader
 recovery or overhead.  SQLite is an implementation choice, not a requirement.
 Stop or reframe the paper as an engineering report if runtime intent cannot
@@ -1191,9 +1194,8 @@ in all three ECPA repetitions after partial evidence loss.  The tested runtime
 therefore does not yet enforce its intended prevention property.  The partial
 H2 subset correctly classifies \ECPAHTwoTruePositive{} admits and
 \ECPAHTwoTrueNegative{} rejects ($n=\ECPAHTwoScoredCases{}$), but is not
-broad enough to establish composability.  Formal traffic-gate validation plus broader
-composability, version-skew, recovery, and overhead
-evaluations remain necessary before making the broader systems claim.
+broad enough to establish composability. Formal traffic-gate, broader composition,
+version-skew, recovery and overhead validation remain necessary.
 
 \bibliographystyle{plain}
 \bibliography{references}
