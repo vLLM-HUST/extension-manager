@@ -2,6 +2,8 @@ TECTONIC ?= tectonic
 PYTHON ?= python3
 EVIDENCE_SUMMARY := generated/evidence-summary.tex
 EVIDENCE_INPUTS := \
+	../experiments/formal_campaign/verify_native_interface.py \
+	$(shell find ../experiments/formal_campaign/artifacts/native-interface-20261013 -type f | sort) \
 	../experiments/real_mod_composition/h2_scoring_input_audit.py \
 	$(shell find ../experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013 -type f | sort) \
 	../experiments/formal_campaign/h3_model_client_window.py \

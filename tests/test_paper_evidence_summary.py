@@ -11,6 +11,8 @@ from jsonschema import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
+    "experiments/formal_campaign/verify_native_interface.py",
+    "experiments/formal_campaign/artifacts/native-interface-20261013",
     "experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013",
     "experiments/real_mod_composition/h2_scoring_input_audit.py",
     "experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/snapshots/production-stack-provider-manifest.json",
@@ -163,6 +165,12 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "h3_model_marker_completions": 7,
         "h3_model_raw_files": 156,
         "h3_model_failed_attempts": 3,
+        "native_transport_mappings": 1,
+        "native_transport_rank_uploads": 40,
+        "native_transport_uploads": 80,
+        "native_transport_completion_tokens": 39,
+        "native_transport_raw_files": 137,
+        "native_transport_failed_attempts": 1,
         "h3_window_requests": 60,
         "h3_window_deadline_loss": 0,
         "h3_window_duplicate_admissions": 0,
@@ -642,7 +650,8 @@ def test_h3_native_support_rejects_source_and_oracle_tampering(tmp_path):
     target = tmp_path / prefix
     shutil.copytree(ROOT / prefix, target)
     assert generator.validate_h3_native_support(tmp_path) == {
-        "h3_native_sources": 5, "h3_prepare_na_baselines": 2,
+        "h3_native_sources": 5,
+        "h3_prepare_na_baselines": 2,
     }
     source = target / "manager-runtime_activation.py.source"
     source.write_bytes(source.read_bytes() + b"\n# changed\n")
@@ -657,10 +666,15 @@ def test_h3_native_support_rejects_source_and_oracle_tampering(tmp_path):
         generator.validate_h3_native_support(tmp_path)
 
 
-@pytest.mark.parametrize("field,value", [
-    ("formal_result", True), ("lost_requests", 0),
-    ("duplicate_requests", 0), ("full_objective_satisfied", True),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("formal_result", True),
+        ("lost_requests", 0),
+        ("duplicate_requests", 0),
+        ("full_objective_satisfied", True),
+    ],
+)
 def test_h3_model_paper_rejects_promotion(tmp_path, field, value):
     generator = load_generator()
     prefix = Path(
@@ -738,3 +752,25 @@ def test_h2_report_consumption_cannot_be_promoted(tmp_path, field):
     rewrite_json(path, lambda value: value.update({field: not value[field]}))
     with pytest.raises(ValueError, match="H2 scoring input audit"):
         load_generator().collect_summary(tmp_path)
+
+
+def test_native_transport_paper_rejects_changed_source(tmp_path):
+    copy_inputs(tmp_path)
+    root = tmp_path
+    (root / "experiments/formal_campaign/verify_native_interface.py").write_text(
+        "# substituted source"
+    )
+    with pytest.raises(ValueError, match="native transport analysis source"):
+        load_generator().validate_native_interface(root)
+
+
+def test_native_transport_paper_rejects_changed_archive(tmp_path):
+    copy_inputs(tmp_path)
+    root = tmp_path
+    path = (
+        root
+        / "experiments/formal_campaign/artifacts/native-interface-20261013/raw.tar.gz"
+    )
+    path.write_bytes(path.read_bytes() + b"tamper")
+    with pytest.raises(ValueError, match="archive"):
+        load_generator().validate_native_interface(root)

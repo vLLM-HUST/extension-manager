@@ -983,13 +983,17 @@ those bytes raises coverage to \ECPARealGateCompleteCoverage{} and admits
 the candidate (503).  Both blocked requests leave backend log bytes unchanged;
 direct backend health remains 200.
 
-The generator verifies the sealed \ECPARealGateRawFiles{}-file archive and
-recomputes journal, process, authorization, authority-ordering, HTTP, and
-cleanup bindings.  It also retains \ECPARealGateFailedAttempts{} failed or
-aborted attempts, excluded from qualification.  The Host candidate is unmerged:
-this is \code{QUALIFIED\_NONFORMAL}, invocation-only.  It establishes no
-effective semantics, H1 prevention, formal H3/H4, rollback, performance,
-model quality, or output correctness.
+Raw replay retains the invocation-only gate and its
+\ECPARealGateFailedAttempts{} failed attempts.  A later real TP2 trial binds
+\ECPANativeTransportMappings{} native request mapping to
+\ECPANativeTransportUploads{} NPU prefix uploads
+(\ECPANativeTransportRankUploads{} per rank), one fresh nonce response and
+\ECPANativeTransportCompletionTokens{} completion tokens.  Replay verifies
+source/process epochs, authenticated peers, durable ACKs and cleanup, retaining
+\ECPANativeTransportFailedAttempts{} pre-HTTP startup failure.  This is
+transport only: KV effect, tensor equivalence, attention consumption and full
+quality remain unknown.  Both trials are nonformal; prevention, formal H3/H4
+and the full objective remain unestablished.
 
 The H3 oracle binds \ECPAHThreeNativeSources{} exact source snapshots.
 Both baseline activation paths lack a durable Manager transaction, so their

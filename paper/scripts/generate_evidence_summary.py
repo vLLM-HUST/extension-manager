@@ -588,7 +588,8 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
     counts["true_positive"] += 1
     scored.append(scheduler_oracle)
     if scoring_audit["corrected_definite_subset"] != {
-        "case_count": len(scored), **counts
+        "case_count": len(scored),
+        **counts,
     }:
         raise ValueError("H2 current score disagrees with independent input audit")
     tp, tn = counts["true_positive"], counts["true_negative"]
@@ -815,7 +816,8 @@ def validate_h3_native_support(root: Path) -> dict[str, int]:
             raise ValueError("H3 native support source bytes changed")
     if (
         oracle["evidence_class"] != "source-bound-nonformal"
-        or [(a["arm"], a["support"]) for a in oracle["arms"]] != [
+        or [(a["arm"], a["support"]) for a in oracle["arms"]]
+        != [
             ("vanilla-vllm-entry-points", "not-applicable"),
             ("manual-integration", "not-applicable"),
             ("ecpa", "supported"),
@@ -837,14 +839,17 @@ def validate_h3_model_qualification(root: Path) -> dict[str, int]:
     manifest = load_json(package, "manifest.json")
     archives = manifest["archives"]
     if set(archives) != {
-        "raw.tar.gz", "failed-hccl-port-conflict.tar.gz",
-        "failed-private-directory.tar.gz", "interrupted-for-cpu-preflight.tar.gz",
+        "raw.tar.gz",
+        "failed-hccl-port-conflict.tar.gz",
+        "failed-private-directory.tar.gz",
+        "interrupted-for-cpu-preflight.tar.gz",
     }:
         raise ValueError("H3 model qualification archive inventory changed")
     for name, binding in archives.items():
         raw = (package / name).read_bytes()
-        if len(raw) != binding["bytes"] or hashlib.sha256(raw).hexdigest() != (
-            binding["sha256"]
+        if (
+            len(raw) != binding["bytes"]
+            or hashlib.sha256(raw).hexdigest() != (binding["sha256"])
         ):
             raise ValueError("H3 model qualification archive changed")
     recomputed = verify_archive(package / "raw.tar.gz")
@@ -869,21 +874,29 @@ def validate_h3_model_qualification(root: Path) -> dict[str, int]:
         or manifest["classification"] != "QUALIFIED_NONFORMAL"
         or manifest["successful_attempt"] != "r4"
         or len(manifest["failed_attempts"]) != 3
-        or {row["archive"] for row in manifest["failed_attempts"]} != (
-            set(archives) - {"raw.tar.gz"}
+        or {row["archive"] for row in manifest["failed_attempts"]}
+        != (set(archives) - {"raw.tar.gz"})
+        or {row["attempt"] for row in manifest["failed_attempts"]} != {"r1", "r2", "r3"}
+        or any(
+            recomputed[key] is not False
+            for key in (
+                "formal_result",
+                "matched_three_arm_result",
+                "performance_result",
+            )
         )
-        or {row["attempt"] for row in manifest["failed_attempts"]} != {
-            "r1", "r2", "r3"
-        }
-        or any(recomputed[key] is not False for key in (
-            "formal_result", "matched_three_arm_result", "performance_result"
-        ))
-        or any(manifest[key] is not False for key in (
-            "formal_result", "performance_result"
-        ))
-        or any(recomputed[key] is not None or manifest[key] is not None for key in (
-            "lost_requests", "duplicate_requests", "full_objective_satisfied"
-        ))
+        or any(
+            manifest[key] is not False
+            for key in ("formal_result", "performance_result")
+        )
+        or any(
+            recomputed[key] is not None or manifest[key] is not None
+            for key in (
+                "lost_requests",
+                "duplicate_requests",
+                "full_objective_satisfied",
+            )
+        )
     ):
         raise ValueError("H3 model qualification nonformal boundary changed")
     return {
@@ -891,6 +904,61 @@ def validate_h3_model_qualification(root: Path) -> dict[str, int]:
         "h3_model_marker_completions": recomputed["real_model_completions"],
         "h3_model_raw_files": retained_files,
         "h3_model_failed_attempts": len(manifest["failed_attempts"]),
+    }
+
+
+def validate_native_interface(root: Path) -> dict[str, int]:
+    """Recompute actual TP2 transport, never KV effectiveness or formal cells."""
+    from experiments.formal_campaign.verify_native_interface import verify_archive
+
+    source = root / "experiments/formal_campaign/verify_native_interface.py"
+    if (
+        hashlib.sha256(source.read_bytes()).hexdigest()
+        != "092a86cd3a0de66531a798f0a9d850496ff0969bbde9bb0d183b96c60126b828"
+    ):
+        raise ValueError("native transport analysis source changed")
+    package = root / "experiments/formal_campaign/artifacts/native-interface-20261013"
+    manifest = load_json(package, "manifest.json")
+    if (
+        manifest["archive_sha256"]
+        != "b04787939bd54931e34e05beb2ca71e0a2df5df55846ecf78917783d654acf73"
+    ):
+        raise ValueError("native transport archive identity changed")
+    observed = verify_archive(package / "manifest.json", package / "raw.tar.gz")
+    if (
+        observed["classification"] != "REAL_NATIVE_REQUEST_UPLOAD_TRANSPORT_NONFORMAL"
+        or observed["native_API_mappings"] != 1
+        or observed["two_rank_upload_counts"] != {0: 40, 1: 40}
+        or observed["completion_tokens"] != 39
+        or observed["native_request_upload_transport_join"] is not True
+        or observed["actual_hardware_transport_observed"] is not True
+        or observed["original_failed_attempt_retained"] is not True
+        or observed["formal_result"] is not False
+        or observed["producer_registration_classification"]
+        != "CPU_REVIEW_CANDIDATE_ONLY"
+        or observed["durable_ACK_status"] != "verified-authenticated-prefix"
+        or observed["native_chronology_status"] != "verified"
+        or any(
+            observed[k] is not None
+            for k in (
+                "KV_MOD_semantic_obligation_satisfied",
+                "kv_tensor_equivalence",
+                "attention_consumed_observed_tensor",
+                "full_generation_quality",
+                "lost_requests",
+                "duplicate_requests",
+                "full_objective_satisfied",
+            )
+        )
+    ):
+        raise ValueError("native transport limited qualification boundary changed")
+    return {
+        "native_transport_mappings": observed["native_API_mappings"],
+        "native_transport_rank_uploads": observed["two_rank_upload_counts"][0],
+        "native_transport_uploads": sum(observed["two_rank_upload_counts"].values()),
+        "native_transport_completion_tokens": observed["completion_tokens"],
+        "native_transport_raw_files": len(manifest["files"]),
+        "native_transport_failed_attempts": 1,
     }
 
 
@@ -987,6 +1055,7 @@ def validate_h3_client_window(root: Path) -> dict[str, int]:
         "h3_window_failed_cpu_attempts": len(manifest["failed_attempts"]),
     }
 
+
 def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     workshop = load_json(root, "docs/corpus/workshop-mods.json")
     workshop_metadata = load_json(
@@ -1030,6 +1099,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
     h3_native = validate_h3_native_support(root)
     h3_model = validate_h3_model_qualification(root)
     h3_window = validate_h3_client_window(root)
+    native_transport = validate_native_interface(root)
 
     for artifact, schema in (
         (workshop, "docs/corpus/workshop-mods.schema.json"),
@@ -1517,6 +1587,7 @@ def collect_summary(root: Path = ROOT) -> dict[str, int | str]:
         **h3_native,
         **h3_model,
         **h3_window,
+        **native_transport,
         "formal_planned": planned,
         "verified_adapters": len(adapters),
         "reference_starts": reference_starts,
@@ -1597,6 +1668,12 @@ def render(summary: dict[str, int | str]) -> str:
         ("ECPAHThreeModelRawFiles", "h3_model_raw_files"),
         ("ECPAHThreeModelFailedAttempts", "h3_model_failed_attempts"),
         ("ECPAHThreePrepareNABaselines", "h3_prepare_na_baselines"),
+        ("ECPANativeTransportMappings", "native_transport_mappings"),
+        ("ECPANativeTransportRankUploads", "native_transport_rank_uploads"),
+        ("ECPANativeTransportUploads", "native_transport_uploads"),
+        ("ECPANativeTransportCompletionTokens", "native_transport_completion_tokens"),
+        ("ECPANativeTransportRawFiles", "native_transport_raw_files"),
+        ("ECPANativeTransportFailedAttempts", "native_transport_failed_attempts"),
         ("ECPAHThreeWindowRequests", "h3_window_requests"),
         ("ECPAHThreeWindowDeadlineLoss", "h3_window_deadline_loss"),
         ("ECPAHThreeWindowDuplicateAdmissions", "h3_window_duplicate_admissions"),
