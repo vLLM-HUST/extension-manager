@@ -99,3 +99,35 @@ operators and schema-only NPU tensor/stream descriptors. They verify exact patch
 application and compilation, completion order, argument preservation, finite
 scope and counterexamples. They invoke no NPU operator and yield no hardware
 qualification. There is no formal producer registration or new campaign result.
+
+## Shared metadata source fix after attention R1
+
+Attention R1 actually returned HTTP500 with 56 typed payloads and zero OP
+receipts. Its original source, wheels, raw bytes and failed result remain
+sealed. Source diagnosis found that the pinned Ascend builder assigns the same
+`attn_metadata_i` object to every layer in a group; the original observer keyed
+only by object identity and overwrote earlier layers. A native first-layer FIA
+call then encountered the last-layer binding and failed the identity guard.
+The raw failure did not record the conflicting runtime layer names; this
+mechanism is source-backed rather than invented runtime telemetry.
+
+The new observer keys by `(id(metadata), actual_layer_name)` and retains exact
+object identity, actual layer, source-owned runtime, per-layer materialization
+ACK/cache and every clock check. A known object with an unregistered layer, or
+a known layer with another object, fails closed. Explicitly unsupported scopes
+still emit no receipt. CPU regression executes the exact patched pinned Ascend
+alias assignment and final FIA body for all 28 layers at each of two fixture
+ranks, plus wrong layer/object/retained identity/source-clock counterexamples.
+Native/NPU fields are CPU fixtures; they are not device/operator qualification.
+
+`python -m experiments.native_attention_candidate.build_shared_metadata_patch
+--output NEW_DIRECTORY` emits one Host module patch against clean Host b026 and
+a byte-bound manifest. Only the observer postimage changes: the existing three
+Ascend caller postimages are unchanged, so an exact source/ELF-audited Ascend
+wheel may be reused without recompiling unchanged native code. Build a new
+clean Host source commit and genuine wheel, audit installed bytes, then use a
+fresh source-pinned recipe (`declare_attention_recipe` derives the new observer
+hash), contexts, nonce, and cohort. Do not modify the R1 environment, source,
+wheel, recipe, or evidence. The full c435/fcbb patch builder remains available
+for clean reconstruction. This fix has no new NPU result and does not register
+a formal semantic producer or alter the formal gate.

@@ -128,7 +128,7 @@ def bind_actual_input_batch(runner, metadata, *, eager):
             lengths == list(value.seq_lens_list) and len(lengths) == 1,
             "actual native decode sequence metadata fields diverged",
         )
-        _metadata[id(value)] = {
+        _metadata[(id(value), layer_name)] = {
             "object": value,
             "runtime_request_id": request_id,
             "layer_name": layer_name,
@@ -423,9 +423,23 @@ def verify_observation(value, materialization):
 
 def observe_native_call(operator, native_call, arguments, *, metadata, layer_name):
     """Wrap actual final native call; default/unsupported paths produce no witness."""
-    if not enabled() or id(metadata) not in _metadata:
+    if not enabled():
         return native_call(**arguments)
-    bound = _metadata[id(metadata)]
+    metadata_key = (id(metadata), layer_name)
+    if metadata_key not in _metadata:
+        # Native groups share one metadata object across many layers. Each
+        # layer must retain its own source-owned runtime/materialization edge.
+        # A known object with an unbound layer (or vice versa) is not an
+        # unsupported branch that can silently bypass the source checks.
+        require(
+            not any(
+                bound["object"] is metadata or bound["layer_name"] == layer_name
+                for bound in _metadata.values()
+            ),
+            "native metadata/layer source binding changed",
+        )
+        return native_call(**arguments)
+    bound = _metadata[metadata_key]
     require(
         bound["object"] is metadata and bound["layer_name"] == layer_name,
         "native metadata/layer source binding changed",
