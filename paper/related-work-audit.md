@@ -1,9 +1,12 @@
 # Related-work and novelty audit
 
-Status: source-checked 2026-10-13 against original conference, DOI, or author
-paper pages. This is an internal claim ledger, not submission text. It binds the
-current evidence state: one H1 cell is complete and falsifies prevention; H2,
-H3, H4, and the authority-owned traffic gate are incomplete.
+Literature sources: checked 2026-10-13 against original conference, DOI, or
+author paper pages. Runtime evidence: reconciled 2026-10-14 against the sealed
+artifacts and implementation pointers below. This is an internal claim ledger,
+not submission text. One H1 cell is complete and falsifies prevention; H2 has
+four independently scored source cases; H3/H4 have zero formal runs. A real
+authority-owned HTTP gate has invocation-only qualification. Its formal
+semantic producer and matched prevention evaluation remain incomplete.
 
 ## Defensible contribution after H1
 
@@ -26,8 +29,10 @@ conflate:
 1. The **contract** declares typed resources, process obligations, evidence
    authority, and a rollback predecessor.
 2. The **protocol** binds plan, launch, process epoch, source, and evidence.
-3. The **reference implementation** currently fails the tested prevention
-   property because it lacks the real exposure enforcement point.
+3. The **reference implementation** failed the tested prevention property.
+   A subsequently qualified HTTP enforcement point accepts invocation evidence;
+   formal effect obligations are still unverified and fail closed. That later
+   qualification does not revise the original H1 result.
 4. The **evaluation method** made that failure observable; validator PASS says
    the record is admissible, not that H1 passed.
 
@@ -59,10 +64,10 @@ it does not mean that an implementation could not be extended.
 | Dimension | Loader / module lifecycle | Reconciler / ACK | Provenance | Consistent update | ECPA specified property | Current evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | Target-set freeze | Package, entry point, bundle, or service identity | Desired objects and controller/receiver state | Artifact, step, data, or OS-event subjects | Packets or clients assigned to a version | Required process roles, ordinals, and epochs in an immutable plan | H1 records bind a TP2 target set; elastic membership remains untested. |
-| Authority separation | Loader/registry owns load state | Controller and receiver own desired/accepted state | Authorized build actor or capture subsystem | Update controller and switches | Intent, planner, host, provider, external service, and traffic authority are distinct | Source identities validate, but a real traffic authority is absent. |
+| Authority separation | Loader/registry owns load state | Controller and receiver own desired/accepted state | Authorized build actor or capture subsystem | Update controller and switches | Intent, planner, host, provider, external service, and traffic authority are distinct | A real independent HTTP authority has invocation-only qualification; formal semantic authority is unregistered. |
 | Evidence freshness | Load/lifecycle event | Generation, nonce, or reconciled state | Signed step or captured event lineage | Configuration version | Plan, launch, epoch, nonce, validity interval, replay fence | H1 offline validation passes; this did not force claim revocation. |
-| Exposure gating | Not specified by vLLM/OSGi loading state | Routing/readiness can gate delivery if configured | Not a serving route | Core property of consistent network update | Commit-ready should precede generation admission | Missing at the real host boundary; H1 is falsified. |
-| Conflict ownership | Package/service resolution | Resource validity and controller ownership | Actor authorization, not extension semantics | Policy/version conflict | Typed exclusive/shared/composable resource claims | H2 independent real-MOD oracle and both install orders are incomplete. |
+| Exposure gating | Not specified by vLLM/OSGi loading state | Routing/readiness can gate delivery if configured | Not a serving route | Core property of consistent network update | Commit-ready should precede generation admission | Later real HTTP qualification records 503→200→503 with invocation evidence. The original H1 remains falsified; no formal semantic prevention rerun has passed. |
+| Conflict ownership | Package/service resolution | Resource validity and controller ownership | Actor authorization, not extension semantics | Policy/version conflict | Typed exclusive/shared/composable resource claims | H2's independently scored four-case subset gives TP=2/TN=2/FP=FN=0; breadth, both install orders, and formal runtime qualification remain incomplete. |
 | Rollback target | Prior bundle/module state | Prior desired or last accepted configuration | Prior artifact/statement | Prior configuration version | Digest-pinned predecessor plan plus failure class | H3 injected recovery and rollback results are incomplete. |
 | Process coverage | No inference-worker obligation in cited loader API | Receiver/controller health is not downstream hook invocation | Capture may be broad but lacks ECPA obligation semantics | Packet path, not hook set | Per-obligation coverage of frozen process epochs | The only H1 cell measured 0.5 coverage and still claimed effective. |
 
@@ -92,15 +97,42 @@ H1--H4 supply that evidence.
 | --- | --- | --- |
 | H1 entry-point / manual / ECPA arms | One pinned partial-worker TP2 cell, three starts per arm, five lifecycle sources per start; offline validation passes | H1 prevention is falsified for this cell. Startup fields are not H4. |
 | ACK + readiness + manual health alternative | Mechanistically plausible, not an executed fourth arm | Discuss as an alternative design only; do not rank it. |
-| H2 real composition | Score gate exists; no accepted formal runtime records | No real precision/recall claim. |
+| H2 real composition | Four independently scored source cases, TP=2/TN=2/FP=FN=0; one prediagnosed-report input excluded with original records retained | Finite source-case detection only; no population precision/recall, formal runtime, composition-quality, or performance claim. |
+| Real HTTP authority | Invocation-only qualification, 95 raw rows and actual 503→200→503 | Real admission behavior, not formal semantic prevention. |
+| Selected logical KV bytes | One independent TP2 qualification with 56 receipts, 28 layers per rank, 56 MiB selected logical bytes, 201 raw rows and a successful nonce task | No full physical-KV equivalence, native-attention correctness, full-model quality, or performance claim. |
+| Native attention candidate | A later fresh cohort fails with HTTP500, 56 partial tensor receipts and zero native operator receipts; shared-metadata binding repair is prospective | The failed cohort provides no successful attention qualification. Its tensor records do not inherit the earlier cohort's successful HTTP/ACK result. |
 | H3 recovery | Frozen plan; no formal results | No rollback/recovery-rate claim. |
 | H4 overhead | Frozen plan; no formal results | No startup, throughput, or p99 overhead claim. |
 | Cross-runtime portability | No second inference runtime | The paper is a deep single-runtime study. A second runtime is required only for a cross-framework generality claim. |
 
+## Current evidence pointers and remaining research decision
+
+- H1: `paper/artifacts/h1-r5/` and the paper's generated H1 evidence;
+  nine formal starts, not nine successful
+  prevention outcomes.
+- HTTP authority: PR #144 and `experiments/exposure_gate/loopback_traffic.py`; formal semantic
+  observation remains rejected in `loopback_traffic._observation_sha`.
+- H2: `experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013/`;
+  PR #160 excludes the prediagnosed-report consumer; PR #192 corrects the stale
+  five-case detection claim.
+- Selected tensor bytes: PR #193,
+  `experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014/`,
+  and `verify_kv_selected_tensor_observation.py`. The full receiver payloads and
+  source-map replay support the finite claim; PR #194 binds the paper generator
+  to those inputs.
+- Attention failure: issue #66's frozen R1 inputs and complete original failed
+  archive. PR #197 repairs the shared-object binding for future cohorts; its
+  CPU regression is not hardware evidence. A later cohort must supply its own
+  HTTP, operator records, source closure, and final ACK.
+- Formal source policy: PR #196 does not register a semantic producer or prove
+  controller-generation/lease/worker-replacement coverage. The original H3/H4
+  matrices remain unqualified.
+
 The immediate hostile-review verdict is **no-go for a paper whose headline
-claim is false-effective prevention**. A defensible resubmission path is to
-implement the authority-owned traffic gate, rerun the H1 cell, and then test
-H2--H4. If prevention remains false, the work can still support an artifact or
+claim is false-effective prevention**. The next evidence must connect the real
+HTTP authority to authority-owned semantic effect obligations, rerun the H1
+cell under a new preregistration, and then complete H2--H4. If prevention remains
+false, the work can still support an artifact or
 experience-paper claim about a contract and evaluation method that exposes
 false effectiveness, but it cannot present the current runtime as enforcing
 the intended safety property.
