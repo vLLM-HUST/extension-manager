@@ -55,7 +55,8 @@ def test_strict_variant_preserves_exact_two_nonce_oracle_and_legacy_default():
 
 
 @pytest.mark.parametrize(
-    "mutation", ["system", "tail", "variant", "guided", "oracle", "budget", "ids"]
+    "mutation",
+    ["system", "tail", "variant", "guided", "oracle", "budget", "phase-budget", "ids"],
 )
 def test_rehashed_prompt_or_constraint_tampering_rejected(mutation):
     value = recipe(CPUFixtureTokenizer())
@@ -72,6 +73,8 @@ def test_rehashed_prompt_or_constraint_tampering_rejected(mutation):
         phase["response_oracle"]["expected"] = "one nonce"
     elif mutation == "budget":
         phase["minimum_completion_tokens"] = 1
+    elif mutation == "phase-budget":
+        phase["rpc_budget_s"] = 181
     else:
         phase["oracle_tokenization"]["token_ids"] = [1] * 31
         phase["oracle_tokenization"]["count"] = 31

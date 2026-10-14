@@ -17,7 +17,8 @@ expected token IDs, count, digest, source-bound tokenizer implementation and
 assets. These are input preconditions, not an observed model completion.
 
 The variant retains temperature 0, n=1, max_tokens=128, the minimum observed
-completion count of 32, stop finish reason, and the exact existing oracle.
+completion count of 32, stop finish reason, exactly 180 seconds of frozen RPC
+budget, and the exact existing oracle.
 It forbids extra payload keys such as guided decoding or regex constraints.
 There is no response rewriting. Omitting `prompt_variant` preserves the legacy
 single-message recipe and its archived validation semantics. Unknown variants,
@@ -50,6 +51,6 @@ The retained local CPU CLI records are under
 2700 output parent; a fresh owned 0700 second attempt exited 0 with actual
 padding count 1013, 1201 prompt IDs, and 74 expected output IDs. Both attempts
 retain their command, stdout, and stderr. The successful input recipe and
-hash inventory are included; model assets and installed Host source bytes are
-not included. This is a CPU source candidate record, not a portable hardware
+hash inventory are included; the exact executed generator source is retained as a postrun snapshot. Model
+assets and installed Host source bytes are not included. This is a CPU source candidate record, not a portable hardware
 qualification. Its sampled nonce is explicitly unavailable for hardware reuse.

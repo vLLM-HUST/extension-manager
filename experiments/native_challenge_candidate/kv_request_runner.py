@@ -127,6 +127,7 @@ def make_kv_recipe(
     require(prompt_variant in (None, STRICT_COPY), "unknown KV prompt variant")
     if prompt_variant is not None:
         require(materialized_row, "strict prompt requires opt-in KV v2")
+        require(rpc_budget_s == 180, "strict copy requires frozen RPC budget180")
     if rpc_budget_s is not None:
         require(materialized_row, "frozen RPC budget requires opt-in KV v2")
         validate_rpc_budget(rpc_budget_s)
@@ -252,6 +253,7 @@ def validate_kv(recipe, *, source_resolver=None):
             require(
                 recipe["schema"] == SCHEMA_V2, "strict prompt requires opt-in KV v2"
             )
+            require(phase.get("rpc_budget_s") == 180, "strict copy RPC budget changed")
         if "rpc_budget_s" in phase:
             require(
                 recipe["schema"] == SCHEMA_V2, "frozen RPC budget requires opt-in KV v2"
