@@ -256,11 +256,14 @@ reviewed external-authority case. It binds the registered Production Stack
 single-writer rule, the upstream vLLM Production Stack `ScaledObject` targeting
 `Deployment/default/vllm-llama3-deployment-vllm`, and pinned KEDA controller
 code that creates an HPA and updates the target scale subresource. For the
-frozen negative configuration, chart-side KEDA delegation is disabled, so the
-oracle and the later Manager provider check both reject the two replica writers.
-This raises the definite real-source subset from three to four cases (one admit,
-three rejects, zero observed errors). It is source-level pre-launch evidence,
-not a Kubernetes runtime or performance result. The upstream chart's explicit
+frozen negative configuration, chart-side KEDA delegation is disabled. The
+oracle diagnoses two replica writers, and the later Manager check rejects an
+input that already contains that diagnosis in `ownership_conflicts`. The
+scoring-input audit excludes this case from independent detection scores:
+without the supplied report, the provider returns unknown. The original
+oracle and prediction remain preserved as source-bound report-consumption
+evidence. They do not establish independent ownership-conflict detection, a
+Kubernetes runtime result, or performance. The upstream chart's explicit
 KEDA delegation mode is a different, potentially safe configuration and is not
 labeled as conflicting.
 
@@ -277,11 +280,12 @@ Run the portable checks with:
 ```bash
 python experiments/real_mod_composition/verify_h2_remaining_surfaces_oracle.py
 python experiments/real_mod_composition/verify_h2_remaining_surface_prediction.py
+PYTHONPATH=src python experiments/real_mod_composition/h2_scoring_input_audit.py
 ```
 
 ## Source-bound conditional scheduler pair
 
-`artifacts/h2-pipeline-bidkv-oracle-20261013/` adds a fifth definite case from
+`artifacts/h2-pipeline-bidkv-oracle-20261013/` adds an independently scoreable case from
 two independently developed active bundles.  The independent oracle was
 committed before the Manager collector existed.  It binds Pipeline
 Microbatch, BidKV, and vLLM-HUST `3e57b2f75c…`; that exact Host source exports
@@ -290,8 +294,11 @@ controllers and scheduler configuration fields.  The later Manager prediction
 admits the pair and projects distinct `--batch-admission-policy` and
 `--preemption-policy` options without a composition conflict.
 
-The definite source-bound subset is now n=5 (TP=2, TN=3, FP=0, FN=0).  It is
-still too small and surface-incomplete to finish H2.  This case stops at the
+After the report-consumption exclusion above, the independent definite
+source-bound subset is n=4 (TP=2, TN=2, FP=0, FN=0). The historical n=5
+oracle and predictions are preserved, but that total is not an independent
+detection score. The corrected subset remains too small and surface-incomplete
+to finish H2.  This case stops at the
 pre-launch boundary: the exact Pipeline Microbatch qualification cell is
 PP2+TP2 on four devices while this allocation has two.  No host was launched,
 neither policy was observed running, and no runtime or performance result is
