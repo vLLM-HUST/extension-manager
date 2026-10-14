@@ -1,0 +1,50 @@
+{
+  "schema": "ecpa-selected-KV-private-artifact-source-patch/v1",
+  "Host_base_commit": "b1f0f3e3adbf0ef6e95c666285354930a0a1cb4c",
+  "KV_base_commit": "81e094ddcb5c3f73d064cab5ed5dd5abf280ceb9",
+  "Ascend_base_commit": "fcbb827af84f793939bf03d01a1dfe0338a0164c",
+  "classification": "CPU_SOURCE_CANDIDATE_ONLY",
+  "formal_registration": false,
+  "GPU_qualification": null,
+  "attention_consumption": null,
+  "KV_files": [
+    {
+      "path": "src/vllm_ascend_kvcompress/methods/triattention/cache.py",
+      "preimage_sha256": "aa0300aa7e2b82e76dbfa8997e0021667f7c0465dc76de27635d92fe93912098",
+      "postimage_sha256": "f204a6400815cac1285e2445ea9e0784ed35b088b4370f6058f2e694077bbe15"
+    },
+    {
+      "path": "src/vllm_ascend_kvcompress/methods/triattention/method.py",
+      "preimage_sha256": "7887b2d9e7dc30806d718c7111ad806700c59b97149bc182de0631d4f0645e52",
+      "postimage_sha256": "61298768f63fb93e70526e202d3f1ead1b47829078c34580549d1c1d7d79c537"
+    },
+    {
+      "path": "src/vllm_ascend_kvcompress/native_tensor_witness.py",
+      "preimage_sha256": null,
+      "postimage_sha256": "a00d761a0bbee5dd1e7d627a5d8bf6a25b70ec23ffe5fe98eb754c747423c4e7"
+    }
+  ],
+  "Host_new_files": [
+    {
+      "path": "vllm/plugins/native_tensor_artifact_transport.py",
+      "source": "artifact_transport.py",
+      "sha256": "0f10fdf950dcf0dfbd1a87c81b494dcf7fd2a5c474dcdb47f0a3f9eb096c5cf8"
+    },
+    {
+      "path": "vllm/plugins/native_tensor_artifact_bootstrap.py",
+      "source": "artifact_bootstrap.py",
+      "sha256": "af5d9952577e9f0eb81c38a0655faa6f257d628aeceb547cd6ce69dfadc28f24"
+    },
+    {
+      "path": "vllm/plugins/native_tensor_witness.py",
+      "source": "witness.py",
+      "sha256": "a00d761a0bbee5dd1e7d627a5d8bf6a25b70ec23ffe5fe98eb754c747423c4e7"
+    }
+  ],
+  "Host_existing_collector_sha256": "6b3e76d2f49e2c1360a898d06912bd745a4bf799abafe71c1f360e5a8c8fb925",
+  "KV_plan_source_sha256": "81c4f5590955c807ddd2647c6b2a511e5dade177f7e478d5a34ecd27668a4cae",
+  "patch_sha256": {
+    "host-private-tensor-artifact.patch": "1ba046ad2f04ec0b886fd9c847535e8f5cee1a9b3b8544c1b71050556d9145a5",
+    "kv-private-tensor-artifact.patch": "7b1e38482e1717936500516642ed3bd98879ec45bfdac249d46fef7d1326b44e"
+  }
+}
