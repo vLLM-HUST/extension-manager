@@ -1,0 +1,42 @@
+{
+  "classification": "CPU_SOURCE_CANDIDATE_ONLY",
+  "torch_version": "2.13.0+cpu",
+  "candidate_module_sha256": "a00d761a0bbee5dd1e7d627a5d8bf6a25b70ec23ffe5fe98eb754c747423c4e7",
+  "source_binding_sha256": "67ee5a4f3f53bdb3be8c33230e20150c4bc5e66739489c36170b3c3783736ba7",
+  "executed_pinned_postimage_sha256": "f204a6400815cac1285e2445ea9e0784ed35b088b4370f6058f2e694077bbe15",
+  "results": [
+    {
+      "actual_pinned_cache_function": true,
+      "noncontiguous_pages": false,
+      "passed": true
+    },
+    {
+      "wrong_gather_then_same_wrong_copy_rejected": true,
+      "noncontiguous_pages": false
+    },
+    {
+      "actual_write_source_mutation_rejected": true,
+      "noncontiguous_pages": false
+    },
+    {
+      "actual_pinned_cache_function": true,
+      "noncontiguous_pages": true,
+      "passed": true
+    },
+    {
+      "wrong_gather_then_same_wrong_copy_rejected": true,
+      "noncontiguous_pages": true
+    },
+    {
+      "actual_write_source_mutation_rejected": true,
+      "noncontiguous_pages": true
+    },
+    {
+      "actual_callback_failure_propagated": true
+    }
+  ],
+  "formal_registration": false,
+  "GPU_tested": false,
+  "attention_consumption": null,
+  "full_model_quality": null
+}

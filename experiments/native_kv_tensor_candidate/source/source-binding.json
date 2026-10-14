@@ -1,0 +1,23 @@
+{
+  "schema": "ecpa-selected-KV-source-hook-candidate/v1",
+  "KV_base_commit": "81e094ddcb5c3f73d064cab5ed5dd5abf280ceb9",
+  "Host_base_commit": "b1f0f3e3adbf0ef6e95c666285354930a0a1cb4c",
+  "Ascend_base_commit": "fcbb827af84f793939bf03d01a1dfe0338a0164c",
+  "formal_registration": false,
+  "GPU_tested": false,
+  "source_files": [
+    {
+      "path": "src/vllm_ascend_kvcompress/methods/triattention/cache.py",
+      "snapshot": "cache.py.snapshot",
+      "preimage_sha256": "aa0300aa7e2b82e76dbfa8997e0021667f7c0465dc76de27635d92fe93912098",
+      "postimage_sha256": "f204a6400815cac1285e2445ea9e0784ed35b088b4370f6058f2e694077bbe15"
+    },
+    {
+      "path": "src/vllm_ascend_kvcompress/methods/triattention/method.py",
+      "snapshot": "method.py.snapshot",
+      "preimage_sha256": "7887b2d9e7dc30806d718c7111ad806700c59b97149bc182de0631d4f0645e52",
+      "postimage_sha256": "4775a72d53c32308536802ed06e1cf97d9421c5bb7412336cc5b67d03241f562"
+    }
+  ],
+  "candidate_module_sha256": "a00d761a0bbee5dd1e7d627a5d8bf6a25b70ec23ffe5fe98eb754c747423c4e7"
+}

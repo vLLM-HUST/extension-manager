@@ -1,0 +1,133 @@
+{
+  "schema": "ecpa-KV-attention-source-contact-audit/v1",
+  "classification": "CPU_SOURCE_CANDIDATE_ONLY",
+  "Host_commit": "b1f0f3e3adbf0ef6e95c666285354930a0a1cb4c",
+  "KV_commit": "81e094ddcb5c3f73d064cab5ed5dd5abf280ceb9",
+  "Ascend_commit": "fcbb827af84f793939bf03d01a1dfe0338a0164c",
+  "Ascend_wheel_sha256": "be5a69b8dc2dd9a77144657a6d394aa7079e95054aef54dda41f260b0af6eb86",
+  "source_files": [
+    {
+      "repository": "KV",
+      "path": "src/vllm_ascend_kvcompress/provider.py",
+      "snapshot": "kv-provider.py.snapshot",
+      "sha256": "094764eebfbc728c674ac4f33da01870bc03bfefbec44b2feef330d062a539c7",
+      "contacts": [
+        {
+          "name": "bind_model_runner",
+          "line": 144,
+          "end_line": 287
+        },
+        {
+          "name": "compress_scheduled_requests",
+          "line": 497,
+          "end_line": 627
+        }
+      ]
+    },
+    {
+      "repository": "KV",
+      "path": "src/vllm_ascend_kvcompress/plugin.py",
+      "snapshot": "kv-plugin.py.snapshot",
+      "sha256": "8011457f6ba6e580b8138ed32c3e5883d6993f2c92788906ead01cb17acb6517",
+      "contacts": [
+        {
+          "name": "update_states",
+          "line": 233,
+          "end_line": 240
+        },
+        {
+          "name": "sample_tokens",
+          "line": 260,
+          "end_line": 276
+        },
+        {
+          "name": "forward",
+          "line": 337,
+          "end_line": 347
+        }
+      ]
+    },
+    {
+      "repository": "Host",
+      "path": "vllm/v1/worker/gpu_model_runner.py",
+      "snapshot": "host-gpu_model_runner.py.snapshot",
+      "sha256": "b286cba03d7a5f842805e707fb274f343052ef4eff49268bb666845450af9643",
+      "contacts": [
+        {
+          "name": "_update_states",
+          "line": 1182,
+          "end_line": 1552
+        },
+        {
+          "name": "sample_tokens",
+          "line": 4476,
+          "end_line": 4731
+        }
+      ]
+    },
+    {
+      "repository": "Ascend",
+      "path": "vllm_ascend/attention/attention_v1.py",
+      "snapshot": "ascend-attention_v1.py.snapshot",
+      "sha256": "d5ba5d0e32be90397f82241977d5fc58a59d1fcc4413273bf2333e731de56352",
+      "contacts": [
+        {
+          "name": "_unpack_kv_cache",
+          "line": 621,
+          "end_line": 664
+        },
+        {
+          "name": "_get_fia_params",
+          "line": 901,
+          "end_line": 935
+        },
+        {
+          "name": "forward_fused_infer_attention",
+          "line": 937,
+          "end_line": 1081
+        },
+        {
+          "name": "forward_paged_attention",
+          "line": 1164,
+          "end_line": 1183
+        },
+        {
+          "name": "forward_impl",
+          "line": 1310,
+          "end_line": 1331
+        },
+        {
+          "name": "forward",
+          "line": 1333,
+          "end_line": 1394
+        },
+        {
+          "name": "forward",
+          "line": 1406,
+          "end_line": 1494
+        }
+      ]
+    },
+    {
+      "repository": "Ascend",
+      "path": "vllm_ascend/device/device_op.py",
+      "snapshot": "ascend-device_op.py.snapshot",
+      "sha256": "01ce13ea60e46f901ad69ad4c71e4be0e31cd69fbc56ebb7d898f957d5e54f67",
+      "contacts": [
+        {
+          "name": "npu_fused_infer_attention_score",
+          "line": 176,
+          "end_line": 225
+        },
+        {
+          "name": "npu_fused_infer_attention_score",
+          "line": 1054,
+          "end_line": 1084
+        }
+      ]
+    }
+  ],
+  "attention_consumption": null,
+  "GPU_qualification": null,
+  "formal_registration": false
+}
