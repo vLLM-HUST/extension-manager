@@ -122,8 +122,19 @@ def make_kv_recipe(
     materialized_row=False,
     rpc_budget_s=None,
     prompt_variant=None,
+    ack_time_policy=None,
 ):
     """No guessed prompt length: fail if actual local template cannot reach 1201."""
+    from .kv_time_policy import FINAL_PREFIX_POLICY
+
+    require(
+        ack_time_policy in (None, FINAL_PREFIX_POLICY), "unknown KV ACK time policy"
+    )
+    if ack_time_policy is not None:
+        require(
+            materialized_row and rpc_budget_s == 180,
+            "final-prefix policy requires KV v2 budget180",
+        )
     require(prompt_variant in (None, STRICT_COPY), "unknown KV prompt variant")
     if prompt_variant is not None:
         require(materialized_row, "strict prompt requires opt-in KV v2")
@@ -134,9 +145,23 @@ def make_kv_recipe(
     recipe = make_recipe(phase_targets, sources)
     recipe["schema"] = SCHEMA_V2 if materialized_row else SCHEMA
     recipe["request_scope"] = "KV-host-metadata-to-later-upload-only"
+    if ack_time_policy is not None:
+        from . import collector_client, kv_time_policy
+
+        for module in (collector_client, kv_time_policy):
+            path = Path(module.__file__).resolve()
+            if not any(x["path"] == str(path) for x in recipe["sources"]):
+                recipe["sources"].append(
+                    {"path": str(path), "sha256": sha(path.read_bytes())}
+                )
     require(tokenizer_sources, "tokenizer source bytes required")
     runtime_binding = runtime_tokenization_binding(tokenizer)
     for phase in recipe["phases"]:
+        if ack_time_policy is not None:
+            phase["ack_time_policy"] = ack_time_policy
+            phase["ack_client_source_sha256"] = sha(
+                Path(collector_client.__file__).read_bytes()
+            )
         if rpc_budget_s is not None:
             phase["rpc_budget_s"] = rpc_budget_s
         expected = ("ECPA-CHALLENGE-" + phase["challenge_nonce"] + " ") * 2
@@ -246,7 +271,29 @@ def validate_kv(recipe, *, source_resolver=None):
             len({p[key] for p in recipe["phases"]}) == len(recipe["phases"]),
             "KV phase/request/nonce reused",
         )
+    from .kv_time_policy import FINAL_PREFIX_POLICY
+
     for phase in recipe["phases"]:
+        policy = phase.get("ack_time_policy")
+        require(policy in (None, FINAL_PREFIX_POLICY), "unknown KV ACK time policy")
+        if policy is not None:
+            require(
+                recipe["schema"] == SCHEMA_V2 and phase.get("rpc_budget_s") == 180,
+                "final-prefix policy requires frozen KV v2 budget180",
+            )
+            require(
+                any(
+                    x["path"].endswith("/collector_client.py")
+                    and x["sha256"] == phase["ack_client_source_sha256"]
+                    for x in recipe["sources"]
+                ),
+                "ACK client source is not frozen",
+            )
+        else:
+            require(
+                "ack_client_source_sha256" not in phase,
+                "ACK policy source without policy",
+            )
         variant = phase.get("prompt_variant")
         require(variant in (None, STRICT_COPY), "unknown KV prompt variant")
         if variant is not None:
@@ -431,6 +478,9 @@ def main():
     parser.add_argument("--materialized-row-v2", action="store_true")
     parser.add_argument("--rpc-budget-s", type=float)
     parser.add_argument("--prompt-variant", choices=[STRICT_COPY])
+    from .kv_time_policy import FINAL_PREFIX_POLICY
+
+    parser.add_argument("--ack-time-policy", choices=[FINAL_PREFIX_POLICY])
     args = parser.parse_args()
     from transformers import AutoTokenizer
 
@@ -454,6 +504,7 @@ def main():
         materialized_row=args.materialized_row_v2,
         rpc_budget_s=args.rpc_budget_s,
         prompt_variant=args.prompt_variant,
+        ack_time_policy=args.ack_time_policy,
     )
     # The caller must establish explicit 0700, including cleared special bits.
     import os

@@ -227,23 +227,14 @@ def verify(root, expected_manifest_sha256, phase_id):
         and data["usage"]["completion_tokens"] >= 32,
         "KV raw model/nonce/prompt/decode response differs",
     )
-    external = phase["external_request_id"]
-    selected = [
-        e
-        for e in events[1:]
-        if e.get("phase", {}).get("external_request_id") == external
-    ]
-    for event in selected:
-        fact = json.loads(base64.b64decode(event["raw_base64"]))
-        require(
-            before["status"]["acknowledged_prefix"]["next_sequence"]
-            <= event["sequence"]
-            and metadata["sent_monotonic_ns"] <= fact["monotonic_ns"]
-            and event["accepted_monotonic_ns"] <= metadata["received_monotonic_ns"],
-            "KV source facts lie outside the observed HTTP request window",
-        )
+    from .kv_time_policy import verify_time_contract
+
+    time_contract = verify_time_contract(
+        phase, events, metadata, before, after, descriptor, next(iter(uid))
+    )
     return {
         **joined,
+        "ACK_time_contract": time_contract,
         "recorded_peer_and_HTTP_bindings_verified": True,
         "fresh_OS_peer_authentication_performed": False,
         "tokenization_reexecuted_from_archived_assets": False,

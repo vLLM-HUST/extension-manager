@@ -13,6 +13,7 @@ import re
 import socket
 import stat
 import struct
+import time
 from pathlib import Path
 
 from .request_runner import CLASSIFICATION, canonical, require, sha
@@ -91,6 +92,7 @@ def authenticate(socket_path, descriptor, spec_path, collector_source_path):
         == (archive["directory_device"], archive["directory_inode"]),
         "collector archive directory changed",
     )
+    dispatched_ns = time.monotonic_ns()
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
         channel.settimeout(5)
         channel.connect(str(socket_path))
@@ -110,6 +112,9 @@ def authenticate(socket_path, descriptor, spec_path, collector_source_path):
                 "collector status incomplete/oversized",
             )
             response += chunk
+    require(
+        identity(pid) == expected, "collector identity changed during authentication"
+    )
     status = json.loads(response)
     prefix = status.get("acknowledged_prefix")
     require(
@@ -120,7 +125,11 @@ def authenticate(socket_path, descriptor, spec_path, collector_source_path):
         and re.fullmatch(r"[0-9a-f]{64}", prefix["last_event_sha256"]) is not None,
         "durable acknowledged prefix missing",
     )
-    core_status = {k: v for k, v in status.items() if k != "acknowledged_prefix"}
+    core_status = {
+        k: v
+        for k, v in status.items()
+        if k not in {"acknowledged_prefix", "issued_monotonic_ns"}
+    }
     require(
         core_status
         == {
@@ -137,11 +146,19 @@ def authenticate(socket_path, descriptor, spec_path, collector_source_path):
         },
         "collector status differs from frozen independent launch",
     )
+    completed_ns = time.monotonic_ns()
     return {
         "status": status,
         "status_raw_sha256": sha(response),
         "status_raw_base64": base64.b64encode(response).decode("ascii"),
         "kernel_peer": {"pid": pid, "uid": uid},
+        "authentication_clock": {
+            "schema": "ecpa-native-status-authentication-clock/v1",
+            "dispatch_monotonic_ns": dispatched_ns,
+            "completed_monotonic_ns": completed_ns,
+            "client": identity(os.getpid()),
+            "client_source_sha256": sha(Path(__file__).read_bytes()),
+        },
         "formal_result": False,
     }
 

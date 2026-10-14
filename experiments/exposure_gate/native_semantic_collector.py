@@ -721,8 +721,11 @@ class Handler(socketserver.StreamRequestHandler):
                 collector = self.server.collector
                 metadata = Path(self.server.server_address).stat()
                 with collector.lock:
+                    os.fsync(collector.fd)
+                    issued_ns = time.monotonic_ns()
                     response = {
                         "schema": "ecpa-native-semantic-collector-status/v1",
+                        "issued_monotonic_ns": issued_ns,
                         "spec_sha256": collector.spec_sha256,
                         "collector_source_sha256": collector.source_sha256,
                         "collector": collector.collector_identity,

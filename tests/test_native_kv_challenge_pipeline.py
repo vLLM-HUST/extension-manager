@@ -19,6 +19,7 @@ from experiments.native_challenge_candidate import (
     collector_client,
     kv_archive,
     kv_request_runner,
+    kv_time_policy,
     request_runner,
 )
 
@@ -26,11 +27,15 @@ ROOT = Path(__file__).parents[1]
 SOURCE = Path(collector.__file__)
 
 
-@pytest.mark.parametrize("materialized", [False, True])
+@pytest.mark.parametrize(
+    "materialized,time_policy",
+    [(False, None), (True, None), (True, kv_time_policy.FINAL_PREFIX_POLICY)],
+)
 @pytest.mark.parametrize(
     "mode",
     [
         "complete",
+        "late-final-prefix",
         "generic-only",
         "preprojection-only",
         "wrong-destination",
@@ -40,11 +45,27 @@ SOURCE = Path(collector.__file__)
     ],
 )
 def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
-    tmp_path, mode, materialized
+    tmp_path, mode, materialized, time_policy
 ):
+    if mode == "late-final-prefix" and not materialized:
+        pytest.skip("late final prefix only tests KV v2 clocks")
+    successful = mode == "complete" or (
+        mode == "late-final-prefix" and time_policy is not None
+    )
     tmp_path.chmod(0o700)
     fixture_source = tmp_path / "fixture_peer.py"
     fixture_source.write_text(SENDER_CODE)
+    wrapper = tmp_path / "CPU_scheduler_wrapper.py"
+    wrapper.write_text("""import socket,struct,time
+from experiments.exposure_gate import native_semantic_collector as m
+original=m.Handler.handle
+def scheduled(self):
+ pid=struct.unpack('3i',self.request.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,12))[0]
+ if pid not in self.server.collector.senders:time.sleep(.15)
+ return original(self)
+m.Handler.handle=scheduled
+m.main()
+""")
     peers, processes = [], []
     env = dict(os.environ, PYTHONPATH=str(ROOT))
     server = None
@@ -158,7 +179,8 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                         emit_projection(index)
                 if mode == "wrong-destination":
                     rows = [{"group": 0, "row": 0, "blocks": list(range(20, 28))}]
-                for index in (1, 2, 1, 2):
+                deferred = []
+                for position, index in enumerate((1, 2, 1, 2)):
                     fact = {
                         "schema": collector.UPLOAD,
                         "plan_id": "CPU-fixture-plan",
@@ -175,7 +197,14 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                         "attention_consumed_observed_tensor": None,
                         "full_generation_quality": None,
                     }
-                    response_acks.append(command(run, index, fact))
+                    if mode == "late-final-prefix" and position >= 2:
+                        fact["monotonic_ns"] = time.monotonic_ns()
+                        fact["observed_after_barrier_monotonic_ns"] = (
+                            time.monotonic_ns()
+                        )
+                        deferred.append((index, fact))
+                    else:
+                        response_acks.append(command(run, index, fact))
                 if mode == "preprojection-only":
                     for index in (1, 2):
                         emit_projection(index)
@@ -198,9 +227,16 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                         }
                     ],
                 }
+                response_bytes = json.dumps(body).encode()
                 self.send_response(200)
+                self.send_header("Content-Length", str(len(response_bytes)))
                 self.end_headers()
-                self.wfile.write(json.dumps(body).encode())
+                self.wfile.write(response_bytes)
+                self.wfile.flush()
+                if deferred:
+                    time.sleep(0.03)
+                    for index, fact in deferred:
+                        response_acks.append(command(run, index, fact))
 
             def log_message(self, *args):
                 pass
@@ -224,7 +260,8 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                     "role": "CPU-fixture",
                     "path": str(fixture_source),
                     "sha256": collector.sha(fixture_source.read_bytes()),
-                }
+                },
+                {"path": str(wrapper), "sha256": collector.sha(wrapper.read_bytes())},
             ],
             CPUFixtureTokenizer(),
             [
@@ -235,6 +272,7 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
             ],
             materialized_row=materialized,
             rpc_budget_s=180 if materialized else None,
+            ack_time_policy=time_policy,
         )
         phase = recipe["phases"][0]
         spec = {
@@ -269,8 +307,11 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
         authority = subprocess.Popen(
             [
                 sys.executable,
-                "-m",
-                "experiments.exposure_gate.native_semantic_collector",
+                *(
+                    [str(wrapper)]
+                    if mode == "late-final-prefix"
+                    else ["-m", "experiments.exposure_gate.native_semantic_collector"]
+                ),
                 "--spec",
                 str(spec_path),
                 "--socket",
@@ -335,17 +376,18 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
             cwd=ROOT,
             timeout=30,
         )
-        assert cli.returncode == (0 if mode == "complete" else 1), cli.stderr
+        assert cli.returncode == (0 if successful else 1), cli.stderr
         result = json.loads(cli.stdout)
         assert all("ack" in response for response in response_acks)
         assert (result.get("KV_MOD_metadata_upload_binding_observed") is True) == (
-            mode == "complete"
+            successful
         )
         assert result["formal_result"] is False and result["hardware_result"] is False
         assert result["KV_MOD_semantic_obligation_satisfied"] is None
         assert result["full_objective_satisfied"] is None
         if mode in {
             "complete",
+            "late-final-prefix",
             "generic-only",
             "preprojection-only",
             "wrong-destination",
@@ -358,7 +400,7 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                 descriptor_path,
                 tmp_path / "archive",
             )
-            if mode == "complete":
+            if successful:
                 # Replay uses archived bytes after original fixture source is gone.
                 fixture_source.unlink()
                 portable = kv_archive.verify(
@@ -367,8 +409,32 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                 assert portable["KV_MOD_metadata_upload_binding_observed"] is True
                 assert portable["fresh_OS_peer_authentication_performed"] is False
                 assert portable["formal_result"] is False
+                if mode == "late-final-prefix":
+                    assert portable["ACK_time_contract"]["policy"] == time_policy
+                    events = [
+                        json.loads(x)
+                        for x in (tmp_path / "archive/native.jsonl")
+                        .read_bytes()
+                        .splitlines()
+                    ]
+                    metadata = json.loads(
+                        (tmp_path / "archive/response-metadata.json").read_bytes()
+                    )
+                    assert (
+                        sum(
+                            e.get("accepted_monotonic_ns", 0)
+                            > metadata["received_monotonic_ns"]
+                            for e in events
+                        )
+                        == 2
+                    )
                 # Integrity alone cannot promote a body with a wrong nonce.
+                original_response = (tmp_path / "archive/response.bin").read_bytes()
+                original_metadata = (
+                    tmp_path / "archive/response-metadata.json"
+                ).read_bytes()
                 manifest_path = tmp_path / "archive/manifest.json"
+                original_manifest = manifest_path.read_bytes()
                 manifest = json.loads(manifest_path.read_bytes())
                 body_path = tmp_path / "archive/response.bin"
                 body = json.loads(body_path.read_bytes())
@@ -389,6 +455,11 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                         request_runner.sha(manifest_path.read_bytes()),
                         "phase0",
                     )
+                (tmp_path / "archive/response.bin").write_bytes(original_response)
+                (tmp_path / "archive/response-metadata.json").write_bytes(
+                    original_metadata
+                )
+                manifest_path.write_bytes(original_manifest)
             else:
                 with pytest.raises(ValueError, match="KV|projection|destination"):
                     kv_archive.verify(
