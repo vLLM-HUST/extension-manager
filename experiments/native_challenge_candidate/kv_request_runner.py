@@ -10,7 +10,14 @@ import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .request_runner import CLASSIFICATION, canonical, make_recipe, require, sha
+from .request_runner import (
+    CLASSIFICATION,
+    canonical,
+    make_recipe,
+    require,
+    sha,
+    validate_rpc_budget,
+)
 
 SCHEMA = "ecpa-native-kv-challenge-campaign/v1"
 SCHEMA_V2 = "ecpa-native-kv-challenge-campaign/v2"
@@ -79,15 +86,26 @@ def runtime_tokenization_binding(tokenizer):
 
 
 def make_kv_recipe(
-    phase_targets, sources, tokenizer, tokenizer_sources, *, materialized_row=False
+    phase_targets,
+    sources,
+    tokenizer,
+    tokenizer_sources,
+    *,
+    materialized_row=False,
+    rpc_budget_s=None,
 ):
     """No guessed prompt length: fail if actual local template cannot reach 1201."""
+    if rpc_budget_s is not None:
+        require(materialized_row, "frozen RPC budget requires opt-in KV v2")
+        validate_rpc_budget(rpc_budget_s)
     recipe = make_recipe(phase_targets, sources)
     recipe["schema"] = SCHEMA_V2 if materialized_row else SCHEMA
     recipe["request_scope"] = "KV-host-metadata-to-later-upload-only"
     require(tokenizer_sources, "tokenizer source bytes required")
     runtime_binding = runtime_tokenization_binding(tokenizer)
     for phase in recipe["phases"]:
+        if rpc_budget_s is not None:
+            phase["rpc_budget_s"] = rpc_budget_s
         expected = ("ECPA-CHALLENGE-" + phase["challenge_nonce"] + " ") * 2
         expected = expected.strip()
         selected = None
@@ -171,6 +189,11 @@ def validate_kv(recipe, *, source_resolver=None):
             "KV phase/request/nonce reused",
         )
     for phase in recipe["phases"]:
+        if "rpc_budget_s" in phase:
+            require(
+                recipe["schema"] == SCHEMA_V2, "frozen RPC budget requires opt-in KV v2"
+            )
+            validate_rpc_budget(phase["rpc_budget_s"])
         client, nonce = phase["client_request_id"], phase["challenge_nonce"]
         require(
             re.fullmatch(r"[a-zA-Z0-9._-]{1,80}", phase["phase_id"]) is not None
@@ -299,6 +322,7 @@ def main():
     parser.add_argument("--model-directory", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--materialized-row-v2", action="store_true")
+    parser.add_argument("--rpc-budget-s", type=float)
     args = parser.parse_args()
     from transformers import AutoTokenizer
 
@@ -320,6 +344,7 @@ def main():
         tokenizer,
         assets,
         materialized_row=args.materialized_row_v2,
+        rpc_budget_s=args.rpc_budget_s,
     )
     # The caller must establish explicit 0700, including cleared special bits.
     import os

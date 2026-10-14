@@ -200,7 +200,12 @@ def verify(root, expected_manifest_sha256, phase_id):
     metadata = json.loads((root / "response-metadata.json").read_bytes())
     body = (root / "response.bin").read_bytes()
     require(
-        metadata["schema"] == "ecpa-observed-KV-HTTP-response/v1"
+        metadata["schema"]
+        == (
+            "ecpa-observed-KV-HTTP-response/v2"
+            if "rpc_budget_s" in phase
+            else "ecpa-observed-KV-HTTP-response/v1"
+        )
         and metadata["status"] == 200
         and metadata["url"] == phase["url"]
         and metadata["request_sha256"] == sha((root / "request.bin").read_bytes())
@@ -210,6 +215,7 @@ def verify(root, expected_manifest_sha256, phase_id):
         and metadata["client"]["boot_id"] == descriptor["collector"]["boot_id"],
         "KV observed HTTP binding differs",
     )
+    request_runner.verify_rpc_budget(phase, metadata)
     data = json.loads(body)
     require(
         data["id"] == phase["expected_response_id"]
