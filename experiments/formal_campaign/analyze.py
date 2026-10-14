@@ -17,6 +17,7 @@ from typing import Any
 import jsonschema
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from experiments.formal_campaign import source_provenance  # noqa: E402
 from experiments.formal_campaign.h3_authority_chain import (  # noqa: E402
     snapshot_digest,
     verify_native_recovery,
@@ -226,7 +227,9 @@ def _verify_h4_receipt(
     record: dict[str, Any], receipt_path: Path, campaign_spec: dict[str, Any]
 ) -> dict[str, Any]:
     receipt = _load_object(receipt_path)
-    schema = _load_object(ROOT / "h4-deployment-receipt.schema.json")
+    schema = _load_object(
+        ROOT / source_provenance.receipt_schema(receipt, campaign_spec, "h4")
+    )
     jsonschema.Draft7Validator.check_schema(schema)
     errors = sorted(
         jsonschema.Draft7Validator(schema).iter_errors(receipt),
@@ -276,7 +279,9 @@ def _verify_h3_receipt(
     record: dict[str, Any], receipt_path: Path, campaign_spec: dict[str, Any]
 ) -> dict[str, Any]:
     receipt = _load_object(receipt_path)
-    errors = _schema_errors(receipt, "h3-deployment-receipt.schema.json")
+    errors = _schema_errors(
+        receipt, source_provenance.receipt_schema(receipt, campaign_spec, "h3")
+    )
     if errors:
         raise ValueError(
             f"{record['start_id']} H3 deployment receipt: {errors[0].message}"

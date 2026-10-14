@@ -29,6 +29,8 @@ from analyze import (
 )
 from jsonschema import Draft7Validator
 
+from experiments.formal_campaign import source_provenance
+
 PHASES = (
     "discovery",
     "validation",
@@ -86,11 +88,12 @@ def validate_receipt(
     receipt: dict[str, Any], campaign: dict[str, Any], receipt_path: Path
 ) -> None:
     schema = load_object(
-        Path(__file__).resolve().parent / "h4-deployment-receipt.schema.json"
+        Path(__file__).resolve().parent
+        / source_provenance.receipt_schema(receipt, campaign, "h4")
     )
     Draft7Validator(schema).validate(receipt)
     required = {
-        "schema": "ecpa-h4-deployment-receipt/v1",
+        "schema": receipt["schema"],
         "registration_state": "registered",
         "admissible": True,
         "evidence_mode": "formal-real",

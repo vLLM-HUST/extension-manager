@@ -26,6 +26,7 @@ from h3_phase_barrier import read_native_recovery, wait_native_prepare
 from h3_registration import canonical, command_digest
 
 from experiments.exposure_gate.loopback_traffic import read_traffic_journal
+from experiments.formal_campaign import source_provenance
 
 ROOT = Path(__file__).resolve().parent
 
@@ -196,7 +197,9 @@ def main() -> int:
     schema = load(ROOT / "h3-campaign.schema.json")
     jsonschema.Draft7Validator(schema).validate(campaign)
     receipt = load(args.deployment_receipt)
-    receipt_schema = load(ROOT / "h3-deployment-receipt.schema.json")
+    receipt_schema = load(
+        ROOT / source_provenance.receipt_schema(receipt, campaign, "h3")
+    )
     jsonschema.Draft7Validator(receipt_schema).validate(receipt)
     campaign_sha = digest(args.campaign_spec)
     if receipt["campaign_sha256"] != campaign_sha:

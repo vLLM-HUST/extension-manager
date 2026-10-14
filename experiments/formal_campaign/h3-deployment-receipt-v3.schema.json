@@ -1,0 +1,252 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h3-deployment-receipt/v3",
+  "type": "object",
+  "required": [
+    "schema",
+    "registration_state",
+    "admissible",
+    "evidence_mode",
+    "campaign_sha256",
+    "authority_registration_sha256",
+    "host_source_admission_sha256",
+    "host_source_admission",
+    "campaign_id",
+    "cell_id",
+    "arm_command_digests",
+    "fault_command_digest",
+    "state_command_digest",
+    "cleanup_command_digest",
+    "manager_commit",
+    "host_commit",
+    "accelerator_commit",
+    "plugin_commits",
+    "model_digest",
+    "workload_digest",
+    "hardware",
+    "topology",
+    "authority",
+    "issuer",
+    "source_provenance_policy",
+    "source_provenance_observation",
+    "source_provenance_protocol_binding"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ecpa-h3-deployment-receipt/v3"
+    },
+    "registration_state": {
+      "const": "registered"
+    },
+    "admissible": {
+      "const": true
+    },
+    "evidence_mode": {
+      "const": "formal-real"
+    },
+    "campaign_sha256": {
+      "$ref": "#/definitions/digest"
+    },
+    "authority_registration_sha256": {
+      "$ref": "#/definitions/digest"
+    },
+    "host_source_admission_sha256": {
+      "$ref": "#/definitions/digest"
+    },
+    "host_source_admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "repository",
+        "remote",
+        "candidate_commit",
+        "main_commit",
+        "candidate_reachable",
+        "candidate_merged_to_main"
+      ],
+      "properties": {
+        "schema": {
+          "const": "ecpa-host-source-admission/v1"
+        },
+        "repository": {
+          "const": "vLLM-HUST/vllm-hust"
+        },
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidate_commit": {
+          "$ref": "#/definitions/commit"
+        },
+        "main_commit": {
+          "$ref": "#/definitions/commit"
+        },
+        "candidate_reachable": {
+          "const": true
+        },
+        "candidate_merged_to_main": {
+          "const": true
+        }
+      }
+    },
+    "campaign_id": {
+      "const": "H3-transactional-recovery-v1"
+    },
+    "cell_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "arm_command_digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vanilla-vllm-entry-points",
+        "manual-integration",
+        "ecpa"
+      ],
+      "properties": {
+        "vanilla-vllm-entry-points": {
+          "$ref": "#/definitions/digest"
+        },
+        "manual-integration": {
+          "$ref": "#/definitions/digest"
+        },
+        "ecpa": {
+          "$ref": "#/definitions/digest"
+        }
+      }
+    },
+    "fault_command_digest": {
+      "$ref": "#/definitions/digest"
+    },
+    "state_command_digest": {
+      "$ref": "#/definitions/digest"
+    },
+    "cleanup_command_digest": {
+      "$ref": "#/definitions/digest"
+    },
+    "manager_commit": {
+      "$ref": "#/definitions/commit"
+    },
+    "host_commit": {
+      "$ref": "#/definitions/commit"
+    },
+    "accelerator_commit": {
+      "$ref": "#/definitions/commit"
+    },
+    "plugin_commits": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/definitions/commit"
+      }
+    },
+    "model_digest": {
+      "$ref": "#/definitions/digest"
+    },
+    "workload_digest": {
+      "$ref": "#/definitions/digest"
+    },
+    "hardware": {
+      "type": "string",
+      "minLength": 1
+    },
+    "topology": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "parent_process_registration",
+        "exposure_gate",
+        "endpoint",
+        "start_proxy_registration_digests"
+      ],
+      "properties": {
+        "kind": {
+          "const": "host-plus-independent-loopback-proxy"
+        },
+        "parent_process_registration": {
+          "const": true
+        },
+        "exposure_gate": {
+          "const": true
+        },
+        "endpoint": {
+          "type": "string",
+          "pattern": "^http://127\\.0\\.0\\.1:[0-9]+(?:/.*)?$"
+        },
+        "start_proxy_registration_digests": {
+          "type": "object",
+          "minProperties": 9,
+          "maxProperties": 9,
+          "additionalProperties": {
+            "$ref": "#/definitions/digest"
+          }
+        }
+      }
+    },
+    "issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "manager_repository",
+        "manager_remote",
+        "host_repository",
+        "host_remote",
+        "manager_main_commit",
+        "host_main_commit"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ecpa-h3-registration-transition/v1"
+        },
+        "manager_repository": {
+          "const": "vLLM-HUST/extension-manager"
+        },
+        "manager_remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "host_repository": {
+          "const": "vLLM-HUST/vllm-hust"
+        },
+        "host_remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manager_main_commit": {
+          "$ref": "#/definitions/commit"
+        },
+        "host_main_commit": {
+          "$ref": "#/definitions/commit"
+        }
+      }
+    },
+    "source_provenance_policy": {
+      "type": "object"
+    },
+    "source_provenance_observation": {
+      "type": "object"
+    },
+    "source_provenance_protocol_binding": {
+      "type": "object"
+    }
+  },
+  "definitions": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    }
+  },
+  "additionalProperties": false
+}
