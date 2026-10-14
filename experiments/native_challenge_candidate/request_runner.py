@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -245,6 +246,37 @@ def require_phase_registration(
     )
 
 
+def validate_rpc_budget(value):
+    require(
+        type(value) in {int, float} and 0 < value <= 600 and math.isfinite(value),
+        "RPC budget must be finite positive seconds <=600",
+    )
+    return value
+
+
+def verify_rpc_budget(phase, metadata):
+    """Socket timeout plus measured HTTP elapsed gate, never a hard wall deadline."""
+    if "rpc_budget_s" not in phase:
+        return
+    budget = validate_rpc_budget(phase["rpc_budget_s"])
+    sent, received = (
+        metadata.get("sent_monotonic_ns"),
+        metadata.get("received_monotonic_ns"),
+    )
+    require(
+        metadata.get("schema") == "ecpa-observed-KV-HTTP-response/v2"
+        and type(metadata.get("rpc_budget_s")) in {int, float}
+        and metadata.get("rpc_budget_s") == budget
+        and metadata.get("rpc_budget_semantics")
+        == "socket-timeout-and-observed-HTTP-elapsed-gate"
+        and type(sent) is int
+        and type(received) is int
+        and 0 < sent <= received
+        and received - sent <= budget * 1_000_000_000,
+        "observed HTTP elapsed exceeds frozen RPC budget or receipt differs",
+    )
+
+
 def run_rpc_only(recipe, phase_id, output, timeout=30):
     """Execute one request, never replay an ambiguously dispatched challenge.
 
@@ -253,6 +285,9 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
     """
     validate(recipe)
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
+    budget = phase.get("rpc_budget_s", timeout)
+    if "rpc_budget_s" in phase:
+        validate_rpc_budget(budget)
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     raw_request = canonical(phase["payload"])
     (output / "request.bin").write_bytes(raw_request)
@@ -286,13 +321,16 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
             KV_MOD_semantic_obligation_satisfied=None,
             GPU_semantic_qualification=None,
         )
+    sent_ns = None
+    received_ns = None
     try:
         request = urllib.request.Request(
             phase["url"], data=raw_request, headers=phase["headers"]
         )
         sent_ns = time.monotonic_ns()
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urllib.request.urlopen(request, timeout=budget) as response:
             body, status = response.read(), response.status
+        received_ns = time.monotonic_ns()
         (output / "response.bin").write_bytes(body)
         if recipe["schema"] in {
             "ecpa-native-kv-challenge-campaign/v1",
@@ -300,22 +338,26 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
         }:
             from .collector_client import identity
 
-            (output / "response-metadata.json").write_bytes(
-                canonical(
-                    {
-                        "schema": "ecpa-observed-KV-HTTP-response/v1",
-                        "status": status,
-                        "headers": list(response.headers.items()),
-                        "url": response.geturl(),
-                        "request_sha256": sha(raw_request),
-                        "response_sha256": sha(body),
-                        "sent_monotonic_ns": sent_ns,
-                        "received_monotonic_ns": time.monotonic_ns(),
-                        "client": identity(os.getpid()),
-                        "client_source_sha256": sha(Path(__file__).read_bytes()),
-                    }
+            metadata = {
+                "schema": "ecpa-observed-KV-HTTP-response/v1",
+                "status": status,
+                "headers": list(response.headers.items()),
+                "url": response.geturl(),
+                "request_sha256": sha(raw_request),
+                "response_sha256": sha(body),
+                "sent_monotonic_ns": sent_ns,
+                "received_monotonic_ns": received_ns,
+                "client": identity(os.getpid()),
+                "client_source_sha256": sha(Path(__file__).read_bytes()),
+            }
+            if "rpc_budget_s" in phase:
+                metadata.update(
+                    schema="ecpa-observed-KV-HTTP-response/v2",
+                    rpc_budget_s=budget,
+                    rpc_budget_semantics="socket-timeout-and-observed-HTTP-elapsed-gate",
                 )
-            )
+            (output / "response-metadata.json").write_bytes(canonical(metadata))
+            verify_rpc_budget(phase, metadata)
         result["status"] = status
         result["response_sha256"] = sha(body)
         data = json.loads(body)
@@ -356,6 +398,16 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
         result.update(status=exc.code, response_sha256=sha(body), failure=str(exc))
     except (OSError, ValueError, KeyError, IndexError) as exc:
         result["failure"] = str(exc)
+    if sent_ns is not None:
+        completed_ns = received_ns if received_ns is not None else time.monotonic_ns()
+        result.update(
+            rpc_dispatch_monotonic_ns=sent_ns,
+            rpc_completed_monotonic_ns=completed_ns,
+            rpc_budget_s=budget,
+            rpc_budget_semantics="socket-timeout-and-observed-HTTP-elapsed-gate",
+            rpc_budget_from_frozen_phase="rpc_budget_s" in phase,
+            rpc_elapsed_gate_passed=completed_ns - sent_ns <= budget * 1_000_000_000,
+        )
     (output / "result.json").write_bytes(canonical(result))
     return result
 

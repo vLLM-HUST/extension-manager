@@ -234,6 +234,7 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                 }
             ],
             materialized_row=materialized,
+            rpc_budget_s=180 if materialized else None,
         )
         phase = recipe["phases"][0]
         spec = {
