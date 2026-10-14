@@ -424,3 +424,162 @@ def test_generated_exact_patch_applies_and_compiles(tmp_path):
             if path.startswith(prefix):
                 assert (root / path).read_text() == text
                 compile(text, path, "exec")
+
+
+def pinned_shared_layer_metadata(metadata, layers):
+    """Execute the exact pinned Ascend builder's actual aliasing assignment."""
+    _, patched = build_source_patch.patched()
+    tree = ast.parse(patched["vllm_ascend/worker/model_runner_v1.py"])
+    loops = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.For)
+        and ast.unparse(node.target) == "layer_name"
+        and ast.unparse(node.iter) == "attn_group.layer_names"
+        and len(node.body) == 1
+        and ast.unparse(node.body[0])
+        == "attn_metadata_dict[layer_name] = attn_metadata_i"
+    ]
+    assert len(loops) == 1, "pinned native metadata aliasing source changed"
+    code = compile(
+        ast.fix_missing_locations(ast.Module(body=loops, type_ignores=[])),
+        "pinned-Ascend-shared-metadata-builder",
+        "exec",
+    )
+    env = dict(
+        attn_group=NS(layer_names=layers),
+        attn_metadata_dict={},
+        attn_metadata_i=metadata,
+    )
+    exec(code, env)
+    return env["attn_metadata_dict"]
+
+
+def pinned_fia(c):
+    _, patched = build_source_patch.patched()
+    env = dict(
+        device_utils=NS(FIA_TND_LARGE_HEAD_FALLBACK_HEAD_SIZE=512),
+        torch_npu=NS(npu_fused_infer_attention_score=c.native),
+    )
+    exec(
+        extract(
+            patched["vllm_ascend/device/device_op.py"],
+            "npu_fused_infer_attention_score",
+            "BaseDeviceAdaptor",
+        ),
+        env,
+    )
+    return env["npu_fused_infer_attention_score"](
+        None,
+        query=c.query,
+        key=c.tensors["K"],
+        value=c.tensors["V"],
+        attn_metadata=c.metadata,
+        key_cache=c.tensors["K"],
+        value_cache=c.tensors["V"],
+        current_key=None,
+        current_value=None,
+        num_heads=14,
+        num_key_value_heads=2,
+        head_size=128,
+        scale=0.125,
+        is_prefill_no_cache=False,
+        native_layer_name=c.layer,
+        block_table=c.metadata.block_tables,
+        actual_seq_lengths_kv=c.metadata.seq_lens_list,
+    )
+
+
+@pytest.mark.parametrize("rank", [0, 1])
+def test_actual_shared_metadata_builder_keeps_28_distinct_layer_edges(context, rank):
+    c = context
+    # NPU fields/native callbacks are explicit CPU fixtures, not device evidence.
+    c.observer._materialized.clear()
+    c.observer._scope()["process"]["ordinal"] = rank
+    c.fact["native_producer"]["ordinal"] = rank
+    layers = [f"model.layers.{index}.self_attn.attn" for index in range(28)]
+    facts = {}
+    for index, layer in enumerate(layers):
+        current = copy.deepcopy(c.fact)
+        current["binding"].update(layer_name=layer, layer_index=index)
+        ack = copy.deepcopy(c.ack)
+        ack["sequence"] = index + 4
+        ack["event_sha256"] = c.observer.sha(f"CPU-typed-{rank}-{index}".encode())
+        ack["ack_sha256"] = c.observer.sha(
+            c.observer.canonical(
+                {key: value for key, value in ack.items() if key != "ack_sha256"}
+            )
+        )
+        c.observer.remember_acknowledged_materialization(current, ack)
+        facts[layer] = current
+    mapping = pinned_shared_layer_metadata(c.metadata, layers)
+    assert len(mapping) == 28 and len({id(value) for value in mapping.values()}) == 1
+    c.observer.bind_actual_input_batch(c.runner, mapping, eager=True)
+    assert len(c.observer._metadata) == 28
+    for layer in layers:
+        c.layer, c.fact = layer, facts[layer]
+        assert pinned_fia(c) == "CPU_NATIVE_SENTINEL"
+        assert c.observer.verify_observation(c.events[-1], c.fact)[
+            "source_argument_completion_relation"
+        ]
+        assert c.events[-1]["layer_name"] == layer
+    assert len(c.events) == len(c.calls) == len(c.completions) == 28
+    assert {event["layer_index"] for event in c.events} == set(range(28))
+    assert all(event["attention_consumption"] is None for event in c.events)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["unknown_layer", "foreign_object", "retained_object_corrupt", "late_source_clock"],
+)
+def test_shared_metadata_binding_cannot_bypass_wrong_layer_object_clock(
+    context, mutation
+):
+    c = context
+    mapping = pinned_shared_layer_metadata(c.metadata, [c.layer])
+    c.observer.bind_actual_input_batch(c.runner, mapping, eager=True)
+    if mutation == "unknown_layer":
+        c.layer = "CPU-unregistered-layer"
+    elif mutation == "foreign_object":
+        c.metadata = copy.deepcopy(c.metadata)
+    elif mutation == "retained_object_corrupt":
+        c.observer._metadata[(id(c.metadata), c.layer)]["object"] = copy.deepcopy(
+            c.metadata
+        )
+    else:
+        c.observer._metadata[(id(c.metadata), c.layer)]["bound_monotonic_ns"] = (
+            time.monotonic_ns() + 10**12
+        )
+    with pytest.raises(ValueError, match="binding|chronology"):
+        pinned_fia(c)
+    assert not c.events
+
+
+def test_host_only_shared_metadata_patch_applies_exactly(tmp_path):
+    import subprocess
+
+    from experiments.native_attention_candidate import (
+        build_shared_metadata_patch as fix,
+    )
+
+    before, after = fix.source_pair()
+    manifest = fix.emit(tmp_path / "patch")
+    module = tmp_path / "host" / fix.MODULE
+    module.parent.mkdir(parents=True)
+    module.write_bytes(before)
+    subprocess.run(
+        ["git", "apply", "--check", str(tmp_path / "patch/host.patch")],
+        cwd=tmp_path / "host",
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "apply", str(tmp_path / "patch/host.patch")],
+        cwd=tmp_path / "host",
+        check=True,
+        capture_output=True,
+    )
+    assert module.read_bytes() == after
+    assert manifest["Ascend_source_changed"] is False
+    assert manifest["native_ELF_rebuild_required"] is False
+    assert manifest["attention_consumption"] is None

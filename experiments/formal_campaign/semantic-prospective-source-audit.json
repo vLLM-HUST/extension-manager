@@ -2408,7 +2408,7 @@
     "experiments/formal_campaign/source_provenance.py": "7e3eb2c6f2599a90005baad60daaeb97aa18b8c5a54bfd57ea9d53092355a388",
     "experiments/native_attention_candidate/attention_consumer.py": "d5b8e9ad45aea89fc3b98852a2905fa73b2e278fee114519f813b3c23664a090",
     "experiments/native_attention_candidate/collector.py": "f86ec7afdcff221c56cbdf557e56f2339ea8c45ebf02ae150139224be0216501",
-    "experiments/native_attention_candidate/operator_observer.py": "4e90663b028526d16a938b85f520e32f73eb5d62d2e87dfea78a28ad554a5d8a",
+    "experiments/native_attention_candidate/operator_observer.py": "bb11fd7d71026fee0bc94bf329f762f3b5de56b6f5528dba96ffc908fc549c1f",
     "src/vllm_hust_ext/contract_compiler.py": "7150d26de36ed1b2aad08715476bee6c998366f053122d84367642aeb1b70e8a",
     "src/vllm_hust_ext/formal_host_observer.py": "9938f2778e5302773a9d20cdd26216c1f36ed7b5c57f26d7286a69708e13188c",
     "src/vllm_hust_ext/host_observer.py": "f74fe69a9107127596435f8c3724ea05af3f91b54fd007827533b5028af35116"
