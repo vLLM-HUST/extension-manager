@@ -472,6 +472,18 @@ def execute_with_collector(
         joined = read_verified_phase(
             spec_path, journal_path, phase, after, require_kv=kv
         )
+        if kv:
+            from .kv_time_policy import verify_time_contract
+
+            events = [
+                json.loads(line) for line in journal_path.read_bytes().splitlines()
+            ]
+            metadata = json.loads((output / "response-metadata.json").read_bytes())
+            uid = {sender["peer_uid"] for sender in collector_spec["senders"]}
+            require(len(uid) == 1, "ambiguous collector peer UID")
+            joined["ACK_time_contract"] = verify_time_contract(
+                phase, events, metadata, before, after, descriptor, next(iter(uid))
+            )
         (output / "native-transport-join.json").write_bytes(canonical(joined))
         result["native_request_upload_transport_join"] = True
         result["native_join_status"] = "authenticated-durable-transport-only"
