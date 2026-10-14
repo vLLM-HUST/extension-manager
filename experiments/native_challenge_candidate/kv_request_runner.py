@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 from .request_runner import CLASSIFICATION, canonical, make_recipe, require, sha
 
 SCHEMA = "ecpa-native-kv-challenge-campaign/v1"
+SCHEMA_V2 = "ecpa-native-kv-challenge-campaign/v2"
 REQUIREMENTS = {
     "attention_group": 0,
     "semantic_anchor": 1201,
@@ -77,10 +78,12 @@ def runtime_tokenization_binding(tokenizer):
     }
 
 
-def make_kv_recipe(phase_targets, sources, tokenizer, tokenizer_sources):
+def make_kv_recipe(
+    phase_targets, sources, tokenizer, tokenizer_sources, *, materialized_row=False
+):
     """No guessed prompt length: fail if actual local template cannot reach 1201."""
     recipe = make_recipe(phase_targets, sources)
-    recipe["schema"] = SCHEMA
+    recipe["schema"] = SCHEMA_V2 if materialized_row else SCHEMA
     recipe["request_scope"] = "KV-host-metadata-to-later-upload-only"
     require(tokenizer_sources, "tokenizer source bytes required")
     runtime_binding = runtime_tokenization_binding(tokenizer)
@@ -130,7 +133,7 @@ def make_kv_recipe(phase_targets, sources, tokenizer, tokenizer_sources):
 
 def validate_kv(recipe, *, source_resolver=None):
     require(
-        recipe["schema"] == SCHEMA
+        recipe["schema"] in {SCHEMA, SCHEMA_V2}
         and recipe["classification"] == CLASSIFICATION
         and recipe["formal_result"] is False
         and recipe["native_ids_preregistered_before_launch"] is False
@@ -295,6 +298,7 @@ def main():
     parser.add_argument("--configuration", type=Path, required=True)
     parser.add_argument("--model-directory", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--materialized-row-v2", action="store_true")
     args = parser.parse_args()
     from transformers import AutoTokenizer
 
@@ -310,7 +314,13 @@ def main():
         directory, local_files_only=True, trust_remote_code=False
     )
     targets = [(p["phase_id"], p["url"], p["model"]) for p in config["phase_targets"]]
-    recipe = make_kv_recipe(targets, config["sources"], tokenizer, assets)
+    recipe = make_kv_recipe(
+        targets,
+        config["sources"],
+        tokenizer,
+        assets,
+        materialized_row=args.materialized_row_v2,
+    )
     # The caller must establish explicit 0700, including cleared special bits.
     import os
     import stat
