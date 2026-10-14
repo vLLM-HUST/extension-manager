@@ -31,6 +31,34 @@ REQUIREMENTS = {
 }
 
 
+STRICT_COPY = "strict-system-copy-v1"
+STRICT_SYSTEM = (
+    "You are a deterministic text-copying assistant. Copy the entire text inside "
+    "<answer>...</answer> in the user message exactly. Output only that text, "
+    "preserving its single space. Do not explain, summarize, add labels, or stop "
+    "after its first part."
+)
+
+
+def strict_copy_messages(expected, padding):
+    require(type(padding) is int and 0 <= padding < 2402, "strict padding invalid")
+    return [
+        {"role": "system", "content": STRICT_SYSTEM},
+        {
+            "role": "user",
+            "content": (
+                "Ignore this padding:\n"
+                + "pad " * padding
+                + "\nCopy both space-separated strings below, verbatim. Your complete "
+                "reply must contain both strings and nothing else.\n<answer>"
+                + expected
+                + "</answer>\nReturn the entire contents of <answer> exactly, "
+                "including both strings separated by one space."
+            ),
+        },
+    ]
+
+
 def actual_chat_ids(tokenizer, messages):
     ids = tokenizer.apply_chat_template(
         messages,
@@ -93,8 +121,13 @@ def make_kv_recipe(
     *,
     materialized_row=False,
     rpc_budget_s=None,
+    prompt_variant=None,
 ):
     """No guessed prompt length: fail if actual local template cannot reach 1201."""
+    require(prompt_variant in (None, STRICT_COPY), "unknown KV prompt variant")
+    if prompt_variant is not None:
+        require(materialized_row, "strict prompt requires opt-in KV v2")
+        require(rpc_budget_s == 180, "strict copy requires frozen RPC budget180")
     if rpc_budget_s is not None:
         require(materialized_row, "frozen RPC budget requires opt-in KV v2")
         validate_rpc_budget(rpc_budget_s)
@@ -108,6 +141,25 @@ def make_kv_recipe(
             phase["rpc_budget_s"] = rpc_budget_s
         expected = ("ECPA-CHALLENGE-" + phase["challenge_nonce"] + " ") * 2
         expected = expected.strip()
+        if prompt_variant == STRICT_COPY:
+            expected_ids = tokenizer.encode(expected, add_special_tokens=False)
+            require(
+                isinstance(expected_ids, list)
+                and all(type(x) is int and x >= 0 for x in expected_ids)
+                and 32 <= len(expected_ids) <= 128,
+                "single-sampled strict oracle cannot satisfy frozen decode bounds",
+            )
+            phase["prompt_variant"] = STRICT_COPY
+            phase["oracle_tokenization"] = {
+                "schema": "ecpa-strict-copy-oracle-tokenization/v1",
+                "token_ids": expected_ids,
+                "token_ids_sha256": sha(canonical(expected_ids)),
+                "count": len(expected_ids),
+                "add_special_tokens": False,
+                "sample_policy": (
+                    "one-fresh-nonce-cpu-reject-if-short-no-runtime-retuning"
+                ),
+            }
         selected = None
         for padding in range(2402):
             content = (
@@ -116,10 +168,16 @@ def make_kv_recipe(
                 + "\nReply exactly: "
                 + expected
             )
-            messages = [{"role": "user", "content": content}]
+            messages = (
+                strict_copy_messages(expected, padding)
+                if prompt_variant == STRICT_COPY
+                else [{"role": "user", "content": content}]
+            )
             ids = actual_chat_ids(tokenizer, messages)
             if len(ids) == 1201:
                 selected = messages, ids
+                if prompt_variant == STRICT_COPY:
+                    phase["padding_count"] = padding
                 break
         require(
             selected is not None, "actual tokenizer cannot freeze exact 1201 prompt"
@@ -189,6 +247,13 @@ def validate_kv(recipe, *, source_resolver=None):
             "KV phase/request/nonce reused",
         )
     for phase in recipe["phases"]:
+        variant = phase.get("prompt_variant")
+        require(variant in (None, STRICT_COPY), "unknown KV prompt variant")
+        if variant is not None:
+            require(
+                recipe["schema"] == SCHEMA_V2, "strict prompt requires opt-in KV v2"
+            )
+            require(phase.get("rpc_budget_s") == 180, "strict copy RPC budget changed")
         if "rpc_budget_s" in phase:
             require(
                 recipe["schema"] == SCHEMA_V2, "frozen RPC budget requires opt-in KV v2"
@@ -251,14 +316,56 @@ def validate_kv(recipe, *, source_resolver=None):
             "KV nonce response oracle changed",
         )
         messages = payload["messages"]
-        require(
-            isinstance(messages, list)
-            and len(messages) == 1
-            and set(messages[0]) == {"role", "content"}
-            and messages[0]["role"] == "user"
-            and messages[0]["content"].endswith("\nReply exactly: " + expected),
-            "KV challenge prompt changed",
-        )
+        if variant == STRICT_COPY:
+            require(
+                messages == strict_copy_messages(expected, phase.get("padding_count")),
+                "strict canonical two-message prompt changed",
+            )
+            require(
+                set(payload)
+                == {
+                    "request_id",
+                    "model",
+                    "messages",
+                    "temperature",
+                    "max_tokens",
+                    "n",
+                    "stream",
+                    "chat_template_kwargs",
+                },
+                "strict copy forbids extra decode constraints",
+            )
+            receipt = phase["oracle_tokenization"]
+            expected_ids = receipt["token_ids"]
+            require(
+                set(receipt)
+                == {
+                    "schema",
+                    "token_ids",
+                    "token_ids_sha256",
+                    "count",
+                    "add_special_tokens",
+                    "sample_policy",
+                }
+                and receipt["schema"] == "ecpa-strict-copy-oracle-tokenization/v1"
+                and isinstance(expected_ids, list)
+                and all(type(x) is int and x >= 0 for x in expected_ids)
+                and 32 <= receipt["count"] == len(expected_ids) <= 128
+                and receipt["token_ids_sha256"] == sha(canonical(expected_ids))
+                and receipt["add_special_tokens"] is False
+                and receipt["sample_policy"]
+                == "one-fresh-nonce-cpu-reject-if-short-no-runtime-retuning",
+                "strict single-sampled oracle tokenizer receipt changed",
+            )
+        else:
+            require(
+                isinstance(messages, list)
+                and len(messages) == 1
+                and set(messages[0]) == {"role", "content"}
+                and messages[0]["role"] == "user"
+                and messages[0]["content"].endswith("\nReply exactly: " + expected),
+                "KV challenge prompt changed",
+            )
         ids = tokenization["prompt_token_ids"]
         require(
             tokenization["schema"] == "ecpa-actual-KV-chat-tokenization/v1"
@@ -323,6 +430,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--materialized-row-v2", action="store_true")
     parser.add_argument("--rpc-budget-s", type=float)
+    parser.add_argument("--prompt-variant", choices=[STRICT_COPY])
     args = parser.parse_args()
     from transformers import AutoTokenizer
 
@@ -345,6 +453,7 @@ def main():
         assets,
         materialized_row=args.materialized_row_v2,
         rpc_budget_s=args.rpc_budget_s,
+        prompt_variant=args.prompt_variant,
     )
     # The caller must establish explicit 0700, including cleared special bits.
     import os
