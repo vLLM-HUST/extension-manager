@@ -19,14 +19,24 @@ PRODUCER = "328974a3ecb7091f4dc54d209bd949d9dbcf1c1f2657743c147e26603e81ad77"
 PROVIDER = "094764eebfbc728c674ac4f33da01870bc03bfefbec44b2feef330d062a539c7"
 
 
-def load_archive(manifest, archive):
+def load_archive(manifest, archive, *, oracle_failure=False):
     metadata = json.loads(Path(manifest).read_bytes())
     need(
-        metadata["schema"] == "PRIVATE-materialized-r1-partial-failure-preservation/v1"
+        metadata["schema"]
+        == (
+            "ecpa-materialized-r3-oracle-failure-preservation/v1"
+            if oracle_failure
+            else "PRIVATE-materialized-r1-partial-failure-preservation/v1"
+        )
         and metadata["formal_result"] is False
         and metadata["original_wrapper_exit"] == 1
         and metadata["cohort_qualified"] is False
-        and metadata["HTTP_and_final_authenticated_ACK_missing"] is True,
+        and (
+            metadata["final_authenticated_ACK_missing"] is True
+            and metadata["HTTP_response_present"] is True
+            if oracle_failure
+            else metadata["HTTP_and_final_authenticated_ACK_missing"] is True
+        ),
         "original partial preservation scope",
     )
     need(sha(Path(archive).read_bytes()) == metadata["archive_sha256"], "archive hash")
@@ -53,7 +63,7 @@ def load_archive(manifest, archive):
     return files
 
 
-def inspect(files):
+def inspect(files, *, oracle_failure=False):
     def raw(name):
         need(name in files, "missing original raw: " + name)
         return files[name]
@@ -68,7 +78,12 @@ def inspect(files):
         cfg == obj(p + "run/owner-config.json")
         and cfg["formal_result"] is False
         and cfg["scope"] == "KV-host-metadata-to-later-upload-only"
-        and cfg["runner_source_commit"] == "7a6513ef11d6db57facda32256f56d60dec38924"
+        and cfg["runner_source_commit"]
+        == (
+            "11d5b79d695b3bb42ac074e626b233e5d8426904"
+            if oracle_failure
+            else "7a6513ef11d6db57facda32256f56d60dec38924"
+        )
         and cfg["physical_devices"] == [3, 6]
         and cfg["runtime_devices"] == [0, 1],
         "frozen original runtime/input scope",
@@ -85,7 +100,10 @@ def inspect(files):
     )
     snapshots = obj("source-map.json")["sources"]
     need(
-        len(snapshots) == len(cfg["sources"]) == freeze["source_files"] == 54,
+        len(snapshots)
+        == len(cfg["sources"])
+        == freeze["source_files"]
+        == (55 if oracle_failure else 54),
         "original source snapshot closure",
     )
     source_map = {}
@@ -122,7 +140,11 @@ def inspect(files):
     need(
         recipe["schema"] == "ecpa-native-kv-challenge-campaign/v2"
         and len(recipe["phases"]) == 1
-        and "rpc_budget_s" not in phase
+        and (
+            phase.get("rpc_budget_s") == 180
+            if oracle_failure
+            else "rpc_budget_s" not in phase
+        )
         and phase["minimum_completion_tokens"] == 32
         and phase["payload"]["max_tokens"] == 128
         and len(phase["tokenization"]["prompt_token_ids"]) == 1201
@@ -145,12 +167,22 @@ def inspect(files):
     need(
         result["passed"] is False
         and result["formal_result"] is False
-        and result["probe"] == probe
+        and result["probe"]
+        == (
+            {
+                **probe,
+                "independent_phase_watchdog_fired": False,
+                "independent_phase_total_elapsed_gate_passed": True,
+            }
+            if oracle_failure
+            else probe
+        )
         and probe["rpc_task_passed"] is False
         and probe["native_join_qualified"] is False
         and probe["formal_result"] is False
         and probe["hardware_result"] is False
-        and probe["failure"] == "timed out"
+        and probe["failure"]
+        == ("phase challenge task_oracle_failed" if oracle_failure else "timed out")
         and probe["recipe_sha256"] == cfg["recipe_sha256"]
         and all(
             probe[k] is None
@@ -164,10 +196,69 @@ def inspect(files):
         ),
         "original failed runner cannot become a qualified result",
     )
-    for name in ["response.bin", "response-metadata.json", "collector-after.json"]:
+    absent = (
+        ["collector-after.json"]
+        if oracle_failure
+        else ["response.bin", "response-metadata.json", "collector-after.json"]
+    )
+    for name in absent:
         need(
             p + "run/probe/" + name not in files,
             "absent response/final ACK cannot be manufactured",
+        )
+    http_elapsed = None
+    metadata = None
+    if oracle_failure:
+        metadata = obj(p + "run/probe/response-metadata.json")
+        body = raw(p + "run/probe/response.bin")
+        response = json.loads(body)
+        need(
+            metadata["schema"] == "ecpa-observed-KV-HTTP-response/v2"
+            and probe["status"] == metadata["status"] == 200
+            and metadata["url"] == phase["url"]
+            and metadata["response_sha256"] == probe["response_sha256"] == sha(body)
+            and metadata["request_sha256"] == sha(raw(p + "run/probe/request.bin"))
+            and metadata["client_source_sha256"]
+            == roles["request-runner"]["sha256"]
+            == "5fd84ed40ec10c35d193381028b5fc8a05728a112f4990765b6f5d27b7fb430d",
+            "original response/client/source/request binding",
+        )
+        choice = response["choices"][0]
+        expected = ("ECPA-CHALLENGE-" + phase["challenge_nonce"] + " ") * 2
+        need(
+            phase["response_oracle"]["expected"] == expected.strip()
+            and response["id"]
+            == phase["expected_response_id"]
+            == phase["external_request_id"]
+            and response["model"] == phase["payload"]["model"]
+            and response["usage"]["prompt_tokens"] == 1201
+            and response["usage"]["completion_tokens"] == 81
+            and choice["finish_reason"] == "stop"
+            and isinstance(choice["message"]["content"], str)
+            and choice["message"]["content"].strip()
+            != phase["response_oracle"]["expected"],
+            "strict frozen two-nonce task must remain an observed oracle failure",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "client.py"
+            source.write_bytes(client_source)
+            client_spec = importlib.util.spec_from_file_location(
+                "_r3_frozen_budget_client", source
+            )
+            client_module = importlib.util.module_from_spec(client_spec)
+            client_spec.loader.exec_module(client_module)
+            client_module.verify_rpc_budget(phase, metadata)
+        http_elapsed = (
+            metadata["received_monotonic_ns"] - metadata["sent_monotonic_ns"]
+        ) / 1_000_000_000
+        need(
+            probe["rpc_budget_from_frozen_phase"] is True
+            and probe["rpc_budget_s"] == 180
+            and probe["rpc_elapsed_gate_passed"] is True
+            and probe["rpc_dispatch_monotonic_ns"] == metadata["sent_monotonic_ns"]
+            and probe["rpc_completed_monotonic_ns"]
+            == metadata["received_monotonic_ns"],
+            "original actual HTTP clocks/frozen budget summary",
         )
     need(
         raw(p + "run/probe/request.bin") == canonical(phase["payload"])
@@ -242,7 +333,7 @@ def inspect(files):
         proof = module.verify_journal(root / "spec.json", root / "raw.jsonl")
     events = [json.loads(line) for line in raw(p + "run/native-raw.jsonl").splitlines()]
     need(
-        len(events) == 100
+        len(events) == (168 if oracle_failure else 100)
         and events[0]["collector"] == ready["collector"]
         and events[0]["archive_identity"] == ready["archive_identity"]
         and proof["durable_ACK_status"] == "unverified"
@@ -258,7 +349,7 @@ def inspect(files):
     need(
         len(mappings) == 1
         and len(projections) == 2
-        and len(uploads) == 96
+        and len(uploads) == (164 if oracle_failure else 96)
         and mappings[0]["external_request_id"] == phase["external_request_id"]
         and all(
             f["runtime_request_id"] == mappings[0]["runtime_request_id"] for f in facts
@@ -281,7 +372,7 @@ def inspect(files):
             )
         ]
         need(
-            len(matching) == 47
+            len(matching) == (81 if oracle_failure else 47)
             and len(projection["host_cpu_block_ids"]) == 9
             and projection["scheduled_appended_block_ids"] == [19],
             "observed full-row/suffix/later prefix differs",
@@ -294,6 +385,44 @@ def inspect(files):
             }
         )
     need([r["rank"] for r in ranks] == [0, 1], "both actual source ranks")
+    late_acceptances = []
+    if oracle_failure:
+        need(
+            metadata["client"]
+            == {
+                **obj(p + "actual-owner-kernel.json")["kernel"],
+                "start_identity": "pid:{pid}:start_ticks:{start_ticks}".format(
+                    **obj(p + "actual-owner-kernel.json")["kernel"]
+                ),
+            },
+            "original HTTP client kernel identity",
+        )
+        phase_end = obj(p + "run/phase-total-elapsed.json")[
+            "probe_completed_monotonic_ns"
+        ]
+        for event in events[1:]:
+            fact = json.loads(base64.b64decode(event["raw_base64"]))
+            need(
+                metadata["sent_monotonic_ns"]
+                <= fact["monotonic_ns"]
+                <= metadata["received_monotonic_ns"]
+                and fact["monotonic_ns"] <= event["accepted_monotonic_ns"] <= phase_end,
+                "native fact/acceptance outside recorded HTTP/phase boundaries",
+            )
+            if event["accepted_monotonic_ns"] > metadata["received_monotonic_ns"]:
+                late_acceptances.append(
+                    {
+                        "sequence": event["sequence"],
+                        "rank": fact["process"]["ordinal"],
+                        "after_HTTP_read_ns": event["accepted_monotonic_ns"]
+                        - metadata["received_monotonic_ns"],
+                    }
+                )
+        need(
+            len(late_acceptances) == 2
+            and {e["rank"] for e in late_acceptances} == {0, 1},
+            "original two post-read accepted uploads",
+        )
     expected_phase = {
         k: phase[k]
         for k in [
@@ -384,15 +513,76 @@ def inspect(files):
         set(re.findall(r"No running processes found in NPU (\d+)", npu)) == {"3", "6"},
         "recorded two-card terminal",
     )
+    if oracle_failure:
+        outer = obj(p + "outer-watchdog-result.json")
+        outer_terminal = obj(p + "outer-independent-terminal-audit.json")
+        expected_outer = [
+            obj(p + "actual-owner-kernel.json")["kernel"],
+            owner,
+            {k: api[k] for k in ["pid", "start_ticks", "boot_id", "session"]},
+            {
+                k: ready["collector"][k]
+                for k in ["pid", "start_ticks", "boot_id", "session"]
+            },
+        ]
+        need(
+            sha(raw(p + "launcher.source.py"))
+            == cfg["outer_launcher_source_sha256"]
+            == "0a1db5cc0182dd3dcb5d967a8fe3d84633c1770e04d63be91e8b1225d4a3461b",
+            "original independent outer launcher source",
+        )
+        need(
+            outer["independently_captured_sessions"]
+            == outer_terminal["captured_sessions"]
+            == expected_outer
+            and outer_terminal["remaining_sessions"]
+            == [{"owner": session, "members": []} for session in expected_outer]
+            and outer["original_owner_exit"] == 1
+            and outer["fired"] is False
+            and outer["no_restart"] is True
+            and outer["cleanup_errors"] == outer_terminal["cleanup_errors"] == []
+            and outer_terminal["owner_identity_still_live"] is False,
+            "original four-session/collector terminal evidence",
+        )
+        total = obj(p + "run/phase-total-elapsed.json")
+        watchdog = obj(p + "run/phase-watchdog.json")
+        need(
+            total["budget_s"] == watchdog["budget_s"] == phase["rpc_budget_s"] == 180
+            and total["watchdog_fired"] is False
+            and watchdog["fired"] is False
+            and total["elapsed_gate_passed"] is True
+            and total["probe_entry_monotonic_ns"]
+            <= metadata["sent_monotonic_ns"]
+            <= metadata["received_monotonic_ns"]
+            <= total["probe_completed_monotonic_ns"]
+            and total["probe_completed_monotonic_ns"]
+            - total["probe_entry_monotonic_ns"]
+            <= 180_000_000_000
+            and watchdog["deadline_monotonic_ns"]
+            == total["probe_entry_monotonic_ns"] + 180_000_000_000,
+            "original phase/watchdog monotonic budget",
+        )
     return {
-        "classification": "PARTIAL_REAL_RUNTIME_TRACE_UNQUALIFIED",
+        "classification": "REAL_RUNTIME_ORACLE_FAILED_PARTIAL_UNQUALIFIED"
+        if oracle_failure
+        else "PARTIAL_REAL_RUNTIME_TRACE_UNQUALIFIED",
         "runner_success": False,
-        "raw_records": 100,
+        "raw_records": 168 if oracle_failure else 100,
         "request_mappings": 1,
         "projection_facts": 2,
-        "upload_facts": 96,
+        "upload_facts": 164 if oracle_failure else 96,
         "ranks": ranks,
-        "HTTP_response": None,
+        "HTTP_response": 200 if oracle_failure else None,
+        "model_task_passed": False if oracle_failure else None,
+        "HTTP_prompt_tokens": 1201 if oracle_failure else None,
+        "HTTP_completion_tokens": 81 if oracle_failure else None,
+        "HTTP_finish_reason": "stop" if oracle_failure else None,
+        "observed_HTTP_elapsed_s": http_elapsed,
+        "compression_causality_established": False,
+        "native_acceptances_after_HTTP_completed_read": late_acceptances,
+        "native_fact_HTTP_clock_and_phase_accept_boundaries_verified": True
+        if oracle_failure
+        else None,
         "final_durable_ACK": None,
         "durable_ACK_status": "unverified",
         "hardware_result": False,
@@ -401,12 +591,14 @@ def inspect(files):
         "lost_requests": None,
         "duplicate_requests": None,
         "durable_join": None,
-        "collector_terminal_identity_independently_verified": None,
+        "collector_terminal_identity_independently_verified": True
+        if oracle_failure
+        else None,
         "source_peers_recorded_terminal": True,
         "recorded_NPU_devices_clear": [3, 6],
         "tokenizer_reexecuted": False,
         "model_and_wheel_bytes_rehashed": False,
-        "original_RPC_socket_timeout_s": 30,
+        "original_RPC_socket_timeout_s": 180 if oracle_failure else 30,
         "KV_tensor_equivalence": None,
         "attention_consumption": None,
         "full_quality": None,
