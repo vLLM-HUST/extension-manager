@@ -69,7 +69,7 @@
              (layer.name, self.config.kv_budget) for layer in self.materialization_caches
 --- /dev/null
 +++ b/src/vllm_ascend_kvcompress/native_tensor_witness.py
-@@ -0,0 +1,380 @@
+@@ -0,0 +1,379 @@
 +"""Selected-source byte witness candidate. No source registration or GPU result."""
 +
 +from __future__ import annotations
@@ -380,9 +380,8 @@
 +        }
 +        block_size = cache.shape[1]
 +        token_bytes = cache.shape[2] * cache.shape[3] * 2
-+        blocks = {
-+            slot // block_size: _raw(cache[slot // block_size]) for slot in actual_slots
-+        }
++        actual_blocks = {slot // block_size for slot in actual_slots}
++        blocks = {block: _raw(cache[block]) for block in actual_blocks}
 +        raw[kind] = b"".join(
 +            blocks[slot // block_size][
 +                (slot % block_size) * token_bytes : (slot % block_size + 1)

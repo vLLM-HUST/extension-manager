@@ -308,9 +308,8 @@ def observe_after_actual_write(reference, k_cache, v_cache, destination_slots, g
         }
         block_size = cache.shape[1]
         token_bytes = cache.shape[2] * cache.shape[3] * 2
-        blocks = {
-            slot // block_size: _raw(cache[slot // block_size]) for slot in actual_slots
-        }
+        actual_blocks = {slot // block_size for slot in actual_slots}
+        blocks = {block: _raw(cache[block]) for block in actual_blocks}
         raw[kind] = b"".join(
             blocks[slot // block_size][
                 (slot % block_size) * token_bytes : (slot % block_size + 1)
