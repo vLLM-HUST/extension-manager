@@ -11,6 +11,10 @@ from jsonschema import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
+    "experiments/formal_campaign/verify_kv_postack_metadata.py",
+    "experiments/formal_campaign/verify_kv_strict_pair_partial.py",
+    "experiments/formal_campaign/verify_kv_disabled_diagnostic.py",
+    "experiments/formal_campaign/artifacts/kv-postack-metadata-20261014",
     "experiments/formal_campaign/verify_native_interface.py",
     "experiments/formal_campaign/artifacts/native-interface-20261013",
     "experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013",
@@ -171,6 +175,11 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "native_transport_completion_tokens": 39,
         "native_transport_raw_files": 137,
         "native_transport_failed_attempts": 1,
+        "kv_metadata_trials": 1,
+        "kv_metadata_projections": 2,
+        "kv_metadata_uploads": 156,
+        "kv_metadata_completion_tokens": 77,
+        "kv_metadata_late_intakes": 2,
         "h3_window_requests": 60,
         "h3_window_deadline_loss": 0,
         "h3_window_duplicate_admissions": 0,

@@ -2,6 +2,10 @@ TECTONIC ?= tectonic
 PYTHON ?= python3
 EVIDENCE_SUMMARY := generated/evidence-summary.tex
 EVIDENCE_INPUTS := \
+	../experiments/formal_campaign/verify_kv_postack_metadata.py \
+	../experiments/formal_campaign/verify_kv_strict_pair_partial.py \
+	../experiments/formal_campaign/verify_kv_disabled_diagnostic.py \
+	$(shell find ../experiments/formal_campaign/artifacts/kv-postack-metadata-20261014 -type f | sort) \
 	../experiments/formal_campaign/verify_native_interface.py \
 	$(shell find ../experiments/formal_campaign/artifacts/native-interface-20261013 -type f | sort) \
 	../experiments/real_mod_composition/h2_scoring_input_audit.py \

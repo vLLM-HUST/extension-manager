@@ -983,24 +983,29 @@ those bytes raises coverage to \ECPARealGateCompleteCoverage{} and admits
 the candidate (503).  Both blocked requests leave backend log bytes unchanged;
 direct backend health remains 200.
 
-Raw replay retains the invocation-only gate and its
-\ECPARealGateFailedAttempts{} failed attempts.  A later real TP2 trial binds
-\ECPANativeTransportMappings{} native request mapping to
-\ECPANativeTransportUploads{} NPU prefix uploads
-(\ECPANativeTransportRankUploads{} per rank), one fresh nonce response and
-\ECPANativeTransportCompletionTokens{} completion tokens.  Replay verifies
-source/process epochs, authenticated peers, durable ACKs and cleanup, retaining
-\ECPANativeTransportFailedAttempts{} pre-HTTP startup failure.  This is
-transport only: KV effect, tensor equivalence, attention consumption and full
-quality remain unknown.  Both trials are nonformal; prevention, formal H3/H4
-and the full objective remain unestablished.
+Invocation-only replay retains \ECPARealGateFailedAttempts{} failed attempts.
+A separate native TP2 trial binds \ECPANativeTransportMappings{} request mapping
+to \ECPANativeTransportUploads{} NPU uploads
+(\ECPANativeTransportRankUploads{} per rank), with a fresh nonce and
+\ECPANativeTransportCompletionTokens{} completion tokens.  Source, epoch, peer,
+ACK and cleanup replay retains \ECPANativeTransportFailedAttempts{} failed startup.
+This qualifies transport only.
 
-The H3 oracle binds \ECPAHThreeNativeSources{} exact source snapshots.
-Both baseline activation paths lack a durable Manager transaction, so their
-\code{manager-crash-afterprepare} phases are not applicable
-(\ECPAHThreePrepareNABaselines{} arms).  Empty metrics retain the incomplete
-original cell; separately registered worker-crash/full-relaunch cannot replace
-it.  Host worker death shuts down the executor, without native replacement.
+A separately frozen KV TP2 trial returns the exact two-copy nonce
+(1,201 prompt tokens, \ECPAKVMetadataCompletionTokens{} completion tokens).
+Replay retains \ECPAKVMetadataProjections{} materialized-row projections,
+\ECPAKVMetadataUploads{} uploads and \ECPAKVMetadataLateIntakes{} late intakes.
+Their facts lie within HTTP; a preregistered source-clock/final-prefix policy
+verifies the durable ACK across six archived runtime modules.  This single
+nonformal metadata observation leaves KV tensor equivalence, attention,
+full quality and performance unknown.  The old strict-window rejection is retained.
+None of these trials establishes prevention, formal H3/H4 or the full objective.
+
+The H3 oracle binds \ECPAHThreeNativeSources{} source snapshots.
+\ECPAHThreePrepareNABaselines{} baseline arms lack a durable Manager transaction;
+their \code{manager-crash-afterprepare} phases are not applicable.
+Worker-crash/full-relaunch cannot replace this incomplete cell.
+Host worker death stops the executor without native replacement.
 
 The verifier checks process epochs, authority chains, SQLite intent/rollback
 prefixes and unchanged predecessor routes, rejecting candidate exposure.
@@ -1018,7 +1023,7 @@ raw files: deadline delivery loss is
 this is control-route recovery, not model-backend restart.  Execution duplication
 and the full objective stay unknown.  Runtime \code{3a559522} and later
 \code{49f1c153} analysis are distinct; a failed CPU fixture is retained.
-Host admission and matched baselines are missing:
+Host admission and matched baselines remain missing:
 \code{QUALIFIED\_NONFORMAL}, formal H3/H4 zero, \code{NO-GO}.
 
 \subsection{Preliminary Evidence and Missing Results}
@@ -1146,23 +1151,16 @@ composability claim.  Deterministic rollback
 can restore manager-owned inputs, not external data or services; bounded
 operator action is therefore a first-class outcome.
 
-The current implementation includes a single-host, single-manager SQLite
-reference coordinator with durable plans, WAL/receipts, process epochs,
-replay-fenced evidence, generation CAS, predecessor gating, crash recovery,
-and fail-safe rollback outcomes.  Deterministic adapters and adversarial traces
-exercise these semantics, and one pinned vLLM-HUST/Ascend launch exercises the
-native process-owned observer and reversible supervised lifecycle.  No
-production attestation trust root, production traffic gate, elastic
-membership campaign, broader recovery campaign, or formal external-provider
-result exists yet.  The separate HTTP traffic authority has real TP2
-worker-invocation qualification, but no formal effectiveness, recovery,
-or overhead result.  SQLite is a reference implementation choice
-rather than a protocol requirement.  The qualification establishes feasibility
-in one lifecycle cell,
-not general correctness.  The paper should be stopped or reframed as an
-engineering report if runtime intent cannot be separated from process effect,
-conflict thresholds remain unmet after one correction cycle, rollback loses
-the predecessor plan, or overhead exceeds the frozen bounds.
+The single-host, single-manager SQLite reference coordinator has durable
+plans, WAL/receipts, epochs, fenced replay, generation CAS and rollback.
+Deterministic traces exercise its semantics; one pinned vLLM-HUST/Ascend launch
+demonstrates native observers and owned cleanup.  Separate real TP2 trials qualify
+HTTP invocation gating and KV metadata/ACKs.  None establishes a production
+attestation trust root, elastic membership, formal effectiveness, broader
+recovery or overhead.  SQLite is an implementation choice, not a requirement.
+Stop or reframe the paper as an engineering report if runtime intent cannot
+be separated from effect, conflict thresholds remain unmet after one correction
+cycle, rollback loses the predecessor, or overhead exceeds the frozen bounds.
 
 The executable model separates intent, planning, runtime evidence, provider
 and external-service authorities.  Append-only WAL intents/receipts, epoch-bound
@@ -1182,10 +1180,10 @@ supports a cross-framework or industry-standard claim.
 \section{Conclusion}
 Inference plugin systems need a truth model stronger than successful
 installation or saved enablement.  \system treats activation as a typed,
-conflict-checked plan with explicit authorities and evidence obligations.  It
-separates lifecycle predicates, requires runtime facts from the processes that
-own them, fails closed, and preserves a deterministic rollback target.  A real
-namespace regression demonstrates the value of installed-package evidence
+conflict-checked plan with explicit authorities and evidence obligations.
+Its protocol separates lifecycle predicates, requires runtime facts from their
+owning processes, and calls for fail-closed admission and deterministic rollback.
+A real namespace regression demonstrates the value of installed-package evidence
 over mock-only tests, while a pinned native NPU lifecycle shows that the
 process-owned evidence and cleanup path can execute end to end.  More
 significantly, the first matched nine-start study finds false-effective state
