@@ -11,6 +11,8 @@ from jsonschema import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
+    "experiments/formal_campaign/verify_kv_selected_tensor_observation.py",
+    "experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014",
     "experiments/formal_campaign/verify_kv_postack_metadata.py",
     "experiments/formal_campaign/verify_kv_strict_pair_partial.py",
     "experiments/formal_campaign/verify_kv_disabled_diagnostic.py",
@@ -175,6 +177,11 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
         "native_transport_completion_tokens": 39,
         "native_transport_raw_files": 137,
         "native_transport_failed_attempts": 1,
+        "selected_kv_trials": 1,
+        "selected_kv_receipts": 56,
+        "selected_kv_layers_per_rank": 28,
+        "selected_kv_raw_records": 201,
+        "selected_kv_completion_tokens": 69,
         "kv_metadata_trials": 1,
         "kv_metadata_projections": 2,
         "kv_metadata_uploads": 156,
