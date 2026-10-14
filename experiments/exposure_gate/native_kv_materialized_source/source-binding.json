@@ -1,0 +1,68 @@
+{
+  "schema": "ecpa-materialized-KV-source-candidate/v2",
+  "kvcompress_base": "d30e956a68fa0b39dcb31f5a0234d6b45b205494",
+  "provider_preimage_sha256": "d06a759313707bf0edf073c58e9d08bd1afdd0b9df9d108dee92b8894f45c6d8",
+  "provider_postimage_sha256": "094764eebfbc728c674ac4f33da01870bc03bfefbec44b2feef330d062a539c7",
+  "host_base": "89ee8c074cf640ba3aa3dc71019ada2ad2c4c551",
+  "ascend_unchanged": "fcbb827af",
+  "formal_result": false,
+  "scope": "actual-metadata-full-CPU-row-and-later-upload-prefix-only",
+  "pinned_cpu_source_regions": [
+    {
+      "path": "vllm/v1/worker/gpu_input_batch.py",
+      "source_sha256": "79f1dad9d093f404ad84d8e94906227d69620d356175654e4e8dd1377b55f388",
+      "snapshot": "gpu_input_batch.py.snapshot",
+      "snapshot_sha256": "29f2e3ccdaaa481376fdc056d14575b6572699b9ab1edbbe7012f3c99a6b7a6b",
+      "methods": {
+        "InputBatch": [
+          "_register_add_request",
+          "add_request"
+        ]
+      }
+    },
+    {
+      "path": "vllm/v1/worker/block_table.py",
+      "source_sha256": "4068aea7336627f809def92f45401659d7c7c592d4da5dace6a11c90e7850c4a",
+      "snapshot": "block_table.py.snapshot",
+      "snapshot_sha256": "4f3a0028eff73db6f1bf7c48e23cac598deef1e8359bd78af87f089fe72d93a1",
+      "methods": {
+        "BlockTable": [
+          "append_row",
+          "add_row",
+          "get_numpy_array"
+        ],
+        "MultiGroupBlockTable": [
+          "add_row"
+        ]
+      }
+    },
+    {
+      "path": "vllm/v1/worker/gpu_model_runner.py",
+      "source_sha256": "b286cba03d7a5f842805e707fb274f343052ef4eff49268bb666845450af9643",
+      "snapshot": "gpu_model_runner.py.snapshot",
+      "snapshot_sha256": "1bcf43566413851e4c77e86bdb11f709b77c4fffdc44bef9dc68840d84986241",
+      "methods": {
+        "GPUModelRunner": [
+          "_update_states"
+        ]
+      }
+    },
+    {
+      "path": "vllm/plugins/native_block_table_observer.py",
+      "source_sha256": "0dc69bafea53376a6a4491b31d3952485515c920d2ddd7017d1118067792ed09",
+      "snapshot": "native_block_table_observer.py.snapshot",
+      "snapshot_sha256": "25d587b46b69e7846e7a44ea4278b3244061992eb13bd6e092c0b42147bddfe0",
+      "methods": {
+        "null": [
+          "emit_native_fact"
+        ]
+      }
+    }
+  ],
+  "new_host_modules": {
+    "native_kv_materialized_projection_observer.py": "328974a3ecb7091f4dc54d209bd949d9dbcf1c1f2657743c147e26603e81ad77",
+    "native_kv_projection_observer.py": "a3907de016e34ea4b5454fb77bb78b0dd665816d7ce8336a6681597dfb3ec141",
+    "native_semantic_collector.py": "a4f1cc02610700d2cfb27bf00b817a7adc2a3bc31304b2254cc1e1f8349e0a2a",
+    "native_semantic_bootstrap.py": "b34666ebcbb56703c7dfe7374a6988ee2ba09e2057e6bc3e6013bc4eddf2c06f"
+  }
+}

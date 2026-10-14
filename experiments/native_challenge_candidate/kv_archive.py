@@ -121,7 +121,10 @@ def verify(root, expected_manifest_sha256, phase_id):
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
     spec = json.loads((root / "spec.json").read_bytes())
     request_runner.require_phase_registration(
-        phase, spec, kv_requirements=phase["kv_requirements"]
+        phase,
+        spec,
+        kv_requirements=phase["kv_requirements"],
+        materialized_row=recipe["schema"] == "ecpa-native-kv-challenge-campaign/v2",
     )
     descriptor = json.loads((root / "descriptor.json").read_bytes())
     before, after = [

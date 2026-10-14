@@ -29,6 +29,8 @@ SPEC = "ecpa-native-semantic-collector-prereg/v1"
 ACK = "ecpa-native-semantic-collector-ack/v1"
 KV_SPEC = "ecpa-native-kv-semantic-collector-prereg/v1"
 PROJECTION = "ecpa-native-kv-blocktable-projection/v1"
+PROJECTION_V2 = "ecpa-native-kv-blocktable-projection/v2"
+KV_SPEC_V2 = "ecpa-native-kv-semantic-collector-prereg/v2"
 PROJECTION_OPERATION = "KVCompress-worker-host-blocktable-projection-applied"
 PROJECTION_SCOPE = "compression-host-metadata-and-uploaded-destination-binding-only"
 
@@ -44,6 +46,12 @@ def projection_predicate(fact, requirement):
         "allocation_block_size",
         "compression_threshold_tokens",
     }
+    materialized = fact.get("schema") == PROJECTION_V2
+    if materialized:
+        transaction_keys |= {
+            "scheduled_appended_block_ids",
+            "metadata_effect_monotonic_ns",
+        }
     exact = transaction_keys | {
         "schema",
         "process",
@@ -62,6 +70,14 @@ def projection_predicate(fact, requirement):
     if set(fact) != exact:
         raise ValueError("KV projection fields are unsupported")
     blocks = fact["destination_block_ids"]
+    appended = fact.get("scheduled_appended_block_ids", [])
+    if materialized and (
+        not isinstance(appended, list)
+        or any(type(x) is not int or x < 0 for x in appended)
+        or type(fact["metadata_effect_monotonic_ns"]) is not int
+        or not 0 < fact["metadata_effect_monotonic_ns"] <= fact["monotonic_ns"]
+    ):
+        raise ValueError("materialized projection lacks actual append/effect clock")
     integer_keys = [
         "attention_group",
         "semantic_anchor",
@@ -76,7 +92,8 @@ def projection_predicate(fact, requirement):
         or not blocks
         or any(type(x) is not int or x < 0 for x in blocks)
         or len(set(blocks)) != len(blocks)
-        or fact["host_cpu_block_ids"] != blocks
+        or fact["host_cpu_block_ids"] != blocks + appended
+        or len(set(blocks + appended)) != len(blocks + appended)
         or not 0
         < fact["physical_anchor"]
         < fact["compression_threshold_tokens"]
@@ -96,7 +113,12 @@ def projection_predicate(fact, requirement):
         or len(blocks) != requirement["destination_block_count"]
         or fact["operation"] != PROJECTION_OPERATION
         or fact["scope"] != PROJECTION_SCOPE
-        or fact["host_mapping"] != "identity-host-block-id-projection"
+        or fact["host_mapping"]
+        != (
+            "identity-host-block-id-projection-with-scheduled-append"
+            if materialized
+            else "identity-host-block-id-projection"
+        )
         or any(
             fact[k] is not None
             for k in [
@@ -244,7 +266,11 @@ def native_fact_predicate(
     if set(fact) != (
         mapping_fields
         if fact.get("schema") == MAPPING
-        else (set(fact) if fact.get("schema") == PROJECTION else upload_fields)
+        else (
+            set(fact)
+            if fact.get("schema") in {PROJECTION, PROJECTION_V2}
+            else upload_fields
+        )
     ):
         raise ValueError("native fact fields do not match a supported source schema")
     if set(fact.get("process", {})) != set(sender["process"]):
@@ -281,9 +307,10 @@ def native_fact_predicate(
         ):
             raise ValueError("actual native API mapping is unknown or repeated")
         update = ("mapping", runtime)
-    elif fact.get("schema") == PROJECTION:
+    elif fact.get("schema") in {PROJECTION, PROJECTION_V2}:
         if (
-            spec.get("schema") != KV_SPEC
+            spec.get("schema")
+            != (KV_SPEC_V2 if fact["schema"] == PROJECTION_V2 else KV_SPEC)
             or sender["process"]["role"] != "worker"
             or runtime not in mappings
         ):
@@ -293,11 +320,18 @@ def native_fact_predicate(
         phase = mappings[runtime]
         if stamp < mapping_stamps[runtime]:
             raise ValueError("KV projection predates actual native API mapping")
+        projection_predicate(fact, spec["kv_requirements"][phase["phase_id"]])
+        if (
+            fact["schema"] == PROJECTION_V2
+            and not mapping_stamps[runtime]
+            <= fact.get("metadata_effect_monotonic_ns", 0)
+            <= stamp
+        ):
+            raise ValueError("materialized projection effect/row chronology differs")
         if upload_counts.get(("projection", runtime, sender["process"]["ordinal"]), 0):
             raise ValueError(
                 "KV phase permits one actual projection per registered rank"
             )
-        projection_predicate(fact, spec["kv_requirements"][phase["phase_id"]])
         update = ("projection", sender["process"]["ordinal"])
     elif fact.get("schema") == UPLOAD:
         if sender["process"]["role"] != "worker" or runtime not in mappings:
@@ -371,7 +405,7 @@ class Collector:
             "senders",
             "phases",
         }
-        if self.spec.get("schema") == KV_SPEC:
+        if self.spec.get("schema") in {KV_SPEC, KV_SPEC_V2}:
             fields.add("kv_requirements")
         if set(self.spec) != fields:
             raise ValueError("collector prereg fields are unsupported")
@@ -379,7 +413,7 @@ class Collector:
         self.source_sha256 = sha(Path(__file__).read_bytes())
         self.failed = False
         if (
-            self.spec.get("schema") not in {SPEC, KV_SPEC}
+            self.spec.get("schema") not in {SPEC, KV_SPEC, KV_SPEC_V2}
             or self.spec.get("classification") != "CPU_REVIEW_CANDIDATE_ONLY"
             or self.spec.get("formal_producer_registration") is not False
             or not self.spec.get("native_plan_id")
@@ -391,7 +425,7 @@ class Collector:
             or not 0 < self.spec["max_uploads_per_rank"] <= 4096
         ):
             raise ValueError("collector scope is incomplete or promoted")
-        if self.spec["schema"] == KV_SPEC:
+        if self.spec["schema"] in {KV_SPEC, KV_SPEC_V2}:
             requirements = self.spec["kv_requirements"]
             if set(requirements) != {p["phase_id"] for p in self.spec["phases"]}:
                 raise ValueError("KV projection phase preregistration is incomplete")
@@ -535,7 +569,11 @@ class Collector:
             {
                 "kind": "collector.start",
                 "started_monotonic_ns": time.monotonic_ns(),
-                "intake_predicate_schema": "ecpa-native-semantic-intake/v2",
+                "intake_predicate_schema": (
+                    "ecpa-native-semantic-intake/v3"
+                    if self.spec["schema"] == KV_SPEC_V2
+                    else "ecpa-native-semantic-intake/v2"
+                ),
                 "spec_sha256": sha(raw),
                 "collector": self.collector_identity,
                 "collector_source_sha256": sha(Path(__file__).read_bytes()),
@@ -840,7 +878,12 @@ def verify_journal(
     mappings = {}
     mapping_stamps = {}
     chronology_complete = (
-        start.get("intake_predicate_schema") == "ecpa-native-semantic-intake/v2"
+        start.get("intake_predicate_schema")
+        == (
+            "ecpa-native-semantic-intake/v3"
+            if spec["schema"] == KV_SPEC_V2
+            else "ecpa-native-semantic-intake/v2"
+        )
         and type(start.get("started_monotonic_ns")) is int
     )
     last_accepted_ns = start.get("started_monotonic_ns")
@@ -951,12 +994,12 @@ def verify_journal(
         "formal_producer_registration": False,
         "formal_result": False,
         "complete_two_rank_KV_projection_upload_phases": kv_complete
-        if spec.get("schema") == KV_SPEC
+        if spec.get("schema") in {KV_SPEC, KV_SPEC_V2}
         and acknowledged_prefix is not None
         and chronology_complete
         else None,
         "KV_projection_scope": PROJECTION_SCOPE
-        if spec.get("schema") == KV_SPEC
+        if spec.get("schema") in {KV_SPEC, KV_SPEC_V2}
         else None,
         "GPU_semantic_qualification": None,
         "full_objective_satisfied": None,

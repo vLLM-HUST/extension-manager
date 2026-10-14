@@ -249,7 +249,7 @@ def phase_join(events, phase, verified, *, require_kv=False, collector_spec=None
     if require_kv:
         spec = collector_spec
         require(
-            spec["schema"] == collector.KV_SPEC
+            spec["schema"] in {collector.KV_SPEC, collector.KV_SPEC_V2}
             and spec["kv_requirements"].get(phase["phase_id"])
             == phase["kv_requirements"],
             "KV phase predicate is not preregistered",
@@ -263,7 +263,11 @@ def phase_join(events, phase, verified, *, require_kv=False, collector_spec=None
             json.loads(base64.b64decode(e["raw_base64"]))
             for e in selected
             if json.loads(base64.b64decode(e["raw_base64"]))["schema"]
-            == collector.PROJECTION
+            == (
+                collector.PROJECTION_V2
+                if spec["schema"] == collector.KV_SPEC_V2
+                else collector.PROJECTION
+            )
         ]
         require(
             len(kv_projections) == 2

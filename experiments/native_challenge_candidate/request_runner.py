@@ -90,7 +90,10 @@ def make_recipe(phase_targets, sources):
 
 
 def validate(recipe):
-    if recipe.get("schema") == "ecpa-native-kv-challenge-campaign/v1":
+    if recipe.get("schema") in {
+        "ecpa-native-kv-challenge-campaign/v1",
+        "ecpa-native-kv-challenge-campaign/v2",
+    }:
         from .kv_request_runner import validate_kv
 
         return validate_kv(recipe)
@@ -197,12 +200,18 @@ def validate(recipe):
         )
 
 
-def require_phase_registration(phase, collector_spec, *, kv_requirements=None):
+def require_phase_registration(
+    phase, collector_spec, *, kv_requirements=None, materialized_row=False
+):
     """Scope match only; caller must separately authenticate the collector peer."""
     require(
         collector_spec["schema"]
         == (
-            "ecpa-native-kv-semantic-collector-prereg/v1"
+            (
+                "ecpa-native-kv-semantic-collector-prereg/v2"
+                if materialized_row
+                else "ecpa-native-kv-semantic-collector-prereg/v1"
+            )
             if kv_requirements is not None
             else "ecpa-native-semantic-collector-prereg/v1"
         ),
@@ -268,7 +277,10 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
         "duplicate_requests": None,
         "full_objective_satisfied": None,
     }
-    if recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1":
+    if recipe["schema"] in {
+        "ecpa-native-kv-challenge-campaign/v1",
+        "ecpa-native-kv-challenge-campaign/v2",
+    }:
         result.update(
             KV_MOD_metadata_upload_binding_observed=None,
             KV_MOD_semantic_obligation_satisfied=None,
@@ -282,7 +294,10 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
         with urllib.request.urlopen(request, timeout=timeout) as response:
             body, status = response.read(), response.status
         (output / "response.bin").write_bytes(body)
-        if recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1":
+        if recipe["schema"] in {
+            "ecpa-native-kv-challenge-campaign/v1",
+            "ecpa-native-kv-challenge-campaign/v2",
+        }:
             from .collector_client import identity
 
             (output / "response-metadata.json").write_bytes(
@@ -322,7 +337,10 @@ def run_rpc_only(recipe, phase_id, output, timeout=30):
             and choice["finish_reason"] == "stop",
             "phase challenge task_oracle_failed",
         )
-        if recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1":
+        if recipe["schema"] in {
+            "ecpa-native-kv-challenge-campaign/v1",
+            "ecpa-native-kv-challenge-campaign/v2",
+        }:
             require(
                 data["usage"]["prompt_tokens"]
                 == phase["tokenization"]["prompt_token_count"]
@@ -358,13 +376,17 @@ def execute_with_collector(
 
     validate(recipe)
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
-    kv = recipe["schema"] == "ecpa-native-kv-challenge-campaign/v1"
+    kv = recipe["schema"] in {
+        "ecpa-native-kv-challenge-campaign/v1",
+        "ecpa-native-kv-challenge-campaign/v2",
+    }
     try:
         collector_spec = json.loads(private_read(spec_path))
         require_phase_registration(
             phase,
             collector_spec,
             kv_requirements=phase["kv_requirements"] if kv else None,
+            materialized_row=recipe["schema"] == "ecpa-native-kv-challenge-campaign/v2",
         )
         before = authenticate(socket_path, descriptor, spec_path, collector_source_path)
     except (OSError, ValueError, KeyError) as exc:

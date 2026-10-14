@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -25,6 +26,7 @@ ROOT = Path(__file__).parents[1]
 SOURCE = Path(collector.__file__)
 
 
+@pytest.mark.parametrize("materialized", [False, True])
 @pytest.mark.parametrize(
     "mode",
     [
@@ -38,7 +40,7 @@ SOURCE = Path(collector.__file__)
     ],
 )
 def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
-    tmp_path, mode
+    tmp_path, mode, materialized
 ):
     tmp_path.chmod(0o700)
     fixture_source = tmp_path / "fixture_peer.py"
@@ -103,7 +105,13 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                     )
                 )
                 blocks = list(range(10, 18))
-                rows = [{"group": 0, "row": 0, "blocks": blocks}]
+                rows = [
+                    {
+                        "group": 0,
+                        "row": 0,
+                        "blocks": blocks + ([19] if materialized else []),
+                    }
+                ]
 
                 def emit_projection(index):
                     transaction = {
@@ -112,12 +120,19 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                         "semantic_anchor": 1201,
                         "physical_anchor": 1024,
                         "destination_block_ids": blocks,
-                        "host_cpu_block_ids": blocks,
+                        "host_cpu_block_ids": blocks + ([19] if materialized else []),
                         "allocation_block_size": 128,
                         "compression_threshold_tokens": 1152,
                     }
+                    if materialized:
+                        transaction.update(
+                            scheduled_appended_block_ids=[19],
+                            metadata_effect_monotonic_ns=time.monotonic_ns(),
+                        )
                     fact = {
-                        "schema": collector.PROJECTION,
+                        "schema": collector.PROJECTION_V2
+                        if materialized
+                        else collector.PROJECTION,
                         "plan_id": "CPU-fixture-plan",
                         "launch_id": "CPU-fixture-launch",
                         **transaction,
@@ -127,7 +142,11 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                         ),
                         "operation": collector.PROJECTION_OPERATION,
                         "scope": collector.PROJECTION_SCOPE,
-                        "host_mapping": "identity-host-block-id-projection",
+                        "host_mapping": (
+                            "identity-host-block-id-projection-with-scheduled-append"
+                        )
+                        if materialized
+                        else "identity-host-block-id-projection",
                         "kv_tensor_equivalence": None,
                         "attention_consumed_observed_tensor": None,
                         "full_generation_quality": None,
@@ -214,10 +233,11 @@ def test_new_kv_long_nonce_http_and_actual_three_peer_semantic_transport(
                     "sha256": collector.sha(fixture_source.read_bytes()),
                 }
             ],
+            materialized_row=materialized,
         )
         phase = recipe["phases"][0]
         spec = {
-            "schema": collector.KV_SPEC,
+            "schema": collector.KV_SPEC_V2 if materialized else collector.KV_SPEC,
             "kv_requirements": {"phase0": dict(kv_request_runner.REQUIREMENTS)},
             "classification": request_runner.CLASSIFICATION,
             "formal_producer_registration": False,
