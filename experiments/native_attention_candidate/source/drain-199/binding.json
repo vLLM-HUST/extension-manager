@@ -1,0 +1,17 @@
+{
+  "commit": "5fff5ca734206b477b9bd1592cafdfec53054552",
+  "files": {
+    "vllm/plugins/native_block_table_observer.py": {
+      "snapshot": "vllm__plugins__native_block_table_observer.py.gz",
+      "sha256": "0dc69bafea53376a6a4491b31d3952485515c920d2ddd7017d1118067792ed09"
+    },
+    "vllm/plugins/native_tensor_artifact_bootstrap.py": {
+      "snapshot": "vllm__plugins__native_tensor_artifact_bootstrap.py.gz",
+      "sha256": "5ae99cc465f636222301c7a27224da77f9fa4e4e50b8ef90d61cd43b5562abdb"
+    },
+    "vllm/v1/worker/gpu_model_runner.py": {
+      "snapshot": "vllm__v1__worker__gpu_model_runner.py.gz",
+      "sha256": "b286cba03d7a5f842805e707fb274f343052ef4eff49268bb666845450af9643"
+    }
+  }
+}

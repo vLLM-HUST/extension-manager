@@ -36,7 +36,12 @@ tensor_predicate = transport.tensor_predicate
 
 
 def verify_attention_archive(
-    spec_path, policy_path, journal_path, *, acknowledged_prefix=None
+    spec_path,
+    policy_path,
+    journal_path,
+    *,
+    acknowledged_prefix=None,
+    drain_policy_path=None,
 ):
     """Portable bytes oracle. An ACK prefix must come from authenticated live status.
 
@@ -90,6 +95,41 @@ def verify_attention_archive(
         and events[2]["formal_registration"] is False,
         "portable attention wrapper/source start differs",
     )
+    drain_module = None
+    starts = 3
+    ack_source_sha = native.sha(Path(attention_collector.__file__).read_bytes())
+    if drain_policy_path is not None:
+        from . import drain_collector as drain_module
+        from . import phase_drain
+
+        drain_raw = Path(drain_policy_path).read_bytes()
+        drain_policy = json.loads(drain_raw)
+        require(
+            drain_policy
+            == {
+                "schema": drain_module.POLICY,
+                "native_spec_sha256": native.sha(spec_raw),
+                "tensor_policy_sha256": native.sha(policy_raw),
+                "phase_ids": [p["phase_id"] for p in spec["phases"]],
+                "required_ranks": [0, 1],
+                "formal_registration": False,
+            },
+            "portable source drain policy differs",
+        )
+        ack_source_sha = native.sha(Path(drain_module.__file__).read_bytes())
+        require(
+            len(events) >= 4
+            and events[3]["kind"] == "attention.drain.start"
+            and events[3]["schema"] == drain_module.START
+            and events[3]["source_sha256"] == ack_source_sha
+            and events[3]["producer_source_sha256"]
+            == native.sha(Path(phase_drain.__file__).read_bytes())
+            and events[3]["drain_policy_sha256"] == native.sha(drain_raw)
+            and events[3]["formal_registration"] is False,
+            "portable source drain start differs",
+        )
+        starts = 4
+    sender_records, sender_last_accept, drained = {}, {}, {}
     operator_seen, operator_completed = set(), {}
     typed_by_sequence = {}
     maps, mapping_stamps, upload_stamps, upload_counts = {}, {}, {}, {}
@@ -109,16 +149,17 @@ def verify_attention_archive(
             "portable authority chain prefix differs",
         )
         previous = event["event_sha256"]
-        if sequence < 3:
+        if sequence < starts:
             continue
+        allowed_kinds = {
+            "native.accepted",
+            "tensor.artifact.accepted",
+            "attention.operator.accepted",
+        }
+        if drain_module is not None:
+            allowed_kinds.add("attention.worker.drained")
         require(
-            event["kind"]
-            in {
-                "native.accepted",
-                "tensor.artifact.accepted",
-                "attention.operator.accepted",
-            },
-            "portable authority event kind unsupported",
+            event["kind"] in allowed_kinds, "portable authority event kind unsupported"
         )
         raw = base64.b64decode(event["raw_base64"], validate=True)
         digest = native.sha(raw)
@@ -148,7 +189,40 @@ def verify_attention_archive(
             "portable collector accept chronology differs",
         )
         last_clock = accepted
-        if event["kind"] == "native.accepted":
+        sender_key = (event["peer"]["pid"], event["runtime_request_id"])
+        require(sender_key not in drained, "portable fact after source drain")
+        if event["kind"] == "attention.worker.drained":
+            fact = json.loads(raw)
+            require(native.canonical(fact) == raw, "source drain is noncanonical")
+            runtime = fact["runtime_request_id"]
+            require(runtime in maps, "source drain lacks actual API mapping")
+            phase = maps[runtime]
+            require(
+                native.sha(Path(phase_drain.__file__).read_bytes())
+                in event["source_sha256"].values()
+                and ack_source_sha in event["source_sha256"].values(),
+                "portable drain sources are unregistered",
+            )
+            drain_module.verify_drain(
+                fact,
+                sender=sender,
+                spec=spec,
+                phase=phase,
+                records=sender_records.get(sender_key, []),
+                accepted_monotonic_ns=accepted,
+                previous_ack_accepted_monotonic_ns=sender_last_accept.get(sender_key),
+            )
+            drained[sender_key] = {
+                "runtime_request_id": runtime,
+                "phase_id": phase["phase_id"],
+                "rank": sender["process"]["ordinal"],
+                "source_completed_monotonic_ns": fact[
+                    "source_drain_completed_monotonic_ns"
+                ],
+                "accepted_monotonic_ns": accepted,
+                "sequence": sequence,
+            }
+        elif event["kind"] == "native.accepted":
             fact, phase, update = native.native_fact_predicate(
                 raw,
                 sender,
@@ -250,9 +324,7 @@ def verify_attention_archive(
                 "sequence": reference["sequence"],
                 "phase": reference["phase"],
                 "collector": events[0]["collector"],
-                "collector_source_sha256": native.sha(
-                    Path(attention_collector.__file__).read_bytes()
-                ),
+                "collector_source_sha256": ack_source_sha,
                 "archive_identity": reference["archive_identity"],
                 "formal_producer_registration": False,
                 "classification": policy["classification"],
@@ -266,9 +338,7 @@ def verify_attention_archive(
                 fact,
                 reference,
                 payload,
-                collector_source_sha256=native.sha(
-                    Path(attention_collector.__file__).read_bytes()
-                ),
+                collector_source_sha256=ack_source_sha,
                 collector_identity=events[0]["collector"],
             )
             runtime = fact["runtime_request_id"]
@@ -299,6 +369,14 @@ def verify_attention_archive(
             ),
             "portable phase/runtime join differs",
         )
+        if (
+            sender["process"]["role"] == "worker"
+            and event["kind"] != "attention.worker.drained"
+        ):
+            sender_last_accept[sender_key] = accepted
+            sender_records.setdefault(sender_key, []).append(
+                {k: event[k] for k in ("sequence", "event_sha256", "raw_sha256")}
+            )
     if acknowledged_prefix is not None:
         require(
             acknowledged_prefix
@@ -333,6 +411,20 @@ def verify_attention_archive(
             ]["layer_indices"]
         }
     ]
+    if drain_module is not None:
+        require(
+            maps
+            and all(
+                {
+                    d["rank"]
+                    for d in drained.values()
+                    if d["runtime_request_id"] == runtime
+                }
+                == set(phase["expected_ranks"])
+                for runtime, phase in maps.items()
+            ),
+            "portable full phase source drain is incomplete",
+        )
     return {
         "attention_complete_transactions": attention_complete,
         "source_operator_completion_join": bool(attention_complete),
@@ -347,6 +439,11 @@ def verify_attention_archive(
         "attention_consumption": None,
         "full_model_quality": None,
         "formal_registration": False,
+        **(
+            {"source_drains": list(drained.values()), "full_phase_source_drained": True}
+            if drain_module is not None
+            else {}
+        ),
     }
 
 
@@ -459,10 +556,21 @@ def verify_observation(
     journal_path,
     policy_path,
     source_resolver=None,
+    drain_policy_path=None,
 ):
     """Portable recorded-clock/source/bytes oracle; no current PID authentication."""
     validate_kv(recipe, source_resolver=source_resolver)
     require_declared_attention_recipe(recipe, source_resolver=source_resolver)
+    collector_module = attention_collector
+    time_predicate = verify_time_contract
+    if drain_policy_path is not None:
+        from . import drain_collector, drain_consumer, drain_time_policy
+
+        drain_consumer.require_declared_drain_recipe(
+            recipe, source_resolver=source_resolver
+        )
+        collector_module = drain_collector
+        time_predicate = drain_time_policy.verify_time_contract
     require(recipe["schema"] == SCHEMA_V2, "mixed tensor request requires frozen KV v2")
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
     require(
@@ -488,7 +596,7 @@ def verify_observation(
         and descriptor["spec_sha256"] == sha(spec_raw)
         and descriptor["collector"] == descriptor["launcher_observed_identity"]
         and descriptor["collector_source_sha256"]
-        == sha(Path(attention_collector.__file__).read_bytes()),
+        == sha(Path(collector_module.__file__).read_bytes()),
         "mixed collector/launcher/source/spec differs",
     )
     before, after = [
@@ -502,12 +610,18 @@ def verify_observation(
             and receipt["formal_result"] is False,
             "mixed status is failed or scope promoted",
         )
+    if drain_policy_path is not None:
+        require(
+            drain_consumer.verify_sealed_status(after, phase, drain_policy_path),
+            "mixed source phase is not actually sealed",
+        )
     events = [json.loads(line) for line in Path(journal_path).read_bytes().splitlines()]
     typed = verify_attention_archive(
         spec_path,
         policy_path,
         journal_path,
         acknowledged_prefix=after["status"]["acknowledged_prefix"],
+        drain_policy_path=drain_policy_path,
     )
     require(
         events[0]["collector"] == descriptor["collector"]
@@ -534,7 +648,7 @@ def verify_observation(
     require(len(uids) == 1, "mixed registered peer UID ambiguous")
     # Retain full chain, including both starts and all phase events. This is not
     # generic verify_journal and never constructs a filtered fake proof.
-    temporal = verify_time_contract(
+    temporal = time_predicate(
         phase, events, metadata, before, after, descriptor, next(iter(uids))
     )
     selected = [t for t in typed["complete_transactions"] if t["phase_id"] == phase_id]
@@ -704,11 +818,18 @@ def execute_with_attention(
     collector_source_path,
     journal_path,
     policy_path,
+    drain_policy_path=None,
 ):
     """One real RPC, actual before/after OS authentication, unfiltered mixed oracle."""
     output = Path(output)
     validate_kv(recipe)
     require_declared_attention_recipe(recipe)
+    collector_module = attention_collector
+    if drain_policy_path is not None:
+        from . import drain_collector, drain_consumer
+
+        drain_consumer.require_declared_drain_recipe(recipe)
+        collector_module = drain_collector
     require(recipe["schema"] == SCHEMA_V2, "mixed tensor request requires KV v2")
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
     require(
@@ -730,11 +851,15 @@ def execute_with_attention(
     )
     require(
         sha(Path(collector_source_path).read_bytes())
-        == sha(Path(attention_collector.__file__).read_bytes()),
+        == sha(Path(collector_module.__file__).read_bytes()),
         "mixed caller must pin actual typed collector wrapper source",
     )
     before = collector_client.authenticate(
-        Path(socket_path), descriptor, Path(spec_path), Path(collector_source_path)
+        Path(socket_path),
+        descriptor,
+        Path(spec_path),
+        Path(collector_source_path),
+        drain_policy_path=drain_policy_path,
     )
     result = request_runner.run_rpc_only(recipe, phase_id, output)
     output.chmod(0o700)
@@ -745,8 +870,41 @@ def execute_with_attention(
     result["mixed_attention_HTTP_ACK_join"] = None
     try:
         after = collector_client.authenticate(
-            Path(socket_path), descriptor, Path(spec_path), Path(collector_source_path)
+            Path(socket_path),
+            descriptor,
+            Path(spec_path),
+            Path(collector_source_path),
+            drain_policy_path=drain_policy_path,
         )
+        if drain_policy_path is not None:
+            import time
+
+            deadline_ns = (
+                before["authentication_clock"]["dispatch_monotonic_ns"]
+                + phase["rpc_budget_s"] * 1_000_000_000
+            )
+            poll = 0
+            while True:
+                (output / f"collector-drain-poll-{poll:04d}.json").write_bytes(
+                    canonical(after)
+                )
+                if drain_consumer.verify_sealed_status(after, phase, drain_policy_path):
+                    break
+                require(
+                    time.monotonic_ns() < deadline_ns,
+                    "source drain exceeds frozen phase budget",
+                )
+                # Waiting follows an authenticated source-state predicate; a
+                # quiet interval is never considered a source completion proof.
+                time.sleep(0.01)
+                after = collector_client.authenticate(
+                    Path(socket_path),
+                    descriptor,
+                    Path(spec_path),
+                    Path(collector_source_path),
+                    drain_policy_path=drain_policy_path,
+                )
+                poll += 1
         (output / "collector-after.json").write_bytes(canonical(after))
         observed = verify_observation(
             recipe,
@@ -756,6 +914,7 @@ def execute_with_attention(
             spec_path=Path(spec_path),
             journal_path=Path(journal_path),
             policy_path=Path(policy_path),
+            drain_policy_path=drain_policy_path,
         )
         (output / "attention-HTTP-ACK-observation.json").write_bytes(
             canonical(observed)
