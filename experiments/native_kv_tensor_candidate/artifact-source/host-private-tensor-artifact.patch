@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/vllm/plugins/native_tensor_artifact_transport.py
-@@ -0,0 +1,773 @@
+@@ -0,0 +1,819 @@
 +"""Private selected-KV artifact transport candidate; no formal/GPU promotion."""
 +
 +from __future__ import annotations
@@ -16,12 +16,15 @@
 +
 +if __package__ and __package__.startswith("vllm."):
 +    from . import native_semantic_collector as native
++    from . import native_tensor_runtime_contract as runtime_contract
 +    from . import native_tensor_witness as witness
 +else:
 +    from experiments.exposure_gate import native_semantic_collector as native
-+    from experiments.native_kv_tensor_candidate import witness
++    from experiments.native_kv_tensor_candidate import runtime_contract, witness
 +
 +POLICY = "ecpa-selected-KV-private-artifact-policy/v1"
++RUNTIME_POLICY = "ecpa-selected-KV-private-artifact-runtime-policy/v1"
++RUNTIME_ENVELOPE = "ecpa-selected-KV-private-artifact-runtime-envelope/v1"
 +ENVELOPE = "ecpa-selected-KV-private-artifact-envelope/v1"
 +MAX_ARTIFACT = 64 * 1024 * 1024
 +NAME = re.compile(r"^[a-f0-9]{64}\.json$")
@@ -222,8 +225,24 @@
 +    )
 +
 +
-+def tensor_predicate(fact, envelope, policy, sender, maps, mapping_stamps, now, spec):
++def verify_cpu_source(fact):
 +    witness.verify(fact)
++    require(
++        all(
++            view[stage]["device"] == "cpu" and view[stage]["npu_format"] is None
++            for view in fact["cache_views"].values()
++            for stage in ["before", "after"]
++        ),
++        "CPU contract cannot publish actual NPU readback under CPU classification",
++    )
++
++
++def tensor_predicate(fact, envelope, policy, sender, maps, mapping_stamps, now, spec):
++    is_runtime = policy["schema"] == RUNTIME_POLICY
++    if is_runtime:
++        runtime_contract.verify(fact, sender["process"])
++    else:
++        verify_cpu_source(fact)
 +    binding = fact["binding"]
 +    descriptor_predicate(envelope["artifact"])
 +    require(
@@ -239,7 +258,7 @@
 +            "artifact",
 +            "transport_policy_sha256",
 +        }
-+        and envelope["schema"] == ENVELOPE,
++        and envelope["schema"] == (RUNTIME_ENVELOPE if is_runtime else ENVELOPE),
 +        "tensor envelope fields differ",
 +    )
 +    runtime = binding["runtime_request_id"]
@@ -294,8 +313,13 @@
 +            "worker_directories",
 +            "requirements",
 +        }
-+        and policy["schema"] == POLICY
-+        and policy["classification"] == "CPU_SOURCE_CANDIDATE_ONLY"
++        and policy["schema"] in {POLICY, RUNTIME_POLICY}
++        and policy["classification"]
++        == (
++            runtime_contract.CLASSIFICATION
++            if policy["schema"] == RUNTIME_POLICY
++            else "CPU_SOURCE_CANDIDATE_ONLY"
++        )
 +        and policy["formal_registration"] is False
 +        and policy["native_spec_sha256"] == spec_sha256
 +        and spec["classification"] == "CPU_REVIEW_CANDIDATE_ONLY"
@@ -318,6 +342,8 @@
 +        native.sha(Path(__file__).read_bytes()),
 +        native.sha(Path(witness.__file__).read_bytes()),
 +    }
++    if policy["schema"] == RUNTIME_POLICY:
++        required.add(native.sha(Path(runtime_contract.__file__).read_bytes()))
 +    for sender in workers.values():
 +        require(
 +            required <= {s["sha256"] for s in sender["source_files"]},
@@ -376,6 +402,15 @@
 +                    Path(witness.__file__).read_bytes()
 +                ),
 +                "formal_registration": False,
++                **(
++                    {
++                        "runtime_contract_source_sha256": native.sha(
++                            Path(runtime_contract.__file__).read_bytes()
++                        )
++                    }
++                    if self.policy["schema"] == RUNTIME_POLICY
++                    else {}
++                ),
 +            }
 +        )
 +        os.fsync(self.archive_dirfd)
@@ -383,7 +418,7 @@
 +    def accept(self, peer, raw):
 +        envelope = json.loads(raw)
 +        require(isinstance(envelope, dict), "native envelope is not an object")
-+        if envelope.get("schema") != ENVELOPE:
++        if envelope.get("schema") not in {ENVELOPE, RUNTIME_ENVELOPE}:
 +            return super().accept(peer, raw)
 +        with self.lock:
 +            require(not self.failed, "collector persistence failed")
@@ -493,7 +528,7 @@
 +                "collector_source_sha256": self.source_sha256,
 +                "archive_identity": self.archive_identity,
 +                "formal_producer_registration": False,
-+                "classification": "CPU_REVIEW_CANDIDATE_ONLY",
++                "classification": self.policy["classification"],
 +            }
 +            ack["ack_sha256"] = native.sha(native.canonical(ack))
 +            return ack
@@ -508,9 +543,13 @@
 +    scope,
 +    socket_path,
 +    receiver,
++    runtime=False,
 +):
-+    witness.verify(fact)
 +    actual_scope = scope()
++    if runtime:
++        runtime_contract.verify(fact, actual_scope["process"])
++    else:
++        verify_cpu_source(fact)
 +    require(
 +        actual_scope["process"]["pid"] == os.getpid()
 +        and actual_scope["process"]["role"] == "worker",
@@ -523,7 +562,7 @@
 +    finally:
 +        os.close(fd)
 +    envelope = {
-+        "schema": ENVELOPE,
++        "schema": RUNTIME_ENVELOPE if runtime else ENVELOPE,
 +        **actual_scope,
 +        "monotonic_ns": time.monotonic_ns(),
 +        "runtime_request_id": fact["binding"]["runtime_request_id"],
@@ -556,8 +595,9 @@
 +    policy_raw = Path(policy_path).read_bytes()
 +    spec, policy = json.loads(spec_raw), json.loads(policy_raw)
 +    require(
-+        policy["schema"] == POLICY
-+        and policy["classification"] == "CPU_SOURCE_CANDIDATE_ONLY"
++        policy["schema"] in {POLICY, RUNTIME_POLICY}
++        and policy["classification"]
++        in {"CPU_SOURCE_CANDIDATE_ONLY", runtime_contract.CLASSIFICATION}
 +        and policy["formal_registration"] is False
 +        and policy["native_spec_sha256"] == native.sha(spec_raw),
 +        "portable artifact policy scope/source differs",
@@ -579,6 +619,12 @@
 +        == native.sha(Path(witness.__file__).read_bytes()),
 +        "portable collector/transport/source start differs",
 +    )
++    if policy["schema"] == RUNTIME_POLICY:
++        require(
++            events[1].get("runtime_contract_source_sha256")
++            == native.sha(Path(runtime_contract.__file__).read_bytes()),
++            "runtime contract source start differs",
++        )
 +    maps, mapping_stamps, upload_stamps, upload_counts = {}, {}, {}, {}
 +    seen, tensor_seen, completed = set(), set(), {}
 +    previous = "0" * 64
@@ -732,7 +778,7 @@
 +            )
 +    return {
 +        "schema": "ecpa-selected-KV-artifact-portable-analysis/v1",
-+        "classification": "CPU_SOURCE_CANDIDATE_ONLY",
++        "classification": policy["classification"],
 +        "complete_transactions": complete,
 +        "durable_artifact_join_complete": bool(complete),
 +        "acknowledged_prefix_status": "verified"
@@ -776,7 +822,7 @@
 +    main()
 --- /dev/null
 +++ b/vllm/plugins/native_tensor_artifact_bootstrap.py
-@@ -0,0 +1,154 @@
+@@ -0,0 +1,176 @@
 +"""Opt-in source-owned private tensor artifact bootstrap; absent means no proof."""
 +
 +from __future__ import annotations
@@ -793,6 +839,7 @@
 +    from experiments.native_kv_tensor_candidate import artifact_transport as transport
 +
 +SCHEMA = "ecpa-selected-KV-private-artifact-bootstrap/v1"
++RUNTIME_SCHEMA = "ecpa-selected-KV-private-artifact-runtime-bootstrap/v1"
 +ENV = "ECPA_NATIVE_TENSOR_ARTIFACT_BOOTSTRAP"
 +
 +
@@ -813,8 +860,13 @@
 +            "ready",
 +            "source_files",
 +        }
-+        and value["schema"] == SCHEMA
-+        and value["classification"] == "CPU_SOURCE_CANDIDATE_ONLY"
++        and value["schema"] in {SCHEMA, RUNTIME_SCHEMA}
++        and value["classification"]
++        == (
++            transport.runtime_contract.CLASSIFICATION
++            if value["schema"] == RUNTIME_SCHEMA
++            else "CPU_SOURCE_CANDIDATE_ONLY"
++        )
 +        and value["formal_registration"] is False,
 +        "tensor bootstrap scope is unsupported",
 +    )
@@ -826,6 +878,12 @@
 +        "tensor bootstrap frozen inputs changed",
 +    )
 +    spec, policy = json.loads(spec_raw), json.loads(policy_raw)
++    is_runtime = policy["schema"] == transport.RUNTIME_POLICY
++    transport.require(
++        (value["schema"] == RUNTIME_SCHEMA) == is_runtime
++        and value["classification"] == policy["classification"],
++        "runtime bootstrap/policy contract mismatch",
++    )
 +    senders = {s["process"]["pid"]: s for s in spec["senders"]}
 +    sender = senders.get(os.getpid())
 +    transport.require(
@@ -872,13 +930,21 @@
 +            )
 +            return scope
 +
++        published = (
++            transport.runtime_contract.from_actual_native_readback(
++                fact, bound_scope()["process"]
++            )
++            if is_runtime
++            else fact
++        )
 +        return transport.publish_candidate(
-+            fact,
++            published,
 +            directory_path=own["path"],
 +            directory_identity=own["identity"],
 +            policy_sha256=value["policy_sha256"],
 +            scope=bound_scope,
 +            socket_path=ready["socket_path"],
++            runtime=is_runtime,
 +            receiver={
 +                "expected_collector": ready["collector"],
 +                "expected_socket_identity": tuple(ready["socket_identity"]),
@@ -904,9 +970,11 @@
 +
 +def write_context(path, *, spec_path, policy_path, ready, source_files):
 +    """Launcher prepares input only; readiness must be authenticated independently."""
++    policy = json.loads(Path(policy_path).read_bytes())
++    is_runtime = policy["schema"] == transport.RUNTIME_POLICY
 +    value = {
-+        "schema": SCHEMA,
-+        "classification": "CPU_SOURCE_CANDIDATE_ONLY",
++        "schema": RUNTIME_SCHEMA if is_runtime else SCHEMA,
++        "classification": policy["classification"],
 +        "formal_registration": False,
 +        "spec_path": str(spec_path),
 +        "spec_sha256": native.sha(Path(spec_path).read_bytes()),
@@ -1313,3 +1381,78 @@
 +    verify(fact)
 +    # No callback Boolean or local PublicationAck becomes an authenticated ACK.
 +    _sink(fact)
+--- /dev/null
++++ b/vllm/plugins/native_tensor_runtime_contract.py
+@@ -0,0 +1,72 @@
++"""Explicit real-runtime-unqualified contract; source bytes are not qualification."""
++
++from __future__ import annotations
++
++import re
++
++if __package__ and __package__.startswith("vllm."):
++    from . import native_tensor_witness as witness
++else:
++    from experiments.native_kv_tensor_candidate import witness
++
++SCHEMA = "ecpa-selected-KV-materialization-runtime-unqualified/v1"
++CLASSIFICATION = "REAL_RUNTIME_UNQUALIFIED"
++
++
++def verify(fact, process):
++    witness.check(
++        fact.get("schema") == SCHEMA
++        and fact.get("classification") == CLASSIFICATION
++        and fact.get("native_producer") == process,
++        "real runtime tensor schema/source role missing",
++    )
++    witness.check(
++        process.get("role") == "worker"
++        and process.get("assignment_source") == "host"
++        and type(process.get("pid")) is int
++        and process["pid"] > 0
++        and type(process.get("ordinal")) is int
++        and process["ordinal"] == fact["binding"]["rank"]
++        and type(process.get("start_ticks")) is int
++        and process["start_ticks"] > 0
++        and type(process.get("session")) is int
++        and process["session"] > 0
++        and isinstance(process.get("boot_id"), str)
++        and process["boot_id"],
++        "actual native runtime worker identity missing",
++    )
++    devices = set()
++    for view in fact["cache_views"].values():
++        for stage in ["before", "after"]:
++            actual = view[stage]
++            witness.check(
++                isinstance(actual["device"], str)
++                and re.fullmatch(r"npu:[0-9]+", actual["device"])
++                and type(actual["npu_format"]) is int
++                and actual["npu_format"] >= 0,
++                "real runtime contract rejects CPU or unobserved NPU cache format",
++            )
++            devices.add(actual["device"])
++    witness.check(len(devices) == 1, "actual K/V readbacks span different devices")
++    # Explicitly reuse only the original byte/layout/slot predicate. This local
++    # adapter is not an old CPU archive, an admission, or a hardware result.
++    selected = {k: v for k, v in fact.items() if k != "native_producer"}
++    selected["schema"] = witness.SCHEMA
++    selected["classification"] = "CPU_SOURCE_CANDIDATE_ONLY"
++    result = witness.verify(selected)
++    return result | {
++        "classification": CLASSIFICATION,
++        "actual_device": next(iter(devices)),
++    }
++
++
++def from_actual_native_readback(fact, process):
++    """Source callback encodes fresh actual NPU readback; CPU cannot be upgraded."""
++    witness.verify(fact)
++    encoded = fact | {
++        "schema": SCHEMA,
++        "classification": CLASSIFICATION,
++        "native_producer": dict(process),
++    }
++    verify(encoded, process)
++    return encoded

@@ -13,12 +13,15 @@ from pathlib import Path
 
 if __package__ and __package__.startswith("vllm."):
     from . import native_semantic_collector as native
+    from . import native_tensor_runtime_contract as runtime_contract
     from . import native_tensor_witness as witness
 else:
     from experiments.exposure_gate import native_semantic_collector as native
-    from experiments.native_kv_tensor_candidate import witness
+    from experiments.native_kv_tensor_candidate import runtime_contract, witness
 
 POLICY = "ecpa-selected-KV-private-artifact-policy/v1"
+RUNTIME_POLICY = "ecpa-selected-KV-private-artifact-runtime-policy/v1"
+RUNTIME_ENVELOPE = "ecpa-selected-KV-private-artifact-runtime-envelope/v1"
 ENVELOPE = "ecpa-selected-KV-private-artifact-envelope/v1"
 MAX_ARTIFACT = 64 * 1024 * 1024
 NAME = re.compile(r"^[a-f0-9]{64}\.json$")
@@ -219,8 +222,24 @@ def transaction(fact):
     )
 
 
-def tensor_predicate(fact, envelope, policy, sender, maps, mapping_stamps, now, spec):
+def verify_cpu_source(fact):
     witness.verify(fact)
+    require(
+        all(
+            view[stage]["device"] == "cpu" and view[stage]["npu_format"] is None
+            for view in fact["cache_views"].values()
+            for stage in ["before", "after"]
+        ),
+        "CPU contract cannot publish actual NPU readback under CPU classification",
+    )
+
+
+def tensor_predicate(fact, envelope, policy, sender, maps, mapping_stamps, now, spec):
+    is_runtime = policy["schema"] == RUNTIME_POLICY
+    if is_runtime:
+        runtime_contract.verify(fact, sender["process"])
+    else:
+        verify_cpu_source(fact)
     binding = fact["binding"]
     descriptor_predicate(envelope["artifact"])
     require(
@@ -236,7 +255,7 @@ def tensor_predicate(fact, envelope, policy, sender, maps, mapping_stamps, now, 
             "artifact",
             "transport_policy_sha256",
         }
-        and envelope["schema"] == ENVELOPE,
+        and envelope["schema"] == (RUNTIME_ENVELOPE if is_runtime else ENVELOPE),
         "tensor envelope fields differ",
     )
     runtime = binding["runtime_request_id"]
@@ -291,8 +310,13 @@ def policy_predicate(policy, spec, spec_sha256):
             "worker_directories",
             "requirements",
         }
-        and policy["schema"] == POLICY
-        and policy["classification"] == "CPU_SOURCE_CANDIDATE_ONLY"
+        and policy["schema"] in {POLICY, RUNTIME_POLICY}
+        and policy["classification"]
+        == (
+            runtime_contract.CLASSIFICATION
+            if policy["schema"] == RUNTIME_POLICY
+            else "CPU_SOURCE_CANDIDATE_ONLY"
+        )
         and policy["formal_registration"] is False
         and policy["native_spec_sha256"] == spec_sha256
         and spec["classification"] == "CPU_REVIEW_CANDIDATE_ONLY"
@@ -315,6 +339,8 @@ def policy_predicate(policy, spec, spec_sha256):
         native.sha(Path(__file__).read_bytes()),
         native.sha(Path(witness.__file__).read_bytes()),
     }
+    if policy["schema"] == RUNTIME_POLICY:
+        required.add(native.sha(Path(runtime_contract.__file__).read_bytes()))
     for sender in workers.values():
         require(
             required <= {s["sha256"] for s in sender["source_files"]},
@@ -373,6 +399,15 @@ class TensorArtifactCollector(native.Collector):
                     Path(witness.__file__).read_bytes()
                 ),
                 "formal_registration": False,
+                **(
+                    {
+                        "runtime_contract_source_sha256": native.sha(
+                            Path(runtime_contract.__file__).read_bytes()
+                        )
+                    }
+                    if self.policy["schema"] == RUNTIME_POLICY
+                    else {}
+                ),
             }
         )
         os.fsync(self.archive_dirfd)
@@ -380,7 +415,7 @@ class TensorArtifactCollector(native.Collector):
     def accept(self, peer, raw):
         envelope = json.loads(raw)
         require(isinstance(envelope, dict), "native envelope is not an object")
-        if envelope.get("schema") != ENVELOPE:
+        if envelope.get("schema") not in {ENVELOPE, RUNTIME_ENVELOPE}:
             return super().accept(peer, raw)
         with self.lock:
             require(not self.failed, "collector persistence failed")
@@ -490,7 +525,7 @@ class TensorArtifactCollector(native.Collector):
                 "collector_source_sha256": self.source_sha256,
                 "archive_identity": self.archive_identity,
                 "formal_producer_registration": False,
-                "classification": "CPU_REVIEW_CANDIDATE_ONLY",
+                "classification": self.policy["classification"],
             }
             ack["ack_sha256"] = native.sha(native.canonical(ack))
             return ack
@@ -505,9 +540,13 @@ def publish_candidate(
     scope,
     socket_path,
     receiver,
+    runtime=False,
 ):
-    witness.verify(fact)
     actual_scope = scope()
+    if runtime:
+        runtime_contract.verify(fact, actual_scope["process"])
+    else:
+        verify_cpu_source(fact)
     require(
         actual_scope["process"]["pid"] == os.getpid()
         and actual_scope["process"]["role"] == "worker",
@@ -520,7 +559,7 @@ def publish_candidate(
     finally:
         os.close(fd)
     envelope = {
-        "schema": ENVELOPE,
+        "schema": RUNTIME_ENVELOPE if runtime else ENVELOPE,
         **actual_scope,
         "monotonic_ns": time.monotonic_ns(),
         "runtime_request_id": fact["binding"]["runtime_request_id"],
@@ -553,8 +592,9 @@ def verify_archive(spec_path, policy_path, journal_path, *, acknowledged_prefix=
     policy_raw = Path(policy_path).read_bytes()
     spec, policy = json.loads(spec_raw), json.loads(policy_raw)
     require(
-        policy["schema"] == POLICY
-        and policy["classification"] == "CPU_SOURCE_CANDIDATE_ONLY"
+        policy["schema"] in {POLICY, RUNTIME_POLICY}
+        and policy["classification"]
+        in {"CPU_SOURCE_CANDIDATE_ONLY", runtime_contract.CLASSIFICATION}
         and policy["formal_registration"] is False
         and policy["native_spec_sha256"] == native.sha(spec_raw),
         "portable artifact policy scope/source differs",
@@ -576,6 +616,12 @@ def verify_archive(spec_path, policy_path, journal_path, *, acknowledged_prefix=
         == native.sha(Path(witness.__file__).read_bytes()),
         "portable collector/transport/source start differs",
     )
+    if policy["schema"] == RUNTIME_POLICY:
+        require(
+            events[1].get("runtime_contract_source_sha256")
+            == native.sha(Path(runtime_contract.__file__).read_bytes()),
+            "runtime contract source start differs",
+        )
     maps, mapping_stamps, upload_stamps, upload_counts = {}, {}, {}, {}
     seen, tensor_seen, completed = set(), set(), {}
     previous = "0" * 64
@@ -729,7 +775,7 @@ def verify_archive(spec_path, policy_path, journal_path, *, acknowledged_prefix=
             )
     return {
         "schema": "ecpa-selected-KV-artifact-portable-analysis/v1",
-        "classification": "CPU_SOURCE_CANDIDATE_ONLY",
+        "classification": policy["classification"],
         "complete_transactions": complete,
         "durable_artifact_join_complete": bool(complete),
         "acknowledged_prefix_status": "verified"

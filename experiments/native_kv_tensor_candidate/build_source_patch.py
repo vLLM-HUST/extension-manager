@@ -119,6 +119,7 @@ def main():
             ("artifact_transport.py", "native_tensor_artifact_transport.py"),
             ("artifact_bootstrap.py", "native_tensor_artifact_bootstrap.py"),
             ("witness.py", "native_tensor_witness.py"),
+            ("runtime_contract.py", "native_tensor_runtime_contract.py"),
         ]:
             raw = (ROOT / src).read_text()
             path = "vllm/plugins/" + name

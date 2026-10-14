@@ -14,6 +14,7 @@ else:
     from experiments.native_kv_tensor_candidate import artifact_transport as transport
 
 SCHEMA = "ecpa-selected-KV-private-artifact-bootstrap/v1"
+RUNTIME_SCHEMA = "ecpa-selected-KV-private-artifact-runtime-bootstrap/v1"
 ENV = "ECPA_NATIVE_TENSOR_ARTIFACT_BOOTSTRAP"
 
 
@@ -34,8 +35,13 @@ def callback_from_context(path, *, actual_scope=None):
             "ready",
             "source_files",
         }
-        and value["schema"] == SCHEMA
-        and value["classification"] == "CPU_SOURCE_CANDIDATE_ONLY"
+        and value["schema"] in {SCHEMA, RUNTIME_SCHEMA}
+        and value["classification"]
+        == (
+            transport.runtime_contract.CLASSIFICATION
+            if value["schema"] == RUNTIME_SCHEMA
+            else "CPU_SOURCE_CANDIDATE_ONLY"
+        )
         and value["formal_registration"] is False,
         "tensor bootstrap scope is unsupported",
     )
@@ -47,6 +53,12 @@ def callback_from_context(path, *, actual_scope=None):
         "tensor bootstrap frozen inputs changed",
     )
     spec, policy = json.loads(spec_raw), json.loads(policy_raw)
+    is_runtime = policy["schema"] == transport.RUNTIME_POLICY
+    transport.require(
+        (value["schema"] == RUNTIME_SCHEMA) == is_runtime
+        and value["classification"] == policy["classification"],
+        "runtime bootstrap/policy contract mismatch",
+    )
     senders = {s["process"]["pid"]: s for s in spec["senders"]}
     sender = senders.get(os.getpid())
     transport.require(
@@ -93,13 +105,21 @@ def callback_from_context(path, *, actual_scope=None):
             )
             return scope
 
+        published = (
+            transport.runtime_contract.from_actual_native_readback(
+                fact, bound_scope()["process"]
+            )
+            if is_runtime
+            else fact
+        )
         return transport.publish_candidate(
-            fact,
+            published,
             directory_path=own["path"],
             directory_identity=own["identity"],
             policy_sha256=value["policy_sha256"],
             scope=bound_scope,
             socket_path=ready["socket_path"],
+            runtime=is_runtime,
             receiver={
                 "expected_collector": ready["collector"],
                 "expected_socket_identity": tuple(ready["socket_identity"]),
@@ -125,9 +145,11 @@ def ensure_registered(register):
 
 def write_context(path, *, spec_path, policy_path, ready, source_files):
     """Launcher prepares input only; readiness must be authenticated independently."""
+    policy = json.loads(Path(policy_path).read_bytes())
+    is_runtime = policy["schema"] == transport.RUNTIME_POLICY
     value = {
-        "schema": SCHEMA,
-        "classification": "CPU_SOURCE_CANDIDATE_ONLY",
+        "schema": RUNTIME_SCHEMA if is_runtime else SCHEMA,
+        "classification": policy["classification"],
         "formal_registration": False,
         "spec_path": str(spec_path),
         "spec_sha256": native.sha(Path(spec_path).read_bytes()),
