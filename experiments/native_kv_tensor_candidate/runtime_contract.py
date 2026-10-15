@@ -1,10 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
 """Explicit real-runtime-unqualified contract; source bytes are not qualification."""
 
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
-if __package__ and __package__.startswith("vllm."):
+if TYPE_CHECKING or (__package__ and __package__.startswith("vllm.")):
     from . import native_tensor_witness as witness
 else:
     from experiments.native_kv_tensor_candidate import witness

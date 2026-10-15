@@ -35,6 +35,16 @@ def public_request_headers(phase):
     return {**headers, "X-ECPA-Request-ID": phase["external_request_id"]}
 
 
+def signal_registered_worker(worker):
+    expected = {
+        key: worker[key] for key in ("pid", "start_ticks", "session", "boot_id")
+    }
+    if process_identity(worker["pid"]) != expected:
+        raise ValueError("registered worker epoch changed before fault injection")
+    os.kill(expected["pid"], signal.SIGTERM)
+    return expected
+
+
 def start(argv, config, out, name):
     process = subprocess.Popen(
         argv,
@@ -134,7 +144,13 @@ def execute(
             "request_monotonic_ns": entry,
             "response_monotonic_ns": time.monotonic_ns(),
             "response_sha256": hashlib.sha256(raw).hexdigest(),
+            "response_body_path": f"live-client-{len(http_rows) + 1:04}.response.bin",
         }
+        with (out / row["response_body_path"]).open("xb") as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
         http_rows.append(row)
         write(out / f"live-client-{len(http_rows):04}.json", row)
         return status, raw
@@ -223,17 +239,39 @@ def execute(
                 "formal_result": False,
             },
         )
-        os.kill(worker["pid"], signal.SIGTERM)
+        signal_registered_worker(worker)
         end = time.monotonic() + 10
+        gone = False
         while time.monotonic() < end:
             try:
                 process_identity(worker["pid"])
             except (OSError, ValueError):
+                gone = True
                 break
             time.sleep(0.05)
+        if not gone:
+            raise ValueError("faulted registered worker did not terminate")
         closed, _ = request("POST", path, producer.canonical(phase["payload"]), headers)
         if closed != 503:
             raise ValueError("source epoch loss did not close response release")
+        completion = json.loads((out / "producer-completion.json").read_bytes())
+        if (
+            http_rows[-1]["response_monotonic_ns"]
+            >= completion["proof"]["expires_monotonic_ns"]
+        ):
+            raise ValueError("fault response arrived after proof expiry")
+        write(
+            out / "actual-worker-fault-observed.json",
+            {
+                "registered_worker": before,
+                "same_registered_epoch_gone": gone,
+                "response_monotonic_ns": http_rows[-1]["response_monotonic_ns"],
+                "fixed_lease_expires_monotonic_ns": completion["proof"][
+                    "expires_monotonic_ns"
+                ],
+                "formal_result": False,
+            },
+        )
         rpc = json.loads((out / "probe/result.json").read_bytes())
         rpc.update(
             live_semantic_producer=True,

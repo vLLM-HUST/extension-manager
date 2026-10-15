@@ -31,6 +31,104 @@ REQUIREMENTS = {
 }
 
 
+HOST47_VERSION = "0.31.1.post1.dev5+g47c8aa1ca.empty"
+HOST47_PROFILE = "vllm-hust-main-47c8aa1-tokenization/v1"
+HOST47_REVISION = "47c8aa1caa7638d2e5e231eedced45448106fde5"
+# Exact installed main47c source bytes, already matched to its genuine wheel.
+HOST47_TOKENIZATION_SOURCES = dict(
+    [
+        (
+            "vllm/entrypoints/openai/chat_completion/serving.py",
+            "dabae194cfc044ff6613081a0f037e5c6d4739ebc97abf553291ffe019a614ae",
+        ),
+        (
+            "vllm/entrypoints/serve/engine/serving.py",
+            "e46693a37e9a8b1087c8cee8a1e2cb9a2ce3d052772e3771755ef59de0885cf4",
+        ),
+        (
+            "vllm/renderers/base.py",
+            "0c3bd445c5850c05322ac8a761b1a4248ee818a30fd4ea14c1d3151e388dfefc",
+        ),
+        (
+            "vllm/renderers/chat_utils/__init__.py",
+            "8845f7a5e1e3b5d143e332c47080b21b766f1c75bc7f66d9569ed3fe74a108c3",
+        ),
+        (
+            "vllm/renderers/chat_utils/chat_message.py",
+            "485f5a8ec0bd4d6851759540eb36dfa4fc5668336ff1226f58575bf1329617a1",
+        ),
+        (
+            "vllm/renderers/chat_utils/chat_template.py",
+            "4902877fd1c02cca35dca00c2c9d6b1a41681736ebb054e4a83551cecd252884",
+        ),
+        (
+            "vllm/renderers/chat_utils/content_parser.py",
+            "e86b0f673ed04ef6c00f0ca9a49e4288aed78a206ebaae15fece1a85b6feb2c7",
+        ),
+        (
+            "vllm/renderers/chat_utils/item_tracker.py",
+            "b69d27d47b701071680af9af7e3540fa18aba1f3551c10e3343e1cfc97a7615d",
+        ),
+        (
+            "vllm/renderers/chat_utils/tool_call.py",
+            "ba40d87fe363eea14427eb3c5abbb81d8b1bdd501b5abc800d6fff3cc9ea5611",
+        ),
+        (
+            "vllm/renderers/chat_utils/types.py",
+            "b09b8cfdc1d77b1428e7700634dffd4ec3c0c49667a25dc93f0bc93b6316a16a",
+        ),
+        (
+            "vllm/renderers/hf.py",
+            "1302669451e8a4af91aa5248501723e7f8045a2acb5e05b70651b331ad102895",
+        ),
+        (
+            "vllm/renderers/inputs/__init__.py",
+            "2d7ea91cbfa17ecc73abe425d7a73a77a568f064f09d026989bc5fa8f601a379",
+        ),
+        (
+            "vllm/renderers/inputs/preprocess.py",
+            "7890fa28f8594107fb2ff2c61e07ea045912e423d47111254bbccd381034b813",
+        ),
+        (
+            "vllm/renderers/inputs/tokenize.py",
+            "c8a9e19972a8106b6bd84715fdbdf54d9219502baba32a06e803ff4fda2dff5d",
+        ),
+        (
+            "vllm/renderers/online_renderer.py",
+            "a8f90b4d1d41b2194557992a12105f65bf720d743384e18ee01c2870a75a7c72",
+        ),
+        (
+            "vllm/renderers/params.py",
+            "5113461cd308266727d9ced82900cbe65ae50245a2f3cb16224f6689574570a9",
+        ),
+        (
+            "vllm/renderers/registry.py",
+            "5ea03ecad81f8911c72112656f2456c05e0e57122be99af05c27464466596844",
+        ),
+        (
+            "vllm/tokenizers/__init__.py",
+            "29548902d92ec30fbed3cbf3f76225d9766a18dae9ef54553eb48284e4dbf653",
+        ),
+        (
+            "vllm/tokenizers/hf.py",
+            "4c2712de92e8fec91b9d7f3b5b162bd1f0683e7fc21c16b20188a505fc6c6fea",
+        ),
+        (
+            "vllm/tokenizers/protocol.py",
+            "15ec34808171509114ce97dd1fa903475ce2e4699a862321e3f59c075518573c",
+        ),
+        (
+            "vllm/tokenizers/registry.py",
+            "57fce5fb82a1585f2571a84448bc7e354e36825863b6cc07ece3845b8398a9d4",
+        ),
+        (
+            "vllm/v1/engine/input_processor.py",
+            "960d57f5a91b6856f64f13a1bae1444c58b2226a5f976ad7a264517368d6d8e7",
+        ),
+    ]
+)
+
+
 STRICT_COPY = "strict-system-copy-v1"
 STRICT_SYSTEM = (
     "You are a deterministic text-copying assistant. Copy the entire text inside "
@@ -99,17 +197,40 @@ def runtime_tokenization_binding(tokenizer):
         "vllm/entrypoints/serve/engine/serving.py",
         "vllm/v1/engine/input_processor.py",
     ]
+    new_profile = host.version == HOST47_VERSION
+    if new_profile:
+        host_paths = list(HOST47_TOKENIZATION_SOURCES)
     sources = []
     for relative in host_paths:
         path = Path(host.locate_file(relative)).resolve()
         require(path.is_file(), "actual Host tokenization source is unavailable")
-        sources.append({"path": str(path), "sha256": sha(path.read_bytes())})
+        digest = sha(path.read_bytes())
+        if new_profile:
+            require(
+                digest == HOST47_TOKENIZATION_SOURCES[relative],
+                "main47c tokenization module bytes differ",
+            )
+        sources.append(
+            {
+                "path": str(path),
+                "sha256": digest,
+                **({"relative_path": relative} if new_profile else {}),
+            }
+        )
     return {
         "classification": "ACTUAL_LOCAL_TOKENIZER_CPU_PREFLIGHT_ONLY",
         "transformers_version": importlib.metadata.version("transformers"),
         "host_version": host.version,
         "implementation_source": implementation,
         "host_sources": sources,
+        **(
+            {
+                "host_tokenization_profile": HOST47_PROFILE,
+                "host_revision": HOST47_REVISION,
+            }
+            if new_profile
+            else {}
+        ),
     }
 
 
@@ -436,10 +557,40 @@ def validate_kv(recipe, *, source_resolver=None):
             "tokenization source classification unsupported",
         )
         if binding["classification"] != "CPU_TOKENIZER_FIXTURE_ONLY":
+            profile = binding.get("host_tokenization_profile")
             require(
-                binding["transformers_version"]
-                and binding["host_version"]
-                and len(binding["host_sources"]) == 8,
+                profile in (None, HOST47_PROFILE), "unknown Host tokenization profile"
+            )
+            if profile is None:
+                require(
+                    binding["host_version"] != HOST47_VERSION,
+                    "main47c tokenization profile/version/source binding differs",
+                )
+                require(
+                    len(binding["host_sources"]) == 8,
+                    "legacy Host tokenization source binding incomplete",
+                )
+            else:
+                require(
+                    binding["host_version"] == HOST47_VERSION
+                    and binding.get("host_revision") == HOST47_REVISION
+                    and len(binding["host_sources"]) == len(HOST47_TOKENIZATION_SOURCES)
+                    and {
+                        x.get("relative_path"): x["sha256"]
+                        for x in binding["host_sources"]
+                    }
+                    == HOST47_TOKENIZATION_SOURCES,
+                    "main47c tokenization profile/version/source binding differs",
+                )
+                for source in binding["host_sources"]:
+                    require(
+                        Path(source["path"])
+                        .as_posix()
+                        .endswith("/" + source["relative_path"]),
+                        "main47c source module path differs",
+                    )
+            require(
+                binding["transformers_version"] and binding["host_version"],
                 "actual Host/transformers tokenization source binding incomplete",
             )
         for binding_source in [

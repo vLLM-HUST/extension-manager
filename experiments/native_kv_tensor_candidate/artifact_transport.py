@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
 """Private selected-KV artifact transport candidate; no formal/GPU promotion."""
 
 from __future__ import annotations
@@ -10,8 +13,9 @@ import re
 import stat
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-if __package__ and __package__.startswith("vllm."):
+if TYPE_CHECKING or (__package__ and __package__.startswith("vllm.")):
     from . import native_semantic_collector as native
     from . import native_tensor_runtime_contract as runtime_contract
     from . import native_tensor_witness as witness
@@ -428,6 +432,7 @@ class TensorArtifactCollector(native.Collector):
                 and sender["peer_gid"] == gid,
                 "kernel peer is not an artifact worker source",
             )
+            assert sender is not None
             require(
                 all(
                     sender["process"].get(k) == v
@@ -622,8 +627,12 @@ def verify_archive(spec_path, policy_path, journal_path, *, acknowledged_prefix=
             == native.sha(Path(runtime_contract.__file__).read_bytes()),
             "runtime contract source start differs",
         )
-    maps, mapping_stamps, upload_stamps, upload_counts = {}, {}, {}, {}
-    seen, tensor_seen, completed = set(), set(), {}
+    maps: dict[Any, Any] = {}
+    mapping_stamps: dict[Any, Any] = {}
+    upload_stamps: dict[Any, Any] = {}
+    upload_counts: dict[Any, Any] = {}
+    seen, tensor_seen = set(), set()
+    completed: dict[Any, Any] = {}
     previous = "0" * 64
     last_clock = events[0]["started_monotonic_ns"]
     for sequence, event in enumerate(events):
@@ -674,6 +683,7 @@ def verify_archive(spec_path, policy_path, journal_path, *, acknowledged_prefix=
         )
         last_clock = accepted
         if event["kind"] == "native.accepted":
+            assert sender is not None
             fact, phase, update = native.native_fact_predicate(
                 raw,
                 sender,

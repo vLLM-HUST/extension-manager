@@ -10,6 +10,7 @@ import time
 import pytest
 
 from experiments.native_attention_candidate import live_authority as module
+from experiments.native_attention_candidate import live_cohort as cohort
 from experiments.native_attention_candidate.live_cohort import public_request_headers
 
 
@@ -155,6 +156,19 @@ def test_repeat_frozen_release_challenges_each_read_and_hashchains(live):
         assert entry["sequence"] == sequence and entry["previous_sha256"] == previous
         assert sha == module.digest(module.canonical(entry))
         assert entry["formal_result"] is False
+        if entry["event"] == "public-request":
+            assert (
+                module.digest(module.canonical(entry["producer_quote"]))
+                == entry["quote_sha256"]
+            )
+            assert entry["producer_quote"]["nonce"] in {
+                query["nonce"] for query in state["queries"]
+            }
+            assert (
+                entry["validation_started_monotonic_ns"]
+                <= entry["producer_quote"]["proof"]["issued_monotonic_ns"]
+                <= entry["validation_completed_monotonic_ns"]
+            )
         previous = sha
 
 
@@ -248,3 +262,19 @@ def test_public_runner_headers_cross_actual_http_authority(live):
         server.server_close()
         thread.join(timeout=5)
     assert not thread.is_alive()
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_worker_fault_refuses_a_reused_process_epoch(monkeypatch, changed):
+    expected = {"pid": 123, "start_ticks": 456, "session": 123, "boot_id": "boot"}
+    current = {**expected, "start_ticks": 999} if changed else expected
+    signals = []
+    monkeypatch.setattr(cohort, "process_identity", lambda pid: current)
+    monkeypatch.setattr(cohort.os, "kill", lambda pid, sig: signals.append((pid, sig)))
+    if changed:
+        with pytest.raises(ValueError, match="epoch changed"):
+            cohort.signal_registered_worker(expected)
+        assert signals == []
+    else:
+        assert cohort.signal_registered_worker(expected) == expected
+        assert signals == [(123, cohort.signal.SIGTERM)]

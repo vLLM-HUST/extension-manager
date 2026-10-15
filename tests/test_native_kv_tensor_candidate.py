@@ -210,7 +210,18 @@ def test_exact_source_patch_applies_and_declares_true_before_after_hooks(tmp_pat
         hashlib.sha256(module.read_bytes()).hexdigest()
         == binding["candidate_module_sha256"]
     )
-    assert module.read_bytes() == Path(witness.__file__).read_bytes()
+    # This historical patch still installs the separately pinned KV capture
+    # producer. The current Host/SDK verifier has its own published source bytes.
+    frozen = {"__name__": "frozen_kv_capture", "__file__": str(module)}
+    exec(compile(module.read_bytes(), str(module), "exec"), frozen)
+    value = packet()
+    assert frozen["SCHEMA"] == witness.SCHEMA
+    assert frozen["verify"](value) == witness.verify(value)
+    bad = copy.deepcopy(value)
+    bad["destination_readback_sha256"]["K"] = "0" * 64
+    for verifier in (frozen["verify"], witness.verify):
+        with pytest.raises(ValueError):
+            verifier(bad)
 
 
 def test_portable_attention_contacts_bind_exact_source_bytes(tmp_path):

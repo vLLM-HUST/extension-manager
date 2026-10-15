@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
 """Selected-source byte witness candidate. No source registration or GPU result."""
 
 from __future__ import annotations
@@ -5,9 +8,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import time
+from typing import Any, cast
 
 SCHEMA = "ecpa-selected-KV-materialization-source-candidate/v1"
-_sink = None
+_sink: Any = None
 
 
 def register_candidate_sink(callback):
@@ -201,7 +205,7 @@ def _sync(tensor):
     import torch
 
     if tensor.device.type == "npu":
-        torch.npu.current_stream(tensor.device).synchronize()
+        cast(Any, torch).npu.current_stream(tensor.device).synchronize()
     elif tensor.device.type != "cpu":
         raise ValueError("candidate supports only explicit CPU/NPU stream")
     return time.monotonic_ns()

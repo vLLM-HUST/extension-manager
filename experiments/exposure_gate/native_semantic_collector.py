@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
 """Private Unix authority-owned raw collector; qualification candidate only.
 
 Kernel peer identity plus frozen source and challenge bindings precede admission
@@ -505,7 +508,7 @@ class Collector:
             source_digests(sender["source_files"])
         if slots != {("api-server", 0), ("worker", 0), ("worker", 1)}:
             raise ValueError("exact API and two worker sender set is unavailable")
-        self.phases = {}
+        self.phases: dict[Any, Any] = {}
         client_ids = set()
         nonces = set()
         phase_ids = set()
@@ -558,12 +561,12 @@ class Collector:
         self.lock = threading.Lock()
         self.sequence = 0
         self.previous = "0" * 64
-        self.maps = {}
-        self.mapping_stamps = {}
-        self.ranks = {}
-        self.upload_stamps = {}
-        self.upload_counts = {}
-        self.seen_raw = set()
+        self.maps: dict[Any, Any] = {}
+        self.mapping_stamps: dict[Any, Any] = {}
+        self.ranks: dict[Any, Any] = {}
+        self.upload_stamps: dict[Any, Any] = {}
+        self.upload_counts: dict[Any, Any] = {}
+        self.seen_raw: set[Any] = set()
         self.collector_identity = identity(os.getpid())
         self._append(
             {
@@ -708,6 +711,8 @@ class Server(socketserver.ThreadingUnixStreamServer):
 
 
 class Handler(socketserver.StreamRequestHandler):
+    server: Any
+
     def handle(self):
         peer = struct.unpack(
             "3i", self.request.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
@@ -876,10 +881,10 @@ def verify_journal(
         raise ValueError("authority raw chain source or frozen spec differs")
     previous = "0" * 64
     seen_raw = set()
-    projections = {}
-    kv_ranks = {}
-    mappings = {}
-    mapping_stamps = {}
+    projections: dict[Any, Any] = {}
+    kv_ranks: dict[Any, Any] = {}
+    mappings: dict[Any, Any] = {}
+    mapping_stamps: dict[Any, Any] = {}
     chronology_complete = (
         start.get("intake_predicate_schema")
         == (
@@ -890,9 +895,9 @@ def verify_journal(
         and type(start.get("started_monotonic_ns")) is int
     )
     last_accepted_ns = start.get("started_monotonic_ns")
-    ranks = {}
-    upload_stamps = {}
-    counts = {}
+    ranks: dict[Any, Any] = {}
+    upload_stamps: dict[Any, Any] = {}
+    counts: dict[Any, Any] = {}
     for sequence, event in enumerate(events):
         if (
             event.get("sequence") != sequence
