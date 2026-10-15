@@ -9,7 +9,12 @@ from . import artifact_transport
 
 
 def verify_projection_tensor_join(
-    events, tensor_payloads_by_sequence, *, runtime_request_id, transaction_id
+    events,
+    tensor_payloads_by_sequence,
+    *,
+    runtime_request_id,
+    transaction_id,
+    effect_upload_sequences=None,
 ):
     runtime, transaction = runtime_request_id, transaction_id
     decoded = []
@@ -35,7 +40,11 @@ def verify_projection_tensor_join(
                 raise ValueError("repeated rank projection")
             projections[rank] = fact
         elif fact["schema"] == native.UPLOAD:
-            uploads.append(fact)
+            if (
+                effect_upload_sequences is None
+                or event["sequence"] in effect_upload_sequences
+            ):
+                uploads.append(fact)
     if set(projections) != {0, 1}:
         raise ValueError("missing actual two-rank materialized projections")
     if projections[0]["host_cpu_block_ids"] != projections[1]["host_cpu_block_ids"]:
