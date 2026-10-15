@@ -534,6 +534,22 @@ def test_vllm_provider_merges_declared_boolean_flag() -> None:
     assert command[-1] == "--scheduler-reserve-output-budget"
 
 
+def test_vllm_provider_prefix_cache_flag_replaces_explicit_disable() -> None:
+    plan = ProviderPlan(
+        "org.vllm-hust.stateaxis-prefix-cache-policy",
+        "vllm",
+        (),
+        {"vllm_flags": ["--enable-prefix-caching"]},
+    )
+
+    command = _merge_provider_plan(
+        ["vllm", "serve", "model", "--no-enable-prefix-caching"], plan
+    )
+
+    assert "--no-enable-prefix-caching" not in command
+    assert command[-1] == "--enable-prefix-caching"
+
+
 def test_vllm_provider_rejects_unknown_boolean_flag() -> None:
     plan = ProviderPlan(
         "org.vllm-hust.example",

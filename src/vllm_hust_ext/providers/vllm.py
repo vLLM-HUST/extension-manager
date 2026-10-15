@@ -24,6 +24,7 @@ _JSON_LAUNCH_OPTIONS = {
     "speculative_config": "--speculative-config",
 }
 _BOOLEAN_LAUNCH_OPTIONS = {
+    "enable_prefix_caching": "--enable-prefix-caching",
     "scheduler_reserve_output_budget": "--scheduler-reserve-output-budget",
 }
 _RUNTIME_QUALIFICATION_KEY = "_manager_runtime_qualification"
