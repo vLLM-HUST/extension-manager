@@ -1,0 +1,125 @@
+{
+  "schema": "ecpa-live-bounded-response-artifact-publication/v1",
+  "repository": "vLLM-HUST/extension-manager",
+  "branch": "artifacts/ecpa-live-bounded-response-r3-20261015",
+  "commit": "246d3983a6b6274b4b566debdfbfbc31245ae020",
+  "parent": "93ca75e39ac3e437619c782ca4e97055403279cd",
+  "tree": "55df35c133975de61d2f89110000684b93689062",
+  "entries": [
+    {
+      "path": "parts.json",
+      "sha": "bd259a5adaba21359df851cf66b33300761700cb"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-01",
+      "sha": "78953f2c778c74a8b58c6343f8b8f008a0437c36"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-02",
+      "sha": "83022d9e8b94f9cf62f3fbca4eafe0c2b6b3584f"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-03",
+      "sha": "a44a2a3223719f6aaaea1bfc44512e4f7edc15fc"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-04",
+      "sha": "e3f8770e3695191f0046a3ac9eb3239e09b5ef0c"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-05",
+      "sha": "eea19533c299ee926c0d6b2cc51f10607fe4942b"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-06",
+      "sha": "36589f0cfb40ae0429c00c9e858fc86b1782ba31"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-07",
+      "sha": "9770e9025685bb43bf8159db84183efa3a2305a0"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-08",
+      "sha": "892f0782fff6d8ac23286a111f533873fb896a19"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-09",
+      "sha": "64bbf08ccce6e5cfcfe866812a7bdb74a6ee07a4"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-10",
+      "sha": "dfd308b24dfb26ee54be2c3dc270b2dd34d8a6f7"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-11",
+      "sha": "5b33cf522e4bd76b3988fd73cc8cc4c6ea1dbe2a"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-12",
+      "sha": "62404d726fc2ff200b1a32a502e5fabc1c64551e"
+    },
+    {
+      "path": "parts/objects.tar.xz.part-13",
+      "sha": "3cae5798866a9a26e2d7b7923f4728106862b1c5"
+    },
+    {
+      "path": "replay-assets.tar.xz",
+      "sha": "88a6b37de741d24b598b695ea9662c8a6a199b52"
+    },
+    {
+      "path": "manifest.json",
+      "sha": "b73d35382899ba0441fe600d1c507822979f5cf5"
+    },
+    {
+      "path": "origin-inventory.json",
+      "sha": "03bd88b48b17f1d03daa1dd25034193099925583"
+    },
+    {
+      "path": "replay-assets.json",
+      "sha": "1423f16c0848a722045e69f8d5074d91e01d016f"
+    },
+    {
+      "path": "verify_live_bounded_observation.py",
+      "sha": "6d657acb020d80b4d6884bf0f9e49a74f7be9c6f"
+    },
+    {
+      "path": "frozen_source_replay.py",
+      "sha": "4bc3c1ce3224458522ffb92e129a15e4e4e288a6"
+    },
+    {
+      "path": "assemble_live_r3.py",
+      "sha": "223a42ed205a2559e0bbf9dc155f45336b895d98"
+    },
+    {
+      "path": "README.md",
+      "sha": "68c38ed1e9d5e1e2dd0bb0ff73859646b3a69248"
+    },
+    {
+      "path": "test_portable_replay.py",
+      "sha": "de7681e19a1060e119f7e6e4741054bd44b181f3"
+    },
+    {
+      "path": "rejection-checks.json",
+      "sha": "c958dd32d7691dd2aa6f55aa7771ce32e6aa68bd"
+    },
+    {
+      "path": "isolated-replay.stdout",
+      "sha": "09ab50abbe72a78655cedeef19149501e2d5e5e6"
+    },
+    {
+      "path": "assembly-check.json",
+      "sha": "708992b591632cf16663da43f27faaa370c27023"
+    }
+  ],
+  "remote_download_verified": false,
+  "binary_payload_in_main_ancestry": false,
+  "formal_result": false,
+  "remote_tree_verified": true,
+  "remote_tree_verified_blob_count": 26,
+  "canonical_http_download_verified": false,
+  "canonical_git_download_verified": false,
+  "canonical_git_fetch_attempts": 1,
+  "canonical_git_fetch_exit_code": 128,
+  "canonical_git_fetch_stderr_retained": false,
+  "temporary_git_repository_deleted": true
+}

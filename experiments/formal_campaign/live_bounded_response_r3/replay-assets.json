@@ -1,0 +1,103 @@
+{
+  "schema": "ecpa-live-bounded-response-replay-supplement/v1",
+  "original_archive_modified": false,
+  "original_recipe_sha256": "548be0216cc8028deca513dfcf36244264c94004d100228763f1c2c96aa5ee1b",
+  "container": {
+    "path": "replay-assets.tar.xz",
+    "bytes": 2572112,
+    "sha256": "2aec98bd86d7a5fa0f3901308f5d52262690e7647aa35773e4f246f6c476350f"
+  },
+  "assets": [
+    {
+      "path": "/models/Qwen2.5-7B-Instruct/config.json",
+      "sha256": "816bb59cb57cc72533900435706aa36680b293aebb6512d6891652e587e00a86",
+      "bytes": 681,
+      "recovered_from": "/models/Qwen2.5-7B-Instruct/config.json",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/models/Qwen2.5-7B-Instruct/generation_config.json",
+      "sha256": "3a8f9087e486054c8a4a08dae2e5a3ba62e23da212b5b8c08bc42cb983c3459f",
+      "bytes": 243,
+      "recovered_from": "/models/Qwen2.5-7B-Instruct/generation_config.json",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/models/Qwen2.5-7B-Instruct/merges.txt",
+      "sha256": "599bab54075088774b1733fde865d5bd747cbcc7a547c5bc12610e874e26f5e3",
+      "bytes": 1671839,
+      "recovered_from": "/models/Qwen2.5-7B-Instruct/merges.txt",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/models/Qwen2.5-7B-Instruct/model.safetensors.index.json",
+      "sha256": "624bf7c47cd12468fdc16e38a47cf4f19e0415b859a223ba3c027eed2f0e1028",
+      "bytes": 27752,
+      "recovered_from": "/models/Qwen2.5-7B-Instruct/model.safetensors.index.json",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/models/Qwen2.5-7B-Instruct/tokenizer.json",
+      "sha256": "c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539",
+      "bytes": 7031645,
+      "recovered_from": "/models/Qwen2.5-7B-Instruct/tokenizer.json",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/models/Qwen2.5-7B-Instruct/tokenizer_config.json",
+      "sha256": "5b5d4f65d0acd3b2d56a35b56d374a36cbc1c8fa5cf3b3febbbfabf22f359583",
+      "bytes": 7305,
+      "recovered_from": "/models/Qwen2.5-7B-Instruct/tokenizer_config.json",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/models/Qwen2.5-7B-Instruct/vocab.json",
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "bytes": 2776833,
+      "recovered_from": "/models/Qwen2.5-7B-Instruct/vocab.json",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/transformers/tokenization_utils_base.py",
+      "sha256": "d683db2cf815e9a524edf691c10c7f2a05f408cd8d52a7036724403181bb6ee0",
+      "bytes": 182670,
+      "recovered_from": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/transformers/tokenization_utils_base.py",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/vllm/renderers/hf.py",
+      "sha256": "da50b54985ba82cb261db3e1eda304e2e0c8f8fd484baacc35cf94eb2a783043",
+      "bytes": 50535,
+      "recovered_from": "/root/ecpa-workspace/evidence/ecpa-selected-kv-attention-source-20261014-r4/host/vllm/renderers/hf.py",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/vllm/renderers/chat_utils.py",
+      "sha256": "9a5d1db66e15285303987073f0c69c3ef3b4745e8c4ab71b9b063f1579fb2061",
+      "bytes": 86135,
+      "recovered_from": "/root/ecpa-workspace/evidence/ecpa-selected-kv-attention-source-20261014-r4/host/vllm/renderers/chat_utils.py",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/vllm/renderers/base.py",
+      "sha256": "ec2fe84538bb30ad7ed1e10833081c8c389e6a2f8fda1dcef50005b9db75a1a7",
+      "bytes": 51840,
+      "recovered_from": "/root/ecpa-workspace/evidence/ecpa-selected-kv-attention-source-20261014-r4/host/vllm/renderers/base.py",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/vllm/renderers/params.py",
+      "sha256": "5113461cd308266727d9ced82900cbe65ae50245a2f3cb16224f6689574570a9",
+      "bytes": 22053,
+      "recovered_from": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/vllm/renderers/params.py",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/vllm/tokenizers/hf.py",
+      "sha256": "4c2712de92e8fec91b9d7f3b5b162bd1f0683e7fc21c16b20188a505fc6c6fea",
+      "bytes": 8226,
+      "recovered_from": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/lib/python3.12/site-packages/vllm/tokenizers/hf.py",
+      "role": "late-packaging-preregistered-dependency-not-original-raw-member"
+    }
+  ]
+}
