@@ -73,6 +73,13 @@ def compile_native_semantic_plan(
             raise ValueError(
                 "native semantic source requires all current runtime workers"
             )
+        if (
+            binding.capability_direction != "provides"
+            or binding.capability_provider != binding.extension_id
+        ):
+            raise ValueError(
+                "native completion requires the extension's own provided capability"
+            )
         plugin_id = extension_plugin_ids[binding.extension_id]
         if plugin_id not in plugins:
             raise ValueError("semantic provider artifact is outside execution Plan")

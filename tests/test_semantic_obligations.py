@@ -258,3 +258,21 @@ def test_legacy_invocation_observer_cannot_upgrade_semantic_plan(tmp_path):
                 for i in (0, 1)
             ],
         )
+
+
+def test_consumer_cannot_substitute_its_artifact_for_selected_provider():
+    consumer = manifest("org.example.kv", requires=[("org.example.native", ">=1,<2")])
+    consumer["process_obligations"][0]["event"] = EVENT
+    consumer["authority"]["runtime"][0]["event"] = EVENT
+    provider = manifest(
+        "org.example.native-provider", provides=[("org.example.native", "1")]
+    )
+    contracts = compile_contracts(
+        (parse_contract(consumer), parse_contract(provider)),
+        host_runtime="vllm",
+        host_version="0.11.2",
+    )
+    semantic = next(b for b in contracts.obligation_bindings if b.event == EVENT)
+    assert semantic.capability_provider == "org.example.native-provider"
+    with pytest.raises(ValueError, match="own provided capability"):
+        bind(contracts=contracts)

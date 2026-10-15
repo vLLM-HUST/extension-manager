@@ -5,7 +5,9 @@ fresh content-addressed execution Plan. It never launches a host or opens a
 traffic route. It preserves the base Plan and adds a distinct obligation with
 `event=selected-kv-native-arguments-completed`, `role=worker`, runtime authority
 and all-worker completion. The current profile supports only explicit TP2
-ordinals 0 and 1. Optional, quorum, partial-worker and non-runtime claims fail.
+ordinals 0 and 1. The semantic capability must be provided by the same extension;
+a consumer cannot attest a different selected provider through `requires`.
+Optional, quorum, partial-worker and non-runtime claims fail.
 
 The event's bounded meaning is selected logical KV reference/gather/destination
 association with native-entry parameter completion. It is not a claim about

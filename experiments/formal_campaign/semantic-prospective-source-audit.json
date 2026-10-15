@@ -2415,7 +2415,7 @@
     "src/vllm_hust_ext/contract_compiler.py": "5f386fdd5cd10ec80dd4cab2a395f558c9ae55fbbb6bdfbf11f5e836ad01c386",
     "src/vllm_hust_ext/formal_host_observer.py": "9938f2778e5302773a9d20cdd26216c1f36ed7b5c57f26d7286a69708e13188c",
     "src/vllm_hust_ext/host_observer.py": "f74fe69a9107127596435f8c3724ea05af3f91b54fd007827533b5028af35116",
-    "src/vllm_hust_ext/semantic_obligations.py": "20db8db27128e511c9a138a110ab8537359b56bec617d550c731550caae5e4ac"
+    "src/vllm_hust_ext/semantic_obligations.py": "ca92d57fa0c2d6b77d2b3c3b103a7fe836e33df0ceeff69ede95ec181fecb7c4"
   },
   "unknown_objectives": {
     "allowed_rollback_classifications": null,
