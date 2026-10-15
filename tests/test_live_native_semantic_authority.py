@@ -10,6 +10,7 @@ import time
 import pytest
 
 from experiments.native_attention_candidate import live_authority as module
+from experiments.native_attention_candidate import live_cohort as cohort
 from experiments.native_attention_candidate.live_cohort import public_request_headers
 
 
@@ -248,3 +249,19 @@ def test_public_runner_headers_cross_actual_http_authority(live):
         server.server_close()
         thread.join(timeout=5)
     assert not thread.is_alive()
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_worker_fault_refuses_a_reused_process_epoch(monkeypatch, changed):
+    expected = {"pid": 123, "start_ticks": 456, "session": 123, "boot_id": "boot"}
+    current = {**expected, "start_ticks": 999} if changed else expected
+    signals = []
+    monkeypatch.setattr(cohort, "process_identity", lambda pid: current)
+    monkeypatch.setattr(cohort.os, "kill", lambda pid, sig: signals.append((pid, sig)))
+    if changed:
+        with pytest.raises(ValueError, match="epoch changed"):
+            cohort.signal_registered_worker(expected)
+        assert signals == []
+    else:
+        assert cohort.signal_registered_worker(expected) == expected
+        assert signals == [(123, cohort.signal.SIGTERM)]

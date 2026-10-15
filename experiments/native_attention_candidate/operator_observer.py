@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
 """Opt-in source contacts; callback return is not attention/formal qualification."""
 
 from __future__ import annotations
@@ -7,16 +10,17 @@ import json
 import math
 import time
 from enum import IntEnum
+from typing import Any
 
 SCHEMA = "ecpa-native-cached-attention-operator-source-candidate/v1"
-_publisher = None
-_scope = None
-_current_stream = None
-_get_format = None
-_read_prefix = None
-_materialized = {}
-_metadata = {}
-_observed = set()
+_publisher: Any = None
+_scope: Any = None
+_current_stream: Any = None
+_get_format: Any = None
+_read_prefix: Any = None
+_materialized: dict[Any, Any] = {}
+_metadata: dict[Any, Any] = {}
+_observed: set[Any] = set()
 
 
 def canonical(value):

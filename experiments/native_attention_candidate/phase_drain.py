@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
 """Prospective source-owned worker drain; candidate only, never formal admission."""
 
 from __future__ import annotations
@@ -7,11 +10,12 @@ import json
 import os
 import threading
 import time
+from typing import Any
 
 SCHEMA = "ecpa-native-worker-request-drained/v1"
 ENV = "ECPA_NATIVE_PHASE_DRAIN"
-_records = {}
-_closed = set()
+_records: dict[Any, Any] = {}
+_closed: set[Any] = set()
 _lock = threading.RLock()
 
 
