@@ -433,6 +433,7 @@ class Authority:
         request_id: str | None,
         framing_valid: bool = True,
     ) -> tuple[int, bytes, dict[str, str]]:
+        validation_started = time.monotonic_ns()
         quote = None
         response = None
         reason = "unavailable"
@@ -445,6 +446,7 @@ class Authority:
             )
         except (ValueError, OSError, KeyError, TypeError, json.JSONDecodeError):
             reason = "live validation failed"
+        validation_completed = time.monotonic_ns()
         quote_hash = digest(canonical(quote)) if quote is not None else None
         if ready != self.last_ready:
             self.journal.append(
@@ -491,6 +493,9 @@ class Authority:
             ready=ready,
             matched_frozen_request=allowed,
             quote_sha256=quote_hash,
+            producer_quote=quote,
+            validation_started_monotonic_ns=validation_started,
+            validation_completed_monotonic_ns=validation_completed,
             response_sha256=digest(payload),
         )
         return status, payload, headers

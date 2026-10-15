@@ -156,6 +156,19 @@ def test_repeat_frozen_release_challenges_each_read_and_hashchains(live):
         assert entry["sequence"] == sequence and entry["previous_sha256"] == previous
         assert sha == module.digest(module.canonical(entry))
         assert entry["formal_result"] is False
+        if entry["event"] == "public-request":
+            assert (
+                module.digest(module.canonical(entry["producer_quote"]))
+                == entry["quote_sha256"]
+            )
+            assert entry["producer_quote"]["nonce"] in {
+                query["nonce"] for query in state["queries"]
+            }
+            assert (
+                entry["validation_started_monotonic_ns"]
+                <= entry["producer_quote"]["proof"]["issued_monotonic_ns"]
+                <= entry["validation_completed_monotonic_ns"]
+            )
         previous = sha
 
 

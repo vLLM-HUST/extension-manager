@@ -144,7 +144,13 @@ def execute(
             "request_monotonic_ns": entry,
             "response_monotonic_ns": time.monotonic_ns(),
             "response_sha256": hashlib.sha256(raw).hexdigest(),
+            "response_body_path": f"live-client-{len(http_rows) + 1:04}.response.bin",
         }
+        with (out / row["response_body_path"]).open("xb") as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
         http_rows.append(row)
         write(out / f"live-client-{len(http_rows):04}.json", row)
         return status, raw
