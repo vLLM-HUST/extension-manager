@@ -16,6 +16,10 @@ from vllm_hust_ext import runtime_activation as activation
 @pytest.fixture(autouse=True)
 def clean_activation_environment():
     names = (
+        "ECPA_ACTIVATION_PROFILE_PATH",
+        "ECPA_ACTIVATION_PROFILE_SHA256",
+        "VLLM_ASCEND_KVCOMPRESS_ENABLED",
+        "VLLM_ASCEND_KVCOMPRESS_CONFIG",
         "ECPA_ACTIVATION_CONTRACT",
         activation.MANUAL_BOOTSTRAP_FLAG,
         "VLLM_PLUGINS",
