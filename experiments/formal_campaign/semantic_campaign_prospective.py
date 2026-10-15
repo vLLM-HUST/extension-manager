@@ -22,6 +22,7 @@ FILES = [
     "experiments/native_attention_candidate/collector.py",
     "experiments/native_attention_candidate/attention_consumer.py",
     "experiments/formal_campaign/source_provenance.py",
+    "src/vllm_hust_ext/semantic_obligations.py",
 ]
 
 
@@ -44,7 +45,12 @@ def build(root=ROOT):
     proxy = (root / FILES[3]).read_text()
     if 'raise GateError("semantic obligation evidence is unverified")' not in proxy:
         raise ValueError("formal gate contract changed; source audit must be renewed")
-    if events != {"loaded", "invoked", "health-observed"}:
+    if events != {
+        "loaded",
+        "invoked",
+        "health-observed",
+        "selected-kv-native-arguments-completed",
+    }:
         raise ValueError(
             "compiled event contract changed; do not invent semantic readiness"
         )
@@ -109,6 +115,8 @@ def build(root=ROOT):
         source_sha256={p: sha((root / p).read_bytes()) for p in FILES},
         protocol_sha256=sha((root / FILES[0]).read_bytes()),
         compiled_events=sorted(events),
+        prospective_semantic_plan_binding="explicit-contract-runtime-all-TP2-only",
+        prospective_semantic_binding_is_registered_producer=False,
         issuer_legacy_merged_repository_checks=source_checks,
         new_issuer_full_tuple_policy="explicit-preregistered-published-commit-or-merged-main",
         full_tuple_deployment_source_observation="unverified-no-live-deployment-input",
@@ -120,7 +128,7 @@ def build(root=ROOT):
         schedule=schedule,
         planned_campaigns=planned,
         missing_formal_edges=[
-            "explicit-semantic-obligation-and-required-bounded-effect-predicate",
+            "live-registered-enforcement-of-explicit-bounded-semantic-obligation",
             "registered-source-owned-producer-to-compiled-Plan-obligation",
             "live-authority-consumption-of-typed-tensor-OP-chain-before-route-open",
             "controller-instance-generation-membership-epoch-and-lease-binding",

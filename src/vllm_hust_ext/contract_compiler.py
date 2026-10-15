@@ -22,7 +22,12 @@ from .ecpa_model import canonical_bytes, content_id
 _IDENTIFIER = re.compile(r"^[a-z0-9]+(?:[.-][a-z0-9]+)+$")
 _RESOURCE_MODES = {"exclusive", "shared-read", "mediated"}
 _COMPLETION_MODES = {"all", "quorum", "optional"}
-_EVENTS = {"loaded", "invoked", "health-observed"}
+_EVENTS = {
+    "loaded",
+    "invoked",
+    "health-observed",
+    "selected-kv-native-arguments-completed",
+}
 _AUTHORITY_KINDS = {"provider", "runtime", "external"}
 _CAPABILITY_DIRECTIONS = {"provides", "requires"}
 _TAXONOMY_DECISION_PRECEDENCE = (
@@ -304,7 +309,10 @@ def _authority_grants(
                 PlanningErrorCode.INVALID_CONTRACT,
                 f"{location}[{index}].event is unsupported",
             )
-        if event in {"loaded", "invoked"} and authority_kind != "runtime":
+        if (
+            event in {"loaded", "invoked", "selected-kv-native-arguments-completed"}
+            and authority_kind != "runtime"
+        ):
             raise ContractPlanningError(
                 PlanningErrorCode.AUTHORITY_VIOLATION,
                 f"{location}[{index}] cannot claim {event} outside runtime authority",
@@ -570,10 +578,20 @@ def parse_contract(payload: Any) -> ExtensionContract:
                 PlanningErrorCode.INVALID_CONTRACT,
                 f"process_obligations[{index}].authority is unsupported",
             )
-        if event in {"loaded", "invoked"} and authority_kind != "runtime":
+        if (
+            event in {"loaded", "invoked", "selected-kv-native-arguments-completed"}
+            and authority_kind != "runtime"
+        ):
             raise ContractPlanningError(
                 PlanningErrorCode.AUTHORITY_VIOLATION,
                 f"process_obligations[{index}] {event} must use runtime authority",
+            )
+        if event == "selected-kv-native-arguments-completed" and (
+            role != "worker" or completion != "all"
+        ):
+            raise ContractPlanningError(
+                PlanningErrorCode.INVALID_CONTRACT,
+                "native argument completion requires every runtime worker",
             )
         capability_direction = _string(
             item["capability_direction"],

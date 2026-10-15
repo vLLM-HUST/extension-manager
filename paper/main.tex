@@ -346,15 +346,14 @@ route fence names the same generation.  A delayed validator or controller
 therefore fails the generation compare-and-swap rather than opening a newer
 route.
 
-The argument covers admission safety, not arbitrary functional correctness.
-If any authorized obligation source---host, provider, or external
-authority---emits a semantically false event, or an effect outside the declared
-taxonomy matters, the premises do not hold.  Similarly,
-rollback preserves exposure safety by closing the candidate before restoring a
-predecessor, but cannot guarantee recovery of external state that the manager
-does not own.  These boundaries determine the observer-independence and
-failure-injection experiments rather than being treated as implementation
-details.
+This conditional argument concerns admission, not functional correctness.
+A source closure inside an acknowledged prefix bounds a finite observation;
+it does not keep an effect valid after process replacement or evidence expiry.
+Continuing admission requires epoch fencing and an explicit invalidation policy.
+False semantic events from authorized sources or undeclared effects invalidate
+the premises.  Rollback closes the candidate before restoring its predecessor;
+it cannot restore external state the manager does not own.  These boundaries
+require independent observers and fault injection.
 
 We also encode the declared exposure transaction as a finite abstract model.
 Exhaustive fixed-point exploration reaches \ECPATransactionModelStates{} states
@@ -1003,8 +1002,9 @@ across \ECPASelectedKVLayersPerRank{} layers per rank to HTTP/ACK
 \ECPASelectedKVRawRecords{} rows and receiver bytes replay from frozen sources.
 A further source-drained trial joins \ECPAAttentionCompletionReceipts{} native
 completions and \ECPAAttentionWorkerClosures{} closures in a
-\ECPAAttentionSourceRecords{}-row final ACK. Full storage, numerical correctness,
-full quality and performance remain unknown; none proves prevention or formal H3/H4.
+\ECPAAttentionSourceRecords{}-row final ACK. This closes the declared observation,
+not continuing effectiveness. Full storage, numerical correctness, quality and
+performance remain unknown; none proves prevention or formal H3/H4.
 
 The H3 oracle binds \ECPAHThreeNativeSources{} source snapshots.
 \ECPAHThreePrepareNABaselines{} baseline arms lack a durable Manager transaction;
@@ -1079,31 +1079,28 @@ improvements reported by these serving systems.
 
 \textbf{Control-plane reconciliation.}  Acto tests whether operators reach
 declared end states, while Anvil verifies eventual stable reconciliation
-\cite{acto,anvil}.  Envoy xDS separates configuration delivery and ACK/NACK
-\cite{envoy-xds}.  An ACK establishes protocol-level
-acceptance of a resource, not that an application-specific effect occurred in
-every downstream inference worker.  Kubernetes Device Plugins and CSI define
-specialized registration and resource/storage lifecycles
-\cite{k8s-device-plugin,csi-spec}; Kubernetes generations and conditions help
-controllers distinguish desired from observed state \cite{k8s-api-conventions}.
-ECPA borrows that discipline but specifies a narrower activation commit whose
-obligations span plugin, provider, and worker authorities.  Acto's state oracle
-is the closest testing analogue; ECPA additionally asks which authority can
-observe each effect and whether every frozen process epoch is covered.  H1
-shows that the current runtime does not yet enforce the final exposure step.
+\cite{acto,anvil}.  Envoy xDS ACK/NACK concerns configuration acceptance
+\cite{envoy-xds}; specialized Kubernetes lifecycles and observed-state
+conventions likewise require application-specific effect predicates
+\cite{k8s-device-plugin,csi-spec,k8s-api-conventions}.
 
-\textbf{Consistent update and dynamic upgrade.}  Consistent network updates
-use versioned configurations and controlled exposure to prevent packets from
-observing invalid intermediate network states \cite{reitblatt-update}.  ECPA
-shares the concern for externally visible intermediate states, but its unit of
-consistency is an inference-extension plan whose obligations span host
-processes, providers, and external authorities; it does not provide per-packet
-network-update semantics.  Dynamic software update systems such as Kitsune
-make update points and state transformation explicit while preserving a
-running program \cite{kitsune}.  ECPA neither rewrites live code nor proves
-state-transformer correctness.  It coordinates separately installed
-extensions and refuses exposure when their declared cross-process effects lack
-fresh evidence.
+\textbf{Distributed predicates.} D3S instruments process-local states and checks
+predicates over global snapshots, with ordering, membership and failure handling
+\cite{d3s}. ECPA does not introduce cross-process predicate checking. Its proposed
+distinction is compiling extension declarations into fixed, authority-specific
+obligations bound to generation admission. A competent predicate monitor with
+the same observations and routing gate could enforce the same predicate; this
+stronger comparator remains unmeasured. H1 falsifies the tested implementation's
+prevention claim.
+
+\textbf{Snapshots, updates and upgrades.} Chandy--Lamport snapshots establish
+global-state observation for stable-property detection \cite{chandy-lamport-snapshot}.
+ECPA's finite source-drained ACK is neither the full snapshot algorithm nor proof
+of continuing semantic effectiveness. Consistent network updates coordinate
+versioned packet exposure \cite{reitblatt-update}; ECPA's intended unit is an
+extension plan, without per-packet consistency. Kitsune explicitly transforms
+live program state \cite{kitsune}; ECPA neither rewrites live code nor proves
+state-transformer correctness.
 
 \textbf{Runtime hooks and provenance.}  OCI runtime hooks provide ordered
 extension points around container lifecycle \cite{oci-runtime}; they do not

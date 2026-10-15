@@ -957,6 +957,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="seconds to wait before killing a launched process tree (default: 10)",
     )
     run_parser.add_argument("command", nargs=argparse.REMAINDER)
+    semantic = subcommands.add_parser(
+        "compile-semantic-plan",
+        help="compile prospective TP2 native completion obligations without launching",
+    )
+    semantic.add_argument("--base-plan", required=True)
+    semantic.add_argument("--contract", action="append", required=True)
+    semantic.add_argument("--plugin-map", required=True)
+    semantic.add_argument("--output-directory", required=True)
     formal_run = subcommands.add_parser("formal-run")
     formal_run.add_argument("--plan")
     formal_run.add_argument("--launch-id")
@@ -985,6 +993,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _extension_command(args)
         if args.command_name == "catalog":
             return _catalog_command(args)
+        if args.command_name == "compile-semantic-plan":
+            from vllm_hust_ext.semantic_obligations import compile_artifacts
+
+            binding = compile_artifacts(
+                args.base_plan, args.contract, args.plugin_map, args.output_directory
+            )
+            print(json.dumps(binding, sort_keys=True))
+            return 0
         if args.command_name == "formal-run":
             return _formal_run_command(args)
         return _run_command(args)

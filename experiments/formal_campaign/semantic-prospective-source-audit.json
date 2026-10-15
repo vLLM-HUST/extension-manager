@@ -3,7 +3,8 @@
   "compiled_events": [
     "health-observed",
     "invoked",
-    "loaded"
+    "loaded",
+    "selected-kv-native-arguments-completed"
   ],
   "current_semantic_gate": "fail-closed-unverified",
   "executable": false,
@@ -40,7 +41,7 @@
     "ecpa"
   ],
   "missing_formal_edges": [
-    "explicit-semantic-obligation-and-required-bounded-effect-predicate",
+    "live-registered-enforcement-of-explicit-bounded-semantic-obligation",
     "registered-source-owned-producer-to-compiled-Plan-obligation",
     "live-authority-consumption-of-typed-tensor-OP-chain-before-route-open",
     "controller-instance-generation-membership-epoch-and-lease-binding",
@@ -2380,6 +2381,8 @@
     "wheel_digests": null,
     "workload_digest": null
   },
+  "prospective_semantic_binding_is_registered_producer": false,
+  "prospective_semantic_plan_binding": "explicit-contract-runtime-all-TP2-only",
   "protocol_sha256": "710d23ef750a3ee27f6e10a1c1fcabea3b4f12b8187ef04dffcfec16dfb5d6e7",
   "schedule": [
     [
@@ -2409,9 +2412,10 @@
     "experiments/native_attention_candidate/attention_consumer.py": "e864e0e5efe278c54e8fc1a8595692ecff2e114130dca1e0258e178421cfd17c",
     "experiments/native_attention_candidate/collector.py": "f86ec7afdcff221c56cbdf557e56f2339ea8c45ebf02ae150139224be0216501",
     "experiments/native_attention_candidate/operator_observer.py": "dfc01a62aa931bc998dba59133574a78130cbfe00ee29df980a5049db6c5bd28",
-    "src/vllm_hust_ext/contract_compiler.py": "7150d26de36ed1b2aad08715476bee6c998366f053122d84367642aeb1b70e8a",
+    "src/vllm_hust_ext/contract_compiler.py": "5f386fdd5cd10ec80dd4cab2a395f558c9ae55fbbb6bdfbf11f5e836ad01c386",
     "src/vllm_hust_ext/formal_host_observer.py": "9938f2778e5302773a9d20cdd26216c1f36ed7b5c57f26d7286a69708e13188c",
-    "src/vllm_hust_ext/host_observer.py": "f74fe69a9107127596435f8c3724ea05af3f91b54fd007827533b5028af35116"
+    "src/vllm_hust_ext/host_observer.py": "f74fe69a9107127596435f8c3724ea05af3f91b54fd007827533b5028af35116",
+    "src/vllm_hust_ext/semantic_obligations.py": "20db8db27128e511c9a138a110ab8537359b56bec617d550c731550caae5e4ac"
   },
   "unknown_objectives": {
     "allowed_rollback_classifications": null,
