@@ -11,6 +11,7 @@ from . import attention_consumer as base
 from . import drain_collector, drain_time_policy, phase_drain
 
 CONTRACT = "ecpa-native-attention-source-drain-consumer/v1"
+TAIL_CONTRACT = "ecpa-native-attention-source-drain-consumer/v2"
 SCOPE = "full-unfiltered-phase-source-closed-final-ACK"
 
 
@@ -21,9 +22,13 @@ def expected_sources():
     } | {str(Path(__file__).resolve()): base.sha(Path(__file__).read_bytes())}
 
 
-def declare_drain_recipe(recipe):
+def declare_drain_recipe(recipe, *, upload_tail_policy=None):
     base.require_declared_attention_recipe(recipe)
     value = copy.deepcopy(recipe)
+    base.require(
+        upload_tail_policy in (None, drain_time_policy.NONWITNESS_UPLOAD_TAIL),
+        "unknown nonwitness upload tail policy",
+    )
     base.require(
         "attention_drain_contract" not in value,
         "source drain contract already declared",
@@ -38,12 +43,14 @@ def declare_drain_recipe(recipe):
         if path not in existing:
             value["sources"].append(dict(path=path, sha256=digest))
     value["attention_drain_contract"] = {
-        "schema": CONTRACT,
+        "schema": CONTRACT if upload_tail_policy is None else TAIL_CONTRACT,
         "scope": SCOPE,
         "required_ranks": [0, 1],
         "source_sha256": sources,
         "formal_result": False,
     }
+    if upload_tail_policy is not None:
+        value["attention_drain_contract"]["upload_tail_policy"] = upload_tail_policy
     return value
 
 
@@ -51,13 +58,19 @@ def require_declared_drain_recipe(recipe, *, source_resolver=None):
     base.require_declared_attention_recipe(recipe, source_resolver=source_resolver)
     contract = recipe.get("attention_drain_contract")
     base.require(isinstance(contract, dict), "source drain was not preregistered")
+    tail = contract.get("upload_tail_policy")
+    base.require(
+        tail in (None, drain_time_policy.NONWITNESS_UPLOAD_TAIL),
+        "unknown nonwitness upload tail policy",
+    )
     base.require(
         {k: v for k, v in contract.items() if k != "source_sha256"}
         == {
-            "schema": CONTRACT,
+            "schema": CONTRACT if tail is None else TAIL_CONTRACT,
             "scope": SCOPE,
             "required_ranks": [0, 1],
             "formal_result": False,
+            **({"upload_tail_policy": tail} if tail is not None else {}),
         },
         "source drain scope differs",
     )

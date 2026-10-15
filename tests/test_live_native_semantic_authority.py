@@ -1,5 +1,6 @@
 """Protocol counterexamples use a real local Unix peer, never NPU evidence."""
 
+import http.client
 import json
 import os
 import socket
@@ -9,6 +10,7 @@ import time
 import pytest
 
 from experiments.native_attention_candidate import live_authority as module
+from experiments.native_attention_candidate.live_cohort import public_request_headers
 
 
 @pytest.fixture
@@ -208,3 +210,41 @@ def test_live_files_and_kernel_epoch_are_rechecked(live, target):
             "start_ticks": 0,
         }
     assert release(live)[0] == 503
+
+
+def test_public_runner_headers_cross_actual_http_authority(live):
+    authority = live[0]
+    server = module.HTTPServer(("127.0.0.1", 0), module.make_handler(authority))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    phase = {
+        **authority.phase,
+        "headers": {"Content-Type": "application/json", "X-Request-Id": "frozen-0"},
+    }
+
+    def post(headers, body):
+        connection = http.client.HTTPConnection(*server.server_address, timeout=5)
+        try:
+            connection.request("POST", authority.request_path, body, headers)
+            response = connection.getresponse()
+            return response.status, response.read()
+        finally:
+            connection.close()
+
+    try:
+        # Backend's request header alone must never authorize public release.
+        assert post(phase["headers"], authority.frozen_request)[0] == 503
+        headers = public_request_headers(phase)
+        assert post(headers, authority.frozen_request) == (200, live[-1])
+        assert post(headers, b"{}")[0] == 503
+        assert (
+            post({**headers, "X-ECPA-Request-ID": "another"}, authority.frozen_request)[
+                0
+            ]
+            == 503
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert not thread.is_alive()

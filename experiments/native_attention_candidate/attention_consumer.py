@@ -570,7 +570,14 @@ def verify_observation(
             recipe, source_resolver=source_resolver
         )
         collector_module = drain_collector
-        time_predicate = drain_time_policy.verify_time_contract
+        from functools import partial
+
+        time_predicate = partial(
+            drain_time_policy.verify_time_contract,
+            upload_tail_policy=recipe["attention_drain_contract"].get(
+                "upload_tail_policy"
+            ),
+        )
     require(recipe["schema"] == SCHEMA_V2, "mixed tensor request requires frozen KV v2")
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
     require(
@@ -714,6 +721,9 @@ def verify_observation(
         tensor_payloads_by_sequence,
         runtime_request_id=runtime,
         transaction_id=transaction,
+        effect_upload_sequences=set(temporal["effect_upload_sequences"])
+        if "effect_upload_sequences" in temporal
+        else None,
     )
     operator_count = 0
     projections = {}

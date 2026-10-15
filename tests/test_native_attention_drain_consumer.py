@@ -10,7 +10,7 @@ import pytest
 from test_native_attention_drain_unix import observation as source_observation
 
 from experiments.native_attention_candidate import attention_consumer as base
-from experiments.native_attention_candidate import drain_consumer
+from experiments.native_attention_candidate import drain_consumer, drain_time_policy
 
 observation = source_observation
 
@@ -77,6 +77,49 @@ def test_complete_actual_CPU_source_drains_and_HTTP_ACK_join(observation):
     assert actual["operator_receipt_count"] == actual["tensor_receipt_count"] == 56
     assert actual["formal_result"] is False
     assert actual["attention_consumption"] is None
+
+
+def test_explicit_nonwitness_tail_recipe_preserves_all_actual_CPU_effect_witnesses(
+    observation,
+):
+    recipe = drain_consumer.declare_drain_recipe(
+        observation["recipe"],
+        upload_tail_policy=drain_time_policy.NONWITNESS_UPLOAD_TAIL,
+    )
+    assert recipe["attention_drain_contract"]["schema"] == drain_consumer.TAIL_CONTRACT
+    actual = drain_consumer.verify_observation(
+        recipe,
+        "phase",
+        observation["output"],
+        descriptor=observation["descriptor"],
+        spec_path=observation["spec"],
+        journal_path=observation["journal"],
+        policy_path=observation["policy"],
+        drain_policy_path=observation["drain_policy"],
+    )
+    temporal = actual["ACK_time_contract"]
+    assert temporal["upload_tail_policy"] == drain_time_policy.NONWITNESS_UPLOAD_TAIL
+    assert set(temporal["required_destination_upload_witness_sequences"]) == {"0", "1"}
+    assert actual["operator_receipt_count"] == actual["tensor_receipt_count"] == 56
+    assert temporal["nonwitness_upload_tail_sequences"] == []
+    assert actual["formal_result"] is False
+
+
+def test_upload_tail_policy_is_never_implicit_or_unknown(observation):
+    original = drain_consumer.declare_drain_recipe(observation["recipe"])
+    assert original["attention_drain_contract"]["schema"] == drain_consumer.CONTRACT
+    assert "upload_tail_policy" not in original["attention_drain_contract"]
+    with pytest.raises(ValueError, match="unknown nonwitness"):
+        drain_consumer.declare_drain_recipe(
+            observation["recipe"], upload_tail_policy="any-late-fact"
+        )
+    explicit = drain_consumer.declare_drain_recipe(
+        observation["recipe"],
+        upload_tail_policy=drain_time_policy.NONWITNESS_UPLOAD_TAIL,
+    )
+    del explicit["attention_drain_contract"]["upload_tail_policy"]
+    with pytest.raises(ValueError, match="scope differs"):
+        drain_consumer.require_declared_drain_recipe(explicit)
 
 
 @pytest.mark.parametrize(
