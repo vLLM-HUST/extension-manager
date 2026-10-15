@@ -426,3 +426,149 @@ def test_audited_input_stat_change_rejects_future_route_reads(controller, tmp_pa
     path.write_bytes(b"CPU_CHANGED")
     with pytest.raises(ValueError, match="audited input file changed"):
         bound.read()
+
+
+def test_fresh_fd_walk_rejects_leaf_and_ancestor_symlinks(tmp_path):
+    directory = tmp_path / "pinned"
+    directory.mkdir()
+    leaf = directory / "leaf"
+    leaf.write_bytes(b"ORIGINAL")
+    states = {str(leaf): reader._state(leaf.stat())}
+    reader._check_file_states(states)
+    target = directory / "original"
+    leaf.rename(target)
+    leaf.symlink_to(target)
+    with pytest.raises(ValueError, match="input file changed"):
+        reader._check_file_states(states)
+    leaf.unlink()
+    target.rename(leaf)
+    moved = tmp_path / "moved"
+    directory.rename(moved)
+    directory.symlink_to(moved, target_is_directory=True)
+    with pytest.raises(ValueError, match="ancestor changed"):
+        reader._check_file_states(states)
+
+
+@pytest.mark.parametrize("component", ["//", "/./", "/../"])
+def test_fd_walk_rejects_noncanonical_manifest_paths(tmp_path, component):
+    leaf = tmp_path / "leaf"
+    leaf.write_bytes(b"ORIGINAL")
+    path = str(tmp_path) + component + "leaf"
+    with pytest.raises(ValueError, match="not canonical"):
+        reader._check_file_states({path: reader._state(leaf.stat())})
+
+
+@pytest.mark.parametrize("mutation", ["mode", "inode", "ctime"])
+def test_fd_walk_retains_complete_leaf_state_and_fresh_checks(tmp_path, mutation):
+    leaf = tmp_path / "leaf"
+    leaf.write_bytes(b"ORIGINAL")
+    before = leaf.stat()
+    states = {str(leaf): reader._state(before)}
+    reader._check_file_states(states)
+    if mutation == "mode":
+        leaf.chmod(0o600 if before.st_mode & 0o777 != 0o600 else 0o644)
+    elif mutation == "inode":
+        replacement = tmp_path / "replacement"
+        replacement.write_bytes(leaf.read_bytes())
+        replacement.replace(leaf)
+    else:
+        # Some overlay filesystems coalesce metadata writes in one clock tick.
+        # Wait a bounded 100 ms for a real distinct ctime, preserving mtime/size.
+        deadline = time.monotonic() + 0.1
+        while time.monotonic() < deadline:
+            time.sleep(0.005)
+            leaf.write_bytes(b"MODIFIED")
+            reader.os.utime(leaf, ns=(before.st_atime_ns, before.st_mtime_ns))
+            if leaf.stat().st_ctime_ns != before.st_ctime_ns:
+                break
+        assert leaf.stat().st_size == before.st_size
+        assert leaf.stat().st_mtime_ns == before.st_mtime_ns
+        assert leaf.stat().st_ctime_ns != before.st_ctime_ns
+    with pytest.raises(ValueError, match="input file changed"):
+        reader._check_file_states(states)
+
+
+def test_opened_ancestor_replacement_cannot_hide_unchanged_leaf_inode(
+    tmp_path, monkeypatch
+):
+    directory = tmp_path / "pinned"
+    directory.mkdir()
+    leaf = directory / "leaf"
+    leaf.write_bytes(b"ORIGINAL")
+    states = {str(leaf): reader._state(leaf.stat())}
+    original_stat = reader.os.stat
+    replaced = False
+
+    def replace_after_leaf_stat(path, *args, **kwargs):
+        nonlocal replaced
+        result = original_stat(path, *args, **kwargs)
+        if path == "leaf" and kwargs.get("dir_fd") is not None and not replaced:
+            replaced = True
+            moved = tmp_path / "moved"
+            directory.rename(moved)
+            directory.mkdir()
+            reader.os.link(moved / "leaf", leaf)
+            # The leaf stat alone cannot distinguish these namespace bindings.
+            assert original_stat(leaf).st_ino == result.st_ino
+        return result
+
+    monkeypatch.setattr(reader.os, "stat", replace_after_leaf_stat)
+    with pytest.raises(ValueError, match="ancestor changed"):
+        reader._check_file_states(states)
+    assert replaced
+
+
+def test_final_ancestor_rewalk_rejects_replacement_in_completed_branch(
+    tmp_path, monkeypatch
+):
+    first, second = tmp_path / "a", tmp_path / "b"
+    for directory in (first, second):
+        directory.mkdir()
+        (directory / "leaf").write_bytes(b"ORIGINAL")
+    states = {
+        str(p / "leaf"): reader._state((p / "leaf").stat()) for p in (first, second)
+    }
+    original_stat = reader.os.stat
+    replaced = False
+
+    def replace_completed_branch(path, *args, **kwargs):
+        nonlocal replaced
+        result = original_stat(path, *args, **kwargs)
+        if path == "leaf" and kwargs.get("dir_fd") is not None:
+            parent = reader.os.fstat(kwargs["dir_fd"])
+            if parent.st_ino == original_stat(second).st_ino and not replaced:
+                replaced = True
+                moved = tmp_path / "old-a"
+                first.rename(moved)
+                first.mkdir()
+                reader.os.link(moved / "leaf", first / "leaf")
+        return result
+
+    monkeypatch.setattr(reader.os, "stat", replace_completed_branch)
+    with pytest.raises(ValueError, match="ancestor changed"):
+        reader._check_file_states(states)
+    assert replaced
+
+
+def test_unrelated_cache_activity_changes_no_leaf_or_ancestor_identity(
+    tmp_path, monkeypatch
+):
+    leaf = tmp_path / "leaf"
+    leaf.write_bytes(b"ORIGINAL")
+    states = {str(leaf): reader._state(leaf.stat())}
+    original_stat = reader.os.stat
+    created = False
+
+    def create_cache_after_leaf_stat(path, *args, **kwargs):
+        nonlocal created
+        result = original_stat(path, *args, **kwargs)
+        if path == "leaf" and kwargs.get("dir_fd") is not None and not created:
+            created = True
+            cache = tmp_path / "__pycache__"
+            cache.mkdir()
+            (cache / "unrelated.pyc").write_bytes(b"CPU_CACHE")
+        return result
+
+    monkeypatch.setattr(reader.os, "stat", create_cache_after_leaf_stat)
+    reader._check_file_states(states)
+    assert created

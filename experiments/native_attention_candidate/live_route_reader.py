@@ -64,6 +64,98 @@ def _state(meta):
     }
 
 
+def _directory_identity(meta):
+    # Child creation changes directory clocks/size during normal runtime imports.
+    # Bind its actual namespace identity/permissions; leaves retain every field.
+    return meta.st_dev, meta.st_ino, meta.st_uid, meta.st_mode
+
+
+def _check_file_states(states):
+    """Fresh rooted no-symlink walk, sharing ancestors only within this call.
+
+    Rewalk every ancestor at the end to reject replacements after an earlier
+    branch was checked. No filesystem result or descriptor survives this call.
+    Depth-first traversal holds O(path depth) fds rather than one per directory.
+    """
+    tree = {"children": {}, "files": []}
+    for path, expected in states.items():
+        registry.require(isinstance(path, str), "input path is not canonical")
+        parts = path.split("/")
+        registry.require(
+            len(parts) > 1
+            and parts[0] == ""
+            and all(
+                part and part not in {".", ".."} and "\0" not in part
+                for part in parts[1:]
+            ),
+            "input path is not canonical",
+        )
+        node = tree
+        for component in parts[1:-1]:
+            node = node["children"].setdefault(component, {"children": {}, "files": []})
+        node["files"].append((parts[-1], expected))
+
+    flags = os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+    def walk(descriptor, node, *, leaves):
+        before = _directory_identity(os.fstat(descriptor))
+        registry.require(stat.S_ISDIR(before[3]), "audited input ancestor changed")
+        if leaves:
+            node["identity"] = before
+        else:
+            registry.require(
+                before == node["identity"], "audited input ancestor changed"
+            )
+        for name, child in node["children"].items():
+            child_fd = os.open(name, flags, dir_fd=descriptor)
+            try:
+                identity = _directory_identity(os.fstat(child_fd))
+                registry.require(
+                    _directory_identity(
+                        os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+                    )
+                    == identity,
+                    "audited input ancestor changed",
+                )
+                walk(child_fd, child, leaves=leaves)
+                registry.require(
+                    _directory_identity(os.fstat(child_fd))
+                    == identity
+                    == _directory_identity(
+                        os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+                    ),
+                    "audited input ancestor changed",
+                )
+            finally:
+                os.close(child_fd)
+        if leaves:
+            for name, expected in node["files"]:
+                actual = os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+                registry.require(
+                    not stat.S_ISLNK(actual.st_mode) and _state(actual) == expected,
+                    "audited input file changed",
+                )
+        registry.require(
+            _directory_identity(os.fstat(descriptor)) == before,
+            "audited input ancestor changed",
+        )
+
+    try:
+        root_fd = os.open("/", flags)
+        try:
+            walk(root_fd, tree, leaves=True)
+            walk(root_fd, tree, leaves=False)
+            registry.require(
+                _directory_identity(os.stat("/", follow_symlinks=False))
+                == tree["identity"],
+                "audited input ancestor changed",
+            )
+        finally:
+            os.close(root_fd)
+    except OSError as exc:
+        raise ValueError("audited input file or ancestor changed") from exc
+
+
 def _stream_sha(stream):
     digest = hashlib.sha256()
     for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -422,13 +514,7 @@ class LiveRouteReader:
             self.inputs["schema"] == SCHEMA and self.inputs["file_state"],
             "actual input file state missing",
         )
-        registry.require(
-            all(
-                _state(_path(path).stat()) == state
-                for path, state in self.inputs["file_state"].items()
-            ),
-            "audited input file changed",
-        )
+        _check_file_states(self.inputs["file_state"])
 
     def _identity(self):
         registry._kernel(self.authority)
