@@ -692,10 +692,27 @@ def _run_command(args: argparse.Namespace) -> int:
     environment = os.environ.copy()
     environment.update(activation)
     phase_socket = getattr(args, "phase_binding_socket", None)
+    if getattr(args, "semantic_launch_spec", None) is not None and not bundles:
+        raise ValueError("semantic launch requires enabled bundles")
     if phase_socket is not None and not bundles:
         raise ValueError("native phase handoff requires enabled bundles")
     if bundles:
-        native_binding = launch_environment(bundles)
+        semantic_spec_path = getattr(args, "semantic_launch_spec", None)
+        native_binding = launch_environment(
+            bundles, semantic_launch_spec=semantic_spec_path
+        )
+        if semantic_spec_path is not None:
+            from .semantic_runtime_binding import (
+                semantic_context_environment,
+                validate_semantic_launch_spec,
+            )
+
+            semantic_spec = validate_semantic_launch_spec(semantic_spec_path, bundles)
+            if native_binding["VLLM_ECPA_PLAN_ID"] != semantic_spec["native_plan_id"]:
+                raise ValueError("semantic launch spec changed during validation")
+            environment.update(
+                semantic_context_environment(semantic_spec_path, semantic_spec)
+            )
         if phase_socket is not None:
             native_binding = publish_native_binding(native_binding, Path(phase_socket))
         environment.update(native_binding)
@@ -946,6 +963,10 @@ def build_parser() -> argparse.ArgumentParser:
         "run", help="launch and supervise a host command with enabled extensions"
     )
     run_parser.add_argument("--dry-run", action="store_true")
+    run_parser.add_argument(
+        "--semantic-launch-spec",
+        help="private frozen semantic Plan and actual installed bundle binding",
+    )
     run_parser.add_argument(
         "--phase-binding-socket",
         help="private parent socket for native phase observation",

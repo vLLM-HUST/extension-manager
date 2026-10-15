@@ -75,7 +75,11 @@ def record_event(event: dict[str, Any]) -> None:
         os.close(descriptor)
 
 
-def launch_environment(bundles: Sequence[InstalledBundle]) -> dict[str, str]:
+def launch_environment(
+    bundles: Sequence[InstalledBundle],
+    *,
+    semantic_launch_spec: str | Path | None = None,
+) -> dict[str, str]:
     """Create a fresh binding for one actual Manager-supervised launch."""
 
     conflicts = [name for name in _EVIDENCE_ENVIRONMENT if name in os.environ]
@@ -95,10 +99,16 @@ def launch_environment(bundles: Sequence[InstalledBundle]) -> dict[str, str]:
         ],
         separators=(",", ":"),
     ).encode()
+    native_plan_id = hashlib.sha256(plan_material).hexdigest()
+    if semantic_launch_spec is not None:
+        from .semantic_runtime_binding import validate_semantic_launch_spec
+
+        spec = validate_semantic_launch_spec(semantic_launch_spec, bundles)
+        native_plan_id = spec["native_plan_id"]
     return {
         "VLLM_ECPA_EVIDENCE_SINK": _SINK,
         "VLLM_ECPA_EVIDENCE_STRICT": "1",
-        "VLLM_ECPA_PLAN_ID": hashlib.sha256(plan_material).hexdigest(),
+        "VLLM_ECPA_PLAN_ID": native_plan_id,
         "VLLM_ECPA_LAUNCH_ID": str(uuid.uuid4()),
         _PATH_ENV: str(evidence_path()),
     }
