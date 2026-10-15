@@ -1,5 +1,16 @@
 # Related-work and novelty audit
 
+2026-10-15 supplement: the public paper now compares directly with distributed
+predicate checking (D3S, NSDI 2008) and distinguishes its finite source-drained
+observation from a distributed snapshot or continuing effect guarantee. The
+source-checked argument and same-information predicate-monitor baseline design
+are in
+[`distributed-predicate-and-source-closure-audit-20261015.md`](../docs/research/distributed-predicate-and-source-closure-audit-20261015.md).
+That stronger comparator is not implemented or measured; no claim that ECPA
+must be safer with identical information follows. The historical ledger below
+remains dated 2026-10-13; its then-missing traffic authority is not a claim that
+later nonformal HTTP-gate qualifications never occurred.
+
 Literature sources: checked 2026-10-13 against original conference, DOI, or
 author paper pages. Runtime evidence: reconciled 2026-10-14 against the sealed
 artifacts and implementation pointers below. This is an internal claim ledger,
@@ -40,6 +51,8 @@ conflate:
 
 | Mechanism and primary source | What the cited work establishes | Exact boundary to ECPA |
 | --- | --- | --- |
+| [D3S, NSDI '08](https://www.usenix.org/conference/nsdi-08/presentation/d3s-debugging-deployed-distributed-systems) | Instrumented distributed predicates over ordered global snapshots, with membership and failures. | Closest runtime-checking comparison. ECPA's proposed difference is declaration-to-obligation compilation and generation admission, not process-local event collection. An equally informed monitor and gate is unmeasured. |
+| [Chandy--Lamport, TOCS '85](https://www.microsoft.com/en-us/research/publication/distributed-snapshots-determining-global-states-distributed-system/) | Distributed global-state snapshots and stable-property detection. | A finite source-drained ACK is not the complete snapshot algorithm, an uninstrumented-channel cut, or proof of continuing numerical effectiveness. |
 | [Acto, SOSP '23](https://doi.org/10.1145/3600006.3613161) | End-to-end generated tests check whether a cloud operator drives a managed system to desired states and recovers from erroneous states. | Closest testing analogue. Its state oracle does not by itself assign an inference hook's effect to a distinct producer authority or freeze every serving-process epoch. |
 | [Anvil, OSDI '24](https://www.usenix.org/conference/osdi24/presentation/sun-xudong) | Verifies eventual stable reconciliation for Kubernetes controllers under failures and asynchrony. | Stronger controller-liveness reasoning than ECPA. ECPA's narrower question is whether authority-owned effect facts cover a fixed inference plan before exposure; it does not verify general reconciliation liveness. |
 | [Envoy xDS](https://www.envoyproxy.io/docs/envoy/latest/api-docs/xds_protocol) | Versioned configuration delivery with nonce/version-correlated ACK or NACK. | A receiver ACK establishes protocol acceptance, not execution of a particular hook in every downstream worker. This API source is retained because it defines the exact ACK semantics. |
@@ -100,7 +113,7 @@ H1--H4 supply that evidence.
 | H2 real composition | Four independently scored source cases, TP=2/TN=2/FP=FN=0; one prediagnosed-report input excluded with original records retained | Finite source-case detection only; no population precision/recall, formal runtime, composition-quality, or performance claim. |
 | Real HTTP authority | Invocation-only qualification, 95 raw rows and actual 503→200→503 | Real admission behavior, not formal semantic prevention. |
 | Selected logical KV bytes | One independent TP2 qualification with 56 receipts, 28 layers per rank, 56 MiB selected logical bytes, 201 raw rows and a successful nonce task | No full physical-KV equivalence, native-attention correctness, full-model quality, or performance claim. |
-| Native attention candidate | A later fresh cohort fails with HTTP500, 56 partial tensor receipts and zero native operator receipts; shared-metadata binding repair is prospective | The failed cohort provides no successful attention qualification. Its tensor records do not inherit the earlier cohort's successful HTTP/ACK result. |
+| Native attention observation | Fresh R4 completes HTTP200/task check, 56 tensor receipts, 56 native argument completions and two worker source closures in an authenticated 261-row full prefix; original R1–R3 failures remain retained | Finite selected logical bytes and parameter-completion association only. No numerical attention correctness, continuing effectiveness, formal H3/H4, full-model quality or performance claim. |
 | H3 recovery | Frozen plan; no formal results | No rollback/recovery-rate claim. |
 | H4 overhead | Frozen plan; no formal results | No startup, throughput, or p99 overhead claim. |
 | Cross-runtime portability | No second inference runtime | The paper is a deep single-runtime study. A second runtime is required only for a cross-framework generality claim. |
@@ -120,10 +133,12 @@ H1--H4 supply that evidence.
   and `verify_kv_selected_tensor_observation.py`. The full receiver payloads and
   source-map replay support the finite claim; PR #194 binds the paper generator
   to those inputs.
-- Attention failure: issue #66's frozen R1 inputs and complete original failed
-  archive. PR #197 repairs the shared-object binding for future cohorts; its
-  CPU regression is not hardware evidence. A later cohort must supply its own
-  HTTP, operator records, source closure, and final ACK.
+- Attention R4: PR #201 and
+  `experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/`;
+  the isolated stdlib verifier replays the full 261-row prefix and original source
+  closures. PR #202 derives paper counts from that frozen archive. Original R1–R3
+  failures retain their independent classifications; source closure proves a
+  finite observation, not continuing semantic validity.
 - Formal source policy: PR #196 does not register a semantic producer or prove
   controller-generation/lease/worker-replacement coverage. The original H3/H4
   matrices remain unqualified.
