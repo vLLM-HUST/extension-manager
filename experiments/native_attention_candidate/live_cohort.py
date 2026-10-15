@@ -27,6 +27,14 @@ def write(path, value):
         os.fsync(stream.fileno())
 
 
+def public_request_headers(phase):
+    """Bind the public authority request separately from the backend request."""
+    headers = dict(phase["headers"])
+    if any(key.lower() == "x-ecpa-request-id" for key in headers):
+        raise ValueError("public authority request ID is runner-owned")
+    return {**headers, "X-ECPA-Request-ID": phase["external_request_id"]}
+
+
 def start(argv, config, out, name):
     process = subprocess.Popen(
         argv,
@@ -188,14 +196,15 @@ def execute(
         else:
             raise ValueError("live producer proof deadline")
         phase = recipe["phases"][0]
+        headers = public_request_headers(phase)
         path = urlsplit(phase["url"]).path
         expected = (out / "probe/response.bin").read_bytes()
         status, raw = request(
-            "POST", path, producer.canonical(phase["payload"]), phase["headers"]
+            "POST", path, producer.canonical(phase["payload"]), headers
         )
         if status != 200 or raw != expected:
             raise ValueError("authority did not release exact verified model response")
-        mismatch, _ = request("POST", path, b"{}", phase["headers"])
+        mismatch, _ = request("POST", path, b"{}", headers)
         if mismatch != 503:
             raise ValueError("different request escaped finite semantic scope")
         # Actual source failure, never a synthetic epoch substitution.
@@ -222,9 +231,7 @@ def execute(
             except (OSError, ValueError):
                 break
             time.sleep(0.05)
-        closed, _ = request(
-            "POST", path, producer.canonical(phase["payload"]), phase["headers"]
-        )
+        closed, _ = request("POST", path, producer.canonical(phase["payload"]), headers)
         if closed != 503:
             raise ValueError("source epoch loss did not close response release")
         rpc = json.loads((out / "probe/result.json").read_bytes())
