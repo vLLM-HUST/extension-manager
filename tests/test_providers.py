@@ -156,6 +156,17 @@ def test_pipeline_microbatch_uses_batch_admission_policy_contract() -> None:
     }
 
 
+def test_vllm_provider_projects_prefix_cache_launch_option() -> None:
+    value = manifest("bidkv-v0.2.json")
+    plan = VllmProvider().plan(
+        value,
+        {"launch_options": {"enable_prefix_caching": True}},
+        enabled=True,
+    )
+
+    assert plan.generated_config["vllm_flags"] == ["--enable-prefix-caching"]
+
+
 def test_worker_carrier_uses_explicit_worker_class_contract() -> None:
     value = manifest("worker-class-v0.3.json")
 

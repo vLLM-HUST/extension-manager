@@ -831,8 +831,17 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
     if not isinstance(flags, (list, tuple)):
         raise ValueError("provider vllm_flags must be an array")
     for option in flags:
-        if option != "--scheduler-reserve-output-budget":
+        if option not in {
+            "--enable-prefix-caching",
+            "--scheduler-reserve-output-budget",
+        }:
             raise ValueError(f"unsupported provider flag {option!r}")
+        if option == "--enable-prefix-caching":
+            result = [
+                argument
+                for argument in result
+                if argument != "--no-enable-prefix-caching"
+            ]
         if option not in result:
             result = [*result, option]
     return result
