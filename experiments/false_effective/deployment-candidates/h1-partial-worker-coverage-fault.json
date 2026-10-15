@@ -1,1 +1,0 @@
-{"entry_point":{"group":"vllm.general_plugins","name":"kv_materialization","value":"vllm_kv_materialization.plugin:register_plugin"},"scenario":"partial-worker-coverage","schema":"ecpa-evidence-quarantine-fault/v2","target":{"host":"coder-admin-shuhao-ecpa-7bbb5f7c84-2bl7q","ordinal":0,"role":"worker"}}

@@ -1,9 +1,0 @@
-def emit_native_fact(factory):
-    """Lazy source-owned extension fact; authentication/ACK failures propagate."""
-    if _observer is None:
-        from .native_semantic_bootstrap import ensure_registered
-
-        ensure_registered(register_observer)
-    if _observer is not None:
-        _observer(factory())
-
