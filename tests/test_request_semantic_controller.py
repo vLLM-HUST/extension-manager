@@ -207,3 +207,26 @@ def test_real_grant_io_rechecks_complete_input_union_after_reply(
     with pytest.raises(ValueError, match="audited input"):
         controller.route_grant_current(observation, expanded, _cut=cut)
     assert changed  # No mocked query or fabricated grant/consumer PASS.
+
+
+@pytest.mark.parametrize(
+    "hook",
+    [
+        "_after_producer_guard",
+        "_after_owner_observation_guard",
+        "_before_response_release_guard",
+    ],
+)
+def test_legacy_default_guard_hooks_keep_dynamic_full_current_failure(hook):
+    # Guard dispatch contract only; no mocked native consumer or qualification.
+    forwarder = object.__new__(controller.RequestForwarder)
+    reached = []
+
+    def rejected():
+        reached.append("full-current")
+        raise ValueError("CPU guard rejection")
+
+    forwarder._current = rejected
+    with pytest.raises(ValueError, match="CPU guard rejection"):
+        getattr(forwarder, hook)({}, {})
+    assert reached == ["full-current"]

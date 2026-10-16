@@ -287,9 +287,46 @@ def test_two_public_arrivals_each_cause_new_verified_upstream_execution(
 
         class FixedClockForwarder(RequestForwarder):
             owner_verification_count = 0
+            guard_events = None
+
+            def _trace_guard(self, name):
+                if self.guard_events is None:
+                    self.guard_events = []
+                self.guard_events.append((self.next_phase, name))
+
+            def _after_producer_guard(self, phase, admission):
+                from experiments.native_attention_candidate import (
+                    request_semantic_controller as semantic_control,
+                )
+
+                self._trace_guard("after-producer")
+                semantic_control.SemanticRequestForwarder._after_producer_guard(
+                    self, phase, admission
+                )
+
+            def _after_owner_observation_guard(self, phase, admission):
+                from experiments.native_attention_candidate import (
+                    request_semantic_controller as semantic_control,
+                )
+
+                self._trace_guard("after-owner")
+                semantic_control.SemanticRequestForwarder._after_owner_observation_guard(
+                    self, phase, admission
+                )
+
+            def _before_response_release_guard(self, envelope, admission):
+                from experiments.native_attention_candidate import (
+                    request_semantic_controller as semantic_control,
+                )
+
+                self._trace_guard("before-base-release")
+                semantic_control.SemanticRequestForwarder._before_response_release_guard(
+                    self, envelope, admission
+                )
 
             def _verify_owner_observation(self, *args):
                 self.owner_verification_count += 1
+                self._trace_guard("full-owner-verification")
                 return super()._verify_owner_observation(*args)
 
             def _producer_completion_registration(self):
@@ -443,6 +480,16 @@ def test_two_public_arrivals_each_cause_new_verified_upstream_execution(
         assert forwarder.next_phase == 2 and forwarder.pending is None
         if producer_clock:
             assert forwarder.owner_verification_count == 2
+            assert forwarder.guard_events == [
+                (index, event)
+                for index in (0, 1)
+                for event in (
+                    "after-producer",
+                    "full-owner-verification",
+                    "after-owner",
+                    "before-base-release",
+                )
+            ]
         # The second proof must verify historical payloads as well as its own56.
         snapshot = tmp_path / "forward/request-0001/snapshot/native.jsonl"
         original_prefix = snapshot.read_bytes()

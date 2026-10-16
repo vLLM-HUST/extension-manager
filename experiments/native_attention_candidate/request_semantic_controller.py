@@ -596,8 +596,22 @@ class SemanticRequestForwarder(RequestForwarder):
         self._record(f"semantic-ticket-{self.next_phase:04d}.json", ticket)
         return observed
 
+    def _after_producer_guard(self, phase, admission):
+        # The immediately following authority.verify_request_completion performs
+        # its full entry cut. Keep every base live kernel/source/collector guard.
+        RequestForwarder._current(self)
+
+    def _after_owner_observation_guard(self, phase, admission):
+        # Authority verification already ended with a full current cut; raw
+        # owner/base ticket IO still precedes authority.consume's fresh entry.
+        RequestForwarder._current(self)
+
+    def _before_response_release_guard(self, envelope, admission):
+        # Authority consume has just completed its post-persist full current cut.
+        # Base byte hashing and the unconditional final full release cut remain.
+        RequestForwarder._current(self)
+
     def _consume(self, envelope, admission):
-        self._current()
         require(self.semantic_deployment is not None, "semantic deployment absent")
         capability = self._pending_semantic_capability
         self._pending_semantic_capability = None
