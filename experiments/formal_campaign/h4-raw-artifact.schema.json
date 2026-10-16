@@ -140,38 +140,7 @@
       "type": "integer",
       "minimum": 1
     },
-    "startup_phases": {
-      "type": "object",
-      "required": [
-        "discovery",
-        "validation",
-        "planning",
-        "rendering",
-        "evidence_setup",
-        "worker_loading"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "discovery": {
-          "$ref": "#/definitions/interval"
-        },
-        "validation": {
-          "$ref": "#/definitions/interval"
-        },
-        "planning": {
-          "$ref": "#/definitions/interval"
-        },
-        "rendering": {
-          "$ref": "#/definitions/interval"
-        },
-        "evidence_setup": {
-          "$ref": "#/definitions/interval"
-        },
-        "worker_loading": {
-          "$ref": "#/definitions/interval"
-        }
-      }
-    },
+    "startup_phases": {},
     "requests": {
       "type": "array",
       "items": {
@@ -390,5 +359,102 @@
       "additionalProperties": false
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "launch_definition": {
+            "required": [
+              "environment"
+            ],
+            "properties": {
+              "environment": {
+                "required": [
+                  "ECPA_H4_SOURCE_OWNED_PAIR"
+                ],
+                "properties": {
+                  "ECPA_H4_SOURCE_OWNED_PAIR": {
+                    "const": "1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "startup_phases": {
+            "type": "object",
+            "required": [
+              "discovery",
+              "validation",
+              "planning",
+              "rendering",
+              "evidence_setup",
+              "worker_loading"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "discovery": {
+                "type": "null"
+              },
+              "validation": {
+                "type": "null"
+              },
+              "planning": {
+                "type": "null"
+              },
+              "rendering": {
+                "type": "null"
+              },
+              "evidence_setup": {
+                "type": "null"
+              },
+              "worker_loading": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "startup_phases": {
+            "type": "object",
+            "required": [
+              "discovery",
+              "validation",
+              "planning",
+              "rendering",
+              "evidence_setup",
+              "worker_loading"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "discovery": {
+                "$ref": "#/definitions/interval"
+              },
+              "validation": {
+                "$ref": "#/definitions/interval"
+              },
+              "planning": {
+                "$ref": "#/definitions/interval"
+              },
+              "rendering": {
+                "$ref": "#/definitions/interval"
+              },
+              "evidence_setup": {
+                "$ref": "#/definitions/interval"
+              },
+              "worker_loading": {
+                "$ref": "#/definitions/interval"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

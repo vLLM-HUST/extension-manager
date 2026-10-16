@@ -141,12 +141,16 @@ def run_checked(command: list[str], env: dict[str, str], log: Any) -> None:
         raise RuntimeError(f"command failed ({completed.returncode}): {command!r}")
 
 
-def wait_ready(url: str, timeout: float) -> None:
+def wait_ready(url: str, timeout: float, *, observation=None) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
                 if response.status == 200:
+                    if observation is not None:
+                        observation.update(
+                            url=url, status_code=200, observed_ns=now_ns()
+                        )
                     return
         except (OSError, urllib.error.URLError):
             pass
@@ -377,6 +381,86 @@ def terminate(process: subprocess.Popen[bytes], timeout: float = 30) -> None:
             process.wait(timeout=10)
 
 
+def remaining_owned_epochs(epochs):
+    from experiments.formal_campaign.h4_owned_resources import kernel, read_process
+
+    boot = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    live_epochs = []
+    for expected in epochs:
+        try:
+            actual = read_process(expected["pid"])
+        except (OSError, ValueError, IndexError):
+            continue
+        if kernel(actual, boot) == expected and actual["state"] != "Z":
+            live_epochs.append(expected)
+    return live_epochs
+
+
+def signal_owned_epoch(expected, signum):
+    # Opening the PID handle never authorizes a reused PID. Both observations
+    # must still match the independent original Popen/descendant kernel epoch.
+    if expected not in remaining_owned_epochs([expected]):
+        return False
+    try:
+        descriptor = os.pidfd_open(expected["pid"])
+    except ProcessLookupError:
+        return False
+    try:
+        if expected not in remaining_owned_epochs([expected]):
+            return False
+        try:
+            signal.pidfd_send_signal(descriptor, signum)
+        except ProcessLookupError:
+            return False
+        return True
+    finally:
+        os.close(descriptor)
+
+
+def terminate_source_owned(process, sampler, run_dir, timeout=30):
+    expected = sampler.root
+    observations = []
+    if process.poll() is None:
+        sent = signal_owned_epoch(expected, signal.SIGTERM)
+        observations.append({"kernel": expected, "signal": "SIGTERM", "sent": sent})
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            process.wait(timeout=timeout)
+    # The wrapper owns its source protocol's graceful snapshot and descendant
+    # cleanup. Fall back only to independently sampled exact kernels.
+    for signum, budget in ((signal.SIGTERM, 12), (signal.SIGKILL, 5)):
+        remaining = remaining_owned_epochs(sampler.last_known_epochs)
+        if not remaining:
+            break
+        for epoch in reversed(remaining):
+            sent = signal_owned_epoch(epoch, signum)
+            observations.append(
+                {
+                    "kernel": epoch,
+                    "signal": signal.Signals(signum).name,
+                    "sent": sent,
+                }
+            )
+        deadline = time.monotonic() + budget
+        while (
+            remaining_owned_epochs(sampler.last_known_epochs)
+            and time.monotonic() < deadline
+        ):
+            time.sleep(0.05)
+    if process.poll() is None:
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            process.wait(timeout=1)
+    result = {
+        "root": expected,
+        "signals": observations,
+        "remaining_exact_epochs": remaining_owned_epochs(sampler.last_known_epochs),
+        "observed_monotonic_raw_ns": now_ns(),
+    }
+    (run_dir / "owned-cleanup-observations.json").write_text(
+        json.dumps(result, sort_keys=True) + "\n"
+    )
+    return result
+
+
 def bind_file(path: Path, root: Path) -> dict[str, str]:
     return {"path": str(path.relative_to(root)), "sha256": _digest_bytes(path)}
 
@@ -409,7 +493,14 @@ def execute_start(
     run_dir.mkdir(parents=True, exist_ok=False)
     definition = launch_spec["arms"][arm]
     env = arm_environment(definition)
-    phase_times: dict[str, dict[str, int]] = {}
+    source_owned = definition["environment"].get("ECPA_H4_SOURCE_OWNED_PAIR") == "1"
+    if source_owned:
+        if "ECPA_H4_RUN_DIRECTORY" in definition["environment"]:
+            raise ValueError("actual H4 run directory must not be caller materialized")
+        env["ECPA_H4_RUN_DIRECTORY"] = str(run_dir.resolve())
+    phase_times: dict[str, dict[str, int] | None] = {}
+    cost_path = run_dir / "cost-observation.json"
+    health_observation = {}
     process: subprocess.Popen[bytes] | None = None
     sampler: ResourceSampler | None = None
     identity = launcher_identity()
@@ -450,24 +541,92 @@ def execute_start(
                 start_new_session=True,
             )
             identity = process_identity(process)
-            sampler = ResourceSampler(
-                process.pid, launch_spec.get("npu_memory_command")
-            )
+            if source_owned:
+                from experiments.formal_campaign.h4_owned_resources import (
+                    OwnedTreeResourceSampler,
+                )
+
+                sampler = OwnedTreeResourceSampler(
+                    process.pid,
+                    launch_spec.get("npu_memory_command"),
+                    archive=run_dir / "owned-resource-samples.json",
+                    expected_root={
+                        "pid": process.pid,
+                        "session": process.pid,
+                        "start_ticks": identity["server_start_ticks"],
+                        "boot_id": identity["boot_id"],
+                    },
+                )
+            else:
+                sampler = ResourceSampler(
+                    process.pid, launch_spec.get("npu_memory_command")
+                )
             sampler.start()
-            wait_ready(
-                launch_spec["health_url"], launch_spec["startup_timeout_seconds"]
-            )
-            ready = now_ns()
-            phase_times["worker_loading"] = {
-                "start_ns": worker_start,
-                "end_ns": ready,
-            }
+            readiness_timeout = launch_spec["startup_timeout_seconds"]
+            if source_owned:
+                readiness_timeout = max(
+                    0, readiness_timeout - (now_ns() - worker_start) / 1e9
+                )
+            if source_owned:
+                wait_ready(
+                    launch_spec["health_url"],
+                    readiness_timeout,
+                    observation=health_observation,
+                )
+            else:
+                wait_ready(launch_spec["health_url"], readiness_timeout)
+            if source_owned:
+                from experiments.formal_campaign.h4_pair_activation import (
+                    verify_live_activation,
+                )
+
+                activation_ready = run_dir / "activation" / "activation-ready.json"
+                while not activation_ready.exists():
+                    if process.poll() is not None:
+                        raise RuntimeError("actual H4 activation wrapper exited")
+                    if (now_ns() - worker_start) / 1e9 > launch_spec[
+                        "startup_timeout_seconds"
+                    ]:
+                        raise TimeoutError(
+                            "actual H4 activation exceeded original startup bound"
+                        )
+                    time.sleep(0.01)
+                verify_live_activation(run_dir, definition, sampler.root)
+                launch_timing_path = (
+                    run_dir / "activation" / "actual-product-launch-timing.json"
+                )
+                product_timing = json.loads(launch_timing_path.read_bytes())
+                sampler.select_product_root(product_timing["product_kernel"])
+                cost_document = {
+                    "schema": "ecpa-h4-source-owned-cost-observation/v1",
+                    "clock": "CLOCK_MONOTONIC_RAW",
+                    "wrapper_start_ns": worker_start,
+                    "common_qualification_phases": phase_times,
+                    "product_launch": bind_file(launch_timing_path, output_root),
+                    "health_observation": health_observation,
+                    "phase_bins": "unobserved",
+                    "measurement_scope": "actual-product-Popen-to-health200",
+                }
+                cost_path.write_text(json.dumps(cost_document, sort_keys=True) + "\n")
+                startup_start = product_timing["product_popen_before_ns"]
+                ready = health_observation["observed_ns"]
+                phase_times = dict.fromkeys((*PHASES, "worker_loading"))
+            else:
+                ready = now_ns()
+                phase_times["worker_loading"] = {
+                    "start_ns": worker_start,
+                    "end_ns": ready,
+                }
             workload = campaign["workload"] | {
                 "served_model": definition["served_model"]
             }
             requests = drive_requests(launch_spec["endpoint_url"], workload)
-            _, peak_rss = process_group_usage(process.pid)
+            if not source_owned:
+                _, peak_rss = process_group_usage(process.pid)
             sampled_resources = sampler.finish()
+            if source_owned:
+                sampler.require_coverage()
+                verify_live_activation(run_dir, definition, sampler.root)
         except Exception as exc:
             failure_time = now_ns()
             if ready is None:
@@ -486,34 +645,77 @@ def execute_start(
             if sampler is not None and sampler.thread.is_alive():
                 sampled_resources = sampler.finish()
             if process is not None:
-                terminate(process)
+                if source_owned and sampler is not None:
+                    terminate_source_owned(process, sampler, run_dir)
+                else:
+                    terminate(process)
 
     receipt_copy = run_dir / "deployment-receipt.json"
     receipt_copy.write_bytes(receipt_path.read_bytes())
     process_snapshot = run_dir / "process-snapshot.json"
-    process_snapshot.write_text(
-        json.dumps({"start_id": start_id, "process_identity": identity}, sort_keys=True)
-        + "\n"
-    )
+    snapshot_document = {"start_id": start_id, "process_identity": identity}
+    if source_owned:
+        phase_times = dict.fromkeys((*PHASES, "worker_loading"))
+        snapshot_document["source_owned_pair"] = {
+            "cost_observation": bind_file(cost_path, output_root)
+            if cost_path.exists()
+            else None,
+            "resources": bind_file(run_dir / "owned-resource-samples.json", output_root)
+            if (run_dir / "owned-resource-samples.json").exists()
+            else None,
+            "activation": bind_file(
+                run_dir / "activation" / "activation-guard-receipt.json", output_root
+            )
+            if (run_dir / "activation" / "activation-guard-receipt.json").exists()
+            else None,
+        }
+    process_snapshot.write_text(json.dumps(snapshot_document, sort_keys=True) + "\n")
     request_results = run_dir / "request-results.json"
     request_results.write_text(
         json.dumps({"start_id": start_id, "requests": requests}, sort_keys=True) + "\n"
     )
     cleanup = {
-        "processes_reclaimed": process is None
-        or not process_group_members(process.pid),
+        "processes_reclaimed": (
+            not remaining_owned_epochs(sampler.last_known_epochs)
+            if source_owned and sampler is not None
+            else process is None or not process_group_members(process.pid)
+        ),
         "ports_reclaimed": port_closed(launch_spec["host"], launch_spec["port"]),
         "devices_reclaimed": False,
     }
     device_check = launch_spec.get("device_cleanup_command")
+    device_observation = None
     if device_check:
-        cleanup["devices_reclaimed"] = (
-            subprocess.run(device_check, check=False).returncode == 0
-        )
+        if source_owned:
+            result = subprocess.run(
+                device_check, env=env, capture_output=True, check=False
+            )
+            device_stdout = run_dir / "device-cleanup.stdout"
+            device_stderr = run_dir / "device-cleanup.stderr"
+            device_stdout.write_bytes(result.stdout)
+            device_stderr.write_bytes(result.stderr)
+            cleanup["devices_reclaimed"] = result.returncode == 0
+            device_observation = {
+                "command": device_check,
+                "returncode": result.returncode,
+                "stdout": bind_file(device_stdout, output_root),
+                "stderr": bind_file(device_stderr, output_root),
+                "observed_monotonic_raw_ns": now_ns(),
+            }
+        else:
+            cleanup["devices_reclaimed"] = (
+                subprocess.run(device_check, check=False).returncode == 0
+            )
     cleanup_report = run_dir / "cleanup-report.json"
-    cleanup_report.write_text(
-        json.dumps({"start_id": start_id, "cleanup": cleanup}, sort_keys=True) + "\n"
-    )
+    cleanup_document = {"start_id": start_id, "cleanup": cleanup}
+    if source_owned:
+        cleanup_document["device_observation"] = device_observation
+        cleanup_document["owner_observation"] = (
+            bind_file(run_dir / "owned-cleanup-observations.json", output_root)
+            if (run_dir / "owned-cleanup-observations.json").exists()
+            else None
+        )
+    cleanup_report.write_text(json.dumps(cleanup_document, sort_keys=True) + "\n")
     assert ready is not None
     messages, evidence_size = evidence_counts(definition.get("evidence_paths", []))
     child_bindings = {
@@ -605,6 +807,12 @@ def execute_start(
     if not failure:
         try:
             record["metrics"] = _recompute_h4_metrics(record, raw, campaign)
+            if source_owned:
+                from experiments.formal_campaign.h4_source_owned_intake import (
+                    verify_start,
+                )
+
+                verify_start(record, raw, output_root)
         except ValueError as exc:
             record["status"] = "failed"
             record["failure"] = {
@@ -633,6 +841,22 @@ def main() -> int:
     launch_raw = args.launch_spec.read_bytes()
     launch_spec = json.loads(launch_raw)
     validate_launch_spec(launch_spec, receipt, launch_raw)
+    if any(
+        definition["environment"].get("ECPA_H4_SOURCE_OWNED_PAIR") == "1"
+        for definition in launch_spec["arms"].values()
+    ):
+        if not all(
+            definition["environment"].get("ECPA_H4_SOURCE_OWNED_PAIR") == "1"
+            for definition in launch_spec["arms"].values()
+        ):
+            raise ValueError("H4 activation observation must match all three arms")
+        if (
+            not set(receipt.get("source_provenance_protocol_binding", {}))
+            >= source_provenance.H4_SOURCE_OWNED_FILES
+        ):
+            raise ValueError("H4 source-owned helpers lack admitted published source")
+        if not launch_spec.get("npu_memory_command"):
+            raise ValueError("actual H4 device memory read is unregistered")
     if args.validate_only:
         print(json.dumps({"status": "validated", "starts": 9}, sort_keys=True))
         return 0

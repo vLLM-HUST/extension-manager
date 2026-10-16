@@ -80,7 +80,7 @@
     {"if": {"properties": {"status": {"const": "failed"}}}, "then": {"required": ["failure"], "properties": {"failure": {"type": "object"}}}},
     {"if": {"properties": {"campaign_id": {"const": "H3-transactional-recovery-v1"}, "status": {"const": "complete"}}}, "then": {"required": ["process_identity"], "properties": {"process_identity": {"$ref": "#/definitions/h3ProcessIdentity"}, "artifacts": {"required": ["raw_recovery", "authority_registration"]}, "metrics": {"$ref": "#/definitions/h3metrics"}}}},
     {"if": {"properties": {"campaign_id": {"const": "H4-matched-cost-v1"}}}, "then": {"required": ["process_identity"], "properties": {"artifacts": {"required": ["raw_measurement"]}}}},
-    {"if": {"properties": {"campaign_id": {"const": "H4-matched-cost-v1"}, "status": {"const": "complete"}}}, "then": {"properties": {"metrics": {"$ref": "#/definitions/h4metrics"}}}}
+    {"if": {"properties": {"campaign_id": {"const": "H4-matched-cost-v1"}, "status": {"const": "complete"}}}, "then": {"properties": {"metrics": {"oneOf": [{"$ref": "#/definitions/h4metrics"}, {"$ref": "#/definitions/h4SourceOwnedMetrics"}]}}}}
   ],
   "definitions": {
     "processIdentity": {
@@ -131,6 +131,108 @@
         "operator_actions": {"type": "integer", "minimum": 0},
         "final_route": {"type": "string", "minLength": 1},
         "rollback_classification": {"enum": ["automatic-restoration", "failed-safe", "bounded-operator-action", "not-applicable"]}
+      },
+      "additionalProperties": false
+    },
+    "h4SourceOwnedMetrics": {
+      "type": "object",
+      "required": [
+        "startup_phases_ms",
+        "throughput",
+        "latency_median_ms",
+        "latency_p95_ms",
+        "latency_p99_ms",
+        "cpu_ms",
+        "host_memory_bytes",
+        "device_memory_bytes",
+        "process_messages",
+        "evidence_bytes",
+        "gate_open_ms",
+        "failure_detection_ms",
+        "rollback_ms",
+        "recovery_ms",
+        "measurement_scope"
+      ],
+      "properties": {
+        "startup_phases_ms": {
+          "type": "object",
+          "required": [
+            "discovery",
+            "validation",
+            "planning",
+            "rendering",
+            "worker_loading",
+            "evidence_setup",
+            "total"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "discovery": {
+              "type": "null"
+            },
+            "validation": {
+              "type": "null"
+            },
+            "planning": {
+              "type": "null"
+            },
+            "rendering": {
+              "type": "null"
+            },
+            "worker_loading": {
+              "type": "null"
+            },
+            "evidence_setup": {
+              "type": "null"
+            },
+            "total": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "throughput": {
+          "$ref": "#/definitions/h4metrics/properties/throughput"
+        },
+        "latency_median_ms": {
+          "$ref": "#/definitions/h4metrics/properties/latency_median_ms"
+        },
+        "latency_p95_ms": {
+          "$ref": "#/definitions/h4metrics/properties/latency_p95_ms"
+        },
+        "latency_p99_ms": {
+          "$ref": "#/definitions/h4metrics/properties/latency_p99_ms"
+        },
+        "cpu_ms": {
+          "$ref": "#/definitions/h4metrics/properties/cpu_ms"
+        },
+        "host_memory_bytes": {
+          "$ref": "#/definitions/h4metrics/properties/host_memory_bytes"
+        },
+        "device_memory_bytes": {
+          "$ref": "#/definitions/h4metrics/properties/device_memory_bytes"
+        },
+        "process_messages": {
+          "$ref": "#/definitions/h4metrics/properties/process_messages"
+        },
+        "evidence_bytes": {
+          "$ref": "#/definitions/h4metrics/properties/evidence_bytes"
+        },
+        "gate_open_ms": {
+          "$ref": "#/definitions/h4metrics/properties/gate_open_ms"
+        },
+        "failure_detection_ms": {
+          "$ref": "#/definitions/h4metrics/properties/failure_detection_ms"
+        },
+        "rollback_ms": {
+          "$ref": "#/definitions/h4metrics/properties/rollback_ms"
+        },
+        "recovery_ms": {
+          "$ref": "#/definitions/h4metrics/properties/recovery_ms"
+        },
+        "measurement_scope": {
+          "const": "actual-product-Popen-to-health200"
+        }
       },
       "additionalProperties": false
     },

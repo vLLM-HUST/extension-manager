@@ -108,6 +108,14 @@ def validate_launch_spec(launch: dict[str, Any]) -> None:
     schema = json.loads((HERE / "h4-launch-spec.schema.json").read_text())
     Draft7Validator(schema).validate(launch)
     served_models: set[str] = set()
+    source_owned = [
+        launch["arms"][arm]["environment"].get("ECPA_H4_SOURCE_OWNED_PAIR") == "1"
+        for arm in ARMS
+    ]
+    if any(source_owned) and not all(source_owned):
+        raise ValueError("H4 source-owned observation must be matched across all arms")
+    if all(source_owned) and not launch.get("npu_memory_command"):
+        raise ValueError("source-owned H4 must register its actual device memory read")
     for arm in ARMS:
         definition = launch["arms"][arm]
         served_models.add(definition["served_model"])
@@ -343,7 +351,16 @@ def main() -> None:
         campaign,
         observation,
         source_provenance.bind_protocol_source(
-            args.manager_repo, fixed["manager_commit"], "h4"
+            args.manager_repo,
+            fixed["manager_commit"],
+            "h4",
+            h4_source_owned=all(
+                load_object(args.launch_spec.read_bytes(), "launch spec")["arms"][arm][
+                    "environment"
+                ].get("ECPA_H4_SOURCE_OWNED_PAIR")
+                == "1"
+                for arm in ARMS
+            ),
         ),
     )
     Draft7Validator(

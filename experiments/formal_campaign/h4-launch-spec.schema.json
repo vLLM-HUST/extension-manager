@@ -8,7 +8,7 @@
     "arms": {"type": "object", "required": ["vanilla-vllm-entry-points", "manual-integration", "ecpa"], "additionalProperties": false, "properties": {
       "vanilla-vllm-entry-points": {"$ref": "#/definitions/arm"}, "manual-integration": {"$ref": "#/definitions/arm"}, "ecpa": {"$ref": "#/definitions/arm"}
     }},
-    "health_url": {"type": "string", "pattern": "^http://"}, "endpoint_url": {"type": "string", "pattern": "^http://"}, "host": {"type": "string", "minLength": 1}, "port": {"type": "integer", "minimum": 1, "maximum": 65535}, "startup_timeout_seconds": {"type": "number", "exclusiveMinimum": 0}, "container_digest": {"$ref": "#/definitions/digest"}, "device_cleanup_command": {"$ref": "#/definitions/command"}
+    "health_url": {"type": "string", "pattern": "^http://"}, "endpoint_url": {"type": "string", "pattern": "^http://"}, "host": {"type": "string", "minLength": 1}, "port": {"type": "integer", "minimum": 1, "maximum": 65535}, "startup_timeout_seconds": {"type": "number", "exclusiveMinimum": 0}, "container_digest": {"$ref": "#/definitions/digest"}, "device_cleanup_command": {"$ref": "#/definitions/command"}, "npu_memory_command": {"$ref": "#/definitions/command"}
   },
   "definitions": {
     "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
