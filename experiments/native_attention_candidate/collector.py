@@ -89,10 +89,15 @@ def _verify_reference(
         ),
         "native OP source ACK differs from actual prior raw typed event",
     )
+    payload_digest = (
+        native.sha(payload)
+        if _materialization is None
+        else _materialization._original_digest(payload, _owner)
+    )
     transport.require(
         fact["source_materialization_sha256"]
         == event["artifact"]["sha256"]
-        == native.sha(payload)
+        == payload_digest
         and fact["runtime_request_id"] == envelope["runtime_request_id"]
         and fact["materialization_transaction_id"] == envelope["transaction_id"]
         and fact["process"] == envelope["process"]

@@ -303,11 +303,14 @@ def _verify_attention_archive(
             payload = path.read_bytes()
             require(
                 0 < len(payload) <= MAX_ARTIFACT
-                and len(payload) == artifact["size"] == envelope["artifact"]["size"]
-                and native.sha(payload) == artifact["sha256"],
+                and len(payload) == artifact["size"] == envelope["artifact"]["size"],
                 "portable archived blob changed",
             )
             owned = observer._own_materialization(payload, _owner)
+            require(
+                owned._canonical_digest(_owner) == artifact["sha256"],
+                "portable archived blob changed",
+            )
             fact = owned._detached(_owner)
             phase = tensor_predicate(
                 fact, envelope, policy, sender, maps, mapping_stamps, accepted, spec
