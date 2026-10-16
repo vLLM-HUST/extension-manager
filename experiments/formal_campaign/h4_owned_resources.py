@@ -104,6 +104,59 @@ def collect_tree(expected, *, proc=Path("/proc")):
     }
 
 
+def product_counters(sample, product_root):
+    """Counters for the actual product subtree, excluding its witness parent."""
+    members = {row["pid"]: row for row in sample["members"]}
+    root = members.get(product_root["pid"])
+    if root is None:
+        return None
+    if kernel(root, sample["root"]["boot_id"]) != product_root:
+        raise ValueError("product resource epoch was reused")
+    selected = []
+    for row in members.values():
+        pid, seen = row["pid"], set()
+        while pid in members and pid not in seen:
+            if pid == product_root["pid"]:
+                selected.append(row)
+                break
+            seen.add(pid)
+            pid = members[pid]["ppid"]
+    return {
+        "cpu_ticks": sum(r["own_ticks"] + r["reaped_child_ticks"] for r in selected),
+        "rss_bytes": sum(r["rss_bytes"] for r in selected if r["state"] != "Z"),
+    }
+
+
+def measured_resources(samples, ticks_per_second, product_root=None):
+    if product_root is None:
+        counters = samples
+        baseline = samples[0]["cpu_ticks"]
+        device_samples = samples
+    else:
+        pairs = [(s, product_counters(s, product_root)) for s in samples]
+        counters = [c for _, c in pairs if c is not None]
+        device_samples = [s for s, c in pairs if c is not None]
+        if not counters:
+            raise ValueError("actual product lacks independent resource observation")
+        # Fresh Popen counters start at zero. Its pre-first-sample CPU belongs
+        # to product startup too; the already-running witness has no share.
+        baseline = 0
+    return {
+        "cpu_ms": max(0, max(s["cpu_ticks"] for s in counters) - baseline)
+        * 1000
+        / ticks_per_second,
+        "peak_host_rss_bytes": max(s["rss_bytes"] for s in counters),
+        "peak_device_memory_bytes": max(
+            (
+                s["device_memory_bytes"]
+                for s in device_samples
+                if s["device_memory_bytes"] is not None
+            ),
+            default=0,
+        ),
+    }
+
+
 class OwnedTreeResourceSampler:
     def __init__(
         self,
@@ -137,6 +190,7 @@ class OwnedTreeResourceSampler:
         self.samples, self.errors = [], []
         self._known = {}
         self.finished = None
+        self.measurement_root = None
         try:
             self._append_sample()
         except (OSError, ValueError, IndexError, subprocess.SubprocessError) as exc:
@@ -221,23 +275,13 @@ class OwnedTreeResourceSampler:
             self._append_sample()
         except (OSError, ValueError, IndexError, subprocess.SubprocessError) as exc:
             self.errors.append({"monotonic_ns": time.monotonic_ns(), "error": str(exc)})
-        resources = {
-            "cpu_ms": max(0, max(s["cpu_ticks"] for s in self.samples) - self.cpu_start)
-            * 1000
-            / self.ticks_per_second,
-            "peak_host_rss_bytes": max(s["rss_bytes"] for s in self.samples),
-            "peak_device_memory_bytes": max(
-                (
-                    s["device_memory_bytes"]
-                    for s in self.samples
-                    if s["device_memory_bytes"] is not None
-                ),
-                default=0,
-            ),
-        }
+        resources = measured_resources(
+            self.samples, self.ticks_per_second, self.measurement_root
+        )
         value = {
             "schema": "ecpa-h4-owned-tree-resource-samples/v1",
             "root": self.root,
+            "measurement_root": self.measurement_root,
             "source": self.source_ref,
             "interval_s": self.interval_s,
             "clock_ticks_per_second": self.ticks_per_second,
@@ -254,6 +298,16 @@ class OwnedTreeResourceSampler:
         self.archive.write_bytes(canonical(value) + b"\n")
         self.finished = resources
         return resources
+
+    def select_product_root(self, expected):
+        if self.finished is not None or self.measurement_root is not None:
+            raise ValueError("product measurement root already frozen")
+        current = collect_tree(self.root, proc=self.proc)
+        if product_counters(current, expected) is None:
+            raise ValueError("actual product is not a current owned descendant")
+        if expected == self.root:
+            raise ValueError("witness cannot be the product measurement root")
+        self.measurement_root = dict(expected)
 
     @property
     def last_known_epochs(self):
@@ -346,20 +400,9 @@ def verify_archive(path, expected_root, resources):
             r["rss_bytes"] for r in members.values() if r["state"] != "Z"
         ):
             raise ValueError("resource sample totals differ from member raw counters")
-    measured = {
-        "cpu_ms": max(0, max(s["cpu_ticks"] for s in samples) - samples[0]["cpu_ticks"])
-        * 1000
-        / value["clock_ticks_per_second"],
-        "peak_host_rss_bytes": max(s["rss_bytes"] for s in samples),
-        "peak_device_memory_bytes": max(
-            (
-                s["device_memory_bytes"]
-                for s in samples
-                if s["device_memory_bytes"] is not None
-            ),
-            default=0,
-        ),
-    }
+    measured = measured_resources(
+        samples, value["clock_ticks_per_second"], value.get("measurement_root")
+    )
     if measured != value["resources"] or measured != resources:
         raise ValueError("resource metrics differ from raw owned tree")
     return value

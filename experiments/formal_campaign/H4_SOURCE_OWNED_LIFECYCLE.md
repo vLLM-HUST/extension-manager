@@ -43,3 +43,29 @@ Published source admission additionally binds the unchanged existing runtime
 source-closure and baseline-wrapper dependencies. The manifest excludes copied
 unchanged fixtures, H3 helpers and schema files used only by the isolated test
 overlay. No active H3 checkout files were edited for this candidate.
+
+The source-owned cost boundary is the actual product Manager/Host Popen call
+(CLOCK_MONOTONIC_RAW immediately before and after) to the runner's first real
+health HTTP 200. The wrapper's common source/wheel/model qualification and its
+five common phase probes remain fully executed and archived separately. They
+are additional experiment qualification, not measured product phase bins. No
+inclusive startup number is reduced by an estimated audit duration. The Manager
+process's own discovery, validation, planning, rendering and evidence setup all
+occur after its actual Popen and remain included in the startup total.
+
+The source-owned sampler retains the full witness/descendant tree for ancestry
+and cleanup replay. CPU and RSS metrics are recomputed only for the actual
+product Popen kernel epoch and descendants. Fresh product CPU starts at zero,
+so CPU used before the first 250 ms observation is included. Witness audit CPU
+and RSS are excluded; NPU memory retains actual device readings during samples
+containing the product. The default legacy measurement mode remains unchanged.
+
+Product internal phase boundaries are not yet independently instrumented.
+The six phase bins are explicitly null/unobserved, with an opt-in schema branch;
+legacy numeric interval requirements remain strict. Intake binds actual product
+launch timing, the independently observed health clock and sampled kernel epoch.
+The aggregate retains validated starts and available headline metrics, but marks
+missing product phase bins and stays incomplete. This candidate provides a
+prospective measurement definition, not measured H4 values or satisfaction of
+the original phase-bin requirement. Thresholds and the original workload are
+unchanged.

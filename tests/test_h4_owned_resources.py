@@ -120,3 +120,54 @@ print('reaped',flush=True); sys.stdin.buffer.read()
     finally:
         process.stdin.close()
         process.wait(timeout=5)
+
+
+def test_product_scope_excludes_real_witness_audit_cpu_and_rss(tmp_path):
+    code = """import subprocess,sys,time,json
+x=bytearray(32*1024*1024)
+print('witness',flush=True); sys.stdin.buffer.readline()
+end=time.process_time()+.15
+while time.process_time()<end: pass
+child="import sys,time; x=bytearray(8*1024*1024); end=time.process_time()+.15; "
+child+='exec("while time.process_time()<end: pass"); '
+child+='print("ready",flush=True); sys.stdin.buffer.read()'
+p=subprocess.Popen([sys.executable,'-c',child],stdin=subprocess.PIPE,
+                   stdout=subprocess.PIPE,start_new_session=True)
+p.stdout.readline(); print(p.pid,flush=True)
+sys.stdin.buffer.read(); p.stdin.close(); p.wait(timeout=5)
+"""
+    process = subprocess.Popen(
+        [sys.executable, "-c", code], stdin=subprocess.PIPE, stdout=subprocess.PIPE
+    )
+    try:
+        assert process.stdout.readline().strip() == b"witness"
+        sampler = owned.OwnedTreeResourceSampler(
+            process.pid, None, archive=tmp_path / "product.json"
+        )
+        sampler.start()
+        process.stdin.write(b"launch\n")
+        process.stdin.flush()
+        pid = int(process.stdout.readline())
+        product = owned.kernel(owned.read_process(pid), sampler.root["boot_id"])
+        sampler.select_product_root(product)
+        result = sampler.finish()
+        archive = owned.verify_archive(sampler.archive, sampler.root, result)
+        assert archive["measurement_root"] == product
+        assert result["cpu_ms"] >= 100
+        full = owned.measured_resources(
+            archive["samples"], archive["clock_ticks_per_second"]
+        )
+        assert full["cpu_ms"] - result["cpu_ms"] >= 100
+        assert (
+            full["peak_host_rss_bytes"] - result["peak_host_rss_bytes"]
+            >= 24 * 1024 * 1024
+        )
+        with pytest.raises(ValueError, match="already frozen"):
+            sampler.select_product_root(product)
+        archive["measurement_root"]["start_ticks"] += 1
+        sampler.archive.write_bytes(owned.canonical(archive))
+        with pytest.raises(ValueError, match="epoch was reused"):
+            owned.verify_archive(sampler.archive, sampler.root, result)
+    finally:
+        process.stdin.close()
+        process.wait(timeout=5)

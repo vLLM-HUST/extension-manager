@@ -237,6 +237,7 @@ def compile_original_lifecycle_plan(bundles):
     import importlib.metadata
 
     from packaging.version import Version
+
     from vllm_hust_ext.ecpa_model import (
         EvidenceObligation,
         HostCompatibility,
@@ -480,6 +481,7 @@ def validate_registered_commands(spec, wrapper_argv=None):
 
 
 def execute(spec_path, arm, expected_sha256):
+    qualification_begin_raw_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC_RAW)
     from vllm_hust_ext.discovery import discover_bundles
     from vllm_hust_ext.runtime_evidence import _EVIDENCE_ENVIRONMENT, _PATH_ENV, _SINK
     from vllm_hust_ext.runtime_phase_handoff import (
@@ -706,12 +708,30 @@ def execute(spec_path, arm, expected_sha256):
             (output / "child.stdout").open("xb") as stdout,
             (output / "child.stderr").open("xb") as stderr,
         ):
+            product_popen_before_raw_ns = time.clock_gettime_ns(
+                time.CLOCK_MONOTONIC_RAW
+            )
             process = subprocess.Popen(
                 argv, cwd=output, env=env, stdout=stdout, stderr=stderr
             )
+            product_popen_after_raw_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC_RAW)
         epoch = process_identity(process.pid)
         tracked[process.pid] = epoch
         save(output / "actual-owned-Popen-kernel.json", epoch)
+        save(
+            output / "actual-product-launch-timing.json",
+            {
+                "schema": "ecpa-h4-product-launch-timing/v1",
+                "clock": "CLOCK_MONOTONIC_RAW",
+                "qualification_begin_ns": qualification_begin_raw_ns,
+                "qualification_end_ns": product_popen_before_raw_ns,
+                "product_popen_before_ns": product_popen_before_raw_ns,
+                "product_popen_after_ns": product_popen_after_raw_ns,
+                "product_kernel": epoch,
+                "wrapper_kernel": process_identity(os.getpid()),
+                "argv": argv,
+            },
+        )
         if arm == "ecpa":
             manager = epoch
             handoff = accept_native_binding(
@@ -748,6 +768,9 @@ def execute(spec_path, arm, expected_sha256):
             try:
                 with opener.open(spec["health_url"], timeout=2) as response:
                     if response.status == 200:
+                        health_ready_raw_ns = time.clock_gettime_ns(
+                            time.CLOCK_MONOTONIC_RAW
+                        )
                         break
             except OSError:
                 pass
@@ -772,6 +795,7 @@ def execute(spec_path, arm, expected_sha256):
             actual_roster=roster,
             ready_original_journal=original_ref,
             ready_monotonic_ns=time.monotonic_ns(),
+            health_ready_monotonic_raw_ns=health_ready_raw_ns,
         )
         save(output / "activation-ready.json", result)
         print(

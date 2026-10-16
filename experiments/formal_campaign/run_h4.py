@@ -27,8 +27,9 @@ from analyze import (
     h4_response_summary,
     load_h4_campaign,
 )
-from experiments.formal_campaign import source_provenance
 from jsonschema import Draft7Validator
+
+from experiments.formal_campaign import source_provenance
 
 PHASES = (
     "discovery",
@@ -140,12 +141,16 @@ def run_checked(command: list[str], env: dict[str, str], log: Any) -> None:
         raise RuntimeError(f"command failed ({completed.returncode}): {command!r}")
 
 
-def wait_ready(url: str, timeout: float) -> None:
+def wait_ready(url: str, timeout: float, *, observation=None) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
             with urllib.request.urlopen(url, timeout=2) as response:
                 if response.status == 200:
+                    if observation is not None:
+                        observation.update(
+                            url=url, status_code=200, observed_ns=now_ns()
+                        )
                     return
         except (OSError, urllib.error.URLError):
             pass
@@ -493,7 +498,9 @@ def execute_start(
         if "ECPA_H4_RUN_DIRECTORY" in definition["environment"]:
             raise ValueError("actual H4 run directory must not be caller materialized")
         env["ECPA_H4_RUN_DIRECTORY"] = str(run_dir.resolve())
-    phase_times: dict[str, dict[str, int]] = {}
+    phase_times: dict[str, dict[str, int] | None] = {}
+    cost_path = run_dir / "cost-observation.json"
+    health_observation = {}
     process: subprocess.Popen[bytes] | None = None
     sampler: ResourceSampler | None = None
     identity = launcher_identity()
@@ -560,7 +567,14 @@ def execute_start(
                 readiness_timeout = max(
                     0, readiness_timeout - (now_ns() - worker_start) / 1e9
                 )
-            wait_ready(launch_spec["health_url"], readiness_timeout)
+            if source_owned:
+                wait_ready(
+                    launch_spec["health_url"],
+                    readiness_timeout,
+                    observation=health_observation,
+                )
+            else:
+                wait_ready(launch_spec["health_url"], readiness_timeout)
             if source_owned:
                 from experiments.formal_campaign.h4_pair_activation import (
                     verify_live_activation,
@@ -578,16 +592,37 @@ def execute_start(
                         )
                     time.sleep(0.01)
                 verify_live_activation(run_dir, definition, sampler.root)
-            ready = now_ns()
-            phase_times["worker_loading"] = {
-                "start_ns": worker_start,
-                "end_ns": ready,
-            }
+                launch_timing_path = (
+                    run_dir / "activation" / "actual-product-launch-timing.json"
+                )
+                product_timing = json.loads(launch_timing_path.read_bytes())
+                sampler.select_product_root(product_timing["product_kernel"])
+                cost_document = {
+                    "schema": "ecpa-h4-source-owned-cost-observation/v1",
+                    "clock": "CLOCK_MONOTONIC_RAW",
+                    "wrapper_start_ns": worker_start,
+                    "common_qualification_phases": phase_times,
+                    "product_launch": bind_file(launch_timing_path, output_root),
+                    "health_observation": health_observation,
+                    "phase_bins": "unobserved",
+                    "measurement_scope": "actual-product-Popen-to-health200",
+                }
+                cost_path.write_text(json.dumps(cost_document, sort_keys=True) + "\n")
+                startup_start = product_timing["product_popen_before_ns"]
+                ready = health_observation["observed_ns"]
+                phase_times = dict.fromkeys((*PHASES, "worker_loading"))
+            else:
+                ready = now_ns()
+                phase_times["worker_loading"] = {
+                    "start_ns": worker_start,
+                    "end_ns": ready,
+                }
             workload = campaign["workload"] | {
                 "served_model": definition["served_model"]
             }
             requests = drive_requests(launch_spec["endpoint_url"], workload)
-            _, peak_rss = process_group_usage(process.pid)
+            if not source_owned:
+                _, peak_rss = process_group_usage(process.pid)
             sampled_resources = sampler.finish()
             if source_owned:
                 sampler.require_coverage()
@@ -620,7 +655,11 @@ def execute_start(
     process_snapshot = run_dir / "process-snapshot.json"
     snapshot_document = {"start_id": start_id, "process_identity": identity}
     if source_owned:
+        phase_times = dict.fromkeys((*PHASES, "worker_loading"))
         snapshot_document["source_owned_pair"] = {
+            "cost_observation": bind_file(cost_path, output_root)
+            if cost_path.exists()
+            else None,
             "resources": bind_file(run_dir / "owned-resource-samples.json", output_root)
             if (run_dir / "owned-resource-samples.json").exists()
             else None,

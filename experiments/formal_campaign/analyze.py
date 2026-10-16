@@ -820,19 +820,32 @@ def _recompute_h4_metrics(
         "evidence_setup",
         "worker_loading",
     ]
-    cursor = raw["startup_start_ns"]
-    phase_ms: dict[str, float] = {}
-    for phase in order:
-        interval = phases[phase]
-        if interval["start_ns"] != cursor:
-            raise ValueError(f"{start_id} startup phases overlap or contain a gap")
-        phase_ms[phase] = _duration_ms(interval)
-        cursor = interval["end_ns"]
-    if cursor != raw["ready_ns"]:
-        raise ValueError(f"{start_id} startup phases do not end at readiness")
+    source_owned_cost = (
+        raw["launch_definition"].get("environment", {}).get("ECPA_H4_SOURCE_OWNED_PAIR")
+        == "1"
+    )
     total_ms = (raw["ready_ns"] - raw["startup_start_ns"]) / 1_000_000
-    if abs(sum(phase_ms.values()) - total_ms) > 1.0:
-        raise ValueError(f"{start_id} startup phase sum differs from total")
+    if source_owned_cost:
+        if set(phases) != set(order) or any(
+            value is not None for value in phases.values()
+        ):
+            raise ValueError("unobserved product phase bins must remain null")
+        if total_ms <= 0:
+            raise ValueError("actual product startup interval is empty")
+        phase_ms = dict.fromkeys(order)
+    else:
+        cursor = raw["startup_start_ns"]
+        phase_ms = {}
+        for phase in order:
+            interval = phases[phase]
+            if interval["start_ns"] != cursor:
+                raise ValueError(f"{start_id} startup phases overlap or contain a gap")
+            phase_ms[phase] = _duration_ms(interval)
+            cursor = interval["end_ns"]
+        if cursor != raw["ready_ns"]:
+            raise ValueError(f"{start_id} startup phases do not end at readiness")
+        if abs(sum(phase_ms.values()) - total_ms) > 1.0:
+            raise ValueError(f"{start_id} startup phase sum differs from total")
     phase_ms["total"] = total_ms
 
     workload = campaign_spec["workload"]
@@ -869,6 +882,11 @@ def _recompute_h4_metrics(
     ]
     resources = raw["resources"]
     return {
+        **(
+            {"measurement_scope": "actual-product-Popen-to-health200"}
+            if source_owned_cost
+            else {}
+        ),
         "startup_phases_ms": phase_ms,
         "throughput": len(successful) / elapsed_seconds,
         "latency_median_ms": _percentile(latencies, 0.50),
@@ -1345,6 +1363,11 @@ def analyze_h4(
         protocol, "h4", records, artifact_root, campaign_spec
     )
     definition = protocol["h4"]
+    for row in indexed.values():
+        if row["status"] == "complete" and row["metrics"].get("measurement_scope"):
+            missing.append(
+                f"{row['cell_id']}/{row['start_id']}/product-phase-bins-unobserved"
+            )
     cell = campaign_spec["cell_id"]
     cell_missing = [item for item in missing if item.startswith(f"{cell}/")]
     if not cell_missing:

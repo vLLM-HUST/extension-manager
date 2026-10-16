@@ -66,7 +66,11 @@ def failed_record(root, intake):
         "process.json",
         {
             "process_identity": identity,
-            "source_owned_pair": {"resources": None, "activation": None},
+            "source_owned_pair": {
+                "resources": None,
+                "activation": None,
+                "cost_observation": None,
+            },
         },
     )
     receipt = bind(
@@ -156,3 +160,63 @@ def test_h4_extra_source_domain_preserves_h3_default(intake):
         incomplete.pop("h4_owned_resources.py")
         with pytest.raises(ValueError, match="incomplete"):
             source.validate_protocol_binding(incomplete, family)
+
+
+def cost_fixture():
+    wrapper = {"pid": 1, "start_ticks": 1, "session": 1, "boot_id": "fixture"}
+    product = dict(wrapper, pid=2, start_ticks=2)
+    # Huge common qualification interval is retained, but is not subtracted
+    # from an inclusive number: headline timing directly starts at Popen.
+    launch = {
+        "schema": "ecpa-h4-product-launch-timing/v1",
+        "clock": "CLOCK_MONOTONIC_RAW",
+        "wrapper_kernel": wrapper,
+        "product_kernel": product,
+        "qualification_begin_ns": 200,
+        "qualification_end_ns": 10_000_000_000,
+        "product_popen_before_ns": 10_000_000_000,
+        "product_popen_after_ns": 10_000_000_010,
+    }
+    phases = ("discovery", "validation", "planning", "rendering", "evidence_setup")
+    cost = {
+        "schema": "ecpa-h4-source-owned-cost-observation/v1",
+        "clock": "CLOCK_MONOTONIC_RAW",
+        "phase_bins": "unobserved",
+        "measurement_scope": "actual-product-Popen-to-health200",
+        "wrapper_start_ns": 200,
+        "common_qualification_phases": {
+            phase: {"start_ns": 100 + index * 20, "end_ns": 120 + index * 20}
+            for index, phase in enumerate(phases)
+        },
+        "health_observation": {"status_code": 200, "observed_ns": 10_250_000_000},
+    }
+    raw = {
+        "startup_start_ns": 10_000_000_000,
+        "ready_ns": 10_250_000_000,
+        "startup_phases": dict.fromkeys((*phases, "worker_loading")),
+    }
+    return raw, cost, launch, {"measurement_root": product}, wrapper, product
+
+
+def test_qualification_excluded_but_actual_product_cost_retained(intake):
+    args = cost_fixture()
+    result = intake.verify_cost_observation(*args)
+    assert result["qualification_excluded"] and result["phase_bins"] == "unobserved"
+    raw = args[0]
+    assert (raw["ready_ns"] - raw["startup_start_ns"]) / 1e6 == 250
+
+
+@pytest.mark.parametrize("mutation", ("inclusive", "fake_zero", "wrong_epoch", "clock"))
+def test_cost_scope_rejects_pollution_or_invented_observations(intake, mutation):
+    args = cost_fixture()
+    raw, cost, launch, archive, _, _ = args
+    if mutation == "inclusive":
+        raw["startup_start_ns"] = cost["wrapper_start_ns"]
+    elif mutation == "fake_zero":
+        raw["startup_phases"]["discovery"] = {"start_ns": 1, "end_ns": 1}
+    elif mutation == "wrong_epoch":
+        archive["measurement_root"] = dict(launch["product_kernel"], start_ticks=99)
+    else:
+        launch["clock"] = "CLOCK_MONOTONIC"
+    with pytest.raises(ValueError, match="cost scope|timing"):
+        intake.verify_cost_observation(*args)

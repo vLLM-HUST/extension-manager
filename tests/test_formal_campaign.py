@@ -1090,6 +1090,7 @@ def test_h4_explicit_source_owned_raw_still_requires_published_binding(tmp_path)
     raw_path = tmp_path / record["artifacts"]["raw_measurement"]["path"]
     raw = json.loads(raw_path.read_bytes())
     raw["launch_definition"]["environment"] = {"ECPA_H4_SOURCE_OWNED_PAIR": "1"}
+    raw["startup_phases"] = dict.fromkeys(raw["startup_phases"])
     receipt_path = tmp_path / record["artifacts"]["deployment_receipt"]["path"]
     receipt_value = json.loads(receipt_path.read_bytes())
     receipt_value["arm_command_digests"][record["arm"]] = module._canonical_digest(
@@ -1103,3 +1104,53 @@ def test_h4_explicit_source_owned_raw_still_requires_published_binding(tmp_path)
     record["artifacts"]["raw_measurement"]["sha256"] = digest(raw_path)
     with pytest.raises(ValueError, match="outside admitted source"):
         module._verify_h4_raw_artifact(record, tmp_path, campaign_spec(cell))
+
+
+def test_h4_source_owned_unobserved_bins_are_null_and_legacy_remains_strict(tmp_path):
+    import jsonschema
+
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    record = rows[0]
+    raw = json.loads(
+        (tmp_path / record["artifacts"]["raw_measurement"]["path"]).read_bytes()
+    )
+    raw["startup_phases"] = dict.fromkeys(raw["startup_phases"])
+    schema = module._load_h4_raw_schema()
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(raw, schema)
+    raw["launch_definition"]["environment"] = {"ECPA_H4_SOURCE_OWNED_PAIR": "1"}
+    jsonschema.validate(raw, schema)
+    metrics = module._recompute_h4_metrics(record, raw, campaign_spec(cell))
+    assert metrics["startup_phases_ms"]["total"] > 0
+    assert all(
+        v is None for k, v in metrics["startup_phases_ms"].items() if k != "total"
+    )
+    assert metrics["measurement_scope"] == "actual-product-Popen-to-health200"
+    record["metrics"] = metrics
+    schema = json.loads((SCRIPT.parent / "record.schema.json").read_bytes())
+    jsonschema.validate(record, schema)
+    del record["metrics"]["measurement_scope"]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(record, schema)
+
+
+def test_h4_unobserved_product_bins_keep_start_count_but_cannot_support_hypothesis(
+    tmp_path, monkeypatch
+):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    for row in rows:
+        row["metrics"]["measurement_scope"] = "actual-product-Popen-to-health200"
+        for name in row["metrics"]["startup_phases_ms"]:
+            if name != "total":
+                row["metrics"]["startup_phases_ms"][name] = None
+    indexed = {(row["cell_id"], row["repetition"], row["arm"]): row for row in rows}
+    monkeypatch.setattr(module, "_validate_intake", lambda *args: ([], indexed))
+    protocol = json.loads((SCRIPT.parent / "protocol.json").read_bytes())
+    result = module.analyze_h4(protocol, rows, tmp_path, campaign_spec(cell))
+    assert result["received_starts"] == 9
+    assert result["status"] == "incomplete" and result["formal_result"] is False
+    assert len(result["missing"]) == 9
+    assert all("product-phase-bins-unobserved" in entry for entry in result["missing"])
+    assert result["completed_cells"] == {}
