@@ -647,65 +647,78 @@ class BaselineLiveProducer:
             "baseline producer socket directory not private",
         )
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
-            listener.bind(str(path))
-            path.chmod(0o600)
-            listener.listen(4)
-            listener.settimeout(0.1)
-            meta = path.stat()
-            print(
-                json.dumps(
-                    {
-                        "schema": READY,
-                        "origin": ORIGIN,
-                        "producer": self.identity,
-                        "source_sha256": digest(Path(__file__).read_bytes()),
-                        "socket_path": str(path),
-                        "socket_identity": {
-                            "device": meta.st_dev,
-                            "inode": meta.st_ino,
-                        },
-                        "registration_sha256": self.registration_sha256,
-                        "formal_result": False,
-                    }
-                ),
-                flush=True,
-            )
-            threading.Thread(target=self.execute_probe, daemon=True).start()
-            while not self.stop.is_set():
-                try:
-                    connection, _ = listener.accept()
-                except TimeoutError:
-                    continue
-                with connection:
-                    connection.settimeout(15)
+            bound_identity = None
+            try:
+                listener.bind(str(path))
+                meta = path.lstat()
+                bound_identity = (meta.st_dev, meta.st_ino)
+                path.chmod(0o600)
+                listener.listen(4)
+                listener.settimeout(0.1)
+                print(
+                    json.dumps(
+                        {
+                            "schema": READY,
+                            "origin": ORIGIN,
+                            "producer": self.identity,
+                            "source_sha256": digest(Path(__file__).read_bytes()),
+                            "socket_path": str(path),
+                            "socket_identity": {
+                                "device": meta.st_dev,
+                                "inode": meta.st_ino,
+                            },
+                            "registration_sha256": self.registration_sha256,
+                            "formal_result": False,
+                        }
+                    ),
+                    flush=True,
+                )
+                threading.Thread(target=self.execute_probe, daemon=True).start()
+                while not self.stop.is_set():
                     try:
-                        pid, uid, _ = struct.unpack(
-                            "3i",
-                            connection.getsockopt(
-                                socket.SOL_SOCKET, socket.SO_PEERCRED, 12
-                            ),
-                        )
-                        require(
-                            uid == os.geteuid()
-                            and process_identity(pid)
-                            == self.registration["owner_kernel"],
-                            "baseline querying owner epoch differs",
-                        )
-                        raw = b""
-                        while not raw.endswith(b"\n"):
-                            chunk = connection.recv(65536)
-                            require(
-                                chunk and len(raw) + len(chunk) <= 65536,
-                                "baseline query incomplete/oversized",
-                            )
-                            raw += chunk
-                        require(raw.count(b"\n") == 1, "baseline query trailing frame")
-                        connection.sendall(
-                            canonical(self.quote(json.loads(raw))) + b"\n"
-                        )
-                    except Exception:
+                        connection, _ = listener.accept()
+                    except TimeoutError:
                         continue
-        path.unlink(missing_ok=True)
+                    with connection:
+                        connection.settimeout(15)
+                        try:
+                            pid, uid, _ = struct.unpack(
+                                "3i",
+                                connection.getsockopt(
+                                    socket.SOL_SOCKET, socket.SO_PEERCRED, 12
+                                ),
+                            )
+                            require(
+                                uid == os.geteuid()
+                                and process_identity(pid)
+                                == self.registration["owner_kernel"],
+                                "baseline querying owner epoch differs",
+                            )
+                            raw = b""
+                            while not raw.endswith(b"\n"):
+                                chunk = connection.recv(65536)
+                                require(
+                                    chunk and len(raw) + len(chunk) <= 65536,
+                                    "baseline query incomplete/oversized",
+                                )
+                                raw += chunk
+                            require(
+                                raw.count(b"\n") == 1, "baseline query trailing frame"
+                            )
+                            connection.sendall(
+                                canonical(self.quote(json.loads(raw))) + b"\n"
+                            )
+                        except Exception:
+                            continue
+            finally:
+                if bound_identity is not None:
+                    try:
+                        current = path.lstat()
+                    except FileNotFoundError:
+                        pass
+                    else:
+                        if (current.st_dev, current.st_ino) == bound_identity:
+                            path.unlink()
 
 
 def main():

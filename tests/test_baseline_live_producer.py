@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import secrets
+import socket
 import threading
 import time
 from pathlib import Path
@@ -282,3 +284,68 @@ def test_exclusive_output_writer_never_overwrites_racing_artifact(tmp_path, kind
         assert not target.exists()
     else:
         assert path.read_bytes() == b"old"
+
+
+def transport_producer(tmp_path, monkeypatch):
+    """Exercise the real Unix listener cleanup without any native-effect claim."""
+    tmp_path.chmod(0o700)
+    p = object.__new__(producer.BaselineLiveProducer)
+    p.registration = {"producer_socket": str(tmp_path / "producer.sock")}
+    p.identity = process_identity(os.getpid())
+    p.registration_sha256 = "0" * 64
+    p.stop = threading.Event()
+    p.execute_probe = lambda: None
+    listeners = []
+    original = socket.socket
+
+    class TrackedSocket(original):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            listeners.append(self)
+
+    monkeypatch.setattr(producer.socket, "socket", TrackedSocket)
+    return p, Path(p.registration["producer_socket"]), listeners, original
+
+
+@pytest.mark.parametrize("stage", ["print", "thread-start"])
+def test_real_socket_cleaned_and_closed_after_early_startup_failure(
+    tmp_path, monkeypatch, stage
+):
+    p, path, listeners, _ = transport_producer(tmp_path, monkeypatch)
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("startup failure")
+
+    if stage == "print":
+        monkeypatch.setattr("builtins.print", fail)
+    else:
+        monkeypatch.setattr(producer.threading.Thread, "start", fail)
+    with pytest.raises(RuntimeError, match="startup failure"):
+        p.serve()
+    assert not path.exists()
+    assert len(listeners) == 1 and listeners[0].fileno() == -1
+
+
+def test_real_socket_replacement_survives_original_listener_cleanup(
+    tmp_path, monkeypatch
+):
+    p, path, listeners, original = transport_producer(tmp_path, monkeypatch)
+    retained = tmp_path / "original.sock"
+    with original(socket.AF_UNIX, socket.SOCK_STREAM) as replacement:
+        def replace(*args, **kwargs):
+            path.rename(retained)
+            replacement.bind(str(path))
+            replacement.listen(1)
+            p.stop.set()
+
+        monkeypatch.setattr("builtins.print", replace)
+        p.serve()
+        current = path.lstat()
+        assert (current.st_dev, current.st_ino) != (
+            retained.lstat().st_dev, retained.lstat().st_ino
+        )
+        assert len(listeners) == 1 and listeners[0].fileno() == -1
+        with original(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.connect(str(path))
+            accepted, _ = replacement.accept()
+            accepted.close()
