@@ -14,7 +14,11 @@ from test_h3_dynamic_authority import (
     stop_host,
 )
 
-from experiments.formal_campaign.h3_client_trace import process_identity, run_client
+from experiments.formal_campaign.h3_client_trace import (
+    process_identity,
+    read_client_trace,
+    run_client,
+)
 from experiments.formal_campaign.h3_dynamic_authority import (
     DynamicProxyHandler,
     ThreadingHTTPServer,
@@ -113,7 +117,35 @@ def test_original_full_cpu_window_new_epoch_and_rebinding_negatives(
             spec, tmp_path / "client.jsonl", tmp_path / "authority.jsonl", **kwargs
         )
         assert result["request_count"] == 60 and result["generation_count"] == 2
-        assert result["coverage"] == "complete-finite-delivery-window"
+        # A real CPU restart can finish between two scheduled sends or after
+        # the finite window on a loaded runner. Coverage must reflect its actual
+        # source-recorded clocks; the fixed60 workload and deadlines stay strict.
+        sent = [
+            event["detail"]["sent_ns"]
+            for event in read_client_trace(tmp_path / "client.jsonl")
+            if event["kind"] == "request.start"
+        ]
+        covered = min(sent) < fault < recovery < max(sent) and any(
+            fault <= tick <= recovery for tick in sent
+        )
+        expected_coverage = (
+            "complete-finite-delivery-window"
+            if covered
+            else "recovery-outside-frozen-window"
+        )
+        assert result["coverage"] == expected_coverage
+        # Classification negative: actual trace bytes stay unchanged, while a
+        # recovery marker beyond its last send must never report full coverage.
+        outside = verify_dynamic_window(
+            spec,
+            tmp_path / "client.jsonl",
+            tmp_path / "authority.jsonl",
+            **dict(kwargs, recovery_ns=max(sent) + 1),
+        )
+        assert outside["coverage"] == "recovery-outside-frozen-window"
+        # Invoked-only delivery cannot establish the original objective, even
+        # with full temporal coverage: the production result remains unknown.
+        assert outside["objective_met"] is None
         assert (
             result["duplicated_requests"] is None
             and result["objective_met"] is None
