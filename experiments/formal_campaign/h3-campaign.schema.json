@@ -281,6 +281,9 @@
             },
             "stream": {
               "const": false
+            },
+            "add_special_tokens": {
+              "type": "boolean"
             }
           },
           "additionalProperties": false

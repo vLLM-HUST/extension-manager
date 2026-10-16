@@ -1,0 +1,249 @@
+{
+  "type": "object",
+  "required": [
+    "schema",
+    "start_id",
+    "registration_sha256",
+    "static_deployment_sha256",
+    "grant",
+    "backend_endpoint",
+    "model",
+    "worker_ordinals",
+    "allowed_events",
+    "source_refs",
+    "plan_artifacts",
+    "host_evidence_paths",
+    "api_argv",
+    "bindings",
+    "binding_artifacts",
+    "native_plan_bindings",
+    "host_evidence_roots"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ecpa-h3-dynamic-static-policy/v1"
+    },
+    "start_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "registration_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "static_deployment_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "grant": {
+      "type": "object",
+      "required": [
+        "holder",
+        "token",
+        "expires_at"
+      ],
+      "properties": {
+        "holder": {
+          "type": "string",
+          "minLength": 1
+        },
+        "token": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "backend_endpoint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "worker_ordinals": {
+      "const": [
+        0,
+        1
+      ]
+    },
+    "allowed_events": {
+      "const": [
+        "invoked"
+      ]
+    },
+    "source_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "plan_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "host_evidence_paths": {
+      "type": "array",
+      "minItems": 0,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "api_argv": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "obligation_id",
+          "plugin_id",
+          "entry_point"
+        ],
+        "properties": {
+          "obligation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "plugin_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "entry_point": {
+            "type": "object",
+            "required": [
+              "group",
+              "name",
+              "value"
+            ],
+            "properties": {
+              "group": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "binding_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "host_evidence_roots": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^/"
+      }
+    },
+    "native_plan_bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "runtime_plan_id",
+          "execution_plan_id",
+          "mode"
+        ],
+        "properties": {
+          "runtime_plan_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "execution_plan_id": {
+            "type": "string",
+            "pattern": "^plan:sha256:[0-9a-f]{64}$"
+          },
+          "mode": {
+            "const": "manager-default-lifecycle"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
