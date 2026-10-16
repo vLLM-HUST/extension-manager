@@ -1057,3 +1057,49 @@ def test_h4_admitted_model_cannot_be_rebound(tmp_path: Path):
     record["artifacts"]["raw_measurement"]["sha256"] = digest(raw_path)
     with pytest.raises(ValueError, match="admitted arm"):
         module._verify_h4_raw_artifact(record, tmp_path, campaign_spec(cell))
+
+
+@pytest.mark.parametrize("environment", (None, {}))
+def test_h4_legacy_raw_optional_environment_is_not_source_owned(tmp_path, environment):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    record = rows[0]
+    raw_path = tmp_path / record["artifacts"]["raw_measurement"]["path"]
+    raw = json.loads(raw_path.read_bytes())
+    assert "environment" not in raw["launch_definition"]
+    if environment is not None:
+        raw["launch_definition"]["environment"] = environment
+        receipt_path = tmp_path / record["artifacts"]["deployment_receipt"]["path"]
+        receipt_value = json.loads(receipt_path.read_bytes())
+        receipt_value["arm_command_digests"][record["arm"]] = module._canonical_digest(
+            raw["launch_definition"]
+        )
+        write(receipt_path, receipt_value)
+        record["artifacts"]["deployment_receipt"]["sha256"] = digest(receipt_path)
+        raw["deployment_receipt_sha256"] = digest(receipt_path)
+        record["deployment"]["receipt_sha256"] = digest(receipt_path)
+        write(raw_path, raw)
+        record["artifacts"]["raw_measurement"]["sha256"] = digest(raw_path)
+    module._verify_h4_raw_artifact(record, tmp_path, campaign_spec(cell))
+
+
+def test_h4_explicit_source_owned_raw_still_requires_published_binding(tmp_path):
+    module = load_analyzer()
+    cell, rows = h4_cell_records(module, tmp_path)
+    record = rows[0]
+    raw_path = tmp_path / record["artifacts"]["raw_measurement"]["path"]
+    raw = json.loads(raw_path.read_bytes())
+    raw["launch_definition"]["environment"] = {"ECPA_H4_SOURCE_OWNED_PAIR": "1"}
+    receipt_path = tmp_path / record["artifacts"]["deployment_receipt"]["path"]
+    receipt_value = json.loads(receipt_path.read_bytes())
+    receipt_value["arm_command_digests"][record["arm"]] = module._canonical_digest(
+        raw["launch_definition"]
+    )
+    write(receipt_path, receipt_value)
+    record["artifacts"]["deployment_receipt"]["sha256"] = digest(receipt_path)
+    raw["deployment_receipt_sha256"] = digest(receipt_path)
+    record["deployment"]["receipt_sha256"] = digest(receipt_path)
+    write(raw_path, raw)
+    record["artifacts"]["raw_measurement"]["sha256"] = digest(raw_path)
+    with pytest.raises(ValueError, match="outside admitted source"):
+        module._verify_h4_raw_artifact(record, tmp_path, campaign_spec(cell))
