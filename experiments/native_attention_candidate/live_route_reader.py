@@ -18,6 +18,7 @@ import struct
 import sys
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from email.parser import BytesParser
 from pathlib import Path, PurePosixPath
@@ -210,6 +211,39 @@ def _inventory(rows, states=None):
     return result
 
 
+def _model_inventory(rows, states):
+    """Hash this audit's model files independently; never reuse file results."""
+    registry.require(isinstance(rows, list) and rows, "input inventory missing")
+    declarations, seen = [], set()
+    for row in rows:
+        path, digest = str(_path(row["path"])), row["sha256"]
+        registry.require(path not in seen, "input inventory repeats a path")
+        seen.add(path)
+        declarations.append((path, digest))
+
+    def observe(declaration):
+        path, expected = declaration
+        private_states = {}
+        digest = _hash(path, private_states)
+        registry.require(digest == expected, "input bytes differ")
+        return path, digest, private_states
+
+    # Workers perform only the original complete hash/stat operation. Metadata
+    # discovery, installed-package inspection and audit assembly stay sequential.
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        observations = list(executor.map(observe, declarations))
+    result = {}
+    for path, digest, private_states in observations:
+        for observed_path, state in private_states.items():
+            registry.require(
+                observed_path not in states or states[observed_path] == state,
+                "input file state conflicts",
+            )
+            states[observed_path] = state
+        result[path] = digest
+    return result
+
+
 def _payload(name):
     # Runtime code/ELFs only: generated entry-point scripts/RECORD are not equal
     # to archive bytes.  Metadata/version is checked separately below.
@@ -333,7 +367,7 @@ def audit_cell_inputs(config_path, recipe_path):
             "genuine wheel bytes differ",
         )
         installed[role] = _installed_payload(wheel, DISTRIBUTIONS[role], states)
-    models = _inventory(config["model_files"], states)
+    models = _model_inventory(config["model_files"], states)
     # This adapter intentionally supports the current single 7B cell only.
     registry.require(
         len(models) == 14, "single-cell model inventory must contain 14 files"
