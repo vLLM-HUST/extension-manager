@@ -56,7 +56,7 @@ def compile_pair(pair):
         pair.base,
         pair.bundles,
         pair.contract,
-        profiler_slots={"api-server": (0,), "worker": (0, 1)},
+        profiler_slots={"api-server": (0,), "engine-core-scheduler": (0,)},
     )
 
 
@@ -290,3 +290,33 @@ def test_native_guard_cannot_weaken_compiled_profiler_slot_coverage():
             kernels={},
             required_slots={binding.KV: ["worker/0", "worker/1"], binding.PROFILER: []},
         )
+
+
+def test_caller_cannot_weaken_profiler_to_worker_only_even_with_real_bundles(pair):
+    with pytest.raises(ValueError, match="exact API and scheduler"):
+        binding.compile_pair_plan(
+            pair.base, pair.bundles, pair.contract, profiler_slots={"worker": (0, 1)}
+        )
+
+
+def test_native_guard_detaches_caller_source_arguments():
+    checker = object.__new__(authority.PairSourceAuthority)
+    args = {
+        "profiler_slots": dict(binding.PROFILER_SLOTS),
+        "fixed": {"plugin_commits": {binding.KV: "a" * 40}},
+    }
+    guard = authority.PairEpochGuard(
+        checker,
+        pair_inputs={},
+        source_arguments=args,
+        handoff={},
+        roster={},
+        kernels={},
+        required_slots=authority.required_pair_slots(args["profiler_slots"]),
+    )
+    args["profiler_slots"].clear()
+    args["fixed"]["plugin_commits"][binding.KV] = "b" * 40
+    assert guard.source_arguments["profiler_slots"] == binding.PROFILER_SLOTS
+    assert guard.source_arguments["fixed"]["plugin_commits"][binding.KV] == "a" * 40
+    with pytest.raises(TypeError):
+        binding.PROFILER_SLOTS["worker"] = (0, 1)

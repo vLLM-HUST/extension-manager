@@ -607,7 +607,7 @@ class PairEpochGuard:
         )
         self.authority = authority
         self.pair_inputs = copy.deepcopy(pair_inputs)
-        self.source_arguments = source_arguments
+        self.source_arguments = copy.deepcopy(source_arguments)
         self.handoff = copy.deepcopy(handoff)
         self.roster = copy.deepcopy(roster)
         self.kernels = copy.deepcopy(kernels)

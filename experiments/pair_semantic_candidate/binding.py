@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import MappingProxyType
 
 from vllm_hust_ext import contract_compiler, semantic_obligations
 from vllm_hust_ext.ecpa_model import EvidenceObligation, content_id
@@ -13,6 +14,7 @@ PROFILER = "org.vllm-hust.request-lifecycle-profiler"
 IDS = frozenset((KV, PROFILER))
 CAPABILITY = "org.vllm-hust.request-lifecycle-profiler-loader"
 SCHEMA = "ecpa-installed-kv-profiler-binding/v1"
+PROFILER_SLOTS = MappingProxyType({"api-server": (0,), "engine-core-scheduler": (0,)})
 
 
 def require(value, reason):
@@ -95,6 +97,10 @@ def compile_pair_plan(base, bundles, kv_contract, *, profiler_slots):
         )
         slots[role] = tuple(sorted(ordinals))
     require(slots, "actual prospective profiler slots missing")
+    require(
+        slots == PROFILER_SLOTS,
+        "current Host47 TP2 pair requires exact API and scheduler profiler slots",
+    )
     require(
         kv_contract["id"] == KV and kv_contract["version"] == identities[KV].version,
         "original KV contract identity differs",
