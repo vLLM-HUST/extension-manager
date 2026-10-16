@@ -306,7 +306,7 @@ def test_audit_source_closure_cannot_be_self_selected(tmp_path):
         "file_state": {str(leaf): routes._state(leaf.stat())},
         "source_files": {"unrelated": "0" * 64},
     }
-    with pytest.raises(ValueError, match="exact source closure"):
+    with pytest.raises(ValueError, match="source closure"):
         semantic.require_audited_sources(audit, sources)
     audit["source_files"] = sources
     semantic.require_audited_sources(audit, sources)
@@ -520,3 +520,41 @@ def test_failed_consume_burns_opaque_capability_and_revokes_deployment():
             admission={},
             persist=lambda: None,
         )
+
+
+def test_trusted_audit_union_rejects_conflicts_and_rechecks_mutable_leaves(tmp_path):
+    leaf = tmp_path / "actual-CPU-input.py"
+    leaf.write_bytes(b"CPU input before IO")
+    audit = {
+        "source_files": {str(leaf): semantic.sha(leaf.read_bytes())},
+        "file_state": {str(leaf): routes._state(leaf.stat())},
+    }
+    cut = semantic._AuditCut({"first": audit, "second": copy.deepcopy(audit)})
+    assert len(cut.states) == len(cut.sources) == 1
+    cut.check()
+    changed_state = copy.deepcopy(audit)
+    changed_state["file_state"][str(leaf)]["st_ino"] += 1
+    with pytest.raises(ValueError, match="file_states conflict"):
+        semantic._AuditCut({"first": audit, "second": changed_state})
+    changed_source = copy.deepcopy(audit)
+    changed_source["source_files"][str(leaf)] = "0" * 64
+    with pytest.raises(ValueError, match="source closure conflict"):
+        semantic._AuditCut({"first": audit, "second": changed_source})
+    leaf.write_bytes(b"CPU source modified after actual IO")
+    with pytest.raises(ValueError):
+        cut.check()
+
+
+def test_same_cut_does_not_admit_another_audit(tmp_path):
+    leaf = tmp_path / "actual-CPU-input.py"
+    leaf.write_bytes(b"CPU input")
+    sources = {str(leaf): semantic.sha(leaf.read_bytes())}
+    audit = {
+        "source_files": sources,
+        "file_state": {str(leaf): routes._state(leaf.stat())},
+    }
+    cut = semantic._AuditCut({"first": audit})
+    unrelated = copy.deepcopy(audit)
+    unrelated["source_files"][str(leaf)] = "0" * 64
+    with pytest.raises(ValueError, match="does not belong"):
+        semantic.require_audited_sources(unrelated, sources, _cut=cut)

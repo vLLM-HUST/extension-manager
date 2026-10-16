@@ -138,37 +138,77 @@ def protocol_sources():
     return {str(path): sha(read_regular(path)) for path in paths}
 
 
-def require_audited_sources(audit, sources):
-    require(
-        audit.get("source_files") and audit.get("file_state"),
-        "independent audit source closure missing",
-    )
-    require(
-        all(
-            audit["source_files"].get(path) == digest and path in audit["file_state"]
-            for path, digest in sources.items()
-        ),
-        "independent input audit does not cover exact source closure",
-    )
-    routes._check_file_states(audit["file_state"])
-    registry._files(sources)
+class _AuditCut:
+    """One stack-local validation cut; no result survives an IO boundary."""
+
+    def __init__(self, audits):
+        require(audits, "independent audit union missing")
+        self.audits = {sha(canonical(audit)): audit for audit in audits.values()}
+        self.states, self.sources = {}, {}
+        for audit in audits.values():
+            require(
+                audit.get("source_files") and audit.get("file_state"),
+                "independent audit source closure missing",
+            )
+            for path, state in audit["file_state"].items():
+                require(
+                    path not in self.states or self.states[path] == state,
+                    "trusted audit file_states conflict",
+                )
+                self.states[path] = state
+            for path, digest in audit["source_files"].items():
+                require(
+                    path in audit["file_state"]
+                    and (path not in self.sources or self.sources[path] == digest),
+                    "trusted audit source closure conflict",
+                )
+                self.sources[path] = digest
+
+    def membership(self, audit, sources):
+        require(
+            self.audits.get(sha(canonical(audit))) == audit,
+            "audit does not belong to this transaction cut",
+        )
+        require(
+            all(
+                audit["source_files"].get(path) == digest
+                and path in audit["file_state"]
+                for path, digest in sources.items()
+            ),
+            "independent input audit does not cover exact source closure",
+        )
+
+    def check(self):
+        # Always fresh, even when called twice on the same stack-local object.
+        routes._check_file_states(self.states)
+        registry._files(self.sources)
 
 
-def audited_reference(ref, audit):
+def require_audited_sources(audit, sources, *, _cut=None):
+    if _cut is not None:
+        require(type(_cut) is _AuditCut, "internal audit cut required")
+        _cut.membership(audit, sources)
+        return
+    cut = _AuditCut({"audit": audit})
+    cut.membership(audit, sources)
+    cut.check()
+
+
+def audited_reference(ref, audit, *, _cut=None):
     require(set(ref) == {"path", "sha256"}, "exact audited reference required")
-    require_audited_sources(audit, {ref["path"]: ref["sha256"]})
+    require_audited_sources(audit, {ref["path"]: ref["sha256"]}, _cut=_cut)
     require(reference(ref["path"]) == ref, "independently audited reference changed")
     return read_regular(ref["path"])
 
 
-def observe_manager_invocation(manager, invocation_reference, audit):
+def observe_manager_invocation(manager, invocation_reference, audit, *, _cut=None):
     """Observe installed console/core execution, not a caller's desired argv hash.
 
     Observation alone grants nothing: its independently registered digest and
     original input audit must both be trusted by the issuer.
     """
     registry._kernel(manager)
-    intent = json.loads(audited_reference(invocation_reference, audit))
+    intent = json.loads(audited_reference(invocation_reference, audit, _cut=_cut))
     require(
         set(intent)
         == {
@@ -235,7 +275,7 @@ def observe_manager_invocation(manager, invocation_reference, audit):
         "trusted actual Manager wheel differs",
     )
     payload = routes._installed_payload(wheel, routes.DISTRIBUTIONS["manager"], {})
-    require_audited_sources(audit, payload)
+    require_audited_sources(audit, payload, _cut=_cut)
     dist = importlib.metadata.distribution(routes.DISTRIBUTIONS["manager"])
     with zipfile.ZipFile(wheel["path"]) as archive:
         entries = [
@@ -261,12 +301,12 @@ def observe_manager_invocation(manager, invocation_reference, audit):
         "    sys.argv[0] = sys.argv[0].removesuffix('.exe')\n"
         "    sys.exit(main())\n"
     )
-    require_audited_sources(audit, {str(script): sha(read_regular(script))})
+    require_audited_sources(audit, {str(script): sha(read_regular(script))}, _cut=_cut)
     require(
         ast.dump(ast.parse(read_regular(script))) == ast.dump(ast.parse(template)),
         "generated installed Manager console wrapper differs",
     )
-    audited_reference(intent["semantic_launch_spec"], audit)
+    audited_reference(intent["semantic_launch_spec"], audit, _cut=_cut)
     registry._kernel(manager)
     return {
         "schema": "ecpa-observed-installed-manager-invocation/v1",
@@ -507,7 +547,14 @@ class RequestSemanticAuthority(registry.CellIssuer):
         )
 
     def permit_current(self, permit):
+        return self._permit_current_with_cut(permit)[0]
+
+    def _permit_current_with_cut(self, permit):
         value = self._open(permit, PERMIT)
+        for audit in value["input_audits"].values():
+            require(sha(canonical(audit)) in self.trusted_inputs, "input trust absent")
+        cut = _AuditCut(value["input_audits"])
+        cut.check()
         require(
             source_provenance.digest(canonical(value["source_observation"]))
             in self._trusted,
@@ -536,13 +583,13 @@ class RequestSemanticAuthority(registry.CellIssuer):
         )
         for audit in value["input_audits"].values():
             require(sha(canonical(audit)) in self.trusted_inputs, "input trust absent")
-            routes._check_file_states(audit["file_state"])
-            require_audited_sources(audit, value["required_audit_sources"])
+            require_audited_sources(audit, value["required_audit_sources"], _cut=cut)
         for phase in value["phasebook"]["recipe"]["phases"]:
             self._check_cell_inputs(value["input_audits"][phase["phase_id"]], phase)
-        return value
+        cut.check()
+        return value, cut
 
-    def _manager_current(self, value, observation):
+    def _manager_current(self, value, observation, *, _cut=None):
         require(
             isinstance(observation, dict)
             and sha(canonical(observation)) in self.trusted_managers,
@@ -558,14 +605,19 @@ class RequestSemanticAuthority(registry.CellIssuer):
             and observation["invocation_reference"] == value["manager_invocation"],
             "Manager invocation belongs to another trusted source/input root",
         )
-        intent = json.loads(audited_reference(value["manager_invocation"], audits[0]))
+        intent = json.loads(
+            audited_reference(value["manager_invocation"], audits[0], _cut=_cut)
+        )
         require(
             intent["semantic_launch_spec"] == value["launch_spec"],
             "actual installed Manager invocation uses another compiled launch spec",
         )
         require(
             observe_manager_invocation(
-                observation["manager"], value["manager_invocation"], audits[0]
+                observation["manager"],
+                value["manager_invocation"],
+                audits[0],
+                _cut=_cut,
             )
             == observation,
             "actual installed Manager invocation/source changed",
@@ -702,10 +754,30 @@ class RequestSemanticAuthority(registry.CellIssuer):
     def prepared_grant_current(self, permit, grant):
         from . import request_semantic_controller as control
 
-        value = self.permit_current(permit)
+        value, cut = self._permit_current_with_cut(permit)
+        body = self._prepared_grant_from_validated_permit(
+            permit["sha256"], value, grant, cut
+        )
+        expiry = control.route_grant_current(
+            body["observation"], value["input_audits"], _cut=cut
+        )
+        require(
+            body["route"]["lease_expires_monotonic_ns"] == expiry,
+            "original grant expiry was renewed",
+        )
+        cut.check()
+        return body
+
+    def _prepared_grant_from_validated_permit(self, permit_sha256, value, grant, cut):
+        require(
+            type(cut) is _AuditCut
+            and cut.audits
+            == {sha(canonical(a)): a for a in value["input_audits"].values()},
+            "validated permit audit cut differs",
+        )
         body = self._open(grant, PREPARED_GRANT)
         require(
-            body["permit_sha256"] == permit["sha256"]
+            body["permit_sha256"] == permit_sha256
             and sha(canonical(body["observation"])) in self.trusted_routes,
             "prepared route root differs from independent trust",
         )
@@ -716,10 +788,9 @@ class RequestSemanticAuthority(registry.CellIssuer):
             "prepared controller invocation changed",
         )
         registry._files(body["sources"])
-        expiry = control.route_grant_current(body["observation"], value["input_audits"])
         require(
-            body["route"]["lease_expires_monotonic_ns"] == expiry,
-            "original grant expiry was renewed",
+            time.monotonic_ns() < body["route"]["lease_expires_monotonic_ns"],
+            "original prepared grant expired",
         )
         return body
 
@@ -903,16 +974,25 @@ class RequestSemanticAuthority(registry.CellIssuer):
             self.ledgers[sealed["sha256"]] = CompletionLedger()
         return sealed
 
-    def _live_request(self, permit, deployment, route_reader):
+    def _live_request(self, permit, deployment, route_reader, *, _cut=None):
         registry._callback(route_reader, permit["route_reader"])
-        route = route_reader()
+        if _cut is None:
+            route = route_reader()
+        else:
+            route = route_reader.__self__._read_validated_permit(
+                self, permit, deployment["prepared_grant"], _cut
+            )
         launch = permit["launch"]
         captured = self._open(deployment["handoff"], HANDOFF)
         require(
             reference(captured["raw"]["path"]) == captured["raw"],
             "original Manager wire changed",
         )
-        self._manager_current(permit, captured["manager_observation"])
+        if _cut is not None:
+            _cut.check()
+        self._manager_current(permit, captured["manager_observation"], _cut=_cut)
+        if _cut is not None:
+            _cut.check()
         # Re-open original issuer envelope; caller-selected reader roots fail.
         grant = self._open(deployment["prepared_grant"], PREPARED_GRANT)
         require(
@@ -924,7 +1004,9 @@ class RequestSemanticAuthority(registry.CellIssuer):
         )
         from . import request_semantic_controller as control
 
-        control.route_grant_current(grant["observation"], permit["input_audits"])
+        control.route_grant_current(
+            grant["observation"], permit["input_audits"], _cut=_cut
+        )
         roles = self._host_roles_current(
             captured, deployment["peers"], launch, deployment["enrollment"]
         )
@@ -1075,10 +1157,22 @@ class RequestSemanticAuthority(registry.CellIssuer):
             deployment["sha256"] not in self.revoked_deployments,
             "request semantic deployment permanently revoked",
         )
-        value = self.permit_current(permit)
+        value, cut = self._permit_current_with_cut(permit)
         body = self._open(deployment, DEPLOYMENT)
         require(body["permit_sha256"] == permit["sha256"], "deployment permit differs")
-        self._live_request(value, body, route_reader)
+        self._live_request(value, body, route_reader, _cut=cut)
+        cut.check()
+        for kernel in [
+            body["manager"],
+            body["producer"],
+            {k: body["descriptor"]["collector"][k] for k in registry.KERNEL},
+            *body["peers"].values(),
+        ]:
+            registry._kernel(kernel)
+        require(
+            time.monotonic_ns() < body["route"]["lease_expires_monotonic_ns"],
+            "original route expired after deployment IO",
+        )
         return value, body
 
     def verify_request_completion(
