@@ -82,13 +82,22 @@ class _OwnedMaterialization:
         return self.__raw
 
     def _match(self, fresh, owner):
+        # The original caller retains its independent SHA at this fresh-read
+        # boundary. Compare every byte with our constructor-owned immutable raw.
         require(
             owner is self.__owner
             and type(fresh) is bytes
-            and sha(fresh) == self.__digest
             and fresh == self.__raw,
             "fresh materialization bytes or invocation differ",
         )
+
+    def _original_digest(self, raw, owner):
+        self._raw(owner)
+        require(
+            raw is self.__raw,
+            "original owned materialization bytes differ",
+        )
+        return self.__digest
 
     def _detached(self, owner):
         self._raw(owner)
@@ -462,7 +471,7 @@ def _verify_owned_observation(value, materialization, payload, owner):
         type(materialization) is _OwnedMaterialization,
         "internal owned materialization required",
     )
-    materialization._match(payload, owner)
+    materialization._original_digest(payload, owner)
     return _verify_observation(value, materialization, owner)
 
 

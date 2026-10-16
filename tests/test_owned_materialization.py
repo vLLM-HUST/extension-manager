@@ -118,3 +118,36 @@ def test_owned_path_parses_and_canonicalizes_materialization_once(context, monke
     owned._release_operator_tree(owner)
     owned._report_after_fresh_read(raw, owner)
     assert counts == {"parse": 1, "canonical": 1}
+
+
+def test_owned_original_identity_digest_hashes_raw_only_at_constructor(
+    context, monkeypatch
+):
+    value, raw, owner, _ = owned_case(context)
+    original_sha = observer.sha
+    calls = []
+
+    def counted_sha(data):
+        if data == raw:
+            calls.append(data)
+        return original_sha(data)
+
+    monkeypatch.setattr(observer, "sha", counted_sha)
+    owned = observer._own_materialization(raw, owner)
+    assert owned._original_digest(raw, owner) == original_sha(raw)
+    assert observer._verify_owned_observation(value, owned, raw, owner)[
+        "source_argument_completion_relation"
+    ]
+    different_object = bytes(bytearray(raw))
+    assert different_object == raw and different_object is not raw
+    with pytest.raises(ValueError, match="original owned"):
+        owned._original_digest(different_object, owner)
+    with pytest.raises(ValueError, match="original owned"):
+        observer._verify_owned_observation(value, owned, different_object, owner)
+    owned._release_operator_tree(owner)
+    # The caller independently hashes this newly read bytes object first.
+    assert original_sha(different_object) == original_sha(raw)
+    assert owned._report_after_fresh_read(different_object, owner)["binding"] == (
+        context.fact["binding"]
+    )
+    assert len(calls) == 1
