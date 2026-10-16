@@ -276,6 +276,30 @@ def create(observer_trial, arm, activation_profile_sha256, common_query_sha256):
     return scope
 
 
+def _authenticate_collector(
+    ready, *, spec_reference, collector_source_path, drain_policy_reference=None
+):
+    """Pin the real optional drain extension before and after Unix authentication."""
+    from experiments.native_challenge_candidate import collector_client
+
+    _reference(spec_reference)
+    if drain_policy_reference is not None:
+        _reference(drain_policy_reference)
+    result = collector_client.authenticate(
+        Path(ready["socket_path"]),
+        ready,
+        Path(spec_reference["path"]),
+        Path(collector_source_path),
+        drain_policy_path=(
+            Path(drain_policy_reference["path"]) if drain_policy_reference else None
+        ),
+    )
+    _reference(spec_reference)
+    if drain_policy_reference is not None:
+        _reference(drain_policy_reference)
+    return result
+
+
 def write_contexts(
     scope,
     *,
@@ -291,6 +315,7 @@ def write_contexts(
     collector_source_path,
     native_context_path,
     tensor_context_path,
+    drain_policy_path=None,
 ):
     """Publish unchanged bootstraps only after a fresh real observer finalization.
 
@@ -307,7 +332,6 @@ def write_contexts(
     from experiments.native_attention_candidate.baseline_host_binding import (
         HostObserver,
     )
-    from experiments.native_challenge_candidate import collector_client
 
     value = scope.value()
     registry.require(
@@ -336,6 +360,19 @@ def write_contexts(
     )
     _receipt_sources_and_prefix(receipt)
     spec, policy = _object(spec_reference), _object(policy_reference)
+    drain_reference = None
+    if drain_policy_path is not None:
+        drain_path = _path(drain_policy_path)
+        drain_reference = {
+            "path": str(drain_path),
+            "sha256": registry.sha(drain_path.read_bytes()),
+        }
+        drain_policy = _object(drain_reference)
+        registry.require(
+            drain_policy["native_spec_sha256"] == spec_reference["sha256"]
+            and drain_policy["tensor_policy_sha256"] == policy_reference["sha256"],
+            "baseline drain policy belongs to another spec/tensor policy",
+        )
     registry.require(
         spec["native_plan_id"] == value["native_correlation"]["plan_id"]
         and spec["native_launch_id"] == value["native_correlation"]["launch_id"]
@@ -384,11 +421,11 @@ def write_contexts(
             all(actual.get(k.encode()) == v.encode() for k, v in own_env.items()),
             "actual baseline native environment differs",
         )
-    collector_client.authenticate(
-        Path(ready["socket_path"]),
+    _authenticate_collector(
         ready,
-        Path(spec_reference["path"]),
-        Path(collector_source_path),
+        spec_reference=spec_reference,
+        collector_source_path=collector_source_path,
+        drain_policy_reference=drain_reference,
     )
     registry._files(sources)
     registry.require(
@@ -400,6 +437,8 @@ def write_contexts(
         "baseline inputs changed during collector authentication",
     )
     _reference(common_query_reference)
+    if drain_reference is not None:
+        _reference(drain_reference)
     _receipt_sources_and_prefix(receipt)
     for process in [receipt["host"], *[row["kernel"] for row in receipt["peers"]]]:
         registry._kernel(process)

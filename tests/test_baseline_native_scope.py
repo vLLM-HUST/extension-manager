@@ -284,3 +284,77 @@ def test_actual_Host_join_and_prewrite_guards(real_host, monkeypatch, mutation):
             assert not (root / "tensor-context.json").exists()
     finally:
         finish(child, root, observer)
+
+
+@pytest.fixture(scope="module")
+def real_drain_observation(tmp_path_factory, request):
+    # Reuse the actual Unix DrainCollector and CPU source transports. This is
+    # administrative protocol coverage, never native hardware qualification.
+    from test_native_attention_drain_unix import observation
+
+    yield from observation.__wrapped__(tmp_path_factory, request)
+
+
+def test_real_Unix_drain_extension_requires_explicit_pinned_policy(
+    real_drain_observation,
+):
+    from experiments.native_attention_candidate import drain_collector
+
+    row = real_drain_observation
+    spec = {"path": str(row["spec"]), "sha256": registry.sha(row["spec"].read_bytes())}
+    drain = {
+        "path": str(row["drain_policy"]),
+        "sha256": registry.sha(row["drain_policy"].read_bytes()),
+    }
+    with pytest.raises(ValueError, match="collector status differs"):
+        scope_api._authenticate_collector(
+            row["descriptor"],
+            spec_reference=spec,
+            collector_source_path=drain_collector.__file__,
+        )
+    actual = scope_api._authenticate_collector(
+        row["descriptor"],
+        spec_reference=spec,
+        collector_source_path=drain_collector.__file__,
+        drain_policy_reference=drain,
+    )
+    assert actual["status"]["source_drain"]["policy_sha256"] == drain["sha256"]
+    assert actual["kernel_peer"]["pid"] == row["descriptor"]["collector"]["pid"]
+    wrong = {**drain, "sha256": "0" * 64}
+    with pytest.raises(ValueError, match="reference bytes"):
+        scope_api._authenticate_collector(
+            row["descriptor"],
+            spec_reference=spec,
+            collector_source_path=drain_collector.__file__,
+            drain_policy_reference=wrong,
+        )
+
+
+def test_real_drain_policy_change_after_Unix_auth_rejected(
+    real_drain_observation, monkeypatch
+):
+    from experiments.native_attention_candidate import drain_collector
+    from experiments.native_challenge_candidate import collector_client
+
+    row = real_drain_observation
+    original = row["drain_policy"].read_bytes()
+    spec = {"path": str(row["spec"]), "sha256": registry.sha(row["spec"].read_bytes())}
+    drain = {"path": str(row["drain_policy"]), "sha256": registry.sha(original)}
+    authenticate = collector_client.authenticate
+
+    def changed(*args, **kwargs):
+        result = authenticate(*args, **kwargs)
+        row["drain_policy"].write_bytes(original + b" ")
+        return result
+
+    monkeypatch.setattr(collector_client, "authenticate", changed)
+    try:
+        with pytest.raises(ValueError, match="reference bytes"):
+            scope_api._authenticate_collector(
+                row["descriptor"],
+                spec_reference=spec,
+                collector_source_path=drain_collector.__file__,
+                drain_policy_reference=drain,
+            )
+    finally:
+        row["drain_policy"].write_bytes(original)
