@@ -943,6 +943,10 @@ def _verify_h4_raw_artifact(
         or cleanup_document.get("cleanup") != record["cleanup"]
     ):
         raise ValueError(f"{record['start_id']} cleanup report differs from record")
+    if raw["launch_definition"]["environment"].get("ECPA_H4_SOURCE_OWNED_PAIR") == "1":
+        from experiments.formal_campaign.h4_source_owned_intake import verify_start
+
+        verify_start(record, raw, root)
     if record["status"] == "complete":
         recomputed = _recompute_h4_metrics(record, raw, campaign_spec)
         if _canonical_digest(recomputed) != _canonical_digest(record["metrics"]):

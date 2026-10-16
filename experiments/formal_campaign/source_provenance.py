@@ -16,6 +16,15 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 MANAGER = "vLLM-HUST/extension-manager"
 HOST = "vLLM-HUST/vllm-hust"
+H4_SOURCE_OWNED_FILES = {
+    "h4_pair_activation.py",
+    "h4_owned_resources.py",
+    "h4_source_owned_intake.py",
+    "h4_npu_observation.py",
+    "h4-launch-spec.schema.json",
+    "h3_runtime_source_closure.py",
+    "h3_dynamic_host.py",
+}
 
 
 def canonical(value):
@@ -324,15 +333,21 @@ def receipt_schema(receipt, campaign, family):
     return f"{family}-deployment-receipt.schema.json"
 
 
-def bind_protocol_source(manager_repo, manager_commit, family):
+def bind_protocol_source(
+    manager_repo, manager_commit, family, *, h4_source_owned=False
+):
     """The new helper/schema must be bytes in the admitted Manager source."""
     version = 3 if family == "h3" else 2
     result = {}
-    for name in (
+    names = {
         "source_provenance.py",
         f"{family}_registration.py",
         f"{family}-deployment-receipt-v{version}.schema.json",
-    ):
+    }
+    if h4_source_owned:
+        require(family == "h4", "H4 activation source domain cannot replace H3")
+        names |= H4_SOURCE_OWNED_FILES
+    for name in sorted(names):
         relative = "experiments/formal_campaign/" + name
         raw = _git(manager_repo, "show", manager_commit + ":" + relative)
         require(
@@ -350,8 +365,11 @@ def validate_protocol_binding(binding, family):
         f"{family}_registration.py",
         f"{family}-deployment-receipt-v{version}.schema.json",
     }
+    require(isinstance(binding, dict), "source binding must be an object")
+    if family == "h4" and set(binding) == names | H4_SOURCE_OWNED_FILES:
+        names |= H4_SOURCE_OWNED_FILES
     require(
-        isinstance(binding, dict) and set(binding) == names,
+        set(binding) == names,
         "new source provenance protocol binding incomplete",
     )
     require(
