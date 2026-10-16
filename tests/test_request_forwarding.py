@@ -63,10 +63,17 @@ def write(path, value):
 
 
 @pytest.mark.parametrize(
-    "tamper", [None, "snapshot-bytes", "response-bytes", "peer-epoch"]
+    "tamper,producer_clock",
+    [
+        (None, False),
+        ("snapshot-bytes", False),
+        ("response-bytes", False),
+        ("peer-epoch", False),
+        (None, True),
+    ],
 )
 def test_two_public_arrivals_each_cause_new_verified_upstream_execution(
-    tmp_path, monkeypatch, tamper
+    tmp_path, monkeypatch, tamper, producer_clock
 ):
     tmp_path.chmod(0o700)
     env = os.environ | {"PYTHONPATH": str(ROOT) + ":" + str(ROOT / "src")}
@@ -277,7 +284,25 @@ def test_two_public_arrivals_each_cause_new_verified_upstream_execution(
         enrollment = books.enroll_after_spawn(
             book, spec_path=spec_path, host_process=host
         )
-        forwarder = RequestForwarder(
+
+        class FixedClockForwarder(RequestForwarder):
+            owner_verification_count = 0
+
+            def _verify_owner_observation(self, *args):
+                self.owner_verification_count += 1
+                return super()._verify_owner_observation(*args)
+
+            def _producer_completion_registration(self):
+                from experiments.native_attention_candidate import request_live_producer
+
+                return {
+                    "completion_domain": request_live_producer.FIXED_COMPLETION,
+                    "original_route_expires_monotonic_ns": fixed_route_expiry,
+                }
+
+        fixed_route_expiry = time.monotonic_ns() + 1800_000_000_000
+        forwarder_class = FixedClockForwarder if producer_clock else RequestForwarder
+        forwarder = forwarder_class(
             book,
             enrollment,
             output=tmp_path / "forward",
@@ -362,6 +387,37 @@ def test_two_public_arrivals_each_cause_new_verified_upstream_execution(
                 == 56
             )
             assert not observation["formal_result"]
+            completion_record = json.loads(
+                (output / "producer-command-completion.json").read_bytes()
+            )
+            from experiments.native_attention_candidate import request_live_producer
+
+            if producer_clock:
+                assert (
+                    completion_record["schema"]
+                    == request_live_producer.FIXED_COMPLETION
+                )
+                claim = json.loads(
+                    (forwarder.output / f"claim-{index:04d}.json").read_bytes()
+                )
+                assert completion_record["expires_monotonic_ns"] == min(
+                    completion_record["issued_monotonic_ns"] + 30_000_000_000,
+                    claim["deadline_monotonic_ns"],
+                    fixed_route_expiry,
+                )
+                assert (
+                    completion_record["issued_monotonic_ns"]
+                    <= forwarder._producer_completion_receipt.received_monotonic_ns
+                )
+                assert (
+                    forwarder._producer_completion_receipt.wire
+                    == (output / "producer-command-completion.json").read_bytes()
+                    + b"\n"
+                )
+            else:
+                assert completion_record["schema"] == request_live_producer.COMPLETION
+                assert "issued_monotonic_ns" not in completion_record
+                assert "expires_monotonic_ns" not in completion_record
             snapshot = (output / "snapshot/native.jsonl").read_bytes()
             if index == 0:
                 first_snapshot = snapshot
@@ -385,6 +441,8 @@ def test_two_public_arrivals_each_cause_new_verified_upstream_execution(
         assert sum(e["kind"] == "attention.operator.accepted" for e in events) == 112
         assert sum(e["kind"] == "attention.worker.drained" for e in events) == 4
         assert forwarder.next_phase == 2 and forwarder.pending is None
+        if producer_clock:
+            assert forwarder.owner_verification_count == 2
         # The second proof must verify historical payloads as well as its own56.
         snapshot = tmp_path / "forward/request-0001/snapshot/native.jsonl"
         original_prefix = snapshot.read_bytes()

@@ -18,6 +18,7 @@ import sys
 import threading
 import time
 from contextlib import suppress
+from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -28,6 +29,43 @@ PREFIX = "ecpa-request-sealed-global-prefix/v1"
 TICKET = "ecpa-request-once-response-release/v1"
 MAX_BYTES = 8 * 1024 * 1024
 MAX_PREFIX_BYTES = 64 * 1024 * 1024
+
+
+_TRANSPORT_COMPLETION_TOKEN = object()
+
+
+@dataclass(frozen=True, slots=True)
+class AuthenticatedProducerCompletion:
+    """Immutable in-memory receipt created only by the real owner Unix transport."""
+
+    _token: object = field(repr=False)
+    wire: bytes
+    _producer_json: bytes = field(repr=False)
+    socket_identity: tuple
+    received_monotonic_ns: int
+
+    def __post_init__(self):
+        require(
+            self._token is _TRANSPORT_COMPLETION_TOKEN,
+            "producer receipt requires genuine Unix transport",
+        )
+        require(
+            isinstance(self.wire, bytes) and isinstance(self._producer_json, bytes),
+            "producer original wire and kernel must be immutable bytes",
+        )
+
+    @property
+    def producer(self):
+        return json.loads(self._producer_json)
+
+
+def authenticated_completion_value(receipt):
+    require(
+        type(receipt) is AuthenticatedProducerCompletion
+        and receipt._token is _TRANSPORT_COMPLETION_TOKEN,
+        "opaque producer completion required; JSON is not transport proof",
+    )
+    return json.loads(receipt.wire)
 
 
 def read_regular(path, limit=MAX_BYTES):
@@ -316,6 +354,7 @@ class RequestForwarder:
         self.producer_identity = None
         self.producer_reference = None
         self.producer_ready = None
+        self._producer_completion_receipt = None
 
     def _current(self):
         require(self.failure is None, "request issuer permanently closed")
@@ -387,6 +426,7 @@ class RequestForwarder:
         sources.extend(self.references)
         registration = {
             "schema": request_live_producer.REGISTRATION,
+            **self._producer_completion_registration(),
             "phasebook": self.book,
             "enrollment": self.enrollment,
             "descriptor": self.descriptor,
@@ -474,6 +514,25 @@ class RequestForwarder:
                 original.cleanup_error = repr(cleanup)
             raise
 
+    def _producer_completion_registration(self):
+        """Legacy default has no producer-clock claim; new domains opt in explicitly."""
+        return {}
+
+    def _verify_owner_observation(self, phase, output, admission, completion):
+        """Independent owner full verification; explicit new-domain override point."""
+        from . import request_drain_consumer
+
+        return request_drain_consumer.verify_observation(
+            self.book["recipe"],
+            phase["phase_id"],
+            output,
+            descriptor=self.descriptor,
+            spec_path=self.spec_path,
+            journal_path=output / "snapshot/native.jsonl",
+            policy_path=self.policy_path,
+            drain_policy_path=self.drain_policy_path,
+        )
+
     def _produce(self, phase, output, admission):
         from . import request_live_producer
 
@@ -510,9 +569,12 @@ class RequestForwarder:
                 "connected producer kernel peer differs",
             )
             channel.sendall(canonical(command) + b"\n")
-            response = request_live_producer.receive(channel)
+            response, wire = request_live_producer.receive(channel, retain_raw=True)
             require(
-                response["schema"] == request_live_producer.COMPLETION
+                response["schema"]
+                == json.loads(read_regular(self.producer_registration["path"])).get(
+                    "completion_domain", request_live_producer.COMPLETION
+                )
                 and response["nonce"] == nonce
                 and "failed" not in response,
                 "independent producer request failed: " + str(response.get("failed")),
@@ -523,6 +585,13 @@ class RequestForwarder:
                 == self.producer_registration["sha256"],
                 "producer completion owner/source registration differs",
             )
+        self._producer_completion_receipt = AuthenticatedProducerCompletion(
+            _TRANSPORT_COMPLETION_TOKEN,
+            wire,
+            canonical(self.producer_identity),
+            tuple(self.producer_ready["socket_identity"]),
+            time.monotonic_ns(),
+        )
         self._current()
         require(
             output == self.output / f"request-{self.next_phase:04d}",
@@ -610,17 +679,8 @@ class RequestForwarder:
             try:
                 output = self.output / f"request-{self.next_phase:04d}"
                 completion = self._produce(phase, output, claim)
-                from . import request_drain_consumer
-
-                observed = request_drain_consumer.verify_observation(
-                    self.book["recipe"],
-                    phase["phase_id"],
-                    output,
-                    descriptor=self.descriptor,
-                    spec_path=self.spec_path,
-                    journal_path=output / "snapshot/native.jsonl",
-                    policy_path=self.policy_path,
-                    drain_policy_path=self.drain_policy_path,
+                observed = self._verify_owner_observation(
+                    phase, output, claim, completion
                 )
                 manifest = json.loads(
                     read_regular(output / "snapshot/prefix-manifest.json")

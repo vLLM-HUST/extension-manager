@@ -18,11 +18,13 @@ from .request_prefix_ticket import execute_phase, read_regular
 REGISTRATION = "ecpa-request-live-producer-registration/v1"
 COMMAND = "ecpa-request-live-producer-command/v1"
 COMPLETION = "ecpa-request-live-producer-completion/v1"
+FIXED_COMPLETION = "ecpa-request-live-producer-completion/v2"
+LIFETIME_NS = 30_000_000_000
 READY = "ecpa-request-live-producer-ready/v1"
 MAX_FRAME = 65536
 
 
-def receive(channel):
+def receive(channel, *, retain_raw=False):
     raw = b""
     while not raw.endswith(b"\n"):
         block = channel.recv(MAX_FRAME + 1)
@@ -31,7 +33,50 @@ def receive(channel):
             "producer command framing invalid",
         )
         raw += block
-    return json.loads(raw)
+    value = json.loads(raw)
+    return (value, raw) if retain_raw else value
+
+
+def completion_domain(registration):
+    domain = registration.get("completion_domain", COMPLETION)
+    books.require(
+        domain in {COMPLETION, FIXED_COMPLETION},
+        "unsupported producer completion domain",
+    )
+    if domain == FIXED_COMPLETION:
+        expiry = registration.get("original_route_expires_monotonic_ns")
+        books.require(
+            type(expiry) is int and expiry > time.monotonic_ns(),
+            "original independently granted route expiry missing/expired",
+        )
+    else:
+        books.require(
+            "original_route_expires_monotonic_ns" not in registration,
+            "legacy completion cannot claim fixed producer clock",
+        )
+    return domain
+
+
+def fixed_completion_clock(issued_ns, deadline_ns, original_route_expiry_ns):
+    """The producer captures issued once immediately after its first full verify."""
+    books.require(
+        all(
+            type(n) is int and n > 0
+            for n in (issued_ns, deadline_ns, original_route_expiry_ns)
+        ),
+        "producer original clock fields invalid",
+    )
+    expiry = min(issued_ns + LIFETIME_NS, deadline_ns, original_route_expiry_ns)
+    books.require(
+        issued_ns < expiry,
+        "producer full verification completed after original deadline/lease",
+    )
+    return {
+        "issued_monotonic_ns": issued_ns,
+        "expires_monotonic_ns": expiry,
+        "clock_origin": "producer-first-full-verification-completed",
+        "lifetime_ns": LIFETIME_NS,
+    }
 
 
 def serve(path, expected_sha256):
@@ -44,6 +89,7 @@ def serve(path, expected_sha256):
         and registration["formal_result"] is False,
         "producer registration scope differs",
     )
+    domain = completion_domain(registration)
     book = registration["phasebook"]
     enrollment = registration["enrollment"]
     owner = enrollment["owner"]
@@ -181,18 +227,33 @@ def serve(path, expected_sha256):
                                 output,
                                 **registration["execution"],
                             )
+                            first_verified_ns = time.monotonic_ns()
+                            clock = (
+                                fixed_completion_clock(
+                                    first_verified_ns,
+                                    deadline,
+                                    registration["original_route_expires_monotonic_ns"],
+                                )
+                                if domain == FIXED_COMPLETION
+                                else {}
+                            )
                             books.sources_current(registration["sources"])
                             books.enrollment_current(
                                 book, enrollment, delegated_owner=owner
                             )
                             books.require(
-                                time.monotonic_ns() < deadline,
+                                time.monotonic_ns()
+                                < min(
+                                    deadline,
+                                    clock.get("expires_monotonic_ns", deadline),
+                                ),
                                 "producer validation exceeded total request deadline",
                             )
                             response = {
-                                "schema": COMPLETION,
+                                "schema": domain,
                                 "nonce": nonce,
                                 "producer": own,
+                                **clock,
                                 "registration_sha256": books.digest(raw),
                                 "completion": completion,
                                 "formal_result": False,
