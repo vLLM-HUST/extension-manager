@@ -102,7 +102,15 @@ def source_artifacts(start):
         policy = load(checked_reference(phase["native_guard"]))
         launch = load(checked_reference(phase["semantic_launch_spec"]))
         result.append(
-            {"contracts": launch["contracts"], "bundle_ids": policy["bundle_ids"]}
+            {
+                # SDK semantic references use raw hex; the H3 source-admission
+                # boundary requires its exact sha256:-prefixed reference ABI.
+                "contracts": [
+                    dict(ref, sha256="sha256:" + ref["sha256"])
+                    for ref in launch["contracts"]
+                ],
+                "bundle_ids": policy["bundle_ids"],
+            }
         )
     return result
 
