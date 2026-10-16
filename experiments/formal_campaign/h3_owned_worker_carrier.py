@@ -117,16 +117,7 @@ class RegisteredAuthority:
             and self.argv[1] == str(source),
             "authority did not execute the exact registered script prefix",
         )
-        self.start = next(
-            (r for r in registration["starts"] if r["start_id"] == start_id), None
-        )
-        require(
-            self.start is not None, "authority registration lacks this original start"
-        )
-        require(
-            registration.get("schema") == self.receipt_schema,
-            "explicit dynamic registration required",
-        )
+        self.start = self._registered_start(registration, start_id)
         binding = self.start["authority"]
         self.registration_sha = binding["registration_sha256"]
         require(
@@ -184,6 +175,18 @@ class RegisteredAuthority:
             parent.st_uid,
             parent.st_gid,
         )
+
+    @classmethod
+    def _registered_start(cls, registration, start_id):
+        start = next(
+            (r for r in registration["starts"] if r["start_id"] == start_id), None
+        )
+        require(start is not None, "authority registration lacks this original start")
+        require(
+            registration.get("schema") == cls.receipt_schema,
+            "explicit dynamic registration required",
+        )
+        return start
 
     def _verify_authority(self):
         require(
@@ -288,6 +291,16 @@ class RegisteredAuthority:
 class NativeRegisteredAuthority(RegisteredAuthority):
     receipt_schema = "ecpa-h3-native-deployment-receipt/v1"
     profile = "ecpa-h3-source-owned-native-private-route/v1"
+
+    @classmethod
+    def _registered_start(cls, registration, start_id):
+        from experiments.formal_campaign.h3_native_registration import (
+            _ValidatedNativeStart,
+        )
+
+        if type(registration) is _ValidatedNativeStart:
+            return registration.authority_binding(start_id)
+        return super()._registered_start(registration, start_id)
 
 
 def validate_recipe(recipe, expected_sha, recipe_path, arm, *, native=False):
@@ -766,7 +779,7 @@ def main():
         if args.native_domain:
             from experiments.formal_campaign.h3_native_registration import (
                 validate_materialization,
-                validate_receipt,
+                validate_receipt_for_start,
             )
         else:
             from experiments.formal_campaign.h3_dynamic_registration import (
@@ -774,11 +787,20 @@ def main():
                 validate_receipt,
             )
 
-        dynamic, campaign, registration = validate_receipt(
-            args.campaign_spec, args.deployment_receipt
-        )
-        start_id = f"{campaign['cell_id']}-r{args.repetition}-{args.arm}"
-        start = next(s for s in dynamic["starts"] if s["start_id"] == start_id)
+        if args.native_domain:
+            original_ref = load(args.campaign_spec)["original_campaign"]
+            original = load(checked_reference(original_ref))
+            start_id = f"{original['cell_id']}-r{args.repetition}-{args.arm}"
+            registration = validate_receipt_for_start(
+                args.campaign_spec, args.deployment_receipt, start_id
+            )
+            dynamic, campaign, start = registration.selected(start_id)
+        else:
+            dynamic, campaign, registration = validate_receipt(
+                args.campaign_spec, args.deployment_receipt
+            )
+            start_id = f"{campaign['cell_id']}-r{args.repetition}-{args.arm}"
+            start = next(s for s in dynamic["starts"] if s["start_id"] == start_id)
         require(start["arm_order"] == args.arm_order, "original arm order differs")
         recipe = load(args.recipe)
         validate_materialization(dynamic, start, recipe)

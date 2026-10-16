@@ -168,13 +168,13 @@ def _native_wheel_payloads(audit):
     return fresh, result
 
 
-def installed_payloads(spec, original):
+def installed_payloads(spec, original, *, _starts=None):
     from experiments.formal_campaign.h3_runtime_source_closure import (
         verify_runtime_source_closure,
     )
 
     result, audited = {}, {}
-    for start in spec["starts"]:
+    for start in spec["starts"] if _starts is None else _starts:
         for phase in _phases(start):
             closure = verify_runtime_source_closure(
                 phase,
@@ -514,9 +514,9 @@ def build_plan_guards(spec, original, receipt, start, *, trusted_manager_handoff
     return guards
 
 
-def verify_native_plans(spec, original, observation):
+def verify_native_plans(spec, original, observation, *, _starts=None):
     receipt = {"source_observation": observation}
-    for start in spec["starts"]:
+    for start in spec["starts"] if _starts is None else _starts:
         build_plan_guards(
             spec, original, receipt, start, trusted_manager_handoffs=set()
         )
@@ -533,6 +533,73 @@ def issue(spec_path, output):
 def validate_receipt(spec_path, receipt_path, *, check_remote=False):
     return common._validate_receipt(
         spec_path, receipt_path, check_remote=check_remote, profile=_profile()
+    )
+
+
+_START_SCOPE_ISSUER = object()
+
+
+class _ValidatedNativeStart:
+    """One independently fresh start, never a whole-campaign validity result."""
+
+    schema = "ecpa-h3-native-start-validation/v1"
+    __slots__ = ("_raw",)
+
+    def __init__(self, *, spec, original, receipt, start_id, _issuer=None):
+        require(_issuer is _START_SCOPE_ISSUER, "native start scope is not issued")
+        start = next(s for s in spec["starts"] if s["start_id"] == start_id)
+        row = next(s for s in receipt["starts"] if s["start_id"] == start_id)
+        object.__setattr__(
+            self,
+            "_raw",
+            canonical(
+                {
+                    "start_id": start_id,
+                    "start": start,
+                    "context": {k: v for k, v in spec.items() if k != "starts"},
+                    "original": original,
+                    "authority_binding": row,
+                    "source_observation": receipt["source_observation"],
+                }
+            ),
+        )
+
+    def __setattr__(self, name, value):
+        raise AttributeError("native start scope is immutable")
+
+    def _value(self, start_id):
+        value = json.loads(self._raw)
+        require(value["start_id"] == start_id, "validated native start scope differs")
+        return value
+
+    def selected(self, start_id):
+        value = self._value(start_id)
+        return value["context"], value["original"], value["start"]
+
+    def authority_binding(self, start_id):
+        return self._value(start_id)["authority_binding"]
+
+    def guard_receipt(self, start_id):
+        return {"source_observation": self._value(start_id)["source_observation"]}
+
+
+def validate_receipt_for_start(
+    spec_path, receipt_path, start_id, *, check_remote=False
+):
+    require(type(start_id) is str and bool(start_id), "selected start ID missing")
+    spec, original, receipt = common._validate_receipt(
+        spec_path,
+        receipt_path,
+        check_remote=check_remote,
+        profile=_profile(),
+        _selected_start_id=start_id,
+    )
+    return _ValidatedNativeStart(
+        spec=spec,
+        original=original,
+        receipt=receipt,
+        start_id=start_id,
+        _issuer=_START_SCOPE_ISSUER,
     )
 
 

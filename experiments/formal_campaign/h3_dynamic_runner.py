@@ -99,7 +99,9 @@ def execute(
     spec_path, receipt_path, start_id, output, *, check_remote=True, native=False
 ):
     if native:
-        from experiments.formal_campaign.h3_native_registration import validate_receipt
+        from experiments.formal_campaign.h3_native_registration import (
+            validate_receipt_for_start,
+        )
         from experiments.formal_campaign.h3_owned_worker_carrier import (
             NativeRegisteredAuthority as Authority,
         )
@@ -119,10 +121,16 @@ def execute(
     error = None
     result = None
     try:
-        spec, original, receipt = validate_receipt(
-            spec_path, receipt_path, check_remote=check_remote
-        )
-        start = next(s for s in spec["starts"] if s["start_id"] == start_id)
+        if native:
+            receipt = validate_receipt_for_start(
+                spec_path, receipt_path, start_id, check_remote=check_remote
+            )
+            spec, original, start = receipt.selected(start_id)
+        else:
+            spec, original, receipt = validate_receipt(
+                spec_path, receipt_path, check_remote=check_remote
+            )
+            start = next(s for s in spec["starts"] if s["start_id"] == start_id)
         template = load(start["recipe_template"]["path"])
         for value in (start["authority"]["journal"], template["authority"]["socket"]):
             path = Path(value)

@@ -286,7 +286,7 @@ def verify_deployment_sources(spec, original):
     return _verify_deployment_sources(spec, original)
 
 
-def _verify_deployment_sources(spec, original, *, profile=None):
+def _verify_deployment_sources(spec, original, *, profile=None, _starts=None):
     """Join actual installed MOD payloads and executable sources to pinned git.
 
     Pure Python wheel payloads must equal their admitted source files. Generated
@@ -320,7 +320,13 @@ def _verify_deployment_sources(spec, original, *, profile=None):
             "source differs from admitted exact commit: " + str(path),
         )
 
-    installed = profile.installed_payloads(spec, original) if profile else {}
+    installed = (
+        profile.installed_payloads(
+            spec, original, **({"_starts": _starts} if _starts is not None else {})
+        )
+        if profile
+        else {}
+    )
     bundles_by_id = {}
     for start in spec["starts"]:
         policy = load(checked_reference(start["policy"]))
@@ -385,12 +391,12 @@ def _verify_deployment_sources(spec, original, *, profile=None):
             pinned(matches[0], role)
 
 
-def verify_runtime_closures(spec, original):
+def verify_runtime_closures(spec, original, *, _starts=None):
     from experiments.formal_campaign.h3_runtime_source_closure import (
         verify_runtime_source_closure,
     )
 
-    for start in spec["starts"]:
+    for start in spec["starts"] if _starts is None else _starts:
         recipe = load(checked_reference(start["recipe_template"]))
         for phase in recipe["arms"][start["arm"]]["phases"]:
             verify_runtime_source_closure(
@@ -506,10 +512,24 @@ def validate_receipt(spec_path, receipt_path, *, check_remote=False):
     return _validate_receipt(spec_path, receipt_path, check_remote=check_remote)
 
 
-def _validate_receipt(spec_path, receipt_path, *, check_remote=False, profile=None):
+def _validate_receipt(
+    spec_path,
+    receipt_path,
+    *,
+    check_remote=False,
+    profile=None,
+    _selected_start_id=None,
+):
     spec_path, receipt_path = Path(spec_path).resolve(), Path(receipt_path).resolve()
     spec = load(spec_path)
     original = _validate_campaign(spec, profile=profile, spec_path=spec_path)
+    selected = None
+    if _selected_start_id is not None:
+        require(profile is not None, "start scope requires explicit native profile")
+        selected = tuple(
+            start for start in spec["starts"] if start["start_id"] == _selected_start_id
+        )
+        require(len(selected) == 1, "unknown or ambiguous selected start")
     if profile:
         profile.validate_receipt_destination(spec, receipt_path)
     receipt = load(receipt_path)
@@ -531,7 +551,12 @@ def _validate_receipt(spec_path, receipt_path, *, check_remote=False, profile=No
     source_provenance.validate_observation(
         receipt["source_observation"], spec["source_policy"], original["fixed_identity"]
     )
-    _verify_deployment_sources(spec, original, profile=profile)
+    _verify_deployment_sources(
+        spec,
+        original,
+        profile=profile,
+        **({"_starts": selected} if selected is not None else {}),
+    )
     require(
         receipt["protocol_sources"]
         == _protocol_binding(
@@ -545,9 +570,16 @@ def _validate_receipt(spec_path, receipt_path, *, check_remote=False, profile=No
         ),
         "protocol source inventory differs",
     )
-    verify_runtime_closures(spec, original)
+    verify_runtime_closures(
+        spec, original, **({"_starts": selected} if selected is not None else {})
+    )
     if profile:
-        profile.verify_native_plans(spec, original, receipt["source_observation"])
+        profile.verify_native_plans(
+            spec,
+            original,
+            receipt["source_observation"],
+            **({"_starts": selected} if selected is not None else {}),
+        )
     if check_remote:
         current = source_provenance.observe_sources(
             original["fixed_identity"], spec["source_policy"], spec["repositories"]

@@ -57,7 +57,7 @@ def intake(spec_path, receipt_path, start_id, output, *, native=False):
         )
         from experiments.formal_campaign.h3_native_registration import (
             validate_materialization,
-            validate_receipt,
+            validate_receipt_for_start,
         )
     else:
         from experiments.formal_campaign.h3_dynamic_authority import JOURNAL, PROFILE
@@ -67,8 +67,12 @@ def intake(spec_path, receipt_path, start_id, output, *, native=False):
         )
 
         verify_window = verify_dynamic_window
-    spec, original, receipt = validate_receipt(spec_path, receipt_path)
-    start = next(s for s in spec["starts"] if s["start_id"] == start_id)
+    if native:
+        receipt = validate_receipt_for_start(spec_path, receipt_path, start_id)
+        spec, original, start = receipt.selected(start_id)
+    else:
+        spec, original, receipt = validate_receipt(spec_path, receipt_path)
+        start = next(s for s in spec["starts"] if s["start_id"] == start_id)
     observations = load(output / "runner-observations.json")
     require(
         observations["schema"] == "ecpa-h3-dynamic-runner-observations/v1"
