@@ -15,11 +15,19 @@ def verify_projection_tensor_join(
     runtime_request_id,
     transaction_id,
     effect_upload_sequences=None,
+    phase_id=None,
 ):
+    """Join one report after the caller verified the complete original archive.
+
+    Explicit phase selection does not validate or rewrite an evidence journal.
+    The legacy default continues to reject every other runtime in its input.
+    """
     runtime, transaction = runtime_request_id, transaction_id
     decoded = []
     for event in events:
         if "raw_base64" not in event:
+            continue
+        if phase_id is not None and event.get("phase", {}).get("phase_id") != phase_id:
             continue
         fact = json.loads(base64.b64decode(event["raw_base64"], validate=True))
         if fact["runtime_request_id"] != runtime:
@@ -92,4 +100,14 @@ def verify_projection_tensor_join(
         "full_quality": None,
         "attention_consumption": None,
         "formal_result": False,
+        **(
+            {
+                "request_selection_scope": (
+                    "current-phase-report-after-full-archive-verification"
+                ),
+                "phase_id": phase_id,
+            }
+            if phase_id is not None
+            else {}
+        ),
     }

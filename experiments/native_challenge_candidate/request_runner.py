@@ -254,7 +254,9 @@ def validate_rpc_budget(value):
     return value
 
 
-def verify_rpc_budget(phase, metadata):
+def verify_rpc_budget(
+    phase, metadata, *, metadata_schema="ecpa-observed-KV-HTTP-response/v2"
+):
     """Socket timeout plus measured HTTP elapsed gate, never a hard wall deadline."""
     if "rpc_budget_s" not in phase:
         return
@@ -264,7 +266,7 @@ def verify_rpc_budget(phase, metadata):
         metadata.get("received_monotonic_ns"),
     )
     require(
-        metadata.get("schema") == "ecpa-observed-KV-HTTP-response/v2"
+        metadata.get("schema") == metadata_schema
         and type(metadata.get("rpc_budget_s")) in {int, float}
         and metadata.get("rpc_budget_s") == budget
         and metadata.get("rpc_budget_semantics")
