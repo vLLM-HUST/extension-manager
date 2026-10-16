@@ -253,10 +253,16 @@ def main() -> int:
         raise ValueError("authority-owned proxy identity differs")
     if policy == "worker-recovery":
         from experiments.formal_campaign.h3_worker_recovery import execute_carrier
+
         return execute_carrier(
-            campaign | {"_sha256": campaign_sha, "_path": str(args.campaign_spec.resolve())},
-            args.arm, args.repetition, args.arm_order, out,
-            args.deployment_receipt, args.authority_registration,
+            campaign
+            | {"_sha256": campaign_sha, "_path": str(args.campaign_spec.resolve())},
+            args.arm,
+            args.repetition,
+            args.arm_order,
+            out,
+            args.deployment_receipt,
+            args.authority_registration,
         )
     out.mkdir(parents=True, exist_ok=False)
     receipt_copy = out / "deployment-receipt.json"

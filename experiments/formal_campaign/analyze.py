@@ -18,13 +18,14 @@ import jsonschema
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from experiments.formal_campaign import source_provenance  # noqa: E402
-from experiments.formal_campaign.h3_cell_dispatch import (  # noqa: E402
-    validate_cell_execution, validate_raw_kind,
-)
 from experiments.formal_campaign.h3_authority_chain import (  # noqa: E402
     snapshot_digest,
     verify_native_recovery,
     verify_recovery_events,
+)
+from experiments.formal_campaign.h3_cell_dispatch import (  # noqa: E402
+    validate_cell_execution,
+    validate_raw_kind,
 )
 
 ROOT = Path(__file__).resolve().parent
@@ -356,6 +357,7 @@ def _recompute_h3_metrics(
 
     if policy == "worker-recovery":
         from experiments.formal_campaign.h3_worker_recovery import verify_worker_raw
+
         root = Path(campaign_spec.get("_artifact_root", "."))
         return verify_worker_raw(raw, campaign_spec, root)
 
@@ -631,8 +633,11 @@ def _verify_h3_raw_artifact(
         raise ValueError(f"{record['start_id']} raw H3 recovery digest differs")
     raw = _load_object(path)
     policy = validate_raw_kind(campaign_spec, raw)
-    schema_name = ("h3-worker-raw-recovery.schema.json" if policy == "worker-recovery"
-                   else "h3-raw-artifact.schema.json")
+    schema_name = (
+        "h3-worker-raw-recovery.schema.json"
+        if policy == "worker-recovery"
+        else "h3-raw-artifact.schema.json"
+    )
     errors = _schema_errors(raw, schema_name)
     if errors:
         raise ValueError(f"{record['start_id']} raw H3 evidence: {errors[0].message}")
@@ -671,7 +676,9 @@ def _verify_h3_raw_artifact(
         raise ValueError(f"{record['start_id']} authority chain differs from raw H3")
     if cleanup_document.get("cleanup") != record["cleanup"]:
         raise ValueError(f"{record['start_id']} cleanup report differs from record")
-    recomputed = _recompute_h3_metrics(record, raw, campaign_spec | {"_artifact_root": str(root)})
+    recomputed = _recompute_h3_metrics(
+        record, raw, campaign_spec | {"_artifact_root": str(root)}
+    )
     if _canonical_digest(recomputed) != _canonical_digest(record["metrics"]):
         raise ValueError(f"{record['start_id']} H3 metrics differ from raw evidence")
 
