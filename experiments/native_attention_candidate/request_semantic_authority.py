@@ -10,6 +10,7 @@ import ast
 import configparser
 import importlib.metadata
 import json
+import marshal
 import os
 import stat
 import sys
@@ -17,6 +18,7 @@ import threading
 import time
 import zipfile
 from pathlib import Path
+from types import MappingProxyType
 
 from experiments.formal_campaign import source_provenance
 from vllm_hust_ext import (
@@ -143,7 +145,17 @@ class _AuditCut:
 
     def __init__(self, audits):
         require(audits, "independent audit union missing")
-        self.audits = {sha(canonical(audit)): audit for audit in audits.values()}
+        self.audits = {}
+        self._originals = {}
+        for audit in audits.values():
+            digest = sha(canonical(audit))
+            self.audits[digest] = audit
+            try:
+                raw = marshal.dumps(audit, 4)
+            except (ValueError, TypeError):
+                raw = None
+            # Hold the original strongly: Python must not recycle its identity.
+            self._originals[id(audit)] = (audit, raw, digest)
         self.states, self.sources = {}, {}
         for audit in audits.values():
             require(
@@ -155,7 +167,7 @@ class _AuditCut:
                     path not in self.states or self.states[path] == state,
                     "trusted audit file_states conflict",
                 )
-                self.states[path] = state
+                self.states[path] = MappingProxyType(dict(state))
             for path, digest in audit["source_files"].items():
                 require(
                     path in audit["file_state"]
@@ -164,11 +176,29 @@ class _AuditCut:
                 )
                 self.sources[path] = digest
 
-    def membership(self, audit, sources):
+        self.states = MappingProxyType(self.states)
+        self.sources = MappingProxyType(self.sources)
+        self._compiled_states = routes._CompiledFileStates(self.states)
+
+    def current_digest(self, audit):
+        original = self._originals.get(id(audit))
+        if original is not None and original[0] is audit and original[1] is not None:
+            try:
+                if marshal.dumps(audit, 4) == original[1]:
+                    return original[2]
+            except (ValueError, TypeError):
+                pass
+        # Canonical JSON remains the trust anchor and compatibility fallback:
+        # reordered or detached equal copies need not have equal marshal bytes.
+        digest = sha(canonical(audit))
         require(
-            self.audits.get(sha(canonical(audit))) == audit,
+            self.audits.get(digest) == audit,
             "audit does not belong to this transaction cut",
         )
+        return digest
+
+    def membership(self, audit, sources):
+        self.current_digest(audit)
         require(
             all(
                 audit["source_files"].get(path) == digest
@@ -180,8 +210,8 @@ class _AuditCut:
 
     def check(self):
         # Always fresh, even when called twice on the same stack-local object.
-        routes._check_file_states(self.states)
-        registry._files(self.sources)
+        self._compiled_states.check()
+        registry._files(dict(self.sources))
 
 
 def require_audited_sources(audit, sources, *, _cut=None):
@@ -315,7 +345,9 @@ def observe_manager_invocation(manager, invocation_reference, audit, *, _cut=Non
         "argv": actual,
         "argv_sha256": sha(Path(f"/proc/{manager['pid']}/cmdline").read_bytes()),
         "invocation_reference": invocation_reference,
-        "input_audit_sha256": sha(canonical(audit)),
+        "input_audit_sha256": (
+            _cut.current_digest(audit) if _cut is not None else sha(canonical(audit))
+        ),
         "console": reference(script),
         "manager_wheel_sha256": wheel["sha256"],
         "installed_core_sha256": sha(canonical(payload)),
@@ -551,9 +583,11 @@ class RequestSemanticAuthority(registry.CellIssuer):
 
     def _permit_current_with_cut(self, permit):
         value = self._open(permit, PERMIT)
-        for audit in value["input_audits"].values():
-            require(sha(canonical(audit)) in self.trusted_inputs, "input trust absent")
         cut = _AuditCut(value["input_audits"])
+        for audit in value["input_audits"].values():
+            require(
+                cut.current_digest(audit) in self.trusted_inputs, "input trust absent"
+            )
         cut.check()
         require(
             source_provenance.digest(canonical(value["source_observation"]))
@@ -582,7 +616,9 @@ class RequestSemanticAuthority(registry.CellIssuer):
             "Manager source changed",
         )
         for audit in value["input_audits"].values():
-            require(sha(canonical(audit)) in self.trusted_inputs, "input trust absent")
+            require(
+                cut.current_digest(audit) in self.trusted_inputs, "input trust absent"
+            )
             require_audited_sources(audit, value["required_audit_sources"], _cut=cut)
         for phase in value["phasebook"]["recipe"]["phases"]:
             self._check_cell_inputs(value["input_audits"][phase["phase_id"]], phase)
@@ -598,7 +634,12 @@ class RequestSemanticAuthority(registry.CellIssuer):
         audits = [
             audit
             for audit in value["input_audits"].values()
-            if sha(canonical(audit)) == observation["input_audit_sha256"]
+            if (
+                _cut.current_digest(audit)
+                if _cut is not None
+                else sha(canonical(audit))
+            )
+            == observation["input_audit_sha256"]
         ]
         require(
             len(audits) == 1
@@ -772,7 +813,7 @@ class RequestSemanticAuthority(registry.CellIssuer):
         require(
             type(cut) is _AuditCut
             and cut.audits
-            == {sha(canonical(a)): a for a in value["input_audits"].values()},
+            == {cut.current_digest(a): a for a in value["input_audits"].values()},
             "validated permit audit cut differs",
         )
         body = self._open(grant, PREPARED_GRANT)

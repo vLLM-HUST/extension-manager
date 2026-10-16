@@ -558,3 +558,55 @@ def test_same_cut_does_not_admit_another_audit(tmp_path):
     unrelated["source_files"][str(leaf)] = "0" * 64
     with pytest.raises(ValueError, match="does not belong"):
         semantic.require_audited_sources(unrelated, sources, _cut=cut)
+
+
+@pytest.mark.parametrize("before,after", [(True, 1), (1, 1.0), (-0.0, 0.0)])
+def test_cut_rejects_json_numeric_type_mutation(tmp_path, before, after):
+    leaf = tmp_path / "source.py"
+    leaf.write_bytes(b"source")
+    audit = {
+        "source_files": {str(leaf): semantic.sha(leaf.read_bytes())},
+        "file_state": {str(leaf): routes._state(leaf.stat())},
+        "nested": [{"value": before}],
+    }
+    cut = semantic._AuditCut({"audit": audit})
+    expected = cut.current_digest(audit)
+    assert expected == semantic.sha(semantic.canonical(audit))
+    audit["nested"][0]["value"] = after
+    with pytest.raises(ValueError, match="does not belong"):
+        cut.current_digest(audit)
+
+
+def test_cut_accepts_detached_reordered_copy_but_rejects_changed_source(tmp_path):
+    leaf = tmp_path / "source.py"
+    leaf.write_bytes(b"source")
+    audit = {
+        "source_files": {str(leaf): semantic.sha(leaf.read_bytes())},
+        "file_state": {str(leaf): routes._state(leaf.stat())},
+    }
+    cut = semantic._AuditCut({"audit": audit})
+    reordered = dict(reversed(list(copy.deepcopy(audit).items())))
+    assert cut.current_digest(reordered) == cut.current_digest(audit)
+    cut.membership(reordered, audit["source_files"])
+    audit["source_files"][str(leaf)] = "0" * 64
+    with pytest.raises(ValueError, match="does not belong"):
+        cut.current_digest(audit)
+    # The retained expected source union did not follow the caller mutation.
+    assert cut.sources[str(leaf)] == semantic.sha(leaf.read_bytes())
+
+
+def test_cut_expected_states_do_not_follow_audit_mutation(tmp_path):
+    leaf = tmp_path / "source.py"
+    leaf.write_bytes(b"before")
+    audit = {
+        "source_files": {str(leaf): semantic.sha(leaf.read_bytes())},
+        "file_state": {str(leaf): routes._state(leaf.stat())},
+    }
+    cut = semantic._AuditCut({"audit": audit})
+    cut.check()
+    leaf.write_bytes(b"changed file")
+    audit["file_state"][str(leaf)].update(routes._state(leaf.stat()))
+    with pytest.raises(ValueError, match="does not belong"):
+        cut.current_digest(audit)
+    with pytest.raises(ValueError, match="file changed"):
+        cut.check()

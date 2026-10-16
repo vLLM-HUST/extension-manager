@@ -572,3 +572,26 @@ def test_unrelated_cache_activity_changes_no_leaf_or_ancestor_identity(
     monkeypatch.setattr(reader.os, "stat", create_cache_after_leaf_stat)
     reader._check_file_states(states)
     assert created
+
+
+def test_compiled_declarations_recheck_replaced_ancestor_and_ignore_caller_edits(
+    tmp_path,
+):
+    directory = tmp_path / "original"
+    directory.mkdir()
+    leaf = directory / "source.py"
+    leaf.write_bytes(b"original")
+    states = {str(leaf): reader._state(leaf.stat())}
+    compiled = reader._CompiledFileStates(states)
+    compiled.check()
+    directory.rename(tmp_path / "moved")
+    directory.mkdir()
+    leaf.write_bytes(b"replacement")
+    states[str(leaf)].update(reader._state(leaf.stat()))
+    with pytest.raises(ValueError, match="file changed"):
+        compiled.check()
+    leaf.unlink()
+    directory.rmdir()
+    directory.symlink_to(tmp_path / "moved", target_is_directory=True)
+    with pytest.raises(ValueError, match="file or ancestor changed"):
+        compiled.check()
