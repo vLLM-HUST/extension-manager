@@ -127,7 +127,7 @@
         "lost_requests": {"type": ["integer", "null"], "minimum": 0},
         "duplicated_requests": {"type": ["integer", "null"], "minimum": 0},
         "post_recovery_observed_lost_requests": {"type": "integer", "minimum": 0},
-        "crash_window_coverage": {"const": "missing"},
+        "crash_window_coverage": {"enum": ["missing", "complete-finite-delivery-window"]},
         "operator_actions": {"type": "integer", "minimum": 0},
         "final_route": {"type": "string", "minLength": 1},
         "rollback_classification": {"enum": ["automatic-restoration", "failed-safe", "bounded-operator-action", "not-applicable"]}

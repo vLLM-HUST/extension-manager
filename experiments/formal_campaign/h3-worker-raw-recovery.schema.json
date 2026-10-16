@@ -1,0 +1,557 @@
+{
+  "type": "object",
+  "required": [
+    "schema",
+    "cell_id",
+    "arm",
+    "start_id",
+    "repetition",
+    "arm_order",
+    "carrier_source_sha256",
+    "before",
+    "after",
+    "fault",
+    "recovery_ns",
+    "recovery_action",
+    "operator_actions",
+    "client_identity",
+    "carrier_artifacts",
+    "final_route_snapshot",
+    "proxy_registration_sha256",
+    "campaign_id",
+    "campaign_sha256",
+    "deployment_receipt_sha256",
+    "authority_registration_sha256",
+    "process_identity",
+    "request_results",
+    "process_snapshot",
+    "artifact_sha256",
+    "authority_chain",
+    "evidence_class"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ecpa-h3-worker-raw-recovery/v1"
+    },
+    "cell_id": {
+      "enum": [
+        "worker-crash",
+        "worker-replacement"
+      ]
+    },
+    "arm": {
+      "enum": [
+        "vanilla-vllm-entry-points",
+        "manual-integration",
+        "ecpa"
+      ]
+    },
+    "start_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repetition": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "arm_order": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "carrier_source_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "before": {
+      "type": "object",
+      "required": [
+        "parent",
+        "worker",
+        "parent_event",
+        "worker_event",
+        "owned_sessions",
+        "observed_ns",
+        "route_generation",
+        "parent_worker_ancestry"
+      ],
+      "properties": {
+        "parent": {
+          "type": "object",
+          "required": [
+            "pid",
+            "start_ticks",
+            "boot_id",
+            "session",
+            "launch_id"
+          ],
+          "properties": {
+            "pid": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start_ticks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "boot_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "launch_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "worker": {
+          "type": "object",
+          "required": [
+            "pid",
+            "start_ticks",
+            "boot_id",
+            "session",
+            "launch_id"
+          ],
+          "properties": {
+            "pid": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start_ticks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "boot_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "launch_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "parent_event": {
+          "type": "object"
+        },
+        "worker_event": {
+          "type": "object"
+        },
+        "owned_sessions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "observed_ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "route_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parent_worker_ancestry": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "pid",
+              "start_ticks",
+              "boot_id",
+              "session",
+              "ppid"
+            ],
+            "properties": {
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "start_ticks": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "boot_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "session": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ppid": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "after": {
+      "type": "object",
+      "required": [
+        "parent",
+        "worker",
+        "parent_event",
+        "worker_event",
+        "owned_sessions",
+        "observed_ns",
+        "route_generation",
+        "parent_worker_ancestry"
+      ],
+      "properties": {
+        "parent": {
+          "type": "object",
+          "required": [
+            "pid",
+            "start_ticks",
+            "boot_id",
+            "session",
+            "launch_id"
+          ],
+          "properties": {
+            "pid": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start_ticks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "boot_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "launch_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "worker": {
+          "type": "object",
+          "required": [
+            "pid",
+            "start_ticks",
+            "boot_id",
+            "session",
+            "launch_id"
+          ],
+          "properties": {
+            "pid": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start_ticks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "boot_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "launch_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "parent_event": {
+          "type": "object"
+        },
+        "worker_event": {
+          "type": "object"
+        },
+        "owned_sessions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "observed_ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "route_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parent_worker_ancestry": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "pid",
+              "start_ticks",
+              "boot_id",
+              "session",
+              "ppid"
+            ],
+            "properties": {
+              "pid": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "start_ticks": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "boot_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "session": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "ppid": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "fault": {
+      "type": "object",
+      "required": [
+        "target",
+        "triggered_ns",
+        "observed_dead_ns",
+        "signal"
+      ],
+      "properties": {
+        "target": {
+          "type": "object",
+          "required": [
+            "pid",
+            "start_ticks",
+            "boot_id",
+            "session",
+            "launch_id"
+          ],
+          "properties": {
+            "pid": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start_ticks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "boot_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "launch_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "triggered_ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "observed_dead_ns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "signal": {
+          "enum": [
+            "SIGKILL",
+            "SIGTERM"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "recovery_ns": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "recovery_action": {
+      "enum": [
+        "independent-native-full-relaunch",
+        "bounded-operator-full-relaunch"
+      ]
+    },
+    "operator_actions": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "client_identity": {
+      "type": "object",
+      "required": [
+        "pid",
+        "start_ticks",
+        "boot_id"
+      ],
+      "properties": {
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "start_ticks": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "boot_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "carrier_artifacts": {
+      "type": "object",
+      "required": [
+        "client_trace",
+        "authority_journal",
+        "kernel_observations"
+      ],
+      "properties": {
+        "client_trace": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "authority_journal": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "kernel_observations": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "final_route_snapshot": {
+      "type": "object"
+    },
+    "proxy_registration_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "campaign_id": {
+      "const": "H3-transactional-recovery-v1"
+    },
+    "campaign_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "deployment_receipt_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "authority_registration_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "process_identity": {
+      "type": "object"
+    },
+    "request_results": {
+      "type": "object"
+    },
+    "process_snapshot": {
+      "type": "object"
+    },
+    "artifact_sha256": {
+      "type": "object"
+    },
+    "authority_chain": {
+      "type": "object"
+    },
+    "evidence_class": {
+      "const": "formal-real"
+    }
+  },
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h3-worker-raw-recovery/v1"
+}

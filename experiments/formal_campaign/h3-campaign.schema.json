@@ -303,6 +303,9 @@
     },
     "source_provenance_policy": {
       "type": "object"
+    },
+    "cell_execution": {
+      "type": "object"
     }
   },
   "additionalProperties": false

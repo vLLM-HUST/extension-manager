@@ -2405,7 +2405,7 @@
   "score_eligible": false,
   "source_sha256": {
     "experiments/exposure_gate/loopback_traffic.py": "f4b27d057a82c491033498442794520f60667f879a0d7c66ba6026cd6d25cedc",
-    "experiments/formal_campaign/h3_registration.py": "b1ce071ee3c80ce05586de764be4a637082e65b77f816a3b75c64fc7b15d4c1d",
+    "experiments/formal_campaign/h3_registration.py": "bbf2584f5d0c2cccbdd500dae4a2a1bafd0ca0171301950afd087ab46ff5869f",
     "experiments/formal_campaign/h4_registration.py": "62850685b0ee99feb39104a48f2a3fa01237376f7507ffc7e1c413e2d99b449d",
     "experiments/formal_campaign/protocol.json": "710d23ef750a3ee27f6e10a1c1fcabea3b4f12b8187ef04dffcfec16dfb5d6e7",
     "experiments/formal_campaign/source_provenance.py": "7e3eb2c6f2599a90005baad60daaeb97aa18b8c5a54bfd57ea9d53092355a388",

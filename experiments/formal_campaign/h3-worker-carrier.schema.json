@@ -1,0 +1,67 @@
+{
+  "type": "object",
+  "required": [
+    "kind",
+    "source",
+    "command",
+    "recovery_action",
+    "starts"
+  ],
+  "properties": {
+    "kind": {
+      "const": "worker-recovery"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "repository_path",
+        "sha256"
+      ],
+      "properties": {
+        "repository_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "recovery_action": {
+      "enum": [
+        "independent-native-full-relaunch",
+        "bounded-operator-full-relaunch"
+      ]
+    },
+    "starts": {
+      "type": "object",
+      "minProperties": 9,
+      "maxProperties": 9,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "client_window"
+        ],
+        "properties": {
+          "client_window": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ecpa-h3-worker-carrier/v1"
+}

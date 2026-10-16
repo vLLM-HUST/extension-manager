@@ -284,41 +284,9 @@ def test_runner_executes_bound_process_crash_and_recovery(tmp_path: Path) -> Non
         text=True,
     )
     assert result.returncode != 0
-    failure = json.loads((output / "failure.json").read_text())
-    assert failure["fault_injected"] is False
-    assert "durable prepare" in failure["error"]
-    record = json.loads((output / "record.json").read_text())
-    assert record["status"] == "failed"
-    assert record["metrics"] == {}
-    assert not (output / "raw-recovery.json").exists()
-    import jsonschema
-
-    jsonschema.Draft7Validator(
-        json.loads(
-            (ROOT / "experiments/formal_campaign/record.schema.json").read_text()
-        )
-    ).validate(record)
-    analyzed = subprocess.run(
-        [
-            sys.executable,
-            str(ANALYZER),
-            "--campaign",
-            "h3",
-            "--campaign-spec",
-            str(campaign_path),
-            "--records",
-            str(output / "record.json"),
-            "--artifact-root",
-            str(output),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    summary = json.loads(analyzed.stdout)
-    assert summary["formal_result"] is False
-    assert summary["received_starts"] == 1
-    assert summary["failed_starts"] == [record["start_id"]]
+    assert "durable prepare" in result.stderr
+    assert not output.exists()
+    assert not pid_file.exists()
 
 
 def test_frozen_post_probe_rejects_nonempty_wrong_response(monkeypatch) -> None:
