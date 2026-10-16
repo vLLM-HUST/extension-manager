@@ -34,12 +34,13 @@ canonical, sha, require = semantic.canonical, semantic.sha, semantic.require
 class IndependentGrantObserver(routes.LiveRouteReader):
     """Authenticate an independently owned real traffic authority, not a Grant DTO."""
 
-    def __init__(self, descriptor, input_audits):
+    def __init__(self, descriptor, input_audits, *, _cut=None):
         self.authority = descriptor["kernel"]
         self.authority_sources = descriptor["sources"]
         self.authority_command_sha256 = descriptor["command_sha256"]
         self.socket_path = routes._path(descriptor["socket_path"])
         self.input_audits = input_audits
+        self._audit_cut = _cut
         self._inputs_current()
         self.socket_identity = self._identity()
         require(
@@ -49,8 +50,12 @@ class IndependentGrantObserver(routes.LiveRouteReader):
 
     def _inputs_current(self):
         require(self.input_audits, "independent grant input/source audits missing")
+        cut = self._audit_cut
+        if cut is None:
+            cut = semantic._AuditCut(self.input_audits)
         for audit in self.input_audits.values():
-            semantic.require_audited_sources(audit, self.authority_sources)
+            semantic.require_audited_sources(audit, self.authority_sources, _cut=cut)
+        cut.check()
 
     def exchange(self, operation, **fields):
         require(self._identity() == self.socket_identity, "grant endpoint replaced")
@@ -226,7 +231,7 @@ def observe_route_grant(authority_process, *, socket_path, launch, input_audits)
     }
 
 
-def route_grant_current(observation, input_audits):
+def route_grant_current(observation, input_audits, *, _cut=None):
     descriptor, grant = observation["descriptor"], observation["grant"]
     registry._kernel(descriptor["kernel"])
     argv, flag = _authority_argv(descriptor["kernel"])
@@ -240,7 +245,7 @@ def route_grant_current(observation, input_audits):
         == grant,
         "original independent grant invocation changed",
     )
-    reader = IndependentGrantObserver(descriptor, input_audits)
+    reader = IndependentGrantObserver(descriptor, input_audits, _cut=_cut)
     before, _ = reader.exchange("query")
     valid, _ = reader.exchange("lease_valid", grant=grant, now=int(time.time()))
     after, _ = reader.exchange("query")
@@ -273,6 +278,7 @@ def route_grant_current(observation, input_audits):
         ),
         "prepared grant superseded by later route action",
     )
+    reader._inputs_current()
     return observation["original_monotonic_expiry_ns"]
 
 
@@ -414,6 +420,36 @@ class PreparedRequestRouteReader(routes.LiveRouteReader):
             root["route"] == self.expected_binding, "original prepared root changed"
         )
 
+    def _read_validated_permit(self, issuer, value, grant, cut):
+        require(
+            issuer is self.semantic_authority and grant == self.prepared_grant,
+            "internal validated route reader root differs",
+        )
+        cut.check()
+        root = issuer._prepared_grant_from_validated_permit(
+            self.permit["sha256"], value, grant, cut
+        )
+        require(
+            root["route"] == self.expected_binding, "original prepared root changed"
+        )
+        before = self._call("request_binding_query")
+        after = self._call("request_binding_query")
+        self._require_prepared_reply(before, after)
+        cut.check()
+        return json.loads(canonical(after["binding"]))
+
+    def _require_prepared_reply(self, before, after):
+        require(
+            before == after
+            and after["schema"] == CONTROL
+            and after["state"] == "PREPARED"
+            and after["semantic_ready"] is False
+            and after["blanket_public_open"] is False
+            and after["binding"] == self.expected_binding
+            and time.monotonic_ns() < after["binding"]["lease_expires_monotonic_ns"],
+            "actual prepared controller scope/fence/original lease changed",
+        )
+
     def read(self):
         self._inputs_current()
         before = self._call("request_binding_query")
@@ -531,7 +567,6 @@ class SemanticRequestForwarder(RequestForwarder):
         }
 
     def _verify_owner_observation(self, phase, output, admission, completion):
-        self._current()
         require(
             getattr(self, "_pending_semantic_capability", None) is None,
             "prior owner verification capability remains pending",

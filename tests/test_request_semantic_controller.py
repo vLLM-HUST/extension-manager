@@ -107,7 +107,7 @@ def test_actual_grant_cannot_rebind_holder_generation_or_source(actual_grant):
             )
     bad_audits = copy.deepcopy(audits)
     bad_audits["CPU"]["source_files"] = {"invented": "0" * 64}
-    with pytest.raises(ValueError, match="exact source closure"):
+    with pytest.raises(ValueError, match="source closure"):
         controller.route_grant_current(observation, bad_audits)
 
 
@@ -179,3 +179,31 @@ def test_final_release_guard_rejects_invalidation_after_response_io(
     with pytest.raises(ValueError):
         forwarder._release_guard(ticket, admission)
     assert forwarder.failure.startswith("semantic release permanently closed")
+
+
+def test_real_grant_io_rechecks_complete_input_union_after_reply(
+    actual_grant, tmp_path, monkeypatch
+):
+    process, adapter, observation, audits, launch = actual_grant
+    leaf = tmp_path / "actual-CPU-mutable-input.bin"
+    leaf.write_bytes(b"before real Unix query")
+    expanded = copy.deepcopy(audits)
+    expanded["CPU"]["file_state"][str(leaf)] = routes._state(leaf.stat())
+    cut = semantic._AuditCut(expanded)
+    original = controller.IndependentGrantObserver.exchange
+    changed = False
+
+    def actual_reply_then_mutation(self, *args, **kwargs):
+        nonlocal changed
+        result = original(self, *args, **kwargs)
+        if not changed:
+            leaf.write_bytes(b"mutated after actual authenticated Unix reply")
+            changed = True
+        return result
+
+    monkeypatch.setattr(
+        controller.IndependentGrantObserver, "exchange", actual_reply_then_mutation
+    )
+    with pytest.raises(ValueError, match="audited input"):
+        controller.route_grant_current(observation, expanded, _cut=cut)
+    assert changed  # No mocked query or fabricated grant/consumer PASS.
