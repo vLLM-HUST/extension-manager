@@ -150,12 +150,8 @@ class _AuditCut:
         for audit in audits.values():
             digest = sha(canonical(audit))
             self.audits[digest] = audit
-            try:
-                raw = marshal.dumps(audit, 4)
-            except (ValueError, TypeError):
-                raw = None
             # Hold the original strongly: Python must not recycle its identity.
-            self._originals[id(audit)] = (audit, raw, digest)
+            self._originals[id(audit)] = (audit, None, digest)
         self.states, self.sources = {}, {}
         for audit in audits.values():
             require(
@@ -179,12 +175,21 @@ class _AuditCut:
         self.states = MappingProxyType(self.states)
         self.sources = MappingProxyType(self.sources)
         self._compiled_states = routes._CompiledFileStates(self.states)
+        # Snapshot after declaration ownership is settled. Version 2 does not
+        # encode reference sharing/refcount flags: temporary scalar references
+        # cannot change these private process-local comparison bytes.
+        for identity, (audit, _, digest) in self._originals.items():
+            try:
+                raw = marshal.dumps(audit, 2)
+            except (ValueError, TypeError):
+                raw = None
+            self._originals[identity] = (audit, raw, digest)
 
     def current_digest(self, audit):
         original = self._originals.get(id(audit))
         if original is not None and original[0] is audit and original[1] is not None:
             try:
-                if marshal.dumps(audit, 4) == original[1]:
+                if marshal.dumps(audit, 2) == original[1]:
                     return original[2]
             except (ValueError, TypeError):
                 pass

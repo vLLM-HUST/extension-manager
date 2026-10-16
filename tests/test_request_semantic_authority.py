@@ -610,3 +610,31 @@ def test_cut_expected_states_do_not_follow_audit_mutation(tmp_path):
         cut.current_digest(audit)
     with pytest.raises(ValueError, match="file changed"):
         cut.check()
+
+
+def test_original_cut_fast_path_survives_owned_state_and_temporary_scalar_aliases(
+    tmp_path, monkeypatch
+):
+    leaf = tmp_path / "source.py"
+    leaf.write_bytes(b"source")
+    audit = {
+        "source_files": {str(leaf): semantic.sha(leaf.read_bytes())},
+        "file_state": {str(leaf): routes._state(leaf.stat())},
+        "metadata": [{"value": 987654321987654321}],
+    }
+    expected = semantic.sha(semantic.canonical(audit))
+    cut = semantic._AuditCut({"audit": audit})
+
+    def unexpected_fallback(value):
+        pytest.fail("Unchanged original audit fell back to canonical JSON")
+
+    monkeypatch.setattr(semantic, "canonical", unexpected_fallback)
+    assert cut.current_digest(audit) == expected
+    aliases = [
+        value for state in audit["file_state"].values() for value in state.values()
+    ]
+    aliases.append(audit["metadata"][0]["value"])
+    assert cut.current_digest(audit) == expected
+    del aliases
+    cut.check()
+    assert cut.current_digest(audit) == expected
