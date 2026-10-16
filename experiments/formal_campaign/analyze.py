@@ -23,6 +23,10 @@ from experiments.formal_campaign.h3_authority_chain import (  # noqa: E402
     verify_native_recovery,
     verify_recovery_events,
 )
+from experiments.formal_campaign.h3_cell_dispatch import (  # noqa: E402
+    validate_cell_execution,
+    validate_raw_kind,
+)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -77,6 +81,7 @@ def load_h3_campaign(path: Path) -> dict[str, Any]:
     jsonschema.Draft7Validator(schema).validate(campaign)
     if campaign.get("schema") != "ecpa-h3-exact-stack-cell-campaign/v1":
         raise ValueError("H3 campaign uses an unsupported schema")
+    validate_cell_execution(campaign)
     required = {
         "campaign_id",
         "cell_id",
@@ -328,6 +333,7 @@ def _verify_h3_receipt(
 def _recompute_h3_metrics(
     record: dict[str, Any], raw: dict[str, Any], campaign_spec: dict[str, Any]
 ) -> dict[str, Any]:
+    policy = validate_raw_kind(campaign_spec, raw)
     start_id = record["start_id"]
     bindings = {
         "campaign_id": record["campaign_id"],
@@ -348,6 +354,12 @@ def _recompute_h3_metrics(
     for label, digest in raw["artifact_sha256"].items():
         if record["artifacts"][label]["sha256"] != digest:
             raise ValueError(f"{start_id} raw H3 manifest differs for {label}")
+
+    if policy == "worker-recovery":
+        from experiments.formal_campaign.h3_worker_recovery import verify_worker_raw
+
+        root = Path(campaign_spec.get("_artifact_root", "."))
+        return verify_worker_raw(raw, campaign_spec, root)
 
     events = raw["events"]
     sequences = [event["sequence"] for event in events]
@@ -620,7 +632,13 @@ def _verify_h3_raw_artifact(
     if _digest_bytes(path) != binding["sha256"]:
         raise ValueError(f"{record['start_id']} raw H3 recovery digest differs")
     raw = _load_object(path)
-    errors = _schema_errors(raw, "h3-raw-artifact.schema.json")
+    policy = validate_raw_kind(campaign_spec, raw)
+    schema_name = (
+        "h3-worker-raw-recovery.schema.json"
+        if policy == "worker-recovery"
+        else "h3-raw-artifact.schema.json"
+    )
+    errors = _schema_errors(raw, schema_name)
     if errors:
         raise ValueError(f"{record['start_id']} raw H3 evidence: {errors[0].message}")
     authority_binding, proxy_sha = _verify_h3_registration(
@@ -658,7 +676,9 @@ def _verify_h3_raw_artifact(
         raise ValueError(f"{record['start_id']} authority chain differs from raw H3")
     if cleanup_document.get("cleanup") != record["cleanup"]:
         raise ValueError(f"{record['start_id']} cleanup report differs from record")
-    recomputed = _recompute_h3_metrics(record, raw, campaign_spec)
+    recomputed = _recompute_h3_metrics(
+        record, raw, campaign_spec | {"_artifact_root": str(root)}
+    )
     if _canonical_digest(recomputed) != _canonical_digest(record["metrics"]):
         raise ValueError(f"{record['start_id']} H3 metrics differ from raw evidence")
 

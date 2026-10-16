@@ -24,6 +24,14 @@ except ModuleNotFoundError as error:
         raise
     import source_provenance
 
+try:
+    from experiments.formal_campaign.h3_cell_dispatch import validate_cell_execution
+except ModuleNotFoundError as error:
+    if error.name not in {"experiments", "experiments.formal_campaign"}:
+        raise
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from experiments.formal_campaign.h3_cell_dispatch import validate_cell_execution
+
 HERE = Path(__file__).resolve().parent
 ARMS = ("vanilla-vllm-entry-points", "manual-integration", "ecpa")
 PROTOCOL_FILES = {
@@ -41,6 +49,12 @@ PROTOCOL_FILES = {
         "protocol.json",
         "record.schema.json",
         "run_h3.py",
+        "h3_cell_dispatch.py",
+        "h3_worker_recovery.py",
+        "h3_worker_relaunch.py",
+        "h3_client_trace.py",
+        "h3-worker-carrier.schema.json",
+        "h3-worker-raw-recovery.schema.json",
     )
 }
 
@@ -117,6 +131,7 @@ def _validate_campaign(campaign: dict[str, Any]) -> None:
     ).validate(campaign)
     if tuple(row["id"] for row in campaign["arms"]) != ARMS:
         raise ValueError("campaign arms must retain the frozen order")
+    validate_cell_execution(campaign)
     if "prepare" in campaign["cell_id"]:
         for arm in campaign["arms"]:
             if "phase_barrier" not in arm:

@@ -27,6 +27,7 @@ from h3_registration import canonical, command_digest
 
 from experiments.exposure_gate.loopback_traffic import read_traffic_journal
 from experiments.formal_campaign import source_provenance
+from experiments.formal_campaign.h3_cell_dispatch import validate_cell_execution
 
 ROOT = Path(__file__).resolve().parent
 
@@ -232,6 +233,7 @@ def main() -> int:
     arm = next((item for item in campaign["arms"] if item["id"] == args.arm), None)
     if arm is None:
         raise ValueError("arm is not frozen in campaign")
+    policy = validate_cell_execution(campaign, arm=args.arm, launching=True)
 
     out = args.output_dir.resolve()
     start_id = f"{campaign['cell_id']}-r{args.repetition}-{args.arm}"
@@ -249,6 +251,19 @@ def main() -> int:
         != authority_start["proxy_registration_sha256"]
     ):
         raise ValueError("authority-owned proxy identity differs")
+    if policy == "worker-recovery":
+        from experiments.formal_campaign.h3_worker_recovery import execute_carrier
+
+        return execute_carrier(
+            campaign
+            | {"_sha256": campaign_sha, "_path": str(args.campaign_spec.resolve())},
+            args.arm,
+            args.repetition,
+            args.arm_order,
+            out,
+            args.deployment_receipt,
+            args.authority_registration,
+        )
     out.mkdir(parents=True, exist_ok=False)
     receipt_copy = out / "deployment-receipt.json"
     receipt_copy.write_bytes(args.deployment_receipt.read_bytes())
