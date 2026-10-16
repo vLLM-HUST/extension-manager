@@ -354,8 +354,29 @@ def make_kv_recipe(
 
 
 def validate_kv(recipe, *, source_resolver=None):
+    return validate_kv_fields(
+        recipe,
+        supported_schemas={SCHEMA, SCHEMA_V2},
+        materialized_schema=SCHEMA_V2,
+        source_resolver=source_resolver,
+    )
+
+
+def validate_kv_fields(
+    recipe,
+    *,
+    supported_schemas,
+    materialized_schema,
+    ack_client_source=None,
+    source_resolver=None,
+):
+    """Shared complete request/tokenizer predicates, with explicit protocol inputs.
+
+    This field validator never issues native qualification. New typed protocols
+    must pin their own real ACK client; the legacy wrapper retains its defaults.
+    """
     require(
-        recipe["schema"] in {SCHEMA, SCHEMA_V2}
+        recipe["schema"] in supported_schemas
         and recipe["classification"] == CLASSIFICATION
         and recipe["formal_result"] is False
         and recipe["native_ids_preregistered_before_launch"] is False
@@ -399,13 +420,20 @@ def validate_kv(recipe, *, source_resolver=None):
         require(policy in (None, FINAL_PREFIX_POLICY), "unknown KV ACK time policy")
         if policy is not None:
             require(
-                recipe["schema"] == SCHEMA_V2 and phase.get("rpc_budget_s") == 180,
+                recipe["schema"] == materialized_schema
+                and phase.get("rpc_budget_s") == 180,
                 "final-prefix policy requires frozen KV v2 budget180",
             )
+            basename, expected_digest = (
+                ("collector_client.py", phase["ack_client_source_sha256"])
+                if ack_client_source is None
+                else ack_client_source
+            )
             require(
-                any(
-                    x["path"].endswith("/collector_client.py")
-                    and x["sha256"] == phase["ack_client_source_sha256"]
+                phase["ack_client_source_sha256"] == expected_digest
+                and any(
+                    x["path"].endswith("/" + basename)
+                    and x["sha256"] == expected_digest
                     for x in recipe["sources"]
                 ),
                 "ACK client source is not frozen",
@@ -419,12 +447,14 @@ def validate_kv(recipe, *, source_resolver=None):
         require(variant in (None, STRICT_COPY), "unknown KV prompt variant")
         if variant is not None:
             require(
-                recipe["schema"] == SCHEMA_V2, "strict prompt requires opt-in KV v2"
+                recipe["schema"] == materialized_schema,
+                "strict prompt requires opt-in KV v2",
             )
             require(phase.get("rpc_budget_s") == 180, "strict copy RPC budget changed")
         if "rpc_budget_s" in phase:
             require(
-                recipe["schema"] == SCHEMA_V2, "frozen RPC budget requires opt-in KV v2"
+                recipe["schema"] == materialized_schema,
+                "frozen RPC budget requires opt-in KV v2",
             )
             validate_rpc_budget(phase["rpc_budget_s"])
         client, nonce = phase["client_request_id"], phase["challenge_nonce"]

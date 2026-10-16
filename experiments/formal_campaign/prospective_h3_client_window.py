@@ -316,6 +316,25 @@ class ProspectiveClientWindow:
                 or not detail.get("request_id", "").startswith(prefix)
             ):
                 continue
+            admissions = [
+                e
+                for e in events
+                if e["kind"] == "request.admit"
+                and e["detail"].get("request_id") == detail["request_id"]
+                and e["detail"].get("admission_id") == detail.get("admission_id")
+            ]
+            require(
+                len(admissions) == 1
+                and admissions[0]["detail"].get("request_sha256")
+                == trace.sha(trace.canonical(self.spec["payload"]))
+                and admissions[0]["monotonic_ns"] < event["monotonic_ns"]
+                and admissions[0]["sequence"] < event["sequence"],
+                "recovery lacks unique chronological fresh request admission",
+            )
+            if admissions[0]["monotonic_ns"] <= self.fault["target_gone_ns"]:
+                # A legitimate in-flight request can finish after the fault. It
+                # cannot establish recovery; continue to a fresh postfault one.
+                continue
             binding = self.spec["backend_registration"].get(
                 str(detail.get("backend_port"))
             )
@@ -345,22 +364,6 @@ class ProspectiveClientWindow:
             require(
                 backend["session"] != self.fault["target"]["session"],
                 "dead backend session cannot count as recovered generation",
-            )
-            admissions = [
-                e
-                for e in events
-                if e["kind"] == "request.admit"
-                and e["detail"].get("request_id") == detail["request_id"]
-                and e["detail"].get("admission_id") == detail.get("admission_id")
-                and e["detail"].get("request_sha256")
-                == trace.sha(trace.canonical(self.spec["payload"]))
-                and self.fault["target_gone_ns"]
-                < e["monotonic_ns"]
-                < event["monotonic_ns"]
-            ]
-            require(
-                len(admissions) == 1,
-                "recovery lacks unique postfault fresh request admission",
             )
             response = base64.b64decode(detail["body_base64"], validate=True)
             require(

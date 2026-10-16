@@ -42,6 +42,7 @@ def verify_attention_archive(
     *,
     acknowledged_prefix=None,
     drain_policy_path=None,
+    drain_protocol=None,
 ):
     """Portable bytes oracle. An ACK prefix must come from authenticated live status.
 
@@ -99,7 +100,10 @@ def verify_attention_archive(
     starts = 3
     ack_source_sha = native.sha(Path(attention_collector.__file__).read_bytes())
     if drain_policy_path is not None:
-        from . import drain_collector as drain_module
+        if drain_protocol is None:
+            from . import drain_collector as drain_module
+        else:
+            drain_module = drain_protocol
         from . import phase_drain
 
         drain_raw = Path(drain_policy_path).read_bytes()
@@ -119,7 +123,12 @@ def verify_attention_archive(
         ack_source_sha = native.sha(Path(drain_module.__file__).read_bytes())
         require(
             len(events) >= 4
-            and events[3]["kind"] == "attention.drain.start"
+            and events[3]["kind"]
+            == (
+                "attention.drain.start"
+                if drain_protocol is None
+                else drain_protocol.START_KIND
+            )
             and events[3]["schema"] == drain_module.START
             and events[3]["source_sha256"] == ack_source_sha
             and events[3]["producer_source_sha256"]
@@ -557,28 +566,40 @@ def verify_observation(
     policy_path,
     source_resolver=None,
     drain_policy_path=None,
+    observation_protocol=None,
 ):
     """Portable recorded-clock/source/bytes oracle; no current PID authentication."""
-    validate_kv(recipe, source_resolver=source_resolver)
-    require_declared_attention_recipe(recipe, source_resolver=source_resolver)
-    collector_module = attention_collector
-    time_predicate = verify_time_contract
-    if drain_policy_path is not None:
-        from . import drain_collector, drain_consumer, drain_time_policy
+    if observation_protocol is None:
+        validate_kv(recipe, source_resolver=source_resolver)
+        require_declared_attention_recipe(recipe, source_resolver=source_resolver)
+        collector_module = attention_collector
+        time_predicate = verify_time_contract
+        if drain_policy_path is not None:
+            from . import drain_collector, drain_consumer, drain_time_policy
 
-        drain_consumer.require_declared_drain_recipe(
-            recipe, source_resolver=source_resolver
-        )
-        collector_module = drain_collector
-        from functools import partial
+            drain_consumer.require_declared_drain_recipe(
+                recipe, source_resolver=source_resolver
+            )
+            collector_module = drain_collector
+            from functools import partial
 
-        time_predicate = partial(
-            drain_time_policy.verify_time_contract,
-            upload_tail_policy=recipe["attention_drain_contract"].get(
-                "upload_tail_policy"
-            ),
+            time_predicate = partial(
+                drain_time_policy.verify_time_contract,
+                upload_tail_policy=recipe["attention_drain_contract"].get(
+                    "upload_tail_policy"
+                ),
+            )
+        require(
+            recipe["schema"] == SCHEMA_V2, "mixed tensor request requires frozen KV v2"
         )
-    require(recipe["schema"] == SCHEMA_V2, "mixed tensor request requires frozen KV v2")
+        metadata_schema = "ecpa-observed-KV-HTTP-response/v2"
+        http_client_source = Path(request_runner.__file__)
+    else:
+        observation_protocol.validate_recipe(recipe, source_resolver=source_resolver)
+        collector_module = observation_protocol.collector
+        time_predicate = observation_protocol.verify_time_contract
+        metadata_schema = observation_protocol.http_runner.METADATA
+        http_client_source = Path(observation_protocol.http_runner.__file__)
     phase = next(p for p in recipe["phases"] if p["phase_id"] == phase_id)
     require(
         phase.get("ack_time_policy") == FINAL_PREFIX_POLICY
@@ -618,8 +639,13 @@ def verify_observation(
             "mixed status is failed or scope promoted",
         )
     if drain_policy_path is not None:
+        sealed_predicate = (
+            drain_consumer.verify_sealed_status
+            if observation_protocol is None
+            else observation_protocol.verify_sealed_status
+        )
         require(
-            drain_consumer.verify_sealed_status(after, phase, drain_policy_path),
+            sealed_predicate(after, phase, drain_policy_path),
             "mixed source phase is not actually sealed",
         )
     events = [json.loads(line) for line in Path(journal_path).read_bytes().splitlines()]
@@ -627,8 +653,15 @@ def verify_observation(
         spec_path,
         policy_path,
         journal_path,
-        acknowledged_prefix=after["status"]["acknowledged_prefix"],
+        acknowledged_prefix=(
+            after["status"]["acknowledged_prefix"]
+            if observation_protocol is None
+            else observation_protocol.sealed_prefix(after, phase, drain_policy_path)
+        ),
         drain_policy_path=drain_policy_path,
+        drain_protocol=(
+            observation_protocol.collector if observation_protocol is not None else None
+        ),
     )
     require(
         events[0]["collector"] == descriptor["collector"]
@@ -640,17 +673,16 @@ def verify_observation(
     require(
         (output / "request.bin").read_bytes() == canonical(phase["payload"])
         and json.loads((output / "headers.json").read_bytes()) == phase["headers"]
-        and metadata["schema"] == "ecpa-observed-KV-HTTP-response/v2"
+        and metadata["schema"] == metadata_schema
         and metadata["status"] == 200
         and metadata["url"] == phase["url"]
         and metadata["request_sha256"] == sha((output / "request.bin").read_bytes())
         and metadata["response_sha256"] == sha(body)
-        and metadata["client_source_sha256"]
-        == sha(Path(request_runner.__file__).read_bytes())
+        and metadata["client_source_sha256"] == sha(http_client_source.read_bytes())
         and metadata["client"]["boot_id"] == descriptor["collector"]["boot_id"],
         "mixed raw HTTP/client/source binding differs",
     )
-    request_runner.verify_rpc_budget(phase, metadata)
+    request_runner.verify_rpc_budget(phase, metadata, metadata_schema=metadata_schema)
     uids = {s["peer_uid"] for s in spec["senders"]}
     require(len(uids) == 1, "mixed registered peer UID ambiguous")
     # Retain full chain, including both starts and all phase events. This is not
@@ -724,6 +756,7 @@ def verify_observation(
         effect_upload_sequences=set(temporal["effect_upload_sequences"])
         if "effect_upload_sequences" in temporal
         else None,
+        phase_id=phase_id if observation_protocol is not None else None,
     )
     operator_count = 0
     projections = {}
@@ -741,6 +774,13 @@ def verify_observation(
             projections[fact["process"]["ordinal"]] = fact
     for event in events:
         if event["kind"] != "attention.operator.accepted":
+            continue
+        if (
+            observation_protocol is not None
+            and event.get("phase", {}).get("phase_id") != phase_id
+        ):
+            # Every original global record was already semantically verified above.
+            # Select only this request's report; never filter/rechain raw evidence.
             continue
         fact = json.loads(base64.b64decode(event["raw_base64"], validate=True))
         require(

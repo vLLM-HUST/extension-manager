@@ -316,3 +316,149 @@ def test_real_forward_window_spans_actual_candidate_fault_and_keeps_execution_un
                 if child.poll() is None:
                     child.terminate()
                 child.wait(timeout=10)
+
+
+@pytest.fixture
+def recovery_selection(tmp_path, monkeypatch):
+    """Deterministic selection unit data only; never an authority receipt."""
+    import base64
+
+    window = ProspectiveClientWindow.__new__(ProspectiveClientWindow)
+    actual = kernel(os.getpid())
+    binding = {
+        "process_identity": {k: actual[k] for k in ("pid", "start_ticks", "boot_id")},
+        "generation": 0,
+        "model": "test-model",
+        "launch_id": "CPU_SELECTION_FIXTURE_ONLY",
+    }
+    window.spec = {
+        "start_id": "CPU-selection-only",
+        "payload": {"model": "test-model"},
+        "response_expectation": {"text_equals": "ECPA"},
+        "backend_registration": {"12345": binding},
+    }
+    window.authority = actual
+    window.authority_source = reference(loopback_traffic)
+    window.client_source = reference(h3_client_trace)
+    window.fault = {"target_gone_ns": 100, "target": {"session": -1}}
+    window.output = tmp_path
+    window.recovery = None
+    events = []
+
+    def append(kind, stamp, detail, **fields):
+        event = {
+            "sequence": len(events),
+            "kind": kind,
+            "monotonic_ns": stamp,
+            "detail": detail,
+            **{"proxy_" + k: actual[k] for k in ("pid", "start_ticks", "boot_id")},
+            **fields,
+        }
+        events.append(event)
+        return event
+
+    append(
+        "authority.start",
+        1,
+        {
+            "backend_registration_sha256": h3_client_trace.sha(
+                h3_client_trace.canonical(window.spec["backend_registration"])
+            )
+        },
+    )
+
+    def pair(index, admitted, completed):
+        request_id = f"CPU-selection-only/request-{index:05d}"
+        admission_id = f"CPU-admission-{index}"
+        admit = append(
+            "request.admit",
+            admitted,
+            {
+                "request_id": request_id,
+                "admission_id": admission_id,
+                "request_sha256": h3_client_trace.sha(
+                    h3_client_trace.canonical(window.spec["payload"])
+                ),
+            },
+        )
+        raw = h3_client_trace.canonical(
+            {
+                "id": f"CPU-response-{index}",
+                "model": "test-model",
+                "choices": [{"index": 0, "text": "ECPA", "finish_reason": "stop"}],
+            }
+        )
+        end = append(
+            "request.complete",
+            completed,
+            {
+                "status": 200,
+                "request_id": request_id,
+                "admission_id": admission_id,
+                "backend_port": 12345,
+                "backend_identity": binding | {"listener_inode": "123"},
+                "body_base64": base64.b64encode(raw).decode(),
+                "body_sha256": h3_client_trace.sha(raw),
+            },
+            route={"generation": 0},
+        )
+        return admit, end
+
+    monkeypatch.setattr(wiring, "read_traffic_journal", lambda _path: events)
+    return window, events, pair
+
+
+def test_crossfault_inflight_completion_is_skipped_for_later_fresh_request(
+    recovery_selection,
+):
+    window, _, pair = recovery_selection
+    pair(0, 90, 110)
+    _, fresh = pair(1, 120, 130)
+    result = window.derive_recovery("CPU-selection-not-a-real-journal")
+    assert result["request_id"] == fresh["detail"]["request_id"]
+    assert result["monotonic_ns"] == 130
+
+
+def test_only_crossfault_inflight_completions_cannot_establish_recovery(
+    recovery_selection,
+):
+    window, events, pair = recovery_selection
+    pair(0, 90, 110)
+    pair(1, 100, 120)  # Equality is also not a strictly postfault admission.
+    events.sort(key=lambda event: event["monotonic_ns"])
+    for sequence, event in enumerate(events):
+        event["sequence"] = sequence
+    with pytest.raises(ValueError, match="no source-owned postfault"):
+        window.derive_recovery("CPU-selection-not-a-real-journal")
+    assert window.recovery is None
+
+
+@pytest.mark.parametrize("admitted", [90, 120])
+@pytest.mark.parametrize(
+    "mutation", ["missing", "duplicate", "wrong-hash", "time-order", "sequence-order"]
+)
+def test_invalid_original_admission_still_rejects_even_before_later_fresh_request(
+    recovery_selection,
+    admitted,
+    mutation,
+):
+    import copy
+
+    window, events, pair = recovery_selection
+    admit, complete = pair(0, admitted, 130)
+    pair(1, 140, 150)
+    if mutation == "missing":
+        events.remove(admit)
+    elif mutation == "duplicate":
+        events.insert(2, copy.deepcopy(admit))
+    elif mutation == "wrong-hash":
+        admit["detail"]["request_sha256"] = "0" * 64
+    elif mutation == "time-order":
+        admit["monotonic_ns"] = complete["monotonic_ns"]
+    else:
+        admit["sequence"] = complete["sequence"]
+    with pytest.raises(
+        ValueError, match="unique chronological fresh request admission"
+    ):
+        window.derive_recovery("CPU-selection-not-a-real-journal")
+    assert window.recovery is None

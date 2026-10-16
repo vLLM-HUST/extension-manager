@@ -132,6 +132,7 @@ def verify_time_contract(
     peer_uid,
     *,
     upload_tail_policy=None,
+    retained_prefix=None,
 ):
     """Replay recorded clocks; no fresh OS authentication or scope promotion."""
     selected = [
@@ -213,7 +214,17 @@ def verify_time_contract(
         <= issued,
         "ACK source/client clocks do not bound HTTP causally",
     )
-    prefix = after["status"]["acknowledged_prefix"]
+    prefix = (
+        after["status"]["acknowledged_prefix"]
+        if retained_prefix is None
+        else retained_prefix
+    )
+    if retained_prefix is not None:
+        require(
+            after["status"]["acknowledged_prefix"]["next_sequence"]
+            >= prefix["next_sequence"],
+            "current global ACK precedes retained original source prefix",
+        )
     require(
         prefix
         == {
