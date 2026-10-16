@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import json
 import os
 import signal
@@ -80,7 +81,9 @@ def validate_launch_spec(
             raise ValueError(f"{arm} has an unknown prelaunch phase")
     if len(served_models) != 1:
         raise ValueError("all H4 arms must use the same served_model")
-    if raw is not None and _digest_bytes(raw) != receipt["launch_spec_sha256"]:
+    if raw is not None and (
+        "sha256:" + hashlib.sha256(raw).hexdigest() != receipt["launch_spec_sha256"]
+    ):
         raise ValueError("launch spec digest differs from registered bytes")
 
 

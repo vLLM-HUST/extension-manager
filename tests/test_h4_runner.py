@@ -297,3 +297,127 @@ def test_transport_failure_is_retained_without_an_http_response(monkeypatch):
     assert result["status_code"] == 0
     assert result["http_response"] is None
     assert result["error"] == "TimeoutError: fixture timeout"
+
+
+def raw_source_bound_cli_fixture(tmp_path, monkeypatch):
+    """Small typed source fixture only; no remote admission or product launch."""
+    runner = load_runner()
+    source = runner.source_provenance
+    campaign_path = campaign_file(tmp_path)
+    value = json.loads(campaign_path.read_bytes())
+    subjects = source.subjects(value["fixed_identity"])
+    repositories = {
+        "manager": source.MANAGER,
+        "host": source.HOST,
+        "accelerator": "fixture/accelerator",
+        "plugin:fixture": "fixture/plugin",
+    }
+    policy = {
+        "schema": source.POLICY,
+        "components": {
+            role: {
+                "repository": repositories[role],
+                "requirement": "merged-main"
+                if role in {"manager", "host"}
+                else "published-commit",
+            }
+            for role in subjects
+        },
+    }
+    value["source_provenance_policy"] = policy
+    campaign_path.write_text(json.dumps(value) + "\n")
+    campaign = runner.load_h4_campaign(campaign_path)
+    launch = launch_spec()
+    raw = (json.dumps(launch, indent=2, sort_keys=True) + "\n").encode()
+    launch_path = tmp_path / "launch.json"
+    launch_path.write_bytes(raw)
+    receipt = exact_receipt(runner, campaign, launch)
+    receipt["launch_spec_sha256"] = "sha256:" + hashlib.sha256(raw).hexdigest()
+    observation = {
+        "schema": source.OBSERVATION,
+        "policy_sha256": source.digest(source.canonical(policy)),
+        "subjects": subjects,
+        "identity_verified": True,
+        "components": {
+            role: {
+                "role": role,
+                "repository": repositories[role],
+                "remote": "https://github.com/" + repositories[role] + ".git",
+                "requested_commit": commit,
+                "remote_commit": commit,
+                "tree": "e" * 40,
+                "clean_checkout": True,
+                "requirement": policy["components"][role]["requirement"],
+                "main_commit": commit if role in {"manager", "host"} else None,
+                "merged_to_main": True if role in {"manager", "host"} else None,
+            }
+            for role, commit in subjects.items()
+        },
+    }
+    binding = {
+        name: source.digest((SCRIPT_DIR / name).read_bytes())
+        for name in (
+            "source_provenance.py",
+            "h4_registration.py",
+            "h4-deployment-receipt-v2.schema.json",
+        )
+    }
+    receipt = source.upgrade_receipt(receipt, campaign, observation, binding)
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(json.dumps(receipt) + "\n")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(SCRIPT_DIR / "run_h4.py"),
+            "--campaign",
+            str(campaign_path),
+            "--deployment-receipt",
+            str(receipt_path),
+            "--launch-spec",
+            str(launch_path),
+            "--output-root",
+            str(tmp_path / "never-launched"),
+            "--validate-only",
+        ],
+    )
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("validate-only must not launch any product")
+
+    monkeypatch.setattr(runner, "execute_start", forbidden)
+    return runner, launch_path, receipt
+
+
+def test_actual_main_validate_only_accepts_exact_registered_raw_bytes(
+    tmp_path, monkeypatch, capsys
+):
+    runner, launch_path, receipt = raw_source_bound_cli_fixture(tmp_path, monkeypatch)
+    assert runner._digest_bytes(launch_path) == receipt["launch_spec_sha256"]
+    assert runner.main() == 0
+    assert json.loads(capsys.readouterr().out) == {"status": "validated", "starts": 9}
+    assert not (tmp_path / "never-launched").exists()
+
+
+def test_actual_main_rejects_changed_raw_spacing_with_identical_json(
+    tmp_path, monkeypatch
+):
+    runner, launch_path, _ = raw_source_bound_cli_fixture(tmp_path, monkeypatch)
+    original = json.loads(launch_path.read_bytes())
+    launch_path.write_bytes(json.dumps(original, separators=(",", ":")).encode())
+    assert json.loads(launch_path.read_bytes()) == original
+    with pytest.raises(
+        ValueError, match="launch spec digest differs from registered bytes"
+    ):
+        runner.main()
+
+
+def test_actual_main_still_rejects_unregistered_arm(tmp_path, monkeypatch):
+    runner, launch_path, _ = raw_source_bound_cli_fixture(tmp_path, monkeypatch)
+    launch = json.loads(launch_path.read_bytes())
+    launch["arms"]["ecpa"]["environment"]["UNREGISTERED"] = "1"
+    launch_path.write_text(json.dumps(launch))
+    with pytest.raises(
+        ValueError, match="ecpa launch spec differs from registered command"
+    ):
+        runner.main()
