@@ -518,6 +518,15 @@ class RequestForwarder:
         """Legacy default has no producer-clock claim; new domains opt in explicitly."""
         return {}
 
+    def _after_producer_guard(self, phase, admission):
+        self._current()
+
+    def _after_owner_observation_guard(self, phase, admission):
+        self._current()
+
+    def _before_response_release_guard(self, envelope, admission):
+        self._current()
+
     def _verify_owner_observation(self, phase, output, admission, completion):
         """Independent owner full verification; explicit new-domain override point."""
         from . import request_drain_consumer
@@ -592,7 +601,7 @@ class RequestForwarder:
             tuple(self.producer_ready["socket_identity"]),
             time.monotonic_ns(),
         )
-        self._current()
+        self._after_producer_guard(phase, admission)
         require(
             output == self.output / f"request-{self.next_phase:04d}",
             "producer output location differs",
@@ -710,7 +719,7 @@ class RequestForwarder:
                     and completion["observation_sha256"] == digest(canonical(observed)),
                     "producer and owner independent full verification differ",
                 )
-                self._current()
+                self._after_owner_observation_guard(phase, claim)
                 books.write_new(
                     output / "owner-independent-observation.json", canonical(observed)
                 )
@@ -765,7 +774,7 @@ class RequestForwarder:
             self.lock.release()
 
     def _consume(self, envelope, admission):
-        self._current()
+        self._before_response_release_guard(envelope, admission)
         require(self.pending == envelope, "response ticket absent or already consumed")
         ticket = envelope["body"]
         require(
