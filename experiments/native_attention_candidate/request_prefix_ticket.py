@@ -27,6 +27,7 @@ canonical, digest, require = books.canonical, books.digest, books.require
 PREFIX = "ecpa-request-sealed-global-prefix/v1"
 TICKET = "ecpa-request-once-response-release/v1"
 MAX_BYTES = 8 * 1024 * 1024
+MAX_PREFIX_BYTES = 64 * 1024 * 1024
 
 
 def read_regular(path, limit=MAX_BYTES):
@@ -79,11 +80,11 @@ def seal_prefix(journal_path, receipt, phase_id, output):
     root = state["sealed_prefix"]
     count = state["sealed_prefix_bytes"]
     require(
-        type(count) is int and 0 < count <= 64 * 1024 * 1024,
+        type(count) is int and 0 < count <= MAX_PREFIX_BYTES,
         "sealed prefix byte count invalid",
     )
     journal_path = Path(journal_path)
-    raw = read_regular(journal_path, 64 * 1024 * 1024)
+    raw = read_regular(journal_path, MAX_PREFIX_BYTES)
     prefix = raw[:count]
     require(
         len(prefix) == count
@@ -721,14 +722,15 @@ class RequestForwarder:
             "ticket request/order/original expiry differs",
         )
         manifest = ticket["prefix_manifest"]
-        prefix = read_regular(Path(manifest["files"][0]["path"]))
+        prefix = read_regular(Path(manifest["files"][0]["path"]), MAX_PREFIX_BYTES)
         require(
             digest(prefix) == manifest["sealed_prefix_sha256"],
             "frozen global prefix changed",
         )
-        for reference in manifest["files"]:
+        for index, reference in enumerate(manifest["files"]):
+            payload = prefix if index == 0 else read_regular(reference["path"])
             require(
-                digest(read_regular(reference["path"])) == reference["sha256"],
+                digest(payload) == reference["sha256"],
                 "snapshot input changed",
             )
         response = read_regular(ticket["response"]["path"])
