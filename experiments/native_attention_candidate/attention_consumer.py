@@ -44,6 +44,29 @@ def verify_attention_archive(
     drain_policy_path=None,
     drain_protocol=None,
 ):
+    """Portable complete archive oracle; internal parsed ownership never escapes."""
+    return _verify_attention_archive(
+        spec_path,
+        policy_path,
+        journal_path,
+        acknowledged_prefix=acknowledged_prefix,
+        drain_policy_path=drain_policy_path,
+        drain_protocol=drain_protocol,
+        _owner=object(),
+    )
+
+
+def _verify_attention_archive(
+    spec_path,
+    policy_path,
+    journal_path,
+    *,
+    acknowledged_prefix=None,
+    drain_policy_path=None,
+    drain_protocol=None,
+    _owner,
+    _owned_materializations=None,
+):
     """Portable bytes oracle. An ACK prefix must come from authenticated live status.
 
     This function reads no current native PIDs or mutable sender paths. Archived
@@ -284,14 +307,12 @@ def verify_attention_archive(
                 and native.sha(payload) == artifact["sha256"],
                 "portable archived blob changed",
             )
-            fact = json.loads(payload)
-            require(
-                native.canonical(fact) == payload,
-                "portable tensor payload is noncanonical",
-            )
+            owned = observer._own_materialization(payload, _owner)
+            fact = owned._detached(_owner)
             phase = tensor_predicate(
                 fact, envelope, policy, sender, maps, mapping_stamps, accepted, spec
             )
+            owned._compact_after_tensor_check(_owner)
             key = (
                 fact["binding"]["runtime_request_id"],
                 envelope["transaction_id"],
@@ -301,7 +322,9 @@ def verify_attention_archive(
             require(key not in tensor_seen, "portable tensor rank/layer replay")
             tensor_seen.add(key)
             completed.setdefault(key[:2], set()).add(key[2:])
-            typed_by_sequence[sequence] = (event, payload)
+            typed_by_sequence[sequence] = (event, owned)
+            if _owned_materializations is not None:
+                _owned_materializations[sequence] = owned
         else:
             fact = json.loads(raw)
             require(native.canonical(fact) == raw, "attention fact noncanonical")
@@ -325,7 +348,8 @@ def verify_attention_archive(
                 and reference_sequence in typed_by_sequence,
                 "attention reference does not precede its actual typed receipt",
             )
-            reference, payload = typed_by_sequence[reference_sequence]
+            reference, owned = typed_by_sequence[reference_sequence]
+            payload = owned._raw(_owner)
             issued_ack = {
                 "schema": native.ACK,
                 "raw_sha256": reference["raw_sha256"],
@@ -343,13 +367,16 @@ def verify_attention_archive(
                 fact["materialization_ack"] == issued_ack,
                 "attention reference differs from complete issued typed ACK",
             )
-            attention_collector.verify_reference(
+            attention_collector._verify_owned_reference(
                 fact,
                 reference,
                 payload,
+                owned,
+                _owner,
                 collector_source_sha256=ack_source_sha,
                 collector_identity=events[0]["collector"],
             )
+            owned._release_operator_tree(_owner)
             runtime = fact["runtime_request_id"]
             require(runtime in maps, "attention lacks API mapping")
             phase = maps[runtime]
@@ -649,7 +676,9 @@ def verify_observation(
             "mixed source phase is not actually sealed",
         )
     events = [json.loads(line) for line in Path(journal_path).read_bytes().splitlines()]
-    typed = verify_attention_archive(
+    materialization_owner = object()
+    owned_materializations = {}
+    typed = _verify_attention_archive(
         spec_path,
         policy_path,
         journal_path,
@@ -662,6 +691,8 @@ def verify_observation(
         drain_protocol=(
             observation_protocol.collector if observation_protocol is not None else None
         ),
+        _owner=materialization_owner,
+        _owned_materializations=owned_materializations,
     )
     require(
         events[0]["collector"] == descriptor["collector"]
@@ -727,7 +758,9 @@ def verify_observation(
             sha(payload_raw) == event["artifact"]["sha256"],
             "mixed typed payload changed after raw verification",
         )
-        fact = json.loads(payload_raw)
+        fact = owned_materializations[event["sequence"]]._report_after_fresh_read(
+            payload_raw, materialization_owner
+        )
         clocks = [
             fact[k]
             for k in [
