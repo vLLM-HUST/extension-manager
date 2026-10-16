@@ -22,6 +22,50 @@ def verify_reference(
     fact, event, payload, *, collector_source_sha256, collector_identity
 ):
     """Pure original typed event/ACK/blob join; no fabricated filtered journal."""
+    return _verify_reference(
+        fact,
+        event,
+        payload,
+        collector_source_sha256=collector_source_sha256,
+        collector_identity=collector_identity,
+    )
+
+
+def _verify_owned_reference(
+    fact,
+    event,
+    payload,
+    materialization,
+    owner,
+    *,
+    collector_source_sha256,
+    collector_identity,
+):
+    transport.require(
+        type(materialization) is observer._OwnedMaterialization,
+        "internal owned materialization required",
+    )
+    return _verify_reference(
+        fact,
+        event,
+        payload,
+        collector_source_sha256=collector_source_sha256,
+        collector_identity=collector_identity,
+        _materialization=materialization,
+        _owner=owner,
+    )
+
+
+def _verify_reference(
+    fact,
+    event,
+    payload,
+    *,
+    collector_source_sha256,
+    collector_identity,
+    _materialization=None,
+    _owner=None,
+):
     transport.require(
         event["kind"] == "tensor.artifact.accepted",
         "source attention ACK does not reference a typed materialization",
@@ -56,7 +100,12 @@ def verify_reference(
         and fact["plan_id"] == envelope["plan_id"],
         "native OP request/plan/worker/payload differs from source receipt",
     )
-    result = observer.verify_observation(fact, json.loads(payload))
+    if _materialization is None:
+        result = observer.verify_observation(fact, json.loads(payload))
+    else:
+        result = observer._verify_owned_observation(
+            fact, _materialization, payload, _owner
+        )
     transport.require(
         event["accepted_monotonic_ns"]
         <= fact["materialization_ack_registered_monotonic_ns"],

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -34,6 +35,100 @@ def sha(value):
 def require(value, reason):
     if not value:
         raise ValueError(reason)
+
+
+_MATERIALIZATION_KEY = object()
+_REPORT_FIELDS = (
+    "binding",
+    "keep_indices",
+    "source_blocks",
+    "destination_blocks",
+    "source_before_gather_ns",
+    "reference_after_gather_ns",
+    "write_completed_barrier_ns",
+    "destination_readback_completed_ns",
+)
+
+
+class _OwnedMaterialization:
+    """Invocation-owned canonical bytes, never a filesystem validity grant."""
+
+    __slots__ = ("__raw", "__parsed", "__digest", "__owner", "__report")
+
+    def __init__(self, key, raw, owner):
+        require(
+            key is _MATERIALIZATION_KEY and type(raw) is bytes,
+            "internal original materialization bytes required",
+        )
+        parsed = json.loads(raw)
+        require(
+            json.dumps(
+                parsed, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode()
+            == raw,
+            "portable tensor payload is noncanonical",
+        )
+        object.__setattr__(self, "_OwnedMaterialization__raw", raw)
+        object.__setattr__(self, "_OwnedMaterialization__parsed", parsed)
+        object.__setattr__(self, "_OwnedMaterialization__digest", sha(raw))
+        object.__setattr__(self, "_OwnedMaterialization__owner", owner)
+        object.__setattr__(self, "_OwnedMaterialization__report", None)
+
+    def __setattr__(self, name, value):
+        raise TypeError("owned materialization is private and immutable")
+
+    def _raw(self, owner):
+        require(owner is self.__owner, "materialization belongs to another invocation")
+        return self.__raw
+
+    def _match(self, fresh, owner):
+        require(
+            owner is self.__owner
+            and type(fresh) is bytes
+            and sha(fresh) == self.__digest
+            and fresh == self.__raw,
+            "fresh materialization bytes or invocation differ",
+        )
+
+    def _detached(self, owner):
+        self._raw(owner)
+        require(self.__parsed is not None, "materialization operator already verified")
+        return copy.deepcopy(self.__parsed)
+
+    def _canonical_digest(self, owner):
+        self._raw(owner)
+        return self.__digest
+
+    def _compact_after_tensor_check(self, owner):
+        self._raw(owner)
+        require(self.__parsed is not None, "materialization operator already verified")
+        # The full tensor/runtime predicate has already checked the large
+        # readbacks. Preserve every field read by the unchanged OP predicate,
+        # but do not keep a second copy of all56/all112 large hex strings.
+        fields = _REPORT_FIELDS + (
+            "cache_views",
+            "native_producer",
+            "block_size",
+            "destination_readback_sha256",
+        )
+        compact = copy.deepcopy({k: self.__parsed[k] for k in fields})
+        object.__setattr__(self, "_OwnedMaterialization__parsed", compact)
+
+    def _release_operator_tree(self, owner):
+        self._raw(owner)
+        require(self.__parsed is not None, "materialization operator already verified")
+        report = copy.deepcopy({k: self.__parsed[k] for k in _REPORT_FIELDS})
+        object.__setattr__(self, "_OwnedMaterialization__report", report)
+        object.__setattr__(self, "_OwnedMaterialization__parsed", None)
+
+    def _report_after_fresh_read(self, fresh, owner):
+        self._match(fresh, owner)
+        require(self.__report is not None, "materialization operator not verified")
+        return copy.deepcopy(self.__report)
+
+
+def _own_materialization(raw, owner):
+    return _OwnedMaterialization(_MATERIALIZATION_KEY, raw, owner)
 
 
 def enabled():
@@ -354,7 +449,28 @@ def argument_descriptor(value):
 
 
 def verify_observation(value, materialization):
-    """Pure bounded source predicate; cannot authenticate sender or prove quality."""
+    """Public/default predicate retains its original canonical materialization join."""
+    require(
+        type(materialization) is not _OwnedMaterialization,
+        "owned materialization requires the internal fresh-byte join",
+    )
+    return _verify_observation(value, materialization)
+
+
+def _verify_owned_observation(value, materialization, payload, owner):
+    require(
+        type(materialization) is _OwnedMaterialization,
+        "internal owned materialization required",
+    )
+    materialization._match(payload, owner)
+    return _verify_observation(value, materialization, owner)
+
+
+def _verify_observation(value, materialization, owner=None):
+    """Same full predicate; only an owned exact-byte canonical relation is reused."""
+    owned = materialization if type(materialization) is _OwnedMaterialization else None
+    if owned is not None:
+        materialization = owned._detached(owner)
     require(
         value["schema"] == SCHEMA
         and value["classification"] == "REAL_RUNTIME_UNQUALIFIED"
@@ -414,7 +530,12 @@ def verify_observation(value, materialization):
         "actual source compression plan transaction differs",
     )
     require(
-        value["source_materialization_sha256"] == sha(canonical(materialization)),
+        value["source_materialization_sha256"]
+        == (
+            sha(canonical(materialization))
+            if owned is None
+            else owned._canonical_digest(owner)
+        ),
         "attention reference is not actual archived materialization",
     )
     clocks = [
