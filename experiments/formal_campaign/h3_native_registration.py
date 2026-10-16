@@ -107,12 +107,65 @@ def source_artifacts(start):
     return result
 
 
+def _native_wheel_payloads(audit):
+    """Independently reobserve all original seven wheels; no digest admission."""
+    from experiments.native_attention_candidate import live_route_reader as routes
+
+    result = {}
+    fresh = routes.audit_cell_inputs(audit["config"]["path"], audit["recipe"]["path"])
+    require(
+        canonical(fresh) == canonical(audit),
+        "native wheel input audit differs from fresh observation",
+    )
+    states = {}
+    config_path = routes._path(fresh["config"]["path"])
+    config_raw = config_path.read_bytes()
+    require(
+        routes.registry.sha(config_raw) == fresh["config"]["sha256"],
+        "native audited wheel configuration changed",
+    )
+    wheels = json.loads(config_raw)["wheel_artifacts"]
+    require(
+        set(wheels) == set(routes.DISTRIBUTIONS)
+        and set(fresh["wheel_sha256"]) == set(routes.DISTRIBUTIONS),
+        "native original seven wheel roles differ",
+    )
+    installed = {}
+    for role, distribution in routes.DISTRIBUTIONS.items():
+        wheel = wheels[role]
+        require(
+            routes._hash(wheel["path"], states)
+            == fresh["wheel_sha256"][role]
+            == wheel["sha256"],
+            "native genuine wheel bytes changed after independent audit",
+        )
+        installed[role] = routes._installed_payload(wheel, distribution, states)
+    require(
+        routes.registry.sha(routes.registry.canonical(installed))
+        == fresh["installed_payload_sha256"],
+        "native actual seven-wheel payload inventory changed",
+    )
+    routes._check_file_states(states)
+    require(
+        config_path.read_bytes() == config_raw,
+        "native audited wheel configuration changed during capture",
+    )
+    for payload in installed.values():
+        for path, sha in payload.items():
+            require(
+                path not in result or result[path] == sha,
+                "native audited wheel source collision",
+            )
+            result[path] = sha
+    return fresh, result
+
+
 def installed_payloads(spec, original):
     from experiments.formal_campaign.h3_runtime_source_closure import (
         verify_runtime_source_closure,
     )
 
-    result = {}
+    result, audited = {}, {}
     for start in spec["starts"]:
         for phase in _phases(start):
             closure = verify_runtime_source_closure(
@@ -126,6 +179,30 @@ def installed_payloads(spec, original):
                     require(
                         path not in result or result[path] == sha,
                         "runtime payload source collision",
+                    )
+                    result[path] = sha
+            # This map lives only in this invocation. Every identical audited
+            # config/recipe reference pair gets one independent seven-wheel
+            # observation; no caller digest or earlier invocation seeds it.
+            guard = load(checked_reference(phase["native_guard"]))
+            audits = guard["source_arguments"]["input_audits"]
+            require(
+                type(audits) is dict and audits,
+                "native independent input audits absent",
+            )
+            for audit in audits.values():
+                key = canonical({"config": audit["config"], "recipe": audit["recipe"]})
+                if key not in audited:
+                    audited[key] = _native_wheel_payloads(audit)
+                fresh, payload = audited[key]
+                require(
+                    canonical(fresh) == canonical(audit),
+                    "native wheel audit claim changed for identical input refs",
+                )
+                for path, sha in payload.items():
+                    require(
+                        path not in result or result[path] == sha,
+                        "native wheel and source closure payload collision",
                     )
                     result[path] = sha
     return result

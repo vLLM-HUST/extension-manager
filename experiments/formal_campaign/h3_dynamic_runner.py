@@ -90,6 +90,11 @@ def prepare_native_paths(template, start, output):
             )
 
 
+def authority_readiness_deadline(original, *, native, launched_monotonic):
+    """Control-plane startup only; original client request deadlines are separate."""
+    return launched_monotonic + (original["probe"]["ready_timeout_s"] if native else 10)
+
+
 def execute(
     spec_path, receipt_path, start_id, output, *, check_remote=True, native=False
 ):
@@ -131,6 +136,7 @@ def execute(
         if native:
             prepare_native_paths(template, start, output)
         with (output / "authority.stdout.log").open("xb") as log:
+            authority_launched_monotonic = time.monotonic()
             authority_process = subprocess.Popen(
                 start["authority"]["command"],
                 stdin=subprocess.PIPE,
@@ -149,7 +155,9 @@ def execute(
                 "receipt": reference(receipt_path),
             },
         )
-        deadline = time.monotonic() + 10
+        deadline = authority_readiness_deadline(
+            original, native=native, launched_monotonic=authority_launched_monotonic
+        )
         while not Path(template["authority"]["socket"]).exists():
             require(
                 authority_process.poll() is None,
