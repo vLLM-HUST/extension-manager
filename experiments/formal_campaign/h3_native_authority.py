@@ -443,8 +443,11 @@ def main():
     parser.add_argument("--public-port", type=int, required=True)
     parser.add_argument("--owned-stdin-lifetime", action="store_true")
     args = parser.parse_args()
-    spec, original, receipt = registration.validate_receipt(args.campaign, args.receipt)
-    start = next(s for s in spec["starts"] if s["start_id"] == args.start_id)
+    validated = registration.validate_receipt_for_start(
+        args.campaign, args.receipt, args.start_id
+    )
+    spec, original, start = validated.selected(args.start_id)
+    receipt = validated.guard_receipt(args.start_id)
     require(
         start["policy"]["path"] == str(args.policy)
         and start["policy"]["sha256"] == args.policy_sha256
