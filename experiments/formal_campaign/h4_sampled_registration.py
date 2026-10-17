@@ -537,6 +537,7 @@ SAMPLED_PROTOCOL_FILES = (
     "h4_sampled_queue.py",
     "h4_sampled_calibration.py",
     "h4_sampled_record_bridge.py",
+    "h4_sampled_health.py",
 )
 
 

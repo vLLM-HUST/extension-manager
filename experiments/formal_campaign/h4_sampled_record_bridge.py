@@ -129,7 +129,17 @@ def observed_metrics(observation, run):
         - min(r["dispatch_ns"] for r in measured)
     ) / 1e9
     require(elapsed > 0, "invalid actual measured interval")
-    health = result["health_observation"]
+    readiness = observation["startup_readiness"]
+    require(
+        readiness["API_epoch_status"] == "verified"
+        and readiness["original_terminal"] is not None,
+        "record lacks original first-health kernel/terminal replay",
+    )
+    health = readiness["first_health"]
+    require(
+        canonical(health) == canonical(result["health_observation"]),
+        "record first-health differs from strict intake",
+    )
     total = (health["observed_ns"] - timing["before_ns"]) / 1e6
     require(
         total > 0 and health["status_code"] == 200,
