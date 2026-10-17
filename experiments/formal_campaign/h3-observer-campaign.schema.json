@@ -1,0 +1,341 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "schema",
+    "original_campaign",
+    "source_policy",
+    "repositories",
+    "starts",
+    "plugin_source_roles",
+    "runtime_wheels",
+    "original_native_intent",
+    "observer_cleanup"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ecpa-h3-observer-loss-campaign/v1"
+    },
+    "original_campaign": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "source_policy": {
+      "type": "object"
+    },
+    "repositories": {
+      "type": "object"
+    },
+    "starts": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": [
+          "start_id",
+          "arm",
+          "repetition",
+          "arm_order",
+          "recipe_template",
+          "policy",
+          "client_template",
+          "authority",
+          "recovery_action"
+        ],
+        "properties": {
+          "start_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "arm": {
+            "enum": [
+              "vanilla-vllm-entry-points",
+              "manual-integration",
+              "ecpa"
+            ]
+          },
+          "repetition": {
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "arm_order": {
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          },
+          "recipe_template": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "policy": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "client_template": {
+            "type": "object"
+          },
+          "recovery_action": {
+            "const": "preserve-host-observe-failed-safe"
+          },
+          "authority": {
+            "type": "object",
+            "required": [
+              "command",
+              "journal",
+              "public_port",
+              "receipt_path"
+            ],
+            "properties": {
+              "command": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "journal": {
+                "type": "string",
+                "pattern": "^/"
+              },
+              "public_port": {
+                "type": "integer",
+                "minimum": 1024,
+                "maximum": 65535
+              },
+              "receipt_path": {
+                "type": "string",
+                "pattern": "^/"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "plugin_source_roles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^plugin:"
+      }
+    },
+    "runtime_wheels": {
+      "type": "object",
+      "minProperties": 4,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "distribution",
+          "module",
+          "wheel"
+        ],
+        "properties": {
+          "distribution": {
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "wheel": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256",
+              "version",
+              "revision"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "build_proof": {
+            "type": "object",
+            "properties": {
+              "report": {
+                "type": "object"
+              },
+              "byte_audit": {
+                "type": "object"
+              },
+              "parent_report": {
+                "type": "object"
+              },
+              "original_compile_wheel": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "original_native_intent": {
+      "type": "object",
+      "required": [
+        "base_plan",
+        "kv_contract"
+      ],
+      "properties": {
+        "base_plan": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "kv_contract": {
+          "type": "object",
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "observer_cleanup": {
+      "type": "object",
+      "required": [
+        "allocated_devices",
+        "npu_command",
+        "external_services"
+      ],
+      "properties": {
+        "allocated_devices": {
+          "const": [
+            0,
+            3
+          ]
+        },
+        "npu_command": {
+          "const": [
+            "/usr/local/sbin/npu-smi",
+            "info"
+          ]
+        },
+        "external_services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "identity_reference"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "identity_reference": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^/"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
