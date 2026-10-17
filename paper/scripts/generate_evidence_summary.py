@@ -481,10 +481,12 @@ def validate_h2_real_source_subset(root: Path) -> dict[str, int | str]:
             is not True
             for name in ("npu_before", "npu_after")
         )
+        or remaining_prediction.get("manager", {}).get("provider_source")
+        != "src/vllm_hust_ext/providers/production_stack.py"
         or remaining_prediction.get("manager", {}).get("provider_source_sha256")
         != digest(
             root,
-            remaining_prediction.get("manager", {}).get("provider_source", ""),
+            f"{remaining_prefix}/snapshots/production-stack-provider-source.py.snapshot",
         )
         or remaining_prediction.get("aggregate_definite_subset")
         != expected_external_aggregate
