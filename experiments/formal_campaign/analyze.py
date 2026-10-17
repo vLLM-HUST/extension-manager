@@ -145,6 +145,34 @@ def load_h4_campaign(path: Path) -> dict[str, Any]:
     return campaign
 
 
+def load_h4_campaign_registry(path: Path) -> dict[str, Any]:
+    """Explicit SHA-pinned per-cell campaigns for the original four-cell36 scope."""
+    document = _load_object(path)
+    protocol = load_protocol()
+    if (
+        set(document) != {"schema", "campaigns"}
+        or document["schema"] != "ecpa-h4-original-cell-campaign-registry/v1"
+        or set(document["campaigns"]) != set(protocol["h4"]["required_cells"])
+    ):
+        raise ValueError("exact original four-cell campaign registry required")
+    campaigns = {}
+    for cell, reference in document["campaigns"].items():
+        if set(reference) != {"path", "sha256"}:
+            raise ValueError("strict campaign path/SHA required")
+        candidate = (path.parent / reference["path"]).absolute()
+        if (
+            candidate.is_symlink()
+            or candidate.resolve() != candidate
+            or _digest_bytes(candidate) != reference["sha256"]
+        ):
+            raise ValueError("registered cell campaign path/bytes changed")
+        value = load_h4_campaign(candidate)
+        if value["cell_id"] != cell:
+            raise ValueError("registry campaign relabels an original cell")
+        campaigns[cell] = value
+    return {"schema": document["schema"], "_h4_cell_campaigns": campaigns}
+
+
 def load_records(path: Path, root: Path = ROOT) -> list[dict[str, Any]]:
     schema = _load_object(root / "record.schema.json")
     jsonschema.Draft7Validator.check_schema(schema)
@@ -721,6 +749,56 @@ def h4_decode_body(binding: dict[str, Any]) -> bytes:
     return body
 
 
+def h4_request_identity_observation(
+    request_id: str,
+    request_headers: list[list[str]],
+    response: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Derive returned IDs from raw HTTP evidence, never from the local label.
+
+    A completion-ID match is only an API transport observation. It does not
+    establish an opaque native runtime ID, invocation, or KV semantic effect.
+    Missing/ambiguous returned IDs remain null rather than an assumed echo.
+    """
+    sent = [value for name, value in request_headers if name.lower() == "x-request-id"]
+    if sent != [request_id]:
+        raise ValueError("H4 transmitted request-ID header differs from local row")
+    returned_header = None
+    completion_id = None
+    if response is not None:
+        returned = [
+            value
+            for name, value in response["headers"]
+            if name.lower() == "x-request-id"
+        ]
+        if len(returned) == 1 and returned[0]:
+            returned_header = returned[0]
+        # The real completion response body is the primary Host API witness;
+        # do not substitute a locally expected cmpl-ID when the body lacks it.
+        body = h4_decode_body(response)
+        if response["status_code"] == 200:
+            try:
+                parsed = json.loads(body)
+            except (ValueError, UnicodeDecodeError):
+                parsed = None
+            if isinstance(parsed, dict):
+                value = parsed.get("id")
+                if isinstance(value, str) and value:
+                    completion_id = value
+    return {
+        "schema": "ecpa-h4-http-request-identity-observation/v1",
+        "sent_header_request_id": sent[0],
+        "server_header_request_id": returned_header,
+        "server_completion_id": completion_id,
+        "server_header_matches_sent_request_id": (
+            None if returned_header is None else returned_header == sent[0]
+        ),
+        "server_completion_matches_sent_request_id": (
+            None if completion_id is None else completion_id == f"cmpl-{sent[0]}"
+        ),
+    }
+
+
 def h4_response_summary(response: dict[str, Any] | None) -> dict[str, Any]:
     """Recompute summaries from retained transport status and response bytes."""
     result = {
@@ -772,6 +850,25 @@ def _verify_h4_requests(raw: dict[str, Any], workload: dict[str, Any]) -> None:
             raise ValueError("H4 request bytes differ from frozen workload")
         if "http_response" not in item:
             raise ValueError("H4 raw HTTP response missing; unverified")
+        # Legacy rows without these new transport observations retain their
+        # original validation. New rows must bind both fields to original bytes.
+        if "request_headers" in item or "request_identity" in item:
+            if "request_headers" not in item or "request_identity" not in item:
+                raise ValueError("H4 request identity observation is incomplete")
+            observed = h4_request_identity_observation(
+                item["request_id"], item["request_headers"], item["http_response"]
+            )
+            if _canonical_digest(item["request_identity"]) != _canonical_digest(
+                observed
+            ):
+                raise ValueError("H4 request identity differs from raw HTTP evidence")
+            if (
+                observed["server_header_matches_sent_request_id"] is False
+                or observed["server_completion_matches_sent_request_id"] is False
+            ):
+                raise ValueError("H4 Host returned a different request identity")
+            # Null is explicitly unconfirmed, not a positive native join. It
+            # does not alter the original H4 success/performance thresholds.
         summary = h4_response_summary(item["http_response"])
         if any(item.get(key) != value for key, value in summary.items()):
             raise ValueError("H4 response summary differs from raw HTTP evidence")
@@ -917,6 +1014,14 @@ def _verify_h4_raw_artifact(
     if _digest_bytes(path) != binding["sha256"]:
         raise ValueError(f"{record['start_id']} raw H4 measurement digest differs")
     raw = _load_object(path)
+    if (
+        record.get("measurement_domain") == "ecpa-h4-sampled-native-record/v1"
+        or raw.get("schema") == "ecpa-h4-sampled-formal-record-witness/v1"
+    ):
+        from experiments.formal_campaign.h4_sampled_record_bridge import verify_record
+
+        verify_record(record, raw, root, campaign_spec)
+        return
     errors = sorted(
         jsonschema.Draft7Validator(_load_h4_raw_schema()).iter_errors(raw),
         key=lambda error: list(error.path),
@@ -938,7 +1043,6 @@ def _verify_h4_raw_artifact(
         != receipt["arm_command_digests"][record["arm"]]
     ):
         raise ValueError("H4 raw launch definition differs from admitted arm")
-    # Failed starts also retain and verify every request that was actually sent.
     _verify_h4_requests(raw, campaign_spec["workload"])
     request_path = (root / record["artifacts"]["request_results"]["path"]).resolve()
     process_path = (root / record["artifacts"]["process_snapshot"]["path"]).resolve()
@@ -987,7 +1091,6 @@ def _validate_intake(
     start_ids = [row["start_id"] for row in records]
     if len(start_ids) != len(set(start_ids)):
         raise ValueError("start_id values must be unique")
-
     indexed: dict[tuple[str, int, str], dict[str, Any]] = {}
     for row in records:
         if row["cell_id"] not in definition["required_cells"]:
@@ -1019,25 +1122,28 @@ def _validate_intake(
         elif campaign == "h4":
             if campaign_spec is None:
                 raise ValueError("H4 intake requires the frozen campaign spec")
-            if row["campaign_id"] != campaign_spec["campaign_id"]:
+            selected_campaign = campaign_spec
+            if "_h4_cell_campaigns" in campaign_spec:
+                if (
+                    campaign_spec.get("schema")
+                    != "ecpa-h4-original-cell-campaign-registry/v1"
+                ):
+                    raise ValueError("wrong original four-cell registry domain")
+                selected_campaign = campaign_spec["_h4_cell_campaigns"][row["cell_id"]]
+            if row["campaign_id"] != selected_campaign["campaign_id"]:
                 raise ValueError(f"{row['start_id']} differs from frozen campaign")
-            if row["cell_id"] != campaign_spec["cell_id"]:
+            if row["cell_id"] != selected_campaign["cell_id"]:
                 raise ValueError(f"{row['start_id']} differs from frozen cell")
-            _verify_h4_raw_artifact(row, artifact_root, campaign_spec)
+            _verify_h4_raw_artifact(row, artifact_root, selected_campaign)
         indexed[key] = row
-
     missing = [
         f"{cell}/r{repetition}/{arm}"
         for cell in definition["required_cells"]
         for repetition in range(1, protocol["minimum_starts"] + 1)
         for arm in protocol["arms"]
         if (cell, repetition, arm) not in indexed
-        or (
-            campaign == "h3"
-            and indexed[(cell, repetition, arm)]["status"] != "complete"
-        )
+        or (campaign == "h3" and indexed[cell, repetition, arm]["status"] != "complete")
     ]
-
     for cell in definition["required_cells"]:
         cell_rows = [row for row in records if row["cell_id"] == cell]
         if not cell_rows:
@@ -1066,7 +1172,7 @@ def _validate_intake(
                 raise ValueError(
                     f"{campaign.upper()} {label} artifacts are reused across starts"
                 )
-    return missing, indexed
+    return (missing, indexed)
 
 
 def _percentile(values: list[float], quantile: float) -> float:
@@ -1368,26 +1474,54 @@ def analyze_h4(
             missing.append(
                 f"{row['cell_id']}/{row['start_id']}/product-phase-bins-unobserved"
             )
-    cell = campaign_spec["cell_id"]
-    cell_missing = [item for item in missing if item.startswith(f"{cell}/")]
-    if not cell_missing:
+    campaigns = campaign_spec.get("_h4_cell_campaigns")
+    cells_in_scope = (
+        list(campaigns) if campaigns is not None else [campaign_spec["cell_id"]]
+    )
+    completed_cells = {}
+    for cell in cells_in_scope:
         cell_rows = [row for row in indexed.values() if row["cell_id"] == cell]
-        cell_result = _summarize_h4_cells(
-            protocol, indexed, [cell], cell_rows, overall_complete=False
-        )
-    else:
-        cell_result = None
+        cell_missing = [item for item in missing if item.startswith(f"{cell}/")]
+        if cell_rows and (
+            not cell_missing
+            or any(
+                row["status"] == "failed" or not all(row["cleanup"].values())
+                for row in cell_rows
+            )
+        ):
+            completed_cells[cell] = _summarize_h4_cells(
+                protocol, indexed, [cell], cell_rows, overall_complete=False
+            )
     if missing:
+        failed = [
+            row["start_id"] for row in indexed.values() if row["status"] == "failed"
+        ]
+        cleanup_failed = [
+            row["start_id"]
+            for row in indexed.values()
+            if not all(row["cleanup"].values())
+        ]
+        falsified = (
+            bool(failed)
+            and definition["failed_start_policy"] == "falsify"
+            or (
+                bool(cleanup_failed)
+                and definition["cleanup_failure_policy"] == "falsify"
+            )
+        )
         return {
             "schema": "ecpa-formal-campaign-summary/v1",
             "campaign_id": definition["campaign_id"],
-            "status": "incomplete",
-            "formal_result": False,
+            "status": "falsified" if falsified else "incomplete",
+            "formal_result": falsified,
+            "campaign_complete": False,
             "received_starts": len(indexed),
             "required_starts": len(definition["required_cells"]) * 9,
             "missing": missing,
+            "failed_starts": failed,
+            "cleanup_failures": cleanup_failed,
             "metrics": None,
-            "completed_cells": ({cell: cell_result} if cell_result else {}),
+            "completed_cells": completed_cells,
         }
     rows = list(indexed.values())
     failed_starts = [row["start_id"] for row in rows if row["status"] == "failed"]
@@ -1407,7 +1541,6 @@ def analyze_h4(
             "failed_starts": failed_starts,
             "cleanup_failures": cleanup_failures,
         }
-
     cells = definition["required_cells"]
     confidence = definition["confidence"]
     startup_ms = _effect(
@@ -1419,8 +1552,8 @@ def analyze_h4(
         "increase",
     )
     startup_absolute_ms = [
-        indexed[(cell, repetition, "ecpa")]["metrics"]["startup_phases_ms"]["total"]
-        - indexed[(cell, repetition, "manual-integration")]["metrics"][
+        indexed[cell, repetition, "ecpa"]["metrics"]["startup_phases_ms"]["total"]
+        - indexed[cell, repetition, "manual-integration"]["metrics"][
             "startup_phases_ms"
         ]["total"]
         for cell in cells
@@ -1469,8 +1602,8 @@ def analyze_h4(
             "increase",
         )
         ecpa_startup_absolute = [
-            indexed[(cell, repetition, "ecpa")]["metrics"]["startup_phases_ms"]["total"]
-            - indexed[(cell, repetition, "manual-integration")]["metrics"][
+            indexed[cell, repetition, "ecpa"]["metrics"]["startup_phases_ms"]["total"]
+            - indexed[cell, repetition, "manual-integration"]["metrics"][
                 "startup_phases_ms"
             ]["total"]
             for repetition in range(1, 4)
@@ -1527,26 +1660,19 @@ def analyze_h4(
             "vanilla_vs_manual_p99_regression_percent": summarize(vanilla_p99),
         }
         cell_summary["threshold_violation"] = (
-            (
-                cell_summary["ecpa_vs_manual_startup_percent"]["median"]
-                > thresholds["startup_percent"]
-                and cell_summary["ecpa_vs_manual_startup_absolute_ms"]["median"]
-                > thresholds["startup_absolute_ms"]
-            )
-            or (
-                cell_summary["ecpa_vs_manual_throughput_regression_percent"]["median"]
-                > thresholds["throughput_regression_percent"]
-            )
-            or (
-                cell_summary["ecpa_vs_manual_p99_regression_percent"]["median"]
-                > thresholds["latency_p99_regression_percent"]
-            )
+            cell_summary["ecpa_vs_manual_startup_percent"]["median"]
+            > thresholds["startup_percent"]
+            and cell_summary["ecpa_vs_manual_startup_absolute_ms"]["median"]
+            > thresholds["startup_absolute_ms"]
+            or cell_summary["ecpa_vs_manual_throughput_regression_percent"]["median"]
+            > thresholds["throughput_regression_percent"]
+            or cell_summary["ecpa_vs_manual_p99_regression_percent"]["median"]
+            > thresholds["latency_p99_regression_percent"]
         )
         cell_summaries[cell] = cell_summary
-    supported = (
-        not any(row["threshold_violation"] for row in cell_summaries.values())
-        and not cleanup_failures
-    )
+    supported = not any(
+        row["threshold_violation"] for row in cell_summaries.values()
+    ) and (not cleanup_failures)
     return {
         "schema": "ecpa-formal-campaign-summary/v1",
         "campaign_id": definition["campaign_id"],
@@ -1569,19 +1695,37 @@ def main() -> int:
     parser.add_argument("--records", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--campaign-spec", type=Path)
+    parser.add_argument(
+        "--campaign-registry",
+        type=Path,
+        help="H4 only: exact four SHA-pinned original cell campaigns",
+    )
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     protocol = load_protocol()
     records = load_records(args.records)
-    if args.campaign_spec is None:
-        parser.error("--campaign-spec is required for H3 and H4")
+    if args.campaign == "h3" and (
+        args.campaign_spec is None or args.campaign_registry is not None
+    ):
+        parser.error("H3 requires --campaign-spec and no H4 registry")
+    if args.campaign == "h4" and (args.campaign_spec is None) == (
+        args.campaign_registry is None
+    ):
+        parser.error(
+            "H4 requires exactly one of --campaign-spec or --campaign-registry"
+        )
     if args.campaign == "h3":
         summary = analyze_h3(
             protocol, records, args.artifact_root, load_h3_campaign(args.campaign_spec)
         )
     else:
         summary = analyze_h4(
-            protocol, records, args.artifact_root, load_h4_campaign(args.campaign_spec)
+            protocol,
+            records,
+            args.artifact_root,
+            load_h4_campaign_registry(args.campaign_registry)
+            if args.campaign_registry is not None
+            else load_h4_campaign(args.campaign_spec),
         )
     rendered = json.dumps(summary, indent=2, sort_keys=True) + "\n"
     if args.output:

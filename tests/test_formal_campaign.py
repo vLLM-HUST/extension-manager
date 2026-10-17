@@ -399,10 +399,27 @@ def test_h4_retains_failed_start_and_falsifies_completed_cell(tmp_path: Path):
     rows[0]["status"] = "failed"
     rows[0]["failure"] = {"phase": "worker_loading", "class": "TimeoutError"}
     rows[0]["metrics"] = {}
-    result = module.analyze_h4(
-        module.load_protocol(), rows, tmp_path, campaign_spec(cell)
-    )
-    assert result["status"] == "incomplete"
+    protocol = module.load_protocol()
+    assert protocol["h4"]["failed_start_policy"] == "falsify"
+    result = module.analyze_h4(protocol, rows, tmp_path, campaign_spec(cell))
+    assert result["status"] == "falsified"
+    assert result["formal_result"] is True
+    assert result["campaign_complete"] is False
+    assert result["received_starts"] == 9
+    assert result["required_starts"] == 36
+    expected_missing = {
+        f"{other}/r{repetition}/{arm}"
+        for other in protocol["h4"]["required_cells"]
+        if other != cell
+        for repetition in range(1, 4)
+        for arm in protocol["arms"]
+    }
+    assert len(expected_missing) == len(result["missing"]) == 27
+    assert set(result["missing"]) == expected_missing
+    assert result["failed_starts"] == [rows[0]["start_id"]]
+    assert result["metrics"] is None
+    assert rows[0]["status"] == "failed"
+    assert rows[0]["metrics"] == {}
     assert result["completed_cells"][cell]["status"] == "falsified"
     assert result["completed_cells"][cell]["failed_starts"] == [rows[0]["start_id"]]
 
