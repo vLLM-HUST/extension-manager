@@ -99,6 +99,62 @@ def native_host_roster(records, plan_id, launch_id):
     return roster
 
 
+def verify_native_membership(source_peers, members, plan_id, launch_id):
+    """Join untouched Host events and fresh kernel identities to exact senders.
+
+    Host process objects have seven fields; the collector sender ABI adds the
+    independently observed kernel fields. Neither object is projected to a
+    subset, and no original Host event is rewritten.
+    """
+    from vllm_hust_ext.host_evidence import parse_host_event
+
+    expected_slots = {"api-server/0", "worker/0", "worker/1"}
+    require(
+        len(source_peers) == len(members) == 3,
+        "native peer roster requires exactly three members and senders",
+    )
+    events = [parse_host_event(canonical(member["event"])) for member in members]
+    require(
+        all(e["plan_id"] == plan_id and e["launch_id"] == launch_id for e in events),
+        "native membership Plan/launch differs",
+    )
+    roster = native_host_roster(events, plan_id, launch_id)
+    require(set(roster) == expected_slots, "native membership slots differ")
+    expected = {}
+    kernels = set()
+    for member, event in zip(members, events, strict=True):
+        process = event["process"]
+        slot = f"{process['role']}/{process['ordinal']}"
+        require(
+            canonical([member["role"], member["ordinal"]])
+            == canonical([process["role"], process["ordinal"]])
+            and slot not in expected,
+            "native membership slot is duplicated or differs from Host role",
+        )
+        kernel = observed_host_kernel(process)
+        require(
+            canonical(member["identity"])
+            == canonical({**kernel, "launch_id": launch_id}),
+            "native membership identity differs from current kernel/launch",
+        )
+        kernel_key = canonical(kernel)
+        require(kernel_key not in kernels, "native membership kernels alias")
+        kernels.add(kernel_key)
+        expected[slot] = {**process, **kernel}
+    seen = set()
+    for peer in source_peers:
+        process = peer["process"]
+        slot = f"{process['role']}/{process['ordinal']}"
+        require(
+            slot in expected
+            and slot not in seen
+            and canonical(process) == canonical(expected[slot]),
+            "native sender differs from exact Host role plus current kernel",
+        )
+        seen.add(slot)
+    require(seen == expected_slots, "native sender slots are incomplete")
+
+
 class NativeJournal(DynamicJournal):
     schema = JOURNAL
 
@@ -234,16 +290,11 @@ class NativeAuthority(DynamicAuthority):
                 "native context differs from actual enrolled epoch",
             )
             source_peers = native_enrollment["source_peers"]
-            require(
-                len(source_peers) == 3
-                and all(
-                    any(
-                        peer["process"] == member["event"]["process"]
-                        for member in self.enrollment["members"]
-                    )
-                    for peer in source_peers
-                ),
-                "native peer roster differs from actual membership",
+            verify_native_membership(
+                source_peers,
+                self.enrollment["members"],
+                self.enrollment["plan_id"],
+                self.enrollment["launch_id"],
             )
             index = self.enrollment["generation"] - 1
             require(index in (0, 1), "original H3 has exactly two actual epochs")
