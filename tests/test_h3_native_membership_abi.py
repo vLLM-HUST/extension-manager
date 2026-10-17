@@ -5,7 +5,7 @@ from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pytest
-from test_host_evidence import raw_event
+from test_host_evidence import computed_event_id, raw_event
 
 from experiments.formal_campaign import h3_native_authority as authority
 from vllm_hust_ext.exposure_gate import GateError
@@ -120,10 +120,12 @@ def test_duplicate_or_missing_slot_rejected(monkeypatch, collection):
 def test_stale_host_start_identity_and_cross_launch_rejected(monkeypatch):
     members, peers = membership_fixture(monkeypatch)
     members[1]["event"]["process"]["start_identity"] = "pid:102:start_ticks:0"
+    members[1]["event"]["event_id"] = computed_event_id(members[1]["event"])
     with pytest.raises(GateError):
         verify(members, peers)
     members, peers = membership_fixture(monkeypatch)
     members[1]["event"]["launch_id"] = "other-launch"
+    members[1]["event"]["event_id"] = computed_event_id(members[1]["event"])
     with pytest.raises(GateError):
         verify(members, peers)
 
