@@ -382,28 +382,51 @@ def bind_health_owner_exit(readiness, cause, root, admission):
     """An owner-loss observation has no admission or successful readiness power."""
     if readiness is None or not readiness["requires_authenticated_runtime_failure"]:
         return
-    require(type(cause) is dict and root["released"] is True
-            and readiness["first_health"] is None
-            and same(readiness["product_owner"], admission["owner"])
-            and same(root["product_root"], admission["owner"])
-            and any(same({k: value[k] for k in admission["owner"]}, admission["owner"])
-                    for value in root["all_observed_epochs"]),
-            "health owner loss lacks independently admitted actual epoch/cleanup/cause")
-    independent_terminal = json.loads(check_ref(root["terminal_npu_observation"]).read_bytes())
+    require(
+        type(cause) is dict
+        and root["released"] is True
+        and readiness["first_health"] is None
+        and same(readiness["product_owner"], admission["owner"])
+        and same(root["product_root"], admission["owner"])
+        and any(
+            same({k: value[k] for k in admission["owner"]}, admission["owner"])
+            for value in root["all_observed_epochs"]
+        ),
+        "health owner loss lacks independently admitted actual epoch/cleanup/cause",
+    )
+    independent_terminal = json.loads(
+        check_ref(root["terminal_npu_observation"]).read_bytes()
+    )
     terminal_raw = independent_terminal["observed_monotonic_raw_ns"]
     for value in readiness.get("accepted_peer_exit_observations", []):
         expected = value["accepted_peer"]
-        require(any(same({key: observed[key] for key in expected}, expected)
-                    for observed in root["all_observed_epochs"]),
-                "interrupted accepted peer lacks independently observed original kernel")
-    interruptions = [*readiness["owner_exit_observations"], *readiness.get("accepted_peer_exit_observations", [])]
-    require(type(terminal_raw) is int and all(
-        admission["after_ns"] <= value["before_raw_ns"] <= value["after_raw_ns"] <= terminal_raw
-        for value in interruptions),
-        "health owner interruption outside actual Popen-to-independent cleanup span")
+        require(
+            any(
+                same({key: observed[key] for key in expected}, expected)
+                for observed in root["all_observed_epochs"]
+            ),
+            "interrupted accepted peer lacks independently observed original kernel",
+        )
+    interruptions = [
+        *readiness["owner_exit_observations"],
+        *readiness.get("accepted_peer_exit_observations", []),
+    ]
+    require(
+        type(terminal_raw) is int
+        and all(
+            admission["after_ns"]
+            <= value["before_raw_ns"]
+            <= value["after_raw_ns"]
+            <= terminal_raw
+            for value in interruptions
+        ),
+        "health owner interruption outside actual Popen-to-independent cleanup span",
+    )
 
 
-def failed_observation(campaign, start, root_ref, *, rows, verified, reason, startup_readiness=None):
+def failed_observation(
+    campaign, start, root_ref, *, rows, verified, reason, startup_readiness=None
+):
     """An admitted actual failure is retained; unknown metrics are never zero."""
     return dict(
         schema="ecpa-h4-sampled-native-independent-start-observation/v1",
@@ -693,7 +716,9 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
     pinned_terminal(root, output)
     # Even a partial/no-epoch start validates all present original health bytes.
     # Without actual Host API assignment it retains unknown readiness, not200.
-    health_readiness = verify_health(output, launch["health_url"], launch["startup_timeout_seconds"], timing)
+    health_readiness = verify_health(
+        output, launch["health_url"], launch["startup_timeout_seconds"], timing
+    )
     epoch_path = output / "sampled-epoch-archive.json"
     if not epoch_path.exists():
         # Full source admission occurred in the real Popen callback. No native
@@ -937,7 +962,13 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         same(policy["requirements"], boot["tensor_requirements"]),
         "registered28layer tensor inventory changed",
     )
-    health_readiness = verify_health(output, launch["health_url"], launch["startup_timeout_seconds"], timing, epoch=epoch)
+    health_readiness = verify_health(
+        output,
+        launch["health_url"],
+        launch["startup_timeout_seconds"],
+        timing,
+        epoch=epoch,
+    )
     payload = h4_request_payload(workload, launch["arms"][start["arm"]]["served_model"])
     trace_path = output / "request-results.jsonl"
     trace = trace_path.read_bytes() if trace_path.exists() else b""
@@ -1143,11 +1174,19 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         native["allocated_tcp_ports"],
     )
     if not complete or result["failure"] is not None or root["runner_exit_code"] != 0:
-        if health_readiness is not None and health_readiness["requires_authenticated_runtime_failure"]:
+        if (
+            health_readiness is not None
+            and health_readiness["requires_authenticated_runtime_failure"]
+        ):
             # Reuse the original strict source/independent cause validator, not
             # an error-string exemption or a generic nonzero runner status.
-            cause = no_epoch_runtime_cause(result if result_path.exists() else None,
-                root, root_cleanup_ref, registered_runner_argv, admission)
+            cause = no_epoch_runtime_cause(
+                result if result_path.exists() else None,
+                root,
+                root_cleanup_ref,
+                registered_runner_argv,
+                admission,
+            )
             bind_health_owner_exit(health_readiness, cause, root, admission)
         return failed_observation(
             campaign,
@@ -1179,15 +1218,27 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         and r["error"] is None
         for r in measured
     )
-    health_readiness = verify_health(output, launch["health_url"], launch["startup_timeout_seconds"], timing,
-                                     epoch=epoch, require_terminal=True)
-    require(health_readiness is not None and health_readiness["first_health"] is not None
-            and same(result["startup_readiness"], health_readiness)
-            and same(result["health_observation"], health_readiness["first_health"]),
-            "source first-health summary differs from original concurrent probes")
-    require(type(result["native_setup_completed_monotonic_ns"]) is int
-            and result["native_setup_completed_monotonic_ns"] <= health_readiness["deadline_ns"],
-            "native setup completed outside original startup budget")
+    health_readiness = verify_health(
+        output,
+        launch["health_url"],
+        launch["startup_timeout_seconds"],
+        timing,
+        epoch=epoch,
+        require_terminal=True,
+    )
+    require(
+        health_readiness is not None
+        and health_readiness["first_health"] is not None
+        and same(result["startup_readiness"], health_readiness)
+        and same(result["health_observation"], health_readiness["first_health"]),
+        "source first-health summary differs from original concurrent probes",
+    )
+    require(
+        type(result["native_setup_completed_monotonic_ns"]) is int
+        and result["native_setup_completed_monotonic_ns"]
+        <= health_readiness["deadline_ns"],
+        "native setup completed outside original startup budget",
+    )
     health = health_readiness["first_health"]
     require(
         health["status_code"] == 200
