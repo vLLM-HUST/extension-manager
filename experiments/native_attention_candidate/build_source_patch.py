@@ -103,7 +103,9 @@ def patched():
         "        )",
         1,
     )
-    bootstrap = ROOT.parent / "native_kv_tensor_candidate/artifact_bootstrap.py"
+    # Historical c435 construction stays pinned independently of evolving live
+    # runtime wrappers. This snapshot has the exact original guarded bytes.
+    bootstrap = ROOT / "source/tensor-artifact-bootstrap-c435.py"
     host_path = "vllm/plugins/native_tensor_artifact_bootstrap.py"
     old[host_path] = bootstrap.read_text()
     if hashlib.sha256(bootstrap.read_bytes()).hexdigest() != (
