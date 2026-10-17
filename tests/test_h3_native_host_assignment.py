@@ -5,6 +5,7 @@ from copy import deepcopy
 import pytest
 
 from experiments.formal_campaign.h3_native_authority import native_host_roster
+from vllm_hust_ext.exposure_gate import GateError
 
 
 def row(pid, role, ordinal, assignment, time):
@@ -66,7 +67,7 @@ def test_provisional_rows_join_to_exact_later_host_epoch_without_mutation():
 def test_provisional_cannot_hide_identity_change(field, value):
     rows = actual_shape()
     rows[1]["process"][field] = value
-    with pytest.raises(ValueError, match="lacks a later exact-epoch"):
+    with pytest.raises(GateError, match="lacks a later exact-epoch"):
         native_host_roster(rows, "plan", "launch")
 
 
@@ -79,7 +80,7 @@ def test_unmatched_unknown_and_wrong_launch_binding_are_rejected():
             rows[4]["launch_id"] = "other-launch"
         else:
             rows[4]["observed_at_ns"] = 2
-        with pytest.raises(ValueError, match="lacks a later exact-epoch"):
+        with pytest.raises(GateError, match="lacks a later exact-epoch"):
             native_host_roster(rows, "plan", "launch")
 
 
@@ -92,19 +93,19 @@ def test_environment_identity_never_grants_role_authority(change):
         rows[1]["event"] = "invoked"
     else:
         rows[1]["observation_kind"] = "native_callback"
-    with pytest.raises(ValueError, match="not pre-assignment discovery"):
+    with pytest.raises(GateError, match="not pre-assignment discovery"):
         native_host_roster(rows, "plan", "launch")
 
 
 def test_real_assigned_slot_conflict_is_not_resolved_by_last_event():
     rows = actual_shape()
     rows.append(row(41, "worker", 1, "host", 6))
-    with pytest.raises(ValueError, match="native Host role kernel changed"):
+    with pytest.raises(GateError, match="native Host role kernel changed"):
         native_host_roster(rows, "plan", "launch")
 
 
 def test_same_exact_epoch_cannot_acquire_two_host_roles():
     rows = actual_shape()
     rows.append(row(40, "worker", 2, "host", 6))
-    with pytest.raises(ValueError, match="assigned multiple roles"):
+    with pytest.raises(GateError, match="assigned multiple roles"):
         native_host_roster(rows, "plan", "launch")
