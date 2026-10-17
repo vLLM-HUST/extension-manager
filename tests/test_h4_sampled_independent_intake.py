@@ -20,12 +20,17 @@ def wire(request_id='new/req-0', completion=16):
     return request,response
 
 
-def test_functional_response_exact_new_request_and_usage():
+def test_functional_response_exact_new_request_and_usage(monkeypatch):
     import sys
+    import types
+    unrelated = types.ModuleType("analyze")
+    monkeypatch.setitem(sys.modules, "analyze", unrelated)
     from experiments.formal_campaign.h4_sampled_registration import original_h4_runner
     module=original_h4_runner()
     assert module.validate_receipt.__module__=='experiments.formal_campaign.run_h4'
-    assert 'analyze' not in sys.modules
+    assert sys.modules["analyze"] is unrelated
+    from experiments.formal_campaign import analyze as admitted_analyze
+    assert module.validate_receipt.__globals__["_canonical_digest"] is admitted_analyze._canonical_digest
     request,response=wire()
     replay.verify_functional_response('new/req-0',request,response)
 

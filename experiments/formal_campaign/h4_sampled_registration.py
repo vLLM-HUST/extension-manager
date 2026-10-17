@@ -24,25 +24,13 @@ require, canonical = pair.require, pair.canonical
 
 
 def original_h4_runner():
-    """Import the exact published script with its package-owned analyze alias.
+    """Use the exact package-owned original runner, without a global alias.
 
-    Do not copy receipt predicates or add a broad sys.path entry. The temporary
-    alias supplies only this original script's absolute import, then is restored.
-    A pre-existing unrelated analyze module is rejected rather than shadowed.
+    The original runner explicitly supports its package and script import modes.
+    No unrelated ``analyze`` module is read, replaced or trusted by this path.
     """
     import importlib
-    import sys
-    from experiments.formal_campaign import analyze as package_analyze
-    prior=sys.modules.get('analyze')
-    if prior is not None and prior is not package_analyze:
-        raise ValueError('unrelated analyze module shadows admitted H4 package')
-    if prior is None:
-        sys.modules['analyze']=package_analyze
-    try:
-        return importlib.import_module('experiments.formal_campaign.run_h4')
-    finally:
-        if prior is None and sys.modules.get('analyze') is package_analyze:
-            del sys.modules['analyze']
+    return importlib.import_module("experiments.formal_campaign.run_h4")
 
 
 def validate_original_receipt(receipt,campaign,receipt_path):

@@ -19,16 +19,29 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from analyze import (
-    _canonical_digest,
-    _digest_bytes,
-    _recompute_h4_metrics,
-    h4_body_binding,
-    h4_request_identity_observation,
-    h4_request_payload,
-    h4_response_summary,
-    load_h4_campaign,
-)
+if __package__:
+    from .analyze import (
+        _canonical_digest,
+        _digest_bytes,
+        _recompute_h4_metrics,
+        h4_body_binding,
+        h4_request_identity_observation,
+        h4_request_payload,
+        h4_response_summary,
+        load_h4_campaign,
+    )
+else:
+    from analyze import (
+        _canonical_digest,
+        _digest_bytes,
+        _recompute_h4_metrics,
+        h4_body_binding,
+        h4_request_identity_observation,
+        h4_request_payload,
+        h4_response_summary,
+        load_h4_campaign,
+    )
+
 from jsonschema import Draft7Validator
 
 from experiments.formal_campaign import source_provenance
