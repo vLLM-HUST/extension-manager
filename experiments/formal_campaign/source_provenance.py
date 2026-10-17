@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
 import subprocess
+import sys
 import tempfile
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -91,10 +94,160 @@ def validate_policy(policy, fixed):
     return expected
 
 
+GIT_FETCH_ATTEMPTS = 3
+GIT_FETCH_TIMEOUT_SECONDS = 300
+
+
+def _transport_diagnostic(value):
+    # Independent diagnostic channel, never part of the source observation or
+    # any validity cache. Raw output is losslessly preserved, including bytes
+    # that are not UTF-8, in the caller's existing stderr evidence stream.
+    sys.stderr.write(json.dumps(value, sort_keys=True) + "\n")
+    sys.stderr.flush()
+
+
+class GitFetchTransportError(subprocess.CalledProcessError):
+    """A failed bounded fetch with original outputs retained for outer callers."""
+
+    def __init__(self, command, error, *, timed_out):
+        super().__init__(
+            124 if timed_out else error.returncode,
+            command,
+            output=error.stdout or b"",
+            stderr=error.stderr or b"",
+        )
+        self.timed_out = timed_out
+
+    def __str__(self):
+        summary = (
+            f"Git fetch timed out after {GIT_FETCH_TIMEOUT_SECONDS}s "
+            "(Git exit code not observed)"
+            if self.timed_out
+            else super().__str__()
+        )
+        return (
+            summary
+            + "\nGit fetch stdout:\n"
+            + self.stdout.decode("utf-8", errors="backslashreplace")
+            + "\nGit fetch stderr:\n"
+            + self.stderr.decode("utf-8", errors="backslashreplace")
+        )
+
+
 def _git(repo, *args):
-    return subprocess.run(
-        ["git", "-C", str(repo), *args], check=True, capture_output=True
-    ).stdout
+    command = ["git", "-C", str(repo), *args]
+    if not args or args[0] != "fetch":
+        return subprocess.run(command, check=True, capture_output=True).stdout
+    started = time.monotonic_ns()
+    error = None
+    timed_out = False
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            timeout=GIT_FETCH_TIMEOUT_SECONDS,
+        )
+        stdout, stderr, returncode = result.stdout, result.stderr, result.returncode
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        error = exc
+        timed_out = isinstance(exc, subprocess.TimeoutExpired)
+        stdout, stderr = exc.stdout or b"", exc.stderr or b""
+        returncode = None if timed_out else exc.returncode
+    _transport_diagnostic(
+        {
+            "schema": "ecpa-canonical-git-fetch-attempt/v1",
+            "event": "fetch-command-result",
+            "command": command,
+            "clock": "CLOCK_MONOTONIC",
+            "started_ns": started,
+            "finished_ns": time.monotonic_ns(),
+            "timeout_seconds": GIT_FETCH_TIMEOUT_SECONDS,
+            "timed_out": timed_out,
+            "returncode": returncode,
+            "stdout_base64": base64.b64encode(stdout).decode("ascii"),
+            "stderr_base64": base64.b64encode(stderr).decode("ascii"),
+            "source_admission": False,
+        }
+    )
+    if error is not None:
+        raise GitFetchTransportError(command, error, timed_out=timed_out) from error
+    return stdout
+
+
+def _observe_remote_component(role, url, commit, definition):
+    # Only fetch transport failures retry. Each attempt uses a new empty object
+    # store, including re-fetching the exact commit if a later main fetch fails.
+    # All SHA/tree/ancestry predicates must pass in the same successful attempt.
+    for attempt in range(1, GIT_FETCH_ATTEMPTS + 1):
+        with tempfile.TemporaryDirectory(prefix="ecpa-source-fetch-") as temporary:
+            quarantine = Path(temporary)
+            _transport_diagnostic(
+                {
+                    "schema": "ecpa-canonical-git-fetch-attempt/v1",
+                    "event": "component-attempt-begin",
+                    "role": role,
+                    "requested_commit": commit,
+                    "remote": url,
+                    "quarantine": str(quarantine),
+                    "attempt": attempt,
+                    "attempt_limit": GIT_FETCH_ATTEMPTS,
+                    "source_admission": False,
+                }
+            )
+            try:
+                _git(quarantine, "init", "--bare", "--quiet")
+                _git(quarantine, "remote", "add", "source", url)
+                require(
+                    _git(quarantine, "remote", "get-url", "source").decode().strip()
+                    == url,
+                    "quarantine Git transport rewrites declared canonical remote",
+                )
+                _git(quarantine, "fetch", "--quiet", "--no-tags", url, commit)
+                fetched = _git(quarantine, "rev-parse", "FETCH_HEAD").decode().strip()
+                require(
+                    fetched == commit, "remote did not serve requested exact source"
+                )
+                remote_tree = (
+                    _git(quarantine, "rev-parse", commit + "^{tree}").decode().strip()
+                )
+                main = None
+                if definition["requirement"] == "merged-main":
+                    _git(
+                        quarantine,
+                        "fetch",
+                        "--quiet",
+                        "--no-tags",
+                        url,
+                        "refs/heads/main",
+                    )
+                    main = _git(quarantine, "rev-parse", "FETCH_HEAD").decode().strip()
+                    merged = (
+                        subprocess.run(
+                            [
+                                "git",
+                                "-C",
+                                str(quarantine),
+                                "merge-base",
+                                "--is-ancestor",
+                                commit,
+                                main,
+                            ],
+                            check=False,
+                            capture_output=True,
+                        ).returncode
+                        == 0
+                    )
+                    require(
+                        merged,
+                        "requested component commit is not merged to remote main",
+                    )
+            except GitFetchTransportError:
+                if attempt == GIT_FETCH_ATTEMPTS:
+                    raise
+                continue
+            return fetched, remote_tree, main
+    raise AssertionError("bounded fetch attempts did not return or raise")
 
 
 def repository_name(remote):
@@ -132,41 +285,9 @@ def observe_component(role, commit, definition, location):
         repository_name(url) == definition["repository"],
         "source remote repository differs",
     )
-    # Fetch in an empty object store: fetch from an existing checkout can
-    # satisfy a requested SHA from local objects without the remote serving it.
-    with tempfile.TemporaryDirectory(prefix="ecpa-source-fetch-") as temporary:
-        quarantine = Path(temporary)
-        _git(quarantine, "init", "--bare", "--quiet")
-        _git(quarantine, "remote", "add", "source", url)
-        require(
-            _git(quarantine, "remote", "get-url", "source").decode().strip() == url,
-            "quarantine Git transport rewrites declared canonical remote",
-        )
-        _git(quarantine, "fetch", "--quiet", "--no-tags", url, commit)
-        fetched = _git(quarantine, "rev-parse", "FETCH_HEAD").decode().strip()
-        require(fetched == commit, "remote did not serve requested exact source")
-        remote_tree = _git(quarantine, "rev-parse", commit + "^{tree}").decode().strip()
-        main = None
-        if definition["requirement"] == "merged-main":
-            _git(quarantine, "fetch", "--quiet", "--no-tags", url, "refs/heads/main")
-            main = _git(quarantine, "rev-parse", "FETCH_HEAD").decode().strip()
-            merged = (
-                subprocess.run(
-                    [
-                        "git",
-                        "-C",
-                        str(quarantine),
-                        "merge-base",
-                        "--is-ancestor",
-                        commit,
-                        main,
-                    ],
-                    check=False,
-                    capture_output=True,
-                ).returncode
-                == 0
-            )
-            require(merged, "requested component commit is not merged to remote main")
+    fetched, remote_tree, main = _observe_remote_component(
+        role, url, commit, definition
+    )
     require(
         _git(repo, "rev-parse", "HEAD").decode().strip() == commit,
         "clean source checkout is not requested component commit",
