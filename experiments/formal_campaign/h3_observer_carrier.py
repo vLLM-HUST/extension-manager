@@ -31,6 +31,8 @@ from experiments.formal_campaign.h3_worker_recovery import (
 )
 from experiments.formal_campaign.h3_worker_relaunch import (
     cleanup as _owned_cleanup,
+)
+from experiments.formal_campaign.h3_worker_relaunch import (
     identity,
     owned_sessions,
     worker,
@@ -821,15 +823,18 @@ def cleanup(process, owner, timeout, captured=None):
     """Protect explicitly external epochs before every carrier-owned signal."""
     require(_CLEANUP_EXTERNAL is not None, "external ownership contract not bound")
     from experiments.formal_campaign.h3_worker_relaunch import live, members
-    candidates=list(captured or [owner])+[owner]
+
+    candidates = list(captured or [owner]) + [owner]
     if live(owner):
-        sessions, descendants=owned_sessions(owner)
-        candidates += list(descendants.values())+sessions
+        sessions, descendants = owned_sessions(owner)
+        candidates += list(descendants.values()) + sessions
     for session_owner in list(candidates):
         if "pid" in session_owner:
             candidates += members(session_owner)
-    require(not any(kernel in _CLEANUP_EXTERNAL for kernel in candidates),
-            "external service epoch excluded from carrier cleanup")
+    require(
+        not any(kernel in _CLEANUP_EXTERNAL for kernel in candidates),
+        "external service epoch excluded from carrier cleanup",
+    )
     return _owned_cleanup(process, owner, timeout, captured)
 
 
@@ -929,11 +934,16 @@ def main():
         )
         return 0
     from experiments.formal_campaign.h3_observer_cleanup import external_epochs
+
     global _CLEANUP_EXTERNAL
-    _CLEANUP_EXTERNAL=[entry["kernel"] for entry in external_epochs(dynamic["observer_cleanup"])]
+    _CLEANUP_EXTERNAL = [
+        entry["kernel"] for entry in external_epochs(dynamic["observer_cleanup"])
+    ]
     require(args.native_domain, "observer carrier requires distinct native domain")
-    require(start["recovery_action"] == "preserve-host-observe-failed-safe",
-            "no actual observer private-context restart/rebind contract exists")
+    require(
+        start["recovery_action"] == "preserve-host-observe-failed-safe",
+        "no actual observer private-context restart/rebind contract exists",
+    )
     launches, client_process, client_owner = [], None, None
     failure = None
     cleanup_report = {
@@ -951,7 +961,9 @@ def main():
         generation = current["generation"]
         for index, phase in enumerate(phase_definition["phases"]):
             if index:
-                raise ValueError("observer recovery cannot reuse pinned dead collector contexts")
+                raise ValueError(
+                    "observer recovery cannot reuse pinned dead collector contexts"
+                )
             from experiments.formal_campaign.h3_runtime_source_closure import (
                 verify_runtime_source_closure,
             )
@@ -1003,9 +1015,7 @@ def main():
             observed["route_generation"] = generation
             label = "before" if index == 0 else "after"
             save_new(output / f"carrier-{label}.json", observed)
-            actual = wait_file(
-                output / f"runner-{label}-ack.json", time.monotonic() + 10
-            )
+            wait_file(output / f"runner-{label}-ack.json", time.monotonic() + 10)
             authority.call(
                 "admit_generation",
                 generation=generation,
@@ -1066,40 +1076,82 @@ def main():
                     "no actual pre-fault request start within original window",
                 )
                 save_new(
-                    output / "carrier-fault-ready.json", {"start_id": start_id, "enrollment_sha256": enrollment["membership_sha256"]}
+                    output / "carrier-fault-ready.json",
+                    {
+                        "start_id": start_id,
+                        "enrollment_sha256": enrollment["membership_sha256"],
+                    },
                 )
                 wait_file(output / "runner-fault.json", time.monotonic() + 10)
-                wait_file(output / "runner-observer-dead.json",
-                          time.monotonic()+campaign["fault"]["target_exit_timeout_s"])
+                wait_file(
+                    output / "runner-observer-dead.json",
+                    time.monotonic() + campaign["fault"]["target_exit_timeout_s"],
+                )
                 # Do not kill/relaunch healthy Host or invent private-context
                 # rebind. Original60 requests continue on their original clock.
                 client_process.wait(timeout=25)
-                from experiments.formal_campaign.h3_observer_delivery import verify_native_window
+                from experiments.formal_campaign.h3_observer_delivery import (
+                    verify_native_window,
+                )
+
                 result = verify_native_window(
-                    spec, output / "client.jsonl", Path(start["authority"]["journal"]),
-                    policy=load(start["policy"]["path"]), frozen_probe=campaign["probe"],
-                    expected_client={k:client_owner[k] for k in ("pid","start_ticks","boot_id")},
-                    fault_ns=load(output/"runner-fault.json")["triggered_ns"],
-                    recovery_ns=None, allow_incomplete=True)
-                save_new(output/"native-delivery-observation.json",result)
-                membership=load(output/"phase0.actual-membership.json")
-                from experiments.formal_campaign.h3_observer_loss import observe_host_kernels
-                expected_hosts=[{k:m["identity"][k] for k in ("pid","start_ticks","session","boot_id")}
-                                for m in membership]
-                live_members=observe_host_kernels(expected_hosts)
-                save_new(output/"observer-recovery-accounting.json",{
-                    "schema":"ecpa-h3-observer-recovery-accounting/v1",
-                    "operator_actions":0,"recovery_ns":None,
-                    "actual_recovery":"unavailable-producer-private-context-rebind-contract",
-                    "host_kernels_at_client_stop":live_members,
-                    "observed_ns":time.monotonic_ns(),
-                    "predecessor_alive_through_client_window":live_members==expected_hosts,
-                    "replacement_committed":False,
-                    "original_expected_final_route":campaign["objective"]["expected_final_route"]})
-                wait_file(output/"runner-host-preserved-ack.json",time.monotonic()+10)
-                save_new(output/"carrier-complete.json",{
-                    "schema":"ecpa-h3-observer-carrier-terminal/v1",
-                    "formal_result":False,"objective_met":None,"delivery":result})
+                    spec,
+                    output / "client.jsonl",
+                    Path(start["authority"]["journal"]),
+                    policy=load(start["policy"]["path"]),
+                    frozen_probe=campaign["probe"],
+                    expected_client={
+                        k: client_owner[k] for k in ("pid", "start_ticks", "boot_id")
+                    },
+                    fault_ns=load(output / "runner-fault.json")["triggered_ns"],
+                    recovery_ns=None,
+                    allow_incomplete=True,
+                )
+                save_new(output / "native-delivery-observation.json", result)
+                membership = load(output / "phase0.actual-membership.json")
+                from experiments.formal_campaign.h3_observer_loss import (
+                    observe_host_kernels,
+                )
+
+                expected_hosts = [
+                    {
+                        k: m["identity"][k]
+                        for k in ("pid", "start_ticks", "session", "boot_id")
+                    }
+                    for m in membership
+                ]
+                live_members = observe_host_kernels(expected_hosts)
+                save_new(
+                    output / "observer-recovery-accounting.json",
+                    {
+                        "schema": "ecpa-h3-observer-recovery-accounting/v1",
+                        "operator_actions": 0,
+                        "recovery_ns": None,
+                        "actual_recovery": (
+                            "unavailable-producer-private-context-rebind-contract"
+                        ),
+                        "host_kernels_at_client_stop": live_members,
+                        "observed_ns": time.monotonic_ns(),
+                        "predecessor_alive_through_client_window": live_members
+                        == expected_hosts,
+                        "replacement_committed": False,
+                        "original_expected_final_route": campaign["objective"][
+                            "expected_final_route"
+                        ],
+                    },
+                )
+                wait_file(
+                    output / "runner-host-preserved-ack.json", time.monotonic() + 10
+                )
+                save_new(
+                    output / "carrier-complete.json",
+                    {
+                        "schema": "ecpa-h3-observer-carrier-terminal/v1",
+                        "formal_result": False,
+                        "objective_met": None,
+                        "delivery": result,
+                    },
+                )
                 break
 
     except Exception as exc:

@@ -479,17 +479,25 @@ class NativeAuthority(DynamicAuthority):
             source_files=sources,
         )
         self.collectors.append(process)
-        from experiments.formal_campaign.h3_observer_loss import binding
         from experiments.formal_campaign import h3_native_collector
-        bound = binding(process, descriptor, authority=identity(os.getpid()),
-                        start_id=self.start["start_id"],
-                        enrollment=self.enrollment["sha256"], phase_index=index,
-                        collector_source=Path(h3_native_collector.__file__).resolve(),
-                        collector_argv=process.args)
+        from experiments.formal_campaign.h3_observer_loss import binding
+
+        bound = binding(
+            process,
+            descriptor,
+            authority=identity(os.getpid()),
+            start_id=self.start["start_id"],
+            enrollment=self.enrollment["sha256"],
+            phase_index=index,
+            collector_source=Path(h3_native_collector.__file__).resolve(),
+            collector_argv=process.args,
+        )
         with self.lock:
             if index == 1:
-                require(self.observer_lost and self.route.generation is None,
-                        "replacement observer requires prior actual loss and closed route")
+                require(
+                    self.observer_lost and self.route.generation is None,
+                    "replacement observer requires prior actual loss and closed route",
+                )
             self.observer_bindings[index] = bound
             self.current_observer = (process, bound)
             self.observer_lost = False
@@ -567,9 +575,12 @@ class NativeAuthority(DynamicAuthority):
         if process.poll() is not None:
             self.observer_lost = True
             self._close("original observer lost")
-            self._record("observer.loss.observed", self.route,
-                         observer=bound["observer"],
-                         enrollment_sha256=bound["enrollment_sha256"])
+            self._record(
+                "observer.loss.observed",
+                self.route,
+                observer=bound["observer"],
+                enrollment_sha256=bound["enrollment_sha256"],
+            )
             require(False, "source observer lost")
 
     def _recheck(self):
@@ -577,7 +588,7 @@ class NativeAuthority(DynamicAuthority):
         return super()._recheck()
 
     def watch_observer(self, stop):
-        while not stop.wait(.01):
+        while not stop.wait(0.01):
             with self.lock:
                 try:
                     self.check_observer()
@@ -636,7 +647,9 @@ def main():
     ).parent
     authority.configure_start(start=start, recipe=recipe, output=output)
     stop = threading.Event()
-    watcher = threading.Thread(target=authority.watch_observer, args=(stop,), daemon=True)
+    watcher = threading.Thread(
+        target=authority.watch_observer, args=(stop,), daemon=True
+    )
     watcher.start()
     require(recipe["authority"]["socket"] == str(args.socket), "native socket differs")
     server = ThreadingHTTPServer(("127.0.0.1", args.public_port), NativeProxyHandler)

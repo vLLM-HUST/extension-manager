@@ -10,21 +10,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
 
 from experiments.formal_campaign.h3_dynamic_authority import require
-from experiments.formal_campaign.h3_observer_common_registration import (
-    materialize_recipe,
-)
 from experiments.formal_campaign.h3_observer_carrier import (
     RegisteredAuthority,
     load,
     reference,
     save_new,
+)
+from experiments.formal_campaign.h3_observer_common_registration import (
+    materialize_recipe,
 )
 from experiments.formal_campaign.h3_worker_recovery import (
     _event,
@@ -35,7 +34,6 @@ from experiments.formal_campaign.h3_worker_relaunch import (
     identity,
     live,
     owned_sessions,
-    signal_exact,
 )
 
 HERE = Path(__file__).resolve().parent
@@ -80,7 +78,10 @@ def prepare_native_paths(template, start, output):
                 and path.parent.resolve().is_relative_to(output.resolve()),
                 "native phase path escapes this actual start",
             )
-            from experiments.formal_campaign.h3_observer_paths import require_or_create_private_directory
+            from experiments.formal_campaign.h3_observer_paths import (
+                require_or_create_private_directory,
+            )
+
             require_or_create_private_directory(path.parent)
             require(
                 not path.exists()
@@ -100,20 +101,23 @@ def execute(
     spec_path, receipt_path, start_id, output, *, check_remote=True, native=False
 ):
     if native:
-        from experiments.formal_campaign.h3_observer_registration import (
-            validate_receipt_for_start,
-        )
         from experiments.formal_campaign.h3_observer_carrier import (
             NativeRegisteredAuthority as Authority,
         )
+        from experiments.formal_campaign.h3_observer_registration import (
+            validate_receipt_for_start,
+        )
     else:
-        from experiments.formal_campaign.h3_observer_common_registration import validate_receipt
+        from experiments.formal_campaign.h3_observer_common_registration import (
+            validate_receipt,
+        )
 
         Authority = RegisteredAuthority
     require(native, "observer-loss runner requires its distinct native receipt domain")
     require(not output.exists(), "start output must be fresh")
     from experiments.formal_campaign.h3_observer_paths import create_private_directory
-    create_private_directory(output,parents=True)
+
+    create_private_directory(output, parents=True)
     authority_process = carrier_process = None
     authority_owner = carrier_owner = None
     sessions = {}
@@ -144,25 +148,49 @@ def execute(
             )
             start = next(s for s in spec["starts"] if s["start_id"] == start_id)
         from urllib.parse import urlparse
-        from experiments.formal_campaign.h3_observer_cleanup import observe as observe_cleanup
-        cleanup_policy=spec["observer_cleanup"]
+
+        from experiments.formal_campaign.h3_observer_cleanup import (
+            observe as observe_cleanup,
+        )
+
+        cleanup_policy = spec["observer_cleanup"]
         template = load(start["recipe_template"]["path"])
-        cleanup_ports=[start["authority"]["public_port"],
-                       urlparse(template["authority"]["backend_endpoint"]).port]
+        cleanup_ports = [
+            start["authority"]["public_port"],
+            urlparse(template["authority"]["backend_endpoint"]).port,
+        ]
         from experiments.formal_campaign.h3_observer_cleanup import context_for
-        cleanup_context=context_for(spec_path,receipt_path,spec,start)
-        cleanup_before=observe_cleanup(cleanup_policy,cleanup_ports,
-            context=cleanup_context,stage="before-product")
-        require(not cleanup_before["listeners"], "registered ports already externally owned")
+
+        cleanup_context = context_for(spec_path, receipt_path, spec, start)
+        cleanup_before = observe_cleanup(
+            cleanup_policy,
+            cleanup_ports,
+            context=cleanup_context,
+            stage="before-product",
+        )
+        require(
+            not cleanup_before["listeners"], "registered ports already externally owned"
+        )
         import base64
-        baseline_npu=base64.b64decode(cleanup_before["npu_stdout_base64"],validate=True)
-        require(cleanup_before["npu_exit"]==0 and all(
-                f"No running processes found in NPU {d}".encode() in baseline_npu for d in (0,3)),
-                "allocated NPU baseline is not empty; no product launch")
-        save_new(output/"runner-cleanup-before.json",cleanup_before)
+
+        baseline_npu = base64.b64decode(
+            cleanup_before["npu_stdout_base64"], validate=True
+        )
+        require(
+            cleanup_before["npu_exit"] == 0
+            and all(
+                f"No running processes found in NPU {d}".encode() in baseline_npu
+                for d in (0, 3)
+            ),
+            "allocated NPU baseline is not empty; no product launch",
+        )
+        save_new(output / "runner-cleanup-before.json", cleanup_before)
         for value in (start["authority"]["journal"], template["authority"]["socket"]):
             path = Path(value)
-            from experiments.formal_campaign.h3_observer_paths import require_or_create_private_directory
+            from experiments.formal_campaign.h3_observer_paths import (
+                require_or_create_private_directory,
+            )
+
             require_or_create_private_directory(path.parent)
             require(
                 not path.exists()
@@ -258,15 +286,19 @@ def execute(
         )
         deadline = time.monotonic() + 2 * original["probe"]["ready_timeout_s"] + 60
         while time.monotonic() < deadline:
-            for owner in (authority_owner,carrier_owner):
+            for owner in (authority_owner, carrier_owner):
                 if owner is not None and live(owner):
-                    _, actual_descendants=owned_sessions(owner)
+                    _, actual_descendants = owned_sessions(owner)
                     for kernel in actual_descendants.values():
-                        observed_owned[(kernel["pid"],kernel["start_ticks"],kernel["boot_id"])]=kernel
+                        observed_owned[
+                            (kernel["pid"], kernel["start_ticks"], kernel["boot_id"])
+                        ] = kernel
             if cleanup_before is not None:
-                external=[e["kernel"] for e in cleanup_before["external_services"]]
-                require(not any(k in external for k in observed_owned.values()),
-                        "external service became a descendant; no owned cleanup allowed")
+                external = [e["kernel"] for e in cleanup_before["external_services"]]
+                require(
+                    not any(k in external for k in observed_owned.values()),
+                    "external service became a descendant; no owned cleanup allowed",
+                )
             for path in sorted(output.glob("phase*.launch-observation.json")):
                 marker = load(path)
                 if any(item["marker"] == path.name for item in observed_launches):
@@ -303,65 +335,122 @@ def execute(
                 save_new(output / f"runner-{label}-ack.json", phase)
             ready = output / "carrier-fault-ready.json"
             if "before" in captured and fault is None and ready.exists():
-                from experiments.formal_campaign.h3_dynamic_authority import read_dynamic_journal
+                from experiments.formal_campaign.h3_dynamic_authority import (
+                    read_dynamic_journal,
+                )
                 from experiments.formal_campaign.h3_observer_authority import JOURNAL
                 from experiments.formal_campaign.h3_observer_loss import (
-                    observe_and_fault, observe_original_client_barrier)
-                events = read_dynamic_journal(start["authority"]["journal"], domain=JOURNAL)
-                bound = [e["detail"]["binding"] for e in events
-                         if e["kind"] == "observer.actual-bound" and
-                         e["detail"]["binding"]["phase_index"] == 0]
+                    observe_and_fault,
+                    observe_original_client_barrier,
+                )
+
+                events = read_dynamic_journal(
+                    start["authority"]["journal"], domain=JOURNAL
+                )
+                bound = [
+                    e["detail"]["binding"]
+                    for e in events
+                    if e["kind"] == "observer.actual-bound"
+                    and e["detail"]["binding"]["phase_index"] == 0
+                ]
                 require(len(bound) == 1, "exact original observer binding missing")
                 bound = bound[0]
-                require(load(ready) == {"start_id": start_id,
-                        "enrollment_sha256": bound["enrollment_sha256"]},
-                        "observer readiness differs from source-owned original enrollment")
+                require(
+                    load(ready)
+                    == {
+                        "start_id": start_id,
+                        "enrollment_sha256": bound["enrollment_sha256"],
+                    },
+                    "observer readiness differs from source-owned original enrollment",
+                )
                 ready_client = load(output / "client-ready.json")["client"]
                 client_kernel = identity(ready_client["pid"])
-                require(all(client_kernel[k] == v for k, v in ready_client.items()),
-                        "original client kernel differs")
-                from experiments.formal_campaign.h3_observer_loss import observe_host_kernels
-                original_members=load(output/"phase0.actual-membership.json")
-                expected_hosts=[{k:m["identity"][k] for k in ("pid","start_ticks","session","boot_id")}
-                                for m in original_members]
-                require(observe_host_kernels(expected_hosts)==expected_hosts,
-                        "healthy original Host roster missing before observer injection")
-                raw = observe_and_fault(bound, authority=authority_owner,
-                    source_ref=bound["source"], expected_argv=bound["argv"],
-                    start_id=start_id, enrollment=bound["enrollment_sha256"],
+                require(
+                    all(client_kernel[k] == v for k, v in ready_client.items()),
+                    "original client kernel differs",
+                )
+                from experiments.formal_campaign.h3_observer_loss import (
+                    observe_host_kernels,
+                )
+
+                original_members = load(output / "phase0.actual-membership.json")
+                expected_hosts = [
+                    {
+                        k: m["identity"][k]
+                        for k in ("pid", "start_ticks", "session", "boot_id")
+                    }
+                    for m in original_members
+                ]
+                require(
+                    observe_host_kernels(expected_hosts) == expected_hosts,
+                    "healthy original Host roster missing before observer injection",
+                )
+                raw = observe_and_fault(
+                    bound,
+                    authority=authority_owner,
+                    source_ref=bound["source"],
+                    expected_argv=bound["argv"],
+                    start_id=start_id,
+                    enrollment=bound["enrollment_sha256"],
                     timeout_s=original["fault"]["target_exit_timeout_s"],
-                    before_signal=lambda: observe_original_client_barrier(
-                        output=output, client_kernel=client_kernel,
-                        start_id=start_id, enrollment=bound["enrollment_sha256"]))
+                    before_signal=lambda client_kernel=client_kernel, bound=bound: (
+                        observe_original_client_barrier(
+                            output=output,
+                            client_kernel=client_kernel,
+                            start_id=start_id,
+                            enrollment=bound["enrollment_sha256"],
+                        )
+                    ),
+                )
                 # Prove original API+both TP2 workers survive the observer fault
                 # before the explicitly counted operator recovery retires Host.
                 kernels = observe_host_kernels(expected_hosts)
                 raw["host_kernels_immediately_after_observer_death"] = kernels
-                raw["client_kernel"]=client_kernel
-                fault_raw=raw
+                raw["client_kernel"] = client_kernel
+                fault_raw = raw
                 save_new(output / "observer-fault-raw.json", raw)
                 fault = raw["fault"]
                 dead = raw["pidfd_observed_dead_ns"]
                 save_new(output / "runner-fault.json", fault)
-                save_new(output / "runner-observer-dead.json", {"observed_dead_ns": dead})
-            preservation=output/"observer-recovery-accounting.json"
-            ack=output/"runner-host-preserved-ack.json"
+                save_new(
+                    output / "runner-observer-dead.json", {"observed_dead_ns": dead}
+                )
+            preservation = output / "observer-recovery-accounting.json"
+            ack = output / "runner-host-preserved-ack.json"
             if preservation.exists() and not ack.exists():
-                from experiments.formal_campaign.h3_client_trace import read_client_trace
-                account=load(preservation)
-                trace=read_client_trace(output/"client.jsonl")
-                stopped=[e for e in trace if e["kind"] == "client.stop"]
-                require(len(stopped)==1, "original finite window has no terminal event")
-                original_members=load(output/"phase0.actual-membership.json")
-                from experiments.formal_campaign.h3_observer_loss import observe_host_kernels
-                expected_hosts=[{k:m["identity"][k] for k in ("pid","start_ticks","session","boot_id")}
-                                for m in original_members]
-                actual_kernels=observe_host_kernels(expected_hosts)
-                save_new(ack,{"host_kernels":actual_kernels,
-                              "client_stop_ns":stopped[0]["monotonic_ns"],
-                              "host_preserved":actual_kernels==expected_hosts,
-                              "observed_ns":time.monotonic_ns(),
-                              "replacement_committed":False})
+                from experiments.formal_campaign.h3_client_trace import (
+                    read_client_trace,
+                )
+
+                load(preservation)
+                trace = read_client_trace(output / "client.jsonl")
+                stopped = [e for e in trace if e["kind"] == "client.stop"]
+                require(
+                    len(stopped) == 1, "original finite window has no terminal event"
+                )
+                original_members = load(output / "phase0.actual-membership.json")
+                from experiments.formal_campaign.h3_observer_loss import (
+                    observe_host_kernels,
+                )
+
+                expected_hosts = [
+                    {
+                        k: m["identity"][k]
+                        for k in ("pid", "start_ticks", "session", "boot_id")
+                    }
+                    for m in original_members
+                ]
+                actual_kernels = observe_host_kernels(expected_hosts)
+                save_new(
+                    ack,
+                    {
+                        "host_kernels": actual_kernels,
+                        "client_stop_ns": stopped[0]["monotonic_ns"],
+                        "host_preserved": actual_kernels == expected_hosts,
+                        "observed_ns": time.monotonic_ns(),
+                        "replacement_committed": False,
+                    },
+                )
             if carrier_process.poll() is not None:
                 break
             time.sleep(0.01)
@@ -374,42 +463,67 @@ def execute(
     except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"
     finally:
-        independent_terminal_ns=time.monotonic_ns()
-        cleanup_started_ns=None
+        independent_terminal_ns = time.monotonic_ns()
+        cleanup_started_ns = None
         errors = []
         if cleanup_policy is not None:
             cleanup_owned.extend(observed_owned.values())
-            for owner in (carrier_owner,authority_owner):
+            for owner in (carrier_owner, authority_owner):
                 if owner is not None and live(owner):
                     try:
-                        _,table=owned_sessions(owner)
+                        _, table = owned_sessions(owner)
                         cleanup_owned.extend(table.values())
                     except Exception as exc:
-                        errors.append("independent ownership capture: "+str(exc))
+                        errors.append("independent ownership capture: " + str(exc))
             if fault_raw is not None:
-                from experiments.formal_campaign.h3_observer_cleanup import required_epochs
-                cleanup_epochs={"authority":authority_owner,"carrier":carrier_owner,
-                    "host":expected_hosts,"collector":fault_raw["binding"]["observer"],
-                    "client":fault_raw["client_kernel"]}
+                from experiments.formal_campaign.h3_observer_cleanup import (
+                    required_epochs,
+                )
+
+                cleanup_epochs = {
+                    "authority": authority_owner,
+                    "carrier": carrier_owner,
+                    "host": expected_hosts,
+                    "collector": fault_raw["binding"]["observer"],
+                    "client": fault_raw["client_kernel"],
+                }
                 cleanup_owned.extend(required_epochs(cleanup_epochs))
             from experiments.formal_campaign.h3_observer_cleanup import ordered_kernels
-            cleanup_owned=ordered_kernels(cleanup_owned)
-            save_new(output/"runner-terminal.json",{
-                "schema":"ecpa-h3-observer-independent-runner-terminal/v1",
-                "start_id":start_id,"context":cleanup_context,"run_epochs":cleanup_epochs,
-                "fault":fault,"observed_dead_ns":dead,
-                "observed_ns":independent_terminal_ns,
-                "carrier_complete":(output/"carrier-complete.json").exists(),
-                "carrier_returncode":carrier_process.poll() if carrier_process is not None else None,
-                "error":error})
-            cleanup_started_ns=time.monotonic_ns()
-            save_new(output/"runner-cleanup-ownership.json",{
-                "context":cleanup_context,"run_epochs":cleanup_epochs,
-                "owned_kernels":cleanup_owned,"captured_ns":time.monotonic_ns()})
+
+            cleanup_owned = ordered_kernels(cleanup_owned)
+            save_new(
+                output / "runner-terminal.json",
+                {
+                    "schema": "ecpa-h3-observer-independent-runner-terminal/v1",
+                    "start_id": start_id,
+                    "context": cleanup_context,
+                    "run_epochs": cleanup_epochs,
+                    "fault": fault,
+                    "observed_dead_ns": dead,
+                    "observed_ns": independent_terminal_ns,
+                    "carrier_complete": (output / "carrier-complete.json").exists(),
+                    "carrier_returncode": carrier_process.poll()
+                    if carrier_process is not None
+                    else None,
+                    "error": error,
+                },
+            )
+            cleanup_started_ns = time.monotonic_ns()
+            save_new(
+                output / "runner-cleanup-ownership.json",
+                {
+                    "context": cleanup_context,
+                    "run_epochs": cleanup_epochs,
+                    "owned_kernels": cleanup_owned,
+                    "captured_ns": time.monotonic_ns(),
+                },
+            )
             if cleanup_before is not None:
-                external=[e["kernel"] for e in cleanup_before["external_services"]]
-                require(not any(k in external for k in cleanup_owned),
-                        "externally owned service entered cleanup set; refuse signal")
+                external = [e["kernel"] for e in cleanup_before["external_services"]]
+                require(
+                    not any(k in external for k in cleanup_owned),
+                    "externally owned service entered cleanup set; refuse signal",
+                )
         if carrier_process is not None:
             try:
                 cleanup(carrier_process, carrier_owner, 10, list(sessions.values()))
@@ -431,13 +545,22 @@ def execute(
                     errors.append(str(cleanup_exc))
         if cleanup_before is not None:
             try:
-                from experiments.formal_campaign.h3_observer_cleanup import observe as observe_cleanup
-                after=observe_cleanup(cleanup_policy,cleanup_ports,owned=cleanup_owned,
-                    context=cleanup_context,stage="after-cleanup",run_epochs=cleanup_epochs,
-                    external_before=cleanup_before["external_services"])
-                save_new(output/"runner-cleanup-after.json",after)
+                from experiments.formal_campaign.h3_observer_cleanup import (
+                    observe as observe_cleanup,
+                )
+
+                after = observe_cleanup(
+                    cleanup_policy,
+                    cleanup_ports,
+                    owned=cleanup_owned,
+                    context=cleanup_context,
+                    stage="after-cleanup",
+                    run_epochs=cleanup_epochs,
+                    external_before=cleanup_before["external_services"],
+                )
+                save_new(output / "runner-cleanup-after.json", after)
             except Exception as exc:
-                errors.append("independent cleanup observation: "+str(exc))
+                errors.append("independent cleanup observation: " + str(exc))
         save_new(
             output / "runner-observations.json",
             {
@@ -449,10 +572,10 @@ def execute(
                 "observed_dead_ns": dead,
                 "error": error,
                 "cleanup_errors": errors,
-                "cleanup_owned_kernels":cleanup_owned,
-                "cleanup_run_epochs":cleanup_epochs,
-                "cleanup_started_ns":cleanup_started_ns,
-                "recorded_ns":time.monotonic_ns(),
+                "cleanup_owned_kernels": cleanup_owned,
+                "cleanup_run_epochs": cleanup_epochs,
+                "cleanup_started_ns": cleanup_started_ns,
+                "recorded_ns": time.monotonic_ns(),
                 "formal_result": False,
             },
         )

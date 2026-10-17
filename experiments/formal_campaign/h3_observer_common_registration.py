@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 
 from experiments.formal_campaign import source_provenance
-from experiments.formal_campaign.h3_cell_dispatch import cell_policy
 from experiments.formal_campaign.h3_dynamic_authority import (
     canonical,
     digest,
@@ -265,7 +264,8 @@ def _validate_campaign(spec, *, profile=None, spec_path=None):
         require(
             start["recovery_action"] == "preserve-host-observe-failed-safe",
             (
-                "observer-loss preserves healthy Host and observes original failed-safe window; never "
+                "observer-loss preserves healthy Host and observes original "
+                "failed-safe window; never "
                 "claim automatic recovery"
             ),
         )

@@ -335,16 +335,24 @@ def preflight_native_spec(phase):
 
 def validate_start(spec, original, start, recipe, policy):
     from experiments.formal_campaign.h3_observer_loss import validate_original
-    validate_original(original, start["client_template"], start,
-                      load(HERE / "protocol.json"))
+
+    validate_original(
+        original, start["client_template"], start, load(HERE / "protocol.json")
+    )
     for phase in recipe["arms"][start["arm"]]["phases"]:
-        argv=phase["argv"]
-        require("--max-num-seqs" in argv and argv[argv.index("--max-num-seqs")+1] == "1",
-                "fixed max_num_seqs1 differs")
+        argv = phase["argv"]
+        require(
+            "--max-num-seqs" in argv and argv[argv.index("--max-num-seqs") + 1] == "1",
+            "fixed max_num_seqs1 differs",
+        )
     cleanup_policy = spec["observer_cleanup"]
-    require(cleanup_policy["allocated_devices"] == [0, 3], "allocated NPU domain differs")
-    require(cleanup_policy["npu_command"] == ["/usr/local/sbin/npu-smi", "info"],
-            "source-owned read-only NPU command required")
+    require(
+        cleanup_policy["allocated_devices"] == [0, 3], "allocated NPU domain differs"
+    )
+    require(
+        cleanup_policy["npu_command"] == ["/usr/local/sbin/npu-smi", "info"],
+        "source-owned read-only NPU command required",
+    )
 
     phases = recipe["arms"][start["arm"]]["phases"]
     admitted = {

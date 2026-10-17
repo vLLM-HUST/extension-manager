@@ -134,60 +134,94 @@ def intake(spec_path, receipt_path, start_id, output, *, native=False):
             _event(phase[key + "_event"], phase[key], role)
     policy = load(start["policy"]["path"])
     events = read_dynamic_journal(start["authority"]["journal"], domain=JOURNAL)
-    require(events[0]["authority"] == authority["kernel"] and
-            events[0]["policy_sha256"] == digest(canonical(policy)),
-            "actual observer authority journal epoch differs")
-    bound_events=[e for e in events if e["kind"] == "observer.actual-bound" and
-                  e["detail"]["binding"]["phase_index"] == 0]
-    require(len(bound_events)==1, "actual original observer binding absent")
-    bound=bound_events[0]["detail"]["binding"]
-    raw=load(output/"observer-fault-raw.json")
-    fault=observations["fault"]
-    dead=observations["observed_dead_ns"]
-    require(fault == raw["fault"] == load(output/"runner-fault.json") and
-            dead == raw["pidfd_observed_dead_ns"] ==
-                    load(output/"runner-observer-dead.json")["observed_dead_ns"],
-            "independent observer fault/death observations differ")
-    require(fault["signal"] == original["fault"]["signal"] and
-            phases["before"]["observed_ns"] < fault["triggered_ns"] and
-            dead-fault["triggered_ns"] <= original["fault"]["target_exit_timeout_s"]*1e9,
-            "observer fault signal/timing differs from original")
-    require(bound_events[0]["monotonic_ns"] < fault["triggered_ns"],
-            "observer journal binding occurred after injection")
-    membership=load(output/"phase0.actual-membership.json")
-    host_kernels=[{k:m["identity"][k] for k in ("pid","start_ticks","session","boot_id")}
-                  for m in membership]
+    require(
+        events[0]["authority"] == authority["kernel"]
+        and events[0]["policy_sha256"] == digest(canonical(policy)),
+        "actual observer authority journal epoch differs",
+    )
+    bound_events = [
+        e
+        for e in events
+        if e["kind"] == "observer.actual-bound"
+        and e["detail"]["binding"]["phase_index"] == 0
+    ]
+    require(len(bound_events) == 1, "actual original observer binding absent")
+    bound = bound_events[0]["detail"]["binding"]
+    raw = load(output / "observer-fault-raw.json")
+    fault = observations["fault"]
+    dead = observations["observed_dead_ns"]
+    require(
+        fault == raw["fault"] == load(output / "runner-fault.json")
+        and dead
+        == raw["pidfd_observed_dead_ns"]
+        == load(output / "runner-observer-dead.json")["observed_dead_ns"],
+        "independent observer fault/death observations differ",
+    )
+    require(
+        fault["signal"] == original["fault"]["signal"]
+        and phases["before"]["observed_ns"] < fault["triggered_ns"]
+        and dead - fault["triggered_ns"]
+        <= original["fault"]["target_exit_timeout_s"] * 1e9,
+        "observer fault signal/timing differs from original",
+    )
+    require(
+        bound_events[0]["monotonic_ns"] < fault["triggered_ns"],
+        "observer journal binding occurred after injection",
+    )
+    membership = load(output / "phase0.actual-membership.json")
+    host_kernels = [
+        {k: m["identity"][k] for k in ("pid", "start_ticks", "session", "boot_id")}
+        for m in membership
+    ]
     from experiments.formal_campaign.h3_observer_loss import validate_raw
-    actual_fault=validate_raw(raw,bound,authority_events=events,
-                 independent_host_kernels=raw["host_kernels_immediately_after_observer_death"],
-                 original_host_kernels=host_kernels)
-    require(raw["client_barrier"]["first_request_started_ns"] < fault["triggered_ns"],
-            "original first-request fault barrier absent")
+
+    actual_fault = validate_raw(
+        raw,
+        bound,
+        authority_events=events,
+        independent_host_kernels=raw["host_kernels_immediately_after_observer_death"],
+        original_host_kernels=host_kernels,
+    )
+    require(
+        raw["client_barrier"]["first_request_started_ns"] < fault["triggered_ns"],
+        "original first-request fault barrier absent",
+    )
     measurements = None
     delivery_error = None
     source_client_prefix_validated = False
     complete = output / "carrier-complete.json"
     recovery = None
-    accounting=None
-    terminal=None
+    accounting = None
+    terminal = None
     if complete.exists():
-        require(set(phases)=={"before"} and len(launches)==1 and fault is not None and dead is not None,
-                "observer-only fault cannot conceal Host relaunch/worker replacement")
-        accounting=load(output/"observer-recovery-accounting.json")
-        witness=load(output/"runner-host-preserved-ack.json")
+        require(
+            set(phases) == {"before"}
+            and len(launches) == 1
+            and fault is not None
+            and dead is not None,
+            "observer-only fault cannot conceal Host relaunch/worker replacement",
+        )
+        accounting = load(output / "observer-recovery-accounting.json")
+        witness = load(output / "runner-host-preserved-ack.json")
         from experiments.formal_campaign.h3_client_trace import read_client_trace
         from experiments.formal_campaign.h3_observer_loss import verify_terminal_witness
-        terminal=verify_terminal_witness(accounting,witness,
-            original_host_kernels=host_kernels,client_trace=read_client_trace(output/"client.jsonl"),
-            expected_client=load(output/"client-ready.json")["client"],start_id=start_id,
-            launch_ns=authority["observed_ns"],dead_ns=dead)
-        terminal["kind"]="complete-client-window"
-        require(accounting["operator_actions"] == 0 and accounting["recovery_ns"] is None,
-                "actual observer recovery/operator accounting differs")
-    if (
-        fault is not None
-        and (native or dead is not None)
-    ):
+
+        terminal = verify_terminal_witness(
+            accounting,
+            witness,
+            original_host_kernels=host_kernels,
+            client_trace=read_client_trace(output / "client.jsonl"),
+            expected_client=load(output / "client-ready.json")["client"],
+            start_id=start_id,
+            launch_ns=authority["observed_ns"],
+            dead_ns=dead,
+        )
+        terminal["kind"] = "complete-client-window"
+        require(
+            accounting["operator_actions"] == 0 and accounting["recovery_ns"] is None,
+            "actual observer recovery/operator accounting differs",
+        )
+    if fault is not None and (native or dead is not None):
         client_spec = load(output / "runtime-client-spec.json")
         ready = load(output / "client-ready.json")
         expected = dict(
@@ -204,12 +238,19 @@ def intake(spec_path, receipt_path, start_id, output, *, native=False):
             client_spec == expected,
             "runtime client changed registered workload or domain",
         )
-        from experiments.formal_campaign.h3_observer_loss import verify_first_request_prefix
-        source_client_prefix_validated=verify_first_request_prefix(
-            output/"runner-pre-fault-client-prefix.bin",raw["client_barrier"],
-            start_id=start_id,enrollment=bound["enrollment_sha256"],
-            client_spec_path=output/"runtime-client-spec.json",
-            expected_client=ready["client"],fault_ns=fault["triggered_ns"])
+        from experiments.formal_campaign.h3_observer_loss import (
+            verify_first_request_prefix,
+        )
+
+        source_client_prefix_validated = verify_first_request_prefix(
+            output / "runner-pre-fault-client-prefix.bin",
+            raw["client_barrier"],
+            start_id=start_id,
+            enrollment=bound["enrollment_sha256"],
+            client_spec_path=output / "runtime-client-spec.json",
+            expected_client=ready["client"],
+            fault_ns=fault["triggered_ns"],
+        )
         measurements = verify_window(
             client_spec,
             output / "client.jsonl",
@@ -238,56 +279,108 @@ def intake(spec_path, receipt_path, start_id, output, *, native=False):
     recovery_ms = None
     if fault is not None and recovery is not None:
         recovery_ms = (recovery["recovery_ns"] - fault["triggered_ns"]) / 1e6
-    operator_actions=accounting["operator_actions"] if accounting is not None else None
+    operator_actions = (
+        accounting["operator_actions"] if accounting is not None else None
+    )
     objective_result = assess_original_objective(
         original["objective"],
         measurements,
         recovery_ms,
         operator_actions,
     )
-    if not actual_fault["host_preserved_after_fault"] or (terminal is not None and
-            terminal["host_preserved"] is False):
-        objective_result["objective_met"]=False
-        objective_result["known_objective_violations"].append("predecessor_or_Host_lost_after_observer_fault")
+    if not actual_fault["host_preserved_after_fault"] or (
+        terminal is not None and terminal["host_preserved"] is False
+    ):
+        objective_result["objective_met"] = False
+        objective_result["known_objective_violations"].append(
+            "predecessor_or_Host_lost_after_observer_fault"
+        )
     if terminal is not None and terminal["summary_consistent"] is False:
-        objective_result["objective_met"]=False
-        objective_result["known_objective_violations"].append("terminal_preservation_summary_contradicts_actual_epochs")
+        objective_result["objective_met"] = False
+        objective_result["known_objective_violations"].append(
+            "terminal_preservation_summary_contradicts_actual_epochs"
+        )
     from experiments.formal_campaign.h3_observer_cleanup import (
-        verify as verify_cleanup,context_for,ordered_kernels)
-    actual_client=load(output/"client-ready.json")["client"]
-    require(all(raw["client_kernel"][k]==v for k,v in actual_client.items()),
-            "cleanup client epoch differs from original actual client")
-    epochs={"authority":authority["kernel"],"carrier":adapter["kernel"],
-            "host":host_kernels,"collector":bound["observer"],"client":raw["client_kernel"]}
-    expected_context=context_for(spec_path,receipt_path,spec,start)
+        context_for,
+        ordered_kernels,
+    )
+    from experiments.formal_campaign.h3_observer_cleanup import verify as verify_cleanup
+
+    actual_client = load(output / "client-ready.json")["client"]
+    require(
+        all(raw["client_kernel"][k] == v for k, v in actual_client.items()),
+        "cleanup client epoch differs from original actual client",
+    )
+    epochs = {
+        "authority": authority["kernel"],
+        "carrier": adapter["kernel"],
+        "host": host_kernels,
+        "collector": bound["observer"],
+        "client": raw["client_kernel"],
+    }
+    expected_context = context_for(spec_path, receipt_path, spec, start)
     if terminal is None:
-        from experiments.formal_campaign.h3_observer_loss import verify_independent_partial_terminal
-        terminal=verify_independent_partial_terminal(load(output/"runner-terminal.json"),
-            context=expected_context,epochs=epochs,fault=fault,dead_ns=dead,
-            cleanup_started_ns=observations["cleanup_started_ns"])
-    ownership=load(output/"runner-cleanup-ownership.json")
-    owned=ordered_kernels(observations["cleanup_owned_kernels"])
-    require(ownership["context"]==expected_context and ownership["run_epochs"]==epochs and
-            observations["cleanup_run_epochs"]==epochs and ownership["owned_kernels"]==owned and
-            terminal["terminal_ns"] <= observations["cleanup_started_ns"] <= ownership["captured_ns"],
-            "cleanup full owned-kernel capture differs from actual start epochs")
+        from experiments.formal_campaign.h3_observer_loss import (
+            verify_independent_partial_terminal,
+        )
+
+        terminal = verify_independent_partial_terminal(
+            load(output / "runner-terminal.json"),
+            context=expected_context,
+            epochs=epochs,
+            fault=fault,
+            dead_ns=dead,
+            cleanup_started_ns=observations["cleanup_started_ns"],
+        )
+    ownership = load(output / "runner-cleanup-ownership.json")
+    owned = ordered_kernels(observations["cleanup_owned_kernels"])
+    require(
+        ownership["context"] == expected_context
+        and ownership["run_epochs"] == epochs
+        and observations["cleanup_run_epochs"] == epochs
+        and ownership["owned_kernels"] == owned
+        and terminal["terminal_ns"]
+        <= observations["cleanup_started_ns"]
+        <= ownership["captured_ns"],
+        "cleanup full owned-kernel capture differs from actual start epochs",
+    )
     from urllib.parse import urlparse
-    ports=[start["authority"]["public_port"],urlparse(runtime_recipe["authority"]["backend_endpoint"]).port]
-    cleanup=verify_cleanup(load(output/"runner-cleanup-before.json"),
-        load(output/"runner-cleanup-after.json"),spec["observer_cleanup"],
-        context=expected_context,run_epochs=epochs,owned_kernels=owned,ports=ports,
-        clocks={"terminal_kind":terminal["kind"],
-                "launch_ns":authority["observed_ns"],"fault_ns":fault["triggered_ns"],
-                "dead_ns":dead,"client_stop_ns":terminal["client_stop_ns"],
-                "terminal_ns":terminal["terminal_ns"],
-                "cleanup_started_ns":observations["cleanup_started_ns"],
-                "recorded_ns":observations["recorded_ns"]})
+
+    ports = [
+        start["authority"]["public_port"],
+        urlparse(runtime_recipe["authority"]["backend_endpoint"]).port,
+    ]
+    cleanup = verify_cleanup(
+        load(output / "runner-cleanup-before.json"),
+        load(output / "runner-cleanup-after.json"),
+        spec["observer_cleanup"],
+        context=expected_context,
+        run_epochs=epochs,
+        owned_kernels=owned,
+        ports=ports,
+        clocks={
+            "terminal_kind": terminal["kind"],
+            "launch_ns": authority["observed_ns"],
+            "fault_ns": fault["triggered_ns"],
+            "dead_ns": dead,
+            "client_stop_ns": terminal["client_stop_ns"],
+            "terminal_ns": terminal["terminal_ns"],
+            "cleanup_started_ns": observations["cleanup_started_ns"],
+            "recorded_ns": observations["recorded_ns"],
+        },
+    )
     if not all(cleanup.values()):
-        objective_result["objective_met"]=False
-        objective_result["known_objective_violations"].append("original_cleanup_failure_policy")
-    objective_result["unverified_obligations"].append("successful_observer_restart_private_context_rebind_contract")
+        objective_result["objective_met"] = False
+        objective_result["known_objective_violations"].append(
+            "original_cleanup_failure_policy"
+        )
+    objective_result["unverified_obligations"].append(
+        "successful_observer_restart_private_context_rebind_contract"
+    )
     if delivery_error is not None:
-        objective_result["unverified_obligations"].append("original_delivery_and_native_proof_verification_incomplete")
+        objective_result["unverified_obligations"].append(
+            "original_delivery_and_native_proof_verification_incomplete"
+        )
     formal_start_validated = bool(
         source_client_prefix_validated
         and fault is not None
@@ -324,13 +417,15 @@ def intake(spec_path, receipt_path, start_id, output, *, native=False):
         "duplicated_requests": None,
         "backend_execution_duplicates": None,
         "operator_actions": operator_actions,
-        "cleanup":cleanup,
-        "observer_recovery_accounting":accounting,
-        "independent_terminal_assessment":terminal,
+        "cleanup": cleanup,
+        "observer_recovery_accounting": accounting,
+        "independent_terminal_assessment": terminal,
         "measurements": measurements,
-        "delivery_error":delivery_error,
-        "source_admission_basis":"source-registered-actual-observer-fault-plus-original-request-start",
-        "partial_failed_start":not complete.exists(),
+        "delivery_error": delivery_error,
+        "source_admission_basis": (
+            "source-registered-actual-observer-fault-plus-original-request-start"
+        ),
+        "partial_failed_start": not complete.exists(),
         "failure": observations["error"],
         "cleanup_errors": observations["cleanup_errors"],
         "deployment_receipt": reference(receipt_path),
