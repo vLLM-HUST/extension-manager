@@ -51,13 +51,26 @@ def private_read(path):
 
 
 def authenticate(
-    socket_path, descriptor, spec_path, collector_source_path, *, drain_policy_path, schedule_path
+    socket_path,
+    descriptor,
+    spec_path,
+    collector_source_path,
+    *,
+    drain_policy_path,
+    schedule_path,
 ):
     """Validate kernel peer, independent launch descriptor, source and identities."""
     require(drain_policy_path is not None, "explicit request drain policy required")
-    from experiments.formal_campaign.h4_sampled_native_schedule import read_schedule, bind_selected_phases
+    from experiments.formal_campaign.h4_sampled_native_schedule import (
+        bind_selected_phases,
+        read_schedule,
+    )
+
     schedule, schedule_raw = read_schedule(schedule_path)
-    require(sha(schedule_raw) == descriptor["schedule_sha256"], "registered H4 schedule differs")
+    require(
+        sha(schedule_raw) == descriptor["schedule_sha256"],
+        "registered H4 schedule differs",
+    )
     expected = descriptor["collector"]
     require(
         descriptor["launcher_observed_identity"] == expected,

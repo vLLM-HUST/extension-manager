@@ -7,7 +7,6 @@ hook. No extra serving/qualification HTTP request is introduced.
 
 from __future__ import annotations
 
-import os
 import subprocess
 import time
 from pathlib import Path
@@ -36,6 +35,7 @@ from vllm_hust_ext.runtime_phase_handoff import accept_native_binding, bind_rece
 def launch_phase(phase, arm, output, index, timeout, *, on_popen=None):
     """Launch the real pinned Host; bind events to actual native origin."""
     from .h4_sampled_registration import preflight_native_spec
+
     preflight_native_spec(phase)  # before listener setup or any product Popen
     environment = dict(phase["environment"])
     argv = list(phase["argv"])
@@ -93,13 +93,18 @@ def launch_phase(phase, arm, output, index, timeout, *, on_popen=None):
         product_popen_after_ns = time.clock_gettime_ns(time.CLOCK_MONOTONIC_RAW)
     early_owner = identity(process.pid)
     try:
-        save_new(output / f"phase{index}.product-popen-timing.json", {
-            "schema": "ecpa-h4-sampled-real-product-popen/v1",
-            "clock": "CLOCK_MONOTONIC_RAW",
-            "before_ns": product_popen_before_ns, "after_ns": product_popen_after_ns,
-            "before_monotonic_ns": product_popen_before_monotonic_ns,
-            "actual_kernel": identity(process.pid), "argv": argv,
-        })
+        save_new(
+            output / f"phase{index}.product-popen-timing.json",
+            {
+                "schema": "ecpa-h4-sampled-real-product-popen/v1",
+                "clock": "CLOCK_MONOTONIC_RAW",
+                "before_ns": product_popen_before_ns,
+                "after_ns": product_popen_after_ns,
+                "before_monotonic_ns": product_popen_before_monotonic_ns,
+                "actual_kernel": identity(process.pid),
+                "argv": argv,
+            },
+        )
         if on_popen is not None:
             on_popen(process)
     except BaseException:

@@ -1,4 +1,6 @@
-"""Actual H4 native intake: 32 selected requests from272, at most eight unfinished runtimes.
+"""Actual H4 native intake: 32 selected requests from272.
+
+At most eight unfinished runtimes.
 
 This is a separate protocol, not a relabeled serial request phasebook. All
 native/tensor/OP/source-drain acceptance predicates are the unchanged originals.
@@ -22,7 +24,10 @@ import threading
 import time
 from pathlib import Path
 
-from experiments.formal_campaign.h4_sampled_native_schedule import read_schedule, bind_selected_phases
+from experiments.formal_campaign.h4_sampled_native_schedule import (
+    bind_selected_phases,
+    read_schedule,
+)
 from experiments.native_attention_candidate import drain_collector as original
 from experiments.native_attention_candidate.request_drain_collector import (
     verify_raw_prefix,
@@ -40,7 +45,9 @@ CONCURRENCY = 8
 
 
 class H4NativeCollector(original.DrainCollector):
-    def __init__(self, spec_path, journal_path, policy_path, drain_policy_path, schedule_path):
+    def __init__(
+        self, spec_path, journal_path, policy_path, drain_policy_path, schedule_path
+    ):
         spec_raw, _ = native.read_private(Path(spec_path), 0o600)
         tensor_raw, _ = native.read_private(Path(policy_path), 0o600)
         drain_raw, _ = native.read_private(Path(drain_policy_path), 0o600)

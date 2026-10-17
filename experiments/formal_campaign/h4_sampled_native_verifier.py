@@ -17,7 +17,10 @@ import weakref
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from experiments.formal_campaign import h4_sampled_native_client, h4_sampled_native_collector
+from experiments.formal_campaign import (
+    h4_sampled_native_client,
+    h4_sampled_native_collector,
+)
 from experiments.formal_campaign.h4_sampled_native_bootstrap import (
     verify_senders,
     write_private,
@@ -78,48 +81,97 @@ def _profiler_snapshot(path, roster, kernels, plan_id, launch_id):
     require(set(roster) == set(kernels), "profiler Host/kernel roster differs")
     for slot, process in roster.items():
         kernel = kernels[slot]
-        require(set(kernel) == {"pid", "start_ticks", "session", "boot_id"}
-                and {key: native.identity(kernel["pid"])[key] for key in kernel} == kernel
-                and process["assignment_source"] == "host"
-                and process["start_identity"] == f"pid:{kernel['pid']}:start_ticks:{kernel['start_ticks']}",
-                "profiler actual Host role/kernel changed")
+        require(
+            set(kernel) == {"pid", "start_ticks", "session", "boot_id"}
+            and {key: native.identity(kernel["pid"])[key] for key in kernel} == kernel
+            and process["assignment_source"] == "host"
+            and process["start_identity"]
+            == f"pid:{kernel['pid']}:start_ticks:{kernel['start_ticks']}",
+            "profiler actual Host role/kernel changed",
+        )
     path = Path(path)
-    require(path.is_absolute() and path.resolve() == path, "original profiler journal path differs")
+    require(
+        path.is_absolute() and path.resolve() == path,
+        "original profiler journal path differs",
+    )
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
     try:
         first = os.fstat(fd)
-        require(stat.S_ISREG(first.st_mode) and first.st_uid == os.getuid()
-                and stat.S_IMODE(first.st_mode) == 0o600
-                and 0 < first.st_size <= 64 * 1024 * 1024, "profiler journal is not private/bounded")
+        require(
+            stat.S_ISREG(first.st_mode)
+            and first.st_uid == os.getuid()
+            and stat.S_IMODE(first.st_mode) == 0o600
+            and 0 < first.st_size <= 64 * 1024 * 1024,
+            "profiler journal is not private/bounded",
+        )
         raw = b""
         while part := os.read(fd, 1024 * 1024):
             raw += part
-            require(len(raw) <= 64 * 1024 * 1024, "profiler journal exceeds full-prefix bound")
+            require(
+                len(raw) <= 64 * 1024 * 1024,
+                "profiler journal exceeds full-prefix bound",
+            )
         last = os.fstat(fd)
-        require((first.st_dev, first.st_ino, first.st_size, first.st_mtime_ns, first.st_ctime_ns)
-                == (last.st_dev, last.st_ino, last.st_size, last.st_mtime_ns, last.st_ctime_ns)
-                and len(raw) == last.st_size and raw.endswith(b"\n"),
-                "original profiler journal changed while reading")
+        require(
+            (
+                first.st_dev,
+                first.st_ino,
+                first.st_size,
+                first.st_mtime_ns,
+                first.st_ctime_ns,
+            )
+            == (
+                last.st_dev,
+                last.st_ino,
+                last.st_size,
+                last.st_mtime_ns,
+                last.st_ctime_ns,
+            )
+            and len(raw) == last.st_size
+            and raw.endswith(b"\n"),
+            "original profiler journal changed while reading",
+        )
     finally:
         os.close(fd)
     events = [parse_host_event(line) for line in raw.splitlines()]
-    originals = {native.canonical({k: v for k, v in p.items()
-                                 if k not in {"role", "ordinal", "assignment_source"}})
-                 for p in roster.values()}
+    originals = {
+        native.canonical(
+            {
+                k: v
+                for k, v in p.items()
+                if k not in {"role", "ordinal", "assignment_source"}
+            }
+        )
+        for p in roster.values()
+    }
     for event in events:
-        require(event["plan_id"] == plan_id and event["launch_id"] == launch_id,
-                "original profiler journal mixes Plan/launch")
+        require(
+            event["plan_id"] == plan_id and event["launch_id"] == launch_id,
+            "original profiler journal mixes Plan/launch",
+        )
         process = event["process"]
         slot = f"{process['role']}/{process['ordinal']}"
         if process["assignment_source"] == "environment":
-            require(process["role"] == "unknown" and event["event"] in {"discovered", "resolved"}
-                    and event["observation_kind"] == "loader_lifecycle"
-                    and native.canonical({k: v for k, v in process.items()
-                                          if k not in {"role", "ordinal", "assignment_source"}}) in originals,
-                    "unbound profiler journal process has no exact assigned epoch")
+            require(
+                process["role"] == "unknown"
+                and event["event"] in {"discovered", "resolved"}
+                and event["observation_kind"] == "loader_lifecycle"
+                and native.canonical(
+                    {
+                        k: v
+                        for k, v in process.items()
+                        if k not in {"role", "ordinal", "assignment_source"}
+                    }
+                )
+                in originals,
+                "unbound profiler journal process has no exact assigned epoch",
+            )
         else:
-            require(slot in roster and native.canonical(process) == native.canonical(roster[slot]),
-                    "original profiler Host role changed")
+            require(
+                slot in roster
+                and native.canonical(process) == native.canonical(roster[slot]),
+                "original profiler Host role changed",
+            )
     return raw, events, [last.st_dev, last.st_ino], time.time_ns()
 
 
@@ -139,7 +191,11 @@ class H4NativeEpochVerifier:
         profiler_roster,
         profiler_kernels,
     ):
-        from experiments.formal_campaign.h4_sampled_native_schedule import read_schedule, bind_selected_phases
+        from experiments.formal_campaign.h4_sampled_native_schedule import (
+            bind_selected_phases,
+            read_schedule,
+        )
+
         self.schedule_path = Path(schedule_path)
         self.schedule, schedule_raw = read_schedule(self.schedule_path)
         self.profiler_host_journal = Path(profiler_host_journal)
@@ -157,7 +213,10 @@ class H4NativeEpochVerifier:
         self.socket_path = Path(socket_path)
         self.journal = Path(journal_path)
         self.snapshots = Path(snapshots)
-        from experiments.formal_campaign.h4_sampled_native_bootstrap import make_private_directory
+        from experiments.formal_campaign.h4_sampled_native_bootstrap import (
+            make_private_directory,
+        )
+
         make_private_directory(self.snapshots)
         self.inputs = {
             path: path.read_bytes()
@@ -185,12 +244,19 @@ class H4NativeEpochVerifier:
 
     def begin_request(self, request_id):
         before = self._current()
-        declaration = [row for row in self.schedule["requests"]
-                       if row["request_id"] == request_id and row["selected"]]
+        declaration = [
+            row
+            for row in self.schedule["requests"]
+            if row["request_id"] == request_id and row["selected"]
+        ]
         require(len(declaration) == 1, "native begin is not one frozen H4 sample")
-        profile = _profiler_snapshot(self.profiler_host_journal, self.profiler_roster,
-                                    self.profiler_kernels, self.spec["native_plan_id"],
-                                    self.spec["native_launch_id"])
+        profile = _profiler_snapshot(
+            self.profiler_host_journal,
+            self.profiler_roster,
+            self.profiler_kernels,
+            self.spec["native_plan_id"],
+            self.spec["native_launch_id"],
+        )
         require(
             not any(
                 s["phase"]["client_request_id"] == request_id
@@ -401,52 +467,97 @@ class H4NativeEpochVerifier:
         )
         data, request = json.loads(response_body), json.loads(request_body)
         choices, usage = data.get("choices"), data.get("usage")
-        declaration = [row for row in self.schedule["requests"]
-                       if row["request_id"] == request_id and row["selected"]]
-        require(len(declaration) == 1
-                and native.sha(request_body) == declaration[0]["body_sha256"],
-                "sample body differs from original frozen H4 traffic")
-        require(set(response_expectation) == {"min_completion_tokens", "max_completion_tokens"}
-                and response_expectation == {"min_completion_tokens": 16, "max_completion_tokens": 64}
-                and request["max_tokens"] == 64,
-                "registered H4 native functional scope differs")
-        require(data.get("id") == f"cmpl-{request_id}"
-                and data.get("model") == request["model"]
-                and isinstance(choices, list) and len(choices) == 1
-                and choices[0].get("index") == 0
-                and choices[0].get("finish_reason") in {"stop", "length"}
-                and type(choices[0].get("text")) is str and bool(choices[0]["text"].strip())
-                and type(usage) is dict
-                and all(type(usage.get(k)) is int for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
-                and 16 <= usage["completion_tokens"] <= 64
-                and usage["prompt_tokens"] > 0
-                and usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"],
-                "registered H4 functional response/usage failed")
-        profile_raw, profile_events, profile_inode, profile_wall_ns = _profiler_snapshot(
-            self.profiler_host_journal, self.profiler_roster, self.profiler_kernels,
-            self.spec["native_plan_id"], self.spec["native_launch_id"])
+        declaration = [
+            row
+            for row in self.schedule["requests"]
+            if row["request_id"] == request_id and row["selected"]
+        ]
+        require(
+            len(declaration) == 1
+            and native.sha(request_body) == declaration[0]["body_sha256"],
+            "sample body differs from original frozen H4 traffic",
+        )
+        require(
+            set(response_expectation)
+            == {"min_completion_tokens", "max_completion_tokens"}
+            and response_expectation
+            == {"min_completion_tokens": 16, "max_completion_tokens": 64}
+            and request["max_tokens"] == 64,
+            "registered H4 native functional scope differs",
+        )
+        require(
+            data.get("id") == f"cmpl-{request_id}"
+            and data.get("model") == request["model"]
+            and isinstance(choices, list)
+            and len(choices) == 1
+            and choices[0].get("index") == 0
+            and choices[0].get("finish_reason") in {"stop", "length"}
+            and type(choices[0].get("text")) is str
+            and bool(choices[0]["text"].strip())
+            and type(usage) is dict
+            and all(
+                type(usage.get(k)) is int
+                for k in ("prompt_tokens", "completion_tokens", "total_tokens")
+            )
+            and 16 <= usage["completion_tokens"] <= 64
+            and usage["prompt_tokens"] > 0
+            and usage["total_tokens"]
+            == usage["prompt_tokens"] + usage["completion_tokens"],
+            "registered H4 functional response/usage failed",
+        )
+        profile_raw, profile_events, profile_inode, profile_wall_ns = (
+            _profiler_snapshot(
+                self.profiler_host_journal,
+                self.profiler_roster,
+                self.profiler_kernels,
+                self.spec["native_plan_id"],
+                self.spec["native_launch_id"],
+            )
+        )
         before_raw, _, before_inode, before_wall_ns = profile_before
-        require(profile_inode == before_inode and profile_raw.startswith(before_raw),
-                "original profiler global history changed after request began")
+        require(
+            profile_inode == before_inode and profile_raw.startswith(before_raw),
+            "original profiler global history changed after request began",
+        )
         occurrence = native.sha(("request_finished\0" + runtime).encode())
-        matched = [event for event in profile_events[len(before_raw.splitlines()):]
-                   if event["event"] == "effective"
-                   and event["observation_kind"] == "runtime_effective"
-                   and event["detail"] == "request-lifecycle-eventbus:request_finished"
-                   and event["occurrence_id"] == occurrence
-                   and tuple(event["entry_point"][k] for k in ("group", "name", "value"))
-                   == ("vllm.general_plugins", "request_lifecycle_profiler",
-                       "vllm_request_lifecycle_profiler.plugin:register_plugin")
-                   and event["process"]["role"] in {"api-server", "engine-core-scheduler"}
-                   and event["process"]["ordinal"] == 0]
-        require(matched and all(before_wall_ns <= event["observed_at_ns"] <= profile_wall_ns
-                                for event in matched),
-                "same actual opaque runtime lacks new source-owned profiler finished callback")
+        matched = [
+            event
+            for event in profile_events[len(before_raw.splitlines()) :]
+            if event["event"] == "effective"
+            and event["observation_kind"] == "runtime_effective"
+            and event["detail"] == "request-lifecycle-eventbus:request_finished"
+            and event["occurrence_id"] == occurrence
+            and tuple(event["entry_point"][k] for k in ("group", "name", "value"))
+            == (
+                "vllm.general_plugins",
+                "request_lifecycle_profiler",
+                "vllm_request_lifecycle_profiler.plugin:register_plugin",
+            )
+            and event["process"]["role"] in {"api-server", "engine-core-scheduler"}
+            and event["process"]["ordinal"] == 0
+        ]
+        require(
+            matched
+            and all(
+                before_wall_ns <= event["observed_at_ns"] <= profile_wall_ns
+                for event in matched
+            ),
+            (
+                "same actual opaque runtime lacks new source-owne"
+                "d profiler finished callback"
+            ),
+        )
         profiler_snapshot = root / "profiler-original.jsonl"
-        fd = os.open(profiler_snapshot, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        fd = os.open(
+            profiler_snapshot,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+        )
         try:
             with os.fdopen(fd, "wb", closefd=False) as stream:
-                stream.write(profile_raw); stream.flush(); os.fsync(stream.fileno())
+                stream.write(profile_raw)
+                stream.flush()
+                os.fsync(stream.fileno())
         finally:
             os.close(fd)
         self._current()
@@ -532,8 +643,11 @@ class H4NativeEpochVerifier:
                 and native.sha(Path(proof.profiler_snapshot_path).read_bytes())
                 == proof.profiler_snapshot_sha256
                 and proof.profiler_occurrence_id
-                == native.sha(("request_finished\0" + proof.runtime_request_id).encode())
-                and proof.schedule_sha256 == native.sha(self.inputs[self.schedule_path]),
+                == native.sha(
+                    ("request_finished\0" + proof.runtime_request_id).encode()
+                )
+                and proof.schedule_sha256
+                == native.sha(self.inputs[self.schedule_path]),
                 "native proof is forged, replayed or for another request",
             )
             self._current()

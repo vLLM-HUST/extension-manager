@@ -732,11 +732,7 @@ def h4_request_identity_observation(
     establish an opaque native runtime ID, invocation, or KV semantic effect.
     Missing/ambiguous returned IDs remain null rather than an assumed echo.
     """
-    sent = [
-        value
-        for name, value in request_headers
-        if name.lower() == "x-request-id"
-    ]
+    sent = [value for name, value in request_headers if name.lower() == "x-request-id"]
     if sent != [request_id]:
         raise ValueError("H4 transmitted request-ID header differs from local row")
     returned_header = None
@@ -834,9 +830,8 @@ def _verify_h4_requests(raw: dict[str, Any], workload: dict[str, Any]) -> None:
             observed = h4_request_identity_observation(
                 item["request_id"], item["request_headers"], item["http_response"]
             )
-            if (
-                _canonical_digest(item["request_identity"])
-                != _canonical_digest(observed)
+            if _canonical_digest(item["request_identity"]) != _canonical_digest(
+                observed
             ):
                 raise ValueError("H4 request identity differs from raw HTTP evidence")
             if (

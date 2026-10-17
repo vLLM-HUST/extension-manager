@@ -17,13 +17,16 @@ import time
 from pathlib import Path
 
 from experiments.exposure_gate import native_semantic_bootstrap
-from experiments.formal_campaign import h4_sampled_native_client, h4_sampled_native_collector
-from experiments.formal_campaign.h4_sampled_native_source_scope import (
-    checked_spec_bytes,
-    scope_native_senders,
+from experiments.formal_campaign import (
+    h4_sampled_native_client,
+    h4_sampled_native_collector,
 )
 from experiments.formal_campaign.h3_worker_recovery import (
     capture_parent_worker_ancestry,
+)
+from experiments.formal_campaign.h4_sampled_native_source_scope import (
+    checked_spec_bytes,
+    scope_native_senders,
 )
 from experiments.native_kv_tensor_candidate import (
     artifact_bootstrap,
@@ -37,23 +40,31 @@ require = h4_sampled_native_collector.require
 def make_private_directory(path):
     """Normalize only a fresh pinned directory; never modify prior evidence."""
     path = Path(path)
-    require(path.is_absolute() and path.resolve() == path and not path.is_symlink(),
-            "fresh canonical private directory required")
+    require(
+        path.is_absolute() and path.resolve() == path and not path.is_symlink(),
+        "fresh canonical private directory required",
+    )
     path.mkdir(mode=0o700, exist_ok=False)
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
     try:
         before = os.fstat(fd)
         linked = path.lstat()
-        require(stat.S_ISDIR(before.st_mode) and before.st_uid == os.getuid()
-                and (before.st_dev, before.st_ino) == (linked.st_dev, linked.st_ino)
-                and not os.listdir(fd), "fresh directory identity/ownership differs")
+        require(
+            stat.S_ISDIR(before.st_mode)
+            and before.st_uid == os.getuid()
+            and (before.st_dev, before.st_ino) == (linked.st_dev, linked.st_ino)
+            and not os.listdir(fd),
+            "fresh directory identity/ownership differs",
+        )
         os.fchmod(fd, 0o700)
         after = os.fstat(fd)
         linked = path.lstat()
-        require((after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
-                and (linked.st_dev, linked.st_ino) == (before.st_dev, before.st_ino)
-                and stat.S_IMODE(after.st_mode) == stat.S_IMODE(linked.st_mode) == 0o700,
-                "fresh directory exact0700 normalization failed")
+        require(
+            (after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
+            and (linked.st_dev, linked.st_ino) == (before.st_dev, before.st_ino)
+            and stat.S_IMODE(after.st_mode) == stat.S_IMODE(linked.st_mode) == 0o700,
+            "fresh directory exact0700 normalization failed",
+        )
     finally:
         os.close(fd)
     return path
@@ -113,11 +124,15 @@ def start_native_epoch(
 ):
     """Start actual peer-authenticated intake; return its owned Popen and descriptor.
 
-    ``phases`` must come from the frozen32-selected-request client spec, and requirements
+    ``phases`` comes from the frozen32-selected-request client spec; requirements
     from the admitted original workload/config. No prompt, RPC or Plan is changed.
     Both context paths must have been declared in the real Host environment.
     """
-    from experiments.formal_campaign.h4_sampled_native_schedule import read_schedule, bind_selected_phases
+    from experiments.formal_campaign.h4_sampled_native_schedule import (
+        bind_selected_phases,
+        read_schedule,
+    )
+
     schedule, _ = read_schedule(schedule_path)
     bind_selected_phases({"phases": phases}, schedule)
     output = Path(output)

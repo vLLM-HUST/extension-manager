@@ -1,27 +1,51 @@
 """Independent H4 full-native archive replay; no H3 traffic-domain projection."""
+
 from __future__ import annotations
+
 import base64
 import json
 from pathlib import Path
-from experiments.formal_campaign import h4_sampled_native_collector, h4_sampled_native_client
-from experiments.native_attention_candidate import attention_consumer, request_drain_consumer
-from experiments.native_kv_tensor_candidate.projection_tensor_join import verify_projection_tensor_join
+
+from experiments.formal_campaign import (
+    h4_sampled_native_client,
+    h4_sampled_native_collector,
+)
+from experiments.native_attention_candidate import (
+    attention_consumer,
+    request_drain_consumer,
+)
+from experiments.native_kv_tensor_candidate.projection_tensor_join import (
+    verify_projection_tensor_join,
+)
 
 native = h4_sampled_native_collector.native
 canonical = native.canonical
+
 
 def require(value, reason):
     if not value:
         raise ValueError(reason)
 
+
 def check_ref(ref):
     path = Path(ref["path"])
-    require(path.is_absolute() and path.resolve() == path and not path.is_symlink(), "unsafe proof path")
-    require(native.sha(path.read_bytes()) == ref["sha256"].removeprefix("sha256:"), "proof bytes changed")
+    require(
+        path.is_absolute() and path.resolve() == path and not path.is_symlink(),
+        "unsafe proof path",
+    )
+    require(
+        native.sha(path.read_bytes()) == ref["sha256"].removeprefix("sha256:"),
+        "proof bytes changed",
+    )
     return path
 
+
 def verify_archived_senders(senders, enrolled):
-    require(len(senders) == len(enrolled) == 3, "three complete original native senders required")
+    require(
+        len(senders) == len(enrolled) == 3,
+        "three complete original native senders required",
+    )
+
     def indexed(rows):
         result = {}
         for item in rows:
@@ -30,29 +54,50 @@ def verify_archived_senders(senders, enrolled):
             require(slot not in result, "duplicate native sender")
             # Source scoping differs by role, but identity/kernel/credentials
             # must exactly match the independently archived enrollment object.
-            result[slot] = {k: v for k,v in item.items() if k != "source_files"}
-        require(set(result) == {("api-server",0),("worker",0),("worker",1)}, "native sender slots differ")
+            result[slot] = {k: v for k, v in item.items() if k != "source_files"}
+        require(
+            set(result) == {("api-server", 0), ("worker", 0), ("worker", 1)},
+            "native sender slots differ",
+        )
         return result
-    require(canonical(indexed_as_list(indexed(senders))) == canonical(indexed_as_list(indexed(enrolled))),
-            "native sender identity/credentials changed")
+
+    require(
+        canonical(indexed_as_list(indexed(senders)))
+        == canonical(indexed_as_list(indexed(enrolled))),
+        "native sender identity/credentials changed",
+    )
+
 
 def indexed_as_list(value):
     return [value[k] for k in sorted(value)]
 
+
 def verify_functional_response(request_id, request_body, response_body):
     data, request = json.loads(response_body), json.loads(request_body)
     choices, usage = data.get("choices"), data.get("usage")
-    require(request["max_tokens"] == 64 and data.get("id") == "cmpl-" + request_id
-            and data.get("model") == request["model"]
-            and type(choices) is list and len(choices) == 1
-            and type(choices[0].get("index")) is int and choices[0]["index"] == 0
-            and choices[0].get("finish_reason") in {"stop","length"}
-            and type(choices[0].get("text")) is str and bool(choices[0]["text"].strip())
-            and type(usage) is dict
-            and all(type(usage.get(k)) is int for k in ("prompt_tokens","completion_tokens","total_tokens"))
-            and 16 <= usage["completion_tokens"] <= 64 and usage["prompt_tokens"] > 0
-            and usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"],
-            "H4 actual functional response/usage differs")
+    require(
+        request["max_tokens"] == 64
+        and data.get("id") == "cmpl-" + request_id
+        and data.get("model") == request["model"]
+        and type(choices) is list
+        and len(choices) == 1
+        and type(choices[0].get("index")) is int
+        and choices[0]["index"] == 0
+        and choices[0].get("finish_reason") in {"stop", "length"}
+        and type(choices[0].get("text")) is str
+        and bool(choices[0]["text"].strip())
+        and type(usage) is dict
+        and all(
+            type(usage.get(k)) is int
+            for k in ("prompt_tokens", "completion_tokens", "total_tokens")
+        )
+        and 16 <= usage["completion_tokens"] <= 64
+        and usage["prompt_tokens"] > 0
+        and usage["total_tokens"]
+        == usage["prompt_tokens"] + usage["completion_tokens"],
+        "H4 actual functional response/usage differs",
+    )
+
 
 def replay_sampled_native_report(
     ref,
@@ -65,11 +110,24 @@ def replay_sampled_native_report(
     deadline_ns,
 ):
     record = json.loads(check_ref(ref).read_bytes())
-    require(all(type(record[k]) is int for k in ("original_sent_ns","backend_sent_ns","backend_received_ns","verified_monotonic_ns","original_deadline_ns"))
-            and type(deadline_ns) is int, "native clocks must retain exact integer types")
+    require(
+        all(
+            type(record[k]) is int
+            for k in (
+                "original_sent_ns",
+                "backend_sent_ns",
+                "backend_received_ns",
+                "verified_monotonic_ns",
+                "original_deadline_ns",
+            )
+        )
+        and type(deadline_ns) is int,
+        "native clocks must retain exact integer types",
+    )
     require(
         record["request_id"] == request_id
-        and record["response_sha256"] == h4_sampled_native_collector.native.sha(response_body)
+        and record["response_sha256"]
+        == h4_sampled_native_collector.native.sha(response_body)
         and base64.b64decode(record["response_body_base64"], validate=True)
         == response_body
         and record["original_deadline_ns"] == deadline_ns
@@ -93,9 +151,11 @@ def replay_sampled_native_report(
             "native original input bytes changed",
         )
     spec = json.loads(Path(record["native_spec"]).read_bytes())
-    require(spec["native_plan_id"] == enrollment["native_plan_id"]
-            and spec["native_launch_id"] == enrollment["native_launch_id"],
-            "H4 native Plan/launch differs from actual enrolled epoch")
+    require(
+        spec["native_plan_id"] == enrollment["native_plan_id"]
+        and spec["native_launch_id"] == enrollment["native_launch_id"],
+        "H4 native Plan/launch differs from actual enrolled epoch",
+    )
     verify_archived_senders(spec["senders"], enrollment["source_peers"])
     owner, materializations = object(), {}
     report = attention_consumer._verify_attention_archive(

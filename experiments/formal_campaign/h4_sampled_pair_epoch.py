@@ -14,18 +14,21 @@ from experiments.formal_campaign.h3_native_authority import (
     verify_native_membership,
 )
 from experiments.formal_campaign.h3_native_plan_guard import NativePlanGuard
-from .h4_sampled_host_launch import launch_phase
 from experiments.formal_campaign.h3_worker_relaunch import cleanup
 from experiments.pair_semantic_candidate import authority as pair
 from experiments.pair_semantic_candidate.binding import IDS, PROFILER
 from vllm_hust_ext.host_evidence import parse_host_event
+
+from .h4_sampled_host_launch import launch_phase
 
 canonical, require = pair.canonical, pair.require
 
 
 def private_root(path, *, create=False):
     path = Path(path)
-    require(path.is_absolute() and path.resolve() == path, "canonical run root required")
+    require(
+        path.is_absolute() and path.resolve() == path, "canonical run root required"
+    )
     if create:
         path.mkdir(mode=0o700, exist_ok=False)
         path.chmod(0o700)  # parent setgid inheritance must not leave mode02700.
@@ -41,7 +44,9 @@ def private_root(path, *, create=False):
 
 def preflight_paths(root, phase, *, require_fresh=True):
     root = Path(root)
-    require(root.is_absolute() and root.resolve() == root, "absolute future root required")
+    require(
+        root.is_absolute() and root.resolve() == root, "absolute future root required"
+    )
     # These are declared paths, never prospective PID/socket identities.
     paths = [root / "n" / "native.sock"]
     if phase["handoff_path"] is not None:
@@ -66,7 +71,9 @@ def observe_native_epoch(
     This calls the existing process-owned launch helper, never a CPU stand-in.
     The caller owns cleanup even if downstream bootstrap/client later fail.
     """
-    require(type(guard) is NativePlanGuard and guard.paired, "full two-MOD guard required")
+    require(
+        type(guard) is NativePlanGuard and guard.paired, "full two-MOD guard required"
+    )
     require(set(guard.policy["bundle_ids"]) == IDS, "both actual MODs must be enabled")
     output = private_root(output, create=True)
     preflight_paths(output, phase)
@@ -76,7 +83,9 @@ def observe_native_epoch(
             phase, arm, output, 0, timeout_seconds, on_popen=on_popen
         )
         members = json.loads((output / "phase0.actual-membership.json").read_bytes())
-        handoff = json.loads((output / "phase0.native-source-handoff.json").read_bytes())
+        handoff = json.loads(
+            (output / "phase0.native-source-handoff.json").read_bytes()
+        )
         journal = Path(handoff["host_evidence"]["path"])
         raw = journal.read_bytes()
         records = [parse_host_event(line) for line in raw.splitlines()]
@@ -103,21 +112,35 @@ def observe_native_epoch(
             status = Path(f"/proc/{kernel['pid']}/status").read_text().splitlines()
             uid = int(next(x for x in status if x.startswith("Uid:")).split()[2])
             gid = int(next(x for x in status if x.startswith("Gid:")).split()[2])
-            require(uid == os.getuid() and gid == os.getgid(), "peer credential mismatch")
-            peers.append(dict(
-                process={**original, **kernel}, peer_uid=uid, peer_gid=gid,
-                cmdline_sha256=hashlib.sha256(
-                    Path(f"/proc/{kernel['pid']}/cmdline").read_bytes()
-                ).hexdigest(), source_files=phase["native_bootstrap"]["source_files"],
-            ))
+            require(
+                uid == os.getuid() and gid == os.getgid(), "peer credential mismatch"
+            )
+            peers.append(
+                dict(
+                    process={**original, **kernel},
+                    peer_uid=uid,
+                    peer_gid=gid,
+                    cmdline_sha256=hashlib.sha256(
+                        Path(f"/proc/{kernel['pid']}/cmdline").read_bytes()
+                    ).hexdigest(),
+                    source_files=phase["native_bootstrap"]["source_files"],
+                )
+            )
         verify_native_membership(peers, members, plan_id, launch_id)
         semantic = json.loads(Path(phase["semantic_launch_spec"]["path"]).read_bytes())
         enrollment = dict(
-            native_plan_id=plan_id, native_launch_id=launch_id, source_peers=peers,
-            semantic_context={k: semantic[k] for k in (
-                "execution_plan_id", "controller_instance", "candidate_generation",
-                "membership_epoch",
-            )},
+            native_plan_id=plan_id,
+            native_launch_id=launch_id,
+            source_peers=peers,
+            semantic_context={
+                k: semantic[k]
+                for k in (
+                    "execution_plan_id",
+                    "controller_instance",
+                    "candidate_generation",
+                    "membership_epoch",
+                )
+            },
         )
         # launch_phase authenticated real SO_PEERCRED/ACK (Manager) or actual
         # baseline publisher+Host ancestry; no predeclared future handoff root.
@@ -125,9 +148,17 @@ def observe_native_epoch(
         bound = guard.bind_actual(enrollment, handoff, roster, kernels, journal)
         bound.validate_current(enrollment, journal)
         return dict(
-            process=process, owner=owner, owned=owned, observed=observed,
-            enrollment=enrollment, bound=bound, host_journal=journal,
-            roster=roster, kernels=kernels, peers=peers, output=output,
+            process=process,
+            owner=owner,
+            owned=owned,
+            observed=observed,
+            enrollment=enrollment,
+            bound=bound,
+            host_journal=journal,
+            roster=roster,
+            kernels=kernels,
+            peers=peers,
+            output=output,
         )
     except BaseException:
         if process is not None:
@@ -135,7 +166,9 @@ def observe_native_epoch(
         raise
 
 
-def verify_h4_request_current(epoch, native_report, *, runtime_request_id, transaction_id):
+def verify_h4_request_current(
+    epoch, native_report, *, runtime_request_id, transaction_id
+):
     """Discharge full KV only from the independent H4-owned native verifier."""
     from .h4_sampled_native_verifier import require_verified_h4_native_request
 
@@ -149,18 +182,24 @@ def verify_h4_request_current(epoch, native_report, *, runtime_request_id, trans
         and verified.native_launch_id == snapshot.native_launch_id,
         "H4 full native token belongs to another actual request/Plan/launch",
     )
-    occurrence = hashlib.sha256(("request_finished\0" + runtime_request_id).encode()).hexdigest()
+    occurrence = hashlib.sha256(
+        ("request_finished\0" + runtime_request_id).encode()
+    ).hexdigest()
     callbacks = [parse_host_event(line) for line in snapshot._raw.splitlines()]
-    require(any(
-        e["event"] == "effective"
-        and e["observation_kind"] == "runtime_effective"
-        and e["detail"] == "request-lifecycle-eventbus:request_finished"
-        and e["occurrence_id"] == occurrence
-        and tuple(e["entry_point"][k] for k in ("group", "name", "value"))
-        == pair.ENTRIES[PROFILER]
-        and canonical(e["process"]) == canonical(epoch["roster"].get(
-            f"{e['process']['role']}/{e['process']['ordinal']}"
-        ))
-        for e in callbacks
-    ), "H4 pair lacks actual same-runtime profiler finished callback")
+    require(
+        any(
+            e["event"] == "effective"
+            and e["observation_kind"] == "runtime_effective"
+            and e["detail"] == "request-lifecycle-eventbus:request_finished"
+            and e["occurrence_id"] == occurrence
+            and tuple(e["entry_point"][k] for k in ("group", "name", "value"))
+            == pair.ENTRIES[PROFILER]
+            and canonical(e["process"])
+            == canonical(
+                epoch["roster"].get(f"{e['process']['role']}/{e['process']['ordinal']}")
+            )
+            for e in callbacks
+        ),
+        "H4 pair lacks actual same-runtime profiler finished callback",
+    )
     return snapshot
