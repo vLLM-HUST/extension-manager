@@ -294,6 +294,32 @@
         "http_request": {
           "$ref": "#/definitions/body"
         },
+        "request_headers": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {"type": "string"}
+          }
+        },
+        "request_identity": {
+          "type": "object",
+          "required": [
+            "schema", "sent_header_request_id", "server_header_request_id",
+            "server_completion_id", "server_header_matches_sent_request_id",
+            "server_completion_matches_sent_request_id"
+          ],
+          "properties": {
+            "schema": {"const": "ecpa-h4-http-request-identity-observation/v1"},
+            "sent_header_request_id": {"type": "string", "minLength": 1},
+            "server_header_request_id": {"type": ["string", "null"]},
+            "server_completion_id": {"type": ["string", "null"]},
+            "server_header_matches_sent_request_id": {"type": ["boolean", "null"]},
+            "server_completion_matches_sent_request_id": {"type": ["boolean", "null"]}
+          },
+          "additionalProperties": false
+        },
         "response_model": {
           "type": [
             "string",

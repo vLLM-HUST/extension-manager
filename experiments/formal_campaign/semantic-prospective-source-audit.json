@@ -2409,7 +2409,7 @@
     "experiments/formal_campaign/h4_registration.py": "24e454f28cc7f7380af1b9a4b0440fd857321dae69b627edb15bc09635073bb5",
     "experiments/formal_campaign/protocol.json": "710d23ef750a3ee27f6e10a1c1fcabea3b4f12b8187ef04dffcfec16dfb5d6e7",
     "experiments/formal_campaign/source_provenance.py": "34a319e632c2491c3fec41a944d528334466d70237ca1951a2515c87bbcffcff",
-    "experiments/native_attention_candidate/attention_consumer.py": "10c4a61ffdfea1dc29b9511b5c092d43a429c4b0321f7f50036da7fa173e67a2",
+    "experiments/native_attention_candidate/attention_consumer.py": "6f598d7766d1f613e88c5bfe5501a1398bb5f11e80a55aa4b56e335f4da4f4b1",
     "experiments/native_attention_candidate/collector.py": "289a1cd33ae45e29d2d84e067d9ab355d05db034c670768a0af81339a6eee70c",
     "experiments/native_attention_candidate/operator_observer.py": "6f20042d87ca9f22f1fcc7416010a47fbd961ebc24144a9b9fd595b6b9f9d3a4",
     "src/vllm_hust_ext/contract_compiler.py": "5f386fdd5cd10ec80dd4cab2a395f558c9ae55fbbb6bdfbf11f5e836ad01c386",
