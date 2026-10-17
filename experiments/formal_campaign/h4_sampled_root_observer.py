@@ -315,6 +315,8 @@ def main():
                 "request-results.jsonl",
                 "all272-request-results.json",
                 "owned-resources.json",
+                "health-probes.jsonl",
+                "health-probe-terminal.json",
             )
         ]
         result["terminal_artifacts"] = {

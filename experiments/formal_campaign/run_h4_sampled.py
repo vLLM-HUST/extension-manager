@@ -38,6 +38,7 @@ from experiments.formal_campaign.h4_owned_resources import OwnedTreeResourceSamp
 from experiments.formal_campaign.h4_sampled_native_bootstrap import start_native_epoch
 from experiments.formal_campaign.h4_sampled_native_verifier import H4NativeEpochVerifier
 
+from .h4_sampled_health import HealthObserver, HealthEvidenceError, verify_health
 from .h4_sampled_pair_epoch import observe_native_epoch, verify_h4_request_current
 from .h4_sampled_registration import (
     build_plan_guard,
@@ -433,7 +434,7 @@ def run_start(
     else:
         guard = build_plan_guard(campaign, native, start, receipt)
     qualification_end = raw_ns()
-    sampler, epoch, collector = None, None, None
+    sampler, epoch, collector, health_observer = None, None, None, None
     result = dict(
         schema="ecpa-h4-sampled-live-source-observation/v1",
         cell_id=campaign["cell_id"],
@@ -450,7 +451,7 @@ def run_start(
     )
 
     def on_popen(process):
-        nonlocal sampler
+        nonlocal sampler, health_observer
         owner = identity(process.pid)
         timing = json.loads((output / "phase0.product-popen-timing.json").read_bytes())
         if (
@@ -467,6 +468,9 @@ def run_start(
             ),
         )
         result["product_owner"] = owner
+        health_observer = HealthObserver(output, launch["health_url"],
+            launch["startup_timeout_seconds"], owner, output / "phase0.product-popen-timing.json")
+        health_observer.start()  # same actual Popen callback for all three arms
         sampler = OwnedTreeResourceSampler(
             process.pid,
             launch["npu_memory_command"],
@@ -508,33 +512,25 @@ def run_start(
             profiler_roster=epoch["roster"],
             profiler_kernels=epoch["kernels"],
         )
-        popen_timing = json.loads(
-            (output / "phase0.product-popen-timing.json").read_bytes()
-        )
-        health_deadline = popen_timing["before_monotonic_ns"] + int(
-            launch["startup_timeout_seconds"] * 1000000000.0
-        )
-        health_attempts = []
-        while True:
-            if time.monotonic_ns() >= health_deadline:
-                raise TimeoutError("original registered health readiness timeout")
-            health = exchange(
-                launch["health_url"], "GET", None, None, epoch, health_deadline
-            )
-            health_attempts.append(
-                dict(
-                    status_code=health[1]["status_code"],
-                    observed_ns=health[5],
-                    response=health[1],
-                )
-            )
-            if health[1]["status_code"] == 200:
-                break
-            time.sleep(0.1)
-        write_new(output / "all-health-observations.json", health_attempts)
-        result["health_observation"] = dict(
-            status_code=200, observed_ns=health[5], accepted_api_socket_inode=health[6]
-        )
+        # Original native/source guard and collector setup remain mandatory
+        # before traffic. Early health is a measurement, never release authority.
+        result["native_setup_completed_raw_ns"] = raw_ns()
+        result["native_setup_completed_monotonic_ns"] = time.monotonic_ns()
+        popen_timing = json.loads((output / "phase0.product-popen-timing.json").read_bytes())
+        health_deadline = popen_timing["before_monotonic_ns"] + int(launch["startup_timeout_seconds"] * 1e9)
+        if result["native_setup_completed_monotonic_ns"] > health_deadline:
+            raise TimeoutError("original startup budget expired before native setup completed")
+        health_observer.finish()
+        readiness = verify_health(output, launch["health_url"], launch["startup_timeout_seconds"],
+                                  popen_timing, epoch=epoch, require_terminal=True)
+        if readiness["first_health"] is None:
+            if readiness["completion_status"] == "deadline":
+                raise TimeoutError("original health readiness budget expired")
+            if readiness["completion_status"] in {"owner-exited", "accepted-peer-exited"}:
+                raise ConnectionError("exact original owner/accepted API peer exited before authenticated readiness")
+            raise HealthEvidenceError("no first authenticated health200; original readiness remains unknown")
+        result["startup_readiness"] = readiness
+        result["health_observation"] = readiness["first_health"]
         schedule, _ = read_registered_schedule(start["schedule"], boot["phases"])
         traffic_workload = dict(
             workload, served_model=launch["arms"][start["arm"]]["served_model"]
@@ -578,6 +574,11 @@ def run_start(
         result["failure_observed_raw_ns"] = raw_ns()
     finally:
         cleanup_errors = []
+        if health_observer is not None:
+            try:
+                health_observer.finish(cancel=True)
+            except Exception as error:
+                cleanup_errors.append("owned health observer: " + repr(error))
         if epoch is not None:
             try:
                 host_raw = Path(epoch["host_journal"]).read_bytes()
