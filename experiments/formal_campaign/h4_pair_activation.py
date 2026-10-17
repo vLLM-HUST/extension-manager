@@ -1123,9 +1123,9 @@ def verify_archived_activation(
         canonical(spec["original_h4_lifecycle_scope"]["execution_plan"]) + b"\n"
     )
     require(
-        typed.plan.plugins
+        typed.plugins
         == tuple(PluginIdentity(**p) for p in spec["plugin_identities"])
-        and all(o.event == "invoked" for o in typed.plan.obligations),
+        and all(o.event == "invoked" for o in typed.obligations),
         "archived original H4 scope ownership changed",
     )
     if arm == "ecpa":
