@@ -15,10 +15,15 @@ ENTRY_POINT_GROUP = "vllm_hust_ext.providers"
 
 
 def _builtin_providers() -> dict[str, HostProvider]:
+    from vllm_hust_ext.providers.replica_registration import current_case
+
+    registered_case = current_case()
     return {
         "vllm": VllmProvider(),
         "mooncake": MooncakeProvider(),
-        "production-stack": ProductionStackProvider(),
+        "production-stack": ProductionStackProvider(
+            registered_replica_case=registered_case
+        ),
         "stateaxis": StateAxisProvider(),
     }
 

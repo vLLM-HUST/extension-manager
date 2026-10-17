@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from vllm_hust_ext.manifest import BundleManifest
@@ -14,6 +15,10 @@ from vllm_hust_ext.providers.base import (
     RenderArtifact,
     assess_compatibility,
 )
+from vllm_hust_ext.providers.replica_writers import inspect_pinned_configuration
+
+if TYPE_CHECKING:
+    from vllm_hust_ext.providers.replica_registration import _RegisteredCase
 
 
 class ProductionStackProvider:
@@ -33,6 +38,15 @@ class ProductionStackProvider:
         "architecture",
         "release_image_supported",
     )
+
+    def __init__(
+        self, *, registered_replica_case: _RegisteredCase | None = None
+    ) -> None:
+        self._registered_replica_case = registered_replica_case
+        if registered_replica_case is not None:
+            from vllm_hust_ext.providers.replica_registration import require_owned_case
+
+            require_owned_case(registered_replica_case)
 
     def supports(self, manifest: BundleManifest) -> bool:
         return manifest.host.provider == self.name
@@ -360,6 +374,60 @@ class ProductionStackProvider:
                         "must be boolean",
                     ),
                 )
+        if self._registered_replica_case is not None:
+            from vllm_hust_ext.manifest import load_manifest
+            from vllm_hust_ext.providers.replica_registration import require_owned_case
+
+            case = require_owned_case(self._registered_replica_case)
+            if (
+                json.dumps(configuration, sort_keys=True, allow_nan=False)
+                != json.dumps(case.configuration, sort_keys=True, allow_nan=False)
+                or manifest
+                != load_manifest(Path(case.request["provider_manifest"]["path"]))
+                or "ownership_conflicts" in configuration
+            ):
+                raise ValueError(
+                    "provider input differs from independent registered facts"
+                )
+            outcomes = inspect_pinned_configuration(
+                configuration,
+                case.objects(),
+                source_root=case.receipt["source_root"],
+            )
+            conflicts = [item for item in outcomes if item.decision == "conflict"]
+            if conflicts:
+                return ProviderCheck(
+                    False,
+                    False,
+                    reachable=reachable,
+                    healthy=False,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + tuple(
+                        "registered-source-derived-replica-writers/v1: "
+                        f"target={item.target}; "
+                        f"owners={item.owners}; remediation=remove the duplicate "
+                        "writer or use chart-side KEDA delegation"
+                        for item in conflicts
+                    ),
+                )
+            if any(item.decision == "unknown" for item in outcomes):
+                return ProviderCheck(
+                    None,
+                    False,
+                    reachable=reachable,
+                    healthy=healthy,
+                    degraded=True,
+                    evidence=compatibility_evidence
+                    + tuple(
+                        "registered-source-derived-replica-writers/v1 unknown: "
+                        + item.reason
+                        for item in outcomes
+                        if item.decision == "unknown"
+                    ),
+                )
+            # A non-conflict result covers only this declared inventory. Continue
+            # all original readiness checks; never turn compatibility True here.
         if not isinstance(ownership_conflicts, list) or any(
             not isinstance(item, str) or not item.strip()
             for item in ownership_conflicts

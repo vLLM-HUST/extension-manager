@@ -59,3 +59,37 @@ def test_remaining_surface_verifiers_do_not_require_git(
         )
         assert completed.returncode == 0, completed.stderr
         assert completed.stdout.startswith("PASS ")
+
+
+def test_historical_prediction_rejects_modified_provider_snapshot(
+    tmp_path: Path,
+) -> None:
+    portable = tmp_path / "portable"
+    artifact_rel = Path(
+        "experiments/real_mod_composition/artifacts/"
+        "h2-remaining-surfaces-oracle-20261013"
+    )
+    shutil.copytree(ROOT / "src", portable / "src")
+    shutil.copytree(ROOT / artifact_rel, portable / artifact_rel)
+    script = (
+        portable
+        / "experiments/real_mod_composition/verify_h2_remaining_surface_prediction.py"
+    )
+    shutil.copyfile(ROOT / script.relative_to(portable), script)
+    snapshot = (
+        portable
+        / artifact_rel
+        / "snapshots/production-stack-provider-source.py.snapshot"
+    )
+    snapshot.write_bytes(snapshot.read_bytes() + b"\n# tampered\n")
+    env = dict(os.environ, PYTHONPATH=str(portable / "src"))
+    completed = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=portable,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert "Manager provider source digest" in completed.stderr

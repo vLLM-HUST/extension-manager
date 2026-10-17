@@ -16,6 +16,11 @@ AUDIT = (
     "h2-scoring-input-audit-20261013/audit.json"
 )
 CASE = "external-authority-production-stack-keda"
+HISTORICAL_PROVIDER = (
+    "experiments/real_mod_composition/artifacts/"
+    "h2-remaining-surfaces-oracle-20261013/snapshots/"
+    "production-stack-provider-source.py.snapshot"
+)
 
 
 def digest(path: Path) -> str:
@@ -36,7 +41,8 @@ def verify(root: Path) -> dict:
         or audit.get("runtime_claim") is not False
         or audit.get("performance_claim") is not False
         or audit["historical_prediction_sha256"] != digest(root / paths["prediction"])
-        or audit["provider_source_sha256"] != digest(root / paths["provider"])
+        or paths["provider"] != "src/vllm_hust_ext/providers/production_stack.py"
+        or audit["provider_source_sha256"] != digest(root / HISTORICAL_PROVIDER)
         or audit["provider_source_sha256"]
         != prediction["manager"]["provider_source_sha256"]
     ):
