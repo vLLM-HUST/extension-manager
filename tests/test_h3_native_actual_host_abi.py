@@ -70,9 +70,10 @@ def test_tp2_observed_target_keeps_worker_zero_ancestry(tmp_path, monkeypatch):
             [
                 sys.executable,
                 "-c",
-                "import time;print('ready',flush=True);time.sleep(1)",
+                "import sys;print('ready',flush=True);sys.stdin.buffer.read()",
             ],
             stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
         )
         for _ in range(2)
     ]
@@ -101,13 +102,15 @@ def test_tp2_observed_target_keeps_worker_zero_ancestry(tmp_path, monkeypatch):
             senders.append(
                 {
                     "process": process,
-                    "cmdline_sha256": carrier.sha(
+                    "cmdline_sha256": h3_native_bootstrap.native.sha(
                         Path(f"/proc/{process['pid']}/cmdline").read_bytes()
                     ),
                     "source_files": [
                         {
                             "path": str(source_path),
-                            "sha256": carrier.sha(source_path.read_bytes()),
+                            "sha256": h3_native_bootstrap.native.sha(
+                                source_path.read_bytes()
+                            ),
                         }
                     ],
                 }
@@ -168,4 +171,5 @@ def test_tp2_observed_target_keeps_worker_zero_ancestry(tmp_path, monkeypatch):
             verify_parent_worker_ancestry(wrong)
     finally:
         for child in children:
+            child.stdin.close()
             child.wait(timeout=3)
