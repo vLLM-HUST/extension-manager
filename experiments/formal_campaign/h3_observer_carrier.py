@@ -217,8 +217,13 @@ class RegisteredAuthority:
             response_deadline_ns is None
             or (
                 isinstance(self, NativeRegisteredAuthority)
-                and (operation == "prepare_native_epoch" or (
-                    operation == "restart_live_observer" and getattr(self, "live_scope", None) is not None))
+                and (
+                    operation == "prepare_native_epoch"
+                    or (
+                        operation == "restart_live_observer"
+                        and getattr(self, "live_scope", None) is not None
+                    )
+                )
                 and type(response_deadline_ns) is int
             ),
             "extended control response bound is native preparation only",
@@ -356,11 +361,19 @@ class NativeRegisteredAuthority(RegisteredAuthority):
         )
 
     def restart_live_observer(self, *, original_fault_ns):
-        from experiments.formal_campaign.h3_observer_live_registration import ValidatedLiveStart
-        require(type(getattr(self, "live_scope", None)) is ValidatedLiveStart,
-            "independently issued original live start scope required")
-        return self._call("restart_live_observer", {"live_receipt": self.live_scope.receipt_ref()},
-            response_deadline_ns=original_fault_ns + 30_000_000_000)
+        from experiments.formal_campaign.h3_observer_live_registration import (
+            ValidatedLiveStart,
+        )
+
+        require(
+            type(getattr(self, "live_scope", None)) is ValidatedLiveStart,
+            "independently issued original live start scope required",
+        )
+        return self._call(
+            "restart_live_observer",
+            {"live_receipt": self.live_scope.receipt_ref()},
+            response_deadline_ns=original_fault_ns + 30_000_000_000,
+        )
 
     @classmethod
     def _registered_start(cls, registration, start_id):
@@ -899,13 +912,25 @@ def main():
         live_scope = None
         live_intent = os.environ.get("ECPA_H3_OBSERVER_LIVE_INTENT")
         live_receipt = os.environ.get("ECPA_H3_OBSERVER_LIVE_RECEIPT")
-        require(bool(live_intent) == bool(live_receipt), "partial v2 receipt environment forbidden")
+        require(
+            bool(live_intent) == bool(live_receipt),
+            "partial v2 receipt environment forbidden",
+        )
         if live_intent:
-            from experiments.formal_campaign.h3_observer_live_registration import validate_for_start
-            live_scope = validate_for_start(live_intent, live_receipt, start_id, check_remote=True)
-            require(live_scope.value()["base_campaign"]["path"] == str(args.campaign_spec.resolve())
-                and live_scope.value()["base_receipt"]["path"] == str(args.deployment_receipt.resolve()),
-                "carrier live scope differs from original admission")
+            from experiments.formal_campaign.h3_observer_live_registration import (
+                validate_for_start,
+            )
+
+            live_scope = validate_for_start(
+                live_intent, live_receipt, start_id, check_remote=True
+            )
+            require(
+                live_scope.value()["base_campaign"]["path"]
+                == str(args.campaign_spec.resolve())
+                and live_scope.value()["base_receipt"]["path"]
+                == str(args.deployment_receipt.resolve()),
+                "carrier live scope differs from original admission",
+            )
 
         recipe = load(args.recipe)
         validate_materialization(dynamic, start, recipe)
@@ -979,9 +1004,12 @@ def main():
             authority.live_scope = live_scope
         capabilities = authority.preflight()
         if live_scope is not None:
-            require("ecpa-h3-observer-live-transport-control/v2" in capabilities["profiles"]
+            require(
+                "ecpa-h3-observer-live-transport-control/v2" in capabilities["profiles"]
                 and capabilities.get("live_receipt") == live_scope.receipt_ref(),
-                "actual authority lacks this independently issued v2 control permission")
+                'actual authority lacks this independently '
+                'issued v2 control permission',
+            )
         save_new(output / "authority-capabilities.json", capabilities)
         current = authority.call("query")
         generation = current["generation"]
@@ -1118,22 +1146,40 @@ def main():
                 if live_scope is not None:
                     # The actual authority monitor must first record the original
                     # observer death and close the public route. No Host relaunch.
-                    close_deadline = load(output / "runner-fault.json")["triggered_ns"] + 30_000_000_000
+                    close_deadline = (
+                        load(output / "runner-fault.json")["triggered_ns"]
+                        + 30_000_000_000
+                    )
                     while True:
                         query = authority.call("query")
                         if query["route"]["generation"] is None:
                             break
-                        require(time.monotonic_ns() < close_deadline, "original30s close-before-repair expired")
-                        time.sleep(.01)
+                        require(
+                            time.monotonic_ns() < close_deadline,
+                            "original30s close-before-repair expired",
+                        )
+                        time.sleep(0.01)
                     declaration = live_scope.value()["declaration"]
                     if declaration["operator"]["kind"] == "source-owned-automatic":
                         live_transport = authority.restart_live_observer(
-                            original_fault_ns=load(output / "runner-fault.json")["triggered_ns"])
+                            original_fault_ns=load(output / "runner-fault.json")[
+                                "triggered_ns"
+                            ]
+                        )
                     else:
-                        from experiments.formal_campaign.h3_observer_live_operator import invoke
-                        live_transport = invoke(live_scope, args, recipe, registration, output)
+                        from experiments.formal_campaign import (
+                            h3_observer_live_operator,
+                        )
+
+                        invoke = h3_observer_live_operator.invoke
+
+                        live_transport = invoke(
+                            live_scope, args, recipe, registration, output
+                        )
                         live_operator_actions = 1
-                    save_new(output / "carrier-live-observer-repair.json", live_transport)
+                    save_new(
+                        output / "carrier-live-observer-repair.json", live_transport
+                    )
                 # Original client continues without retries/reanchoring. The
                 # distinct source-issued transport route is replayed below.
                 client_process.wait(timeout=25)
@@ -1142,7 +1188,9 @@ def main():
                 )
 
                 if live_scope is not None:
-                    from experiments.formal_campaign.h3_observer_live_delivery import verify_native_window
+                    from experiments.formal_campaign.h3_observer_live_delivery import (
+                        verify_native_window,
+                    )
                 result = verify_native_window(
                     spec,
                     output / "client.jsonl",
@@ -1155,7 +1203,11 @@ def main():
                     fault_ns=load(output / "runner-fault.json")["triggered_ns"],
                     recovery_ns=None,
                     allow_incomplete=True,
-                    **({'live_receipt':live_scope.receipt_ref()} if live_scope is not None else {}),
+                    **(
+                        {"live_receipt": live_scope.receipt_ref()}
+                        if live_scope is not None
+                        else {}
+                    ),
                 )
                 save_new(output / "native-delivery-observation.json", result)
                 membership = load(output / "phase0.actual-membership.json")
@@ -1174,19 +1226,24 @@ def main():
                 save_new(
                     output / "observer-recovery-accounting.json",
                     {
-                        "schema": "ecpa-h3-observer-live-recovery-accounting/v2" if live_scope else "ecpa-h3-observer-recovery-accounting/v1",
+                        "schema": "ecpa-h3-observer-live-recovery-accounting/v2"
+                        if live_scope
+                        else "ecpa-h3-observer-recovery-accounting/v1",
                         "operator_actions": live_operator_actions,
-                        "recovery_ns": result.get('recovery_ns'),
+                        "recovery_ns": result.get("recovery_ns"),
                         "actual_recovery": (
                             "source-owned-transport-route-original-delivery-replayed"
-                            if live_transport else
-                            "unavailable-producer-private-context-rebind-contract"
+                            if live_transport
+                            else "unavailable-producer-private-context-rebind-contract"
                         ),
                         "host_kernels_at_client_stop": live_members,
                         "observed_ns": time.monotonic_ns(),
                         "predecessor_alive_through_client_window": live_members
                         == expected_hosts,
-                        "replacement_committed": bool(live_transport and live_transport.get("transport_commit_complete")),
+                        "replacement_committed": bool(
+                            live_transport
+                            and live_transport.get("transport_commit_complete")
+                        ),
                         "live_transport_attempt": live_transport,
                         "original_expected_final_route": campaign["objective"][
                             "expected_final_route"
@@ -1199,7 +1256,9 @@ def main():
                 save_new(
                     output / "carrier-complete.json",
                     {
-                        "schema": "ecpa-h3-observer-live-carrier-terminal/v2" if live_scope else "ecpa-h3-observer-carrier-terminal/v1",
+                        "schema": "ecpa-h3-observer-live-carrier-terminal/v2"
+                        if live_scope
+                        else "ecpa-h3-observer-carrier-terminal/v1",
                         "formal_result": False,
                         "objective_met": None,
                         "delivery": result,

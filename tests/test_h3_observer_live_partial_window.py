@@ -3,10 +3,14 @@ No model/native proof is mocked into a successful response; this CPU fixture
 only bypasses enrollment discovery, then verifies actual prefix/RID semantics.
 Source specification only, unrun.
 """
+
 import base64
+
 import pytest
-from vllm_hust_ext.exposure_gate import GateError
+
 from experiments.formal_campaign import h3_observer_live_delivery as delivery
+from vllm_hust_ext.exposure_gate import GateError
+
 
 def test_original_verifier_accepts_canonical_request_prefix_but_rejects_unknown_rid(
     tmp_path, monkeypatch
@@ -107,20 +111,26 @@ def test_original_verifier_accepts_canonical_request_prefix_but_rejects_unknown_
             expected_client=client,
             fault_ns=200,
             recovery_ns=None,
-            allow_incomplete=True,live_receipt={"path":"/CPU-only/v2","sha256":"sha256:CPU-only"},
+            allow_incomplete=True,
+            live_receipt={"path": "/CPU-only/v2", "sha256": "sha256:CPU-only"},
         )
 
     write_chain()
     result = verify()
     assert result["coverage"] == "coverage-failed" and result["lost_requests"] is None
-    assert result["recovery_ns"] is None and result["schema"]=="ecpa-h3-observer-live-finite-delivery/v2"
-    original_body=rows[1]['detail']['body_base64']
-    rows[1]['detail']['body_base64']='***malformed***'
+    assert (
+        result["recovery_ns"] is None
+        and result["schema"] == "ecpa-h3-observer-live-finite-delivery/v2"
+    )
+    original_body = rows[1]["detail"]["body_base64"]
+    rows[1]["detail"]["body_base64"] = "***malformed***"
     write_chain()
-    with pytest.raises(ValueError): verify()
-    rows[1]['detail']['body_base64']=original_body
+    with pytest.raises(ValueError):
+        verify()
+    rows[1]["detail"]["body_base64"] = original_body
     path.unlink()
-    with pytest.raises(FileNotFoundError): verify()
+    with pytest.raises(FileNotFoundError):
+        verify()
     rows[1]["detail"]["request_id"] = "unknown-recorded-rid"
     write_chain()
     with pytest.raises(GateError, match="duplicated/unknown"):

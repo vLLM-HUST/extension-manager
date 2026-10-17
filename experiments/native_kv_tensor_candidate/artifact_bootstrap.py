@@ -162,7 +162,12 @@ def context_value(*, spec_path, policy_path, ready, source_files):
 
 def write_context(path, *, spec_path, policy_path, ready, source_files):
     """Launcher prepares input only; readiness must be authenticated independently."""
-    value = context_value(spec_path=spec_path, policy_path=policy_path, ready=ready, source_files=source_files)
+    value = context_value(
+        spec_path=spec_path,
+        policy_path=policy_path,
+        ready=ready,
+        source_files=source_files,
+    )
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
         raw = memoryview(native.canonical(value))

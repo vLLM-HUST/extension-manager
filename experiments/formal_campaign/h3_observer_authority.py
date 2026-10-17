@@ -472,8 +472,11 @@ class NativeAuthority(DynamicAuthority):
         bound.validate_current(native_enrollment, handoff["host_evidence"]["path"])
         initializer = None
         if self.live_scope is not None:
-            require(index == 0, "live observer continuation cannot relaunch Host phase1")
+            require(
+                index == 0, "live observer continuation cannot relaunch Host phase1"
+            )
             from experiments.formal_campaign.h3_observer_live_launcher import LiveGrants
+
             self.live_grants = LiveGrants(self, self.live_scope)
             initializer = self.live_grants.before_publication
         process, descriptor = start_native_epoch(
@@ -491,9 +494,16 @@ class NativeAuthority(DynamicAuthority):
         )
         self.collectors.append(process)
         if self.live_grants is not None:
-            marker = json.loads((self.output / "phase0.launch-observation.json").read_bytes())
-            self.live_grants.wait_actual_endpoints(marker["launched_monotonic_ns"] +
-                int(self.live_scope.value()["original"]["probe"]["ready_timeout_s"] * 1e9))
+            marker = json.loads(
+                (self.output / "phase0.launch-observation.json").read_bytes()
+            )
+            self.live_grants.wait_actual_endpoints(
+                marker["launched_monotonic_ns"]
+                + int(
+                    self.live_scope.value()["original"]["probe"]["ready_timeout_s"]
+                    * 1e9
+                )
+            )
         from experiments.formal_campaign import h3_native_collector
         from experiments.formal_campaign.h3_observer_loss import binding
 
@@ -538,15 +548,26 @@ class NativeAuthority(DynamicAuthority):
 
     def apply(self, value):
         operation = value.get("operation")
-        require(not (getattr(self, 'live_transport_enrollment', None) is not None
-            and operation in {'enroll_generation', 'admit_generation', 'prepare_native_epoch'}),
-            'live transport fence forbids generic semantic reenrollment/reopen')
-        if operation not in {"prepare_native_epoch", "bind_original_client", "restart_live_observer"}:
+        require(
+            not (
+                getattr(self, "live_transport_enrollment", None) is not None
+                and operation
+                in {"enroll_generation", "admit_generation", "prepare_native_epoch"}
+            ),
+            "live transport fence forbids generic semantic reenrollment/reopen",
+        )
+        if operation not in {
+            "prepare_native_epoch",
+            "bind_original_client",
+            "restart_live_observer",
+        }:
             result = super().apply(value)
             if operation == "capabilities":
                 result["profiles"] = [PROFILE]
-                if getattr(self,"live_scope",None) is not None:
-                    result["profiles"].append("ecpa-h3-observer-live-transport-control/v2")
+                if getattr(self, "live_scope", None) is not None:
+                    result["profiles"].append(
+                        "ecpa-h3-observer-live-transport-control/v2"
+                    )
                     result["live_receipt"] = self.live_scope.receipt_ref()
                     result["live_transport_permission"] = "source-bound-unprepared"
             return result
@@ -571,24 +592,43 @@ class NativeAuthority(DynamicAuthority):
                 "native setup requires a closed public route",
             )
         if operation == "restart_live_observer":
-            require(self.live_scope is not None and value["live_receipt"] == self.live_scope.receipt_ref()
-                and not self.live_rebind_attempted, "new v2 receipt required; one actual observer repair only")
+            require(
+                self.live_scope is not None
+                and value["live_receipt"] == self.live_scope.receipt_ref()
+                and not self.live_rebind_attempted,
+                "new v2 receipt required; one actual observer repair only",
+            )
             self.live_rebind_attempted = True
+            from experiments.formal_campaign.h3_observer_live_launcher import (
+                write_private,
+            )
             from experiments.formal_campaign.h3_observer_live_rebind import Coordinator
-            from experiments.formal_campaign.h3_observer_live_launcher import write_private
+
             coordinator = Coordinator(self)
             coordinator.prepare_successor()
             result = coordinator.rebind()
             write_private(self.output / "live-observer-rebind-attempt.json", result)
             if result["transport_commit_complete"]:
                 attached = coordinator.attach_committed_successor()
-                write_private(self.output / "live-observer-verifier-attached.json", attached)
-                from experiments.formal_campaign.h3_observer_live_route import open_actual_successor
+                write_private(
+                    self.output / "live-observer-verifier-attached.json", attached
+                )
+                from experiments.formal_campaign.h3_observer_live_route import (
+                    open_actual_successor,
+                )
+
                 open_actual_successor(self, coordinator)
-            return {"transport_commit_complete": result["transport_commit_complete"],
-                "formal_result": False, "recovery_ns": None,
-                "attempt": {"path": str(self.output / "live-observer-rebind-attempt.json"),
-                    "sha256": digest((self.output / "live-observer-rebind-attempt.json").read_bytes())}}
+            return {
+                "transport_commit_complete": result["transport_commit_complete"],
+                "formal_result": False,
+                "recovery_ns": None,
+                "attempt": {
+                    "path": str(self.output / "live-observer-rebind-attempt.json"),
+                    "sha256": digest(
+                        (self.output / "live-observer-rebind-attempt.json").read_bytes()
+                    ),
+                },
+            }
         if operation == "prepare_native_epoch":
             return self._prepare_actual_epoch(value["phase_index"], value["handoff"])
         from experiments.formal_campaign.h3_native_http import BoundOriginalClient
@@ -626,9 +666,9 @@ class NativeAuthority(DynamicAuthority):
             require(False, "source observer lost")
 
     def _close(self, reason):
-        current=getattr(self, 'live_transport_enrollment', None)
+        current = getattr(self, "live_transport_enrollment", None)
         if current is not None:
-            self.revoked_enrollments.add(current['sha256'])
+            self.revoked_enrollments.add(current["sha256"])
         return super()._close(reason)
 
     def routing_enrollment(self):
@@ -637,7 +677,10 @@ class NativeAuthority(DynamicAuthority):
     def _recheck(self):
         self.check_observer()
         if self.live_transport_enrollment is not None:
-            from experiments.formal_campaign.h3_observer_live_route import recheck_actual_route
+            from experiments.formal_campaign.h3_observer_live_route import (
+                recheck_actual_route,
+            )
+
             return recheck_actual_route(self)
         return super()._recheck()
 
@@ -701,15 +744,26 @@ def main():
     ).parent
     authority.configure_start(start=start, recipe=recipe, output=output)
     import os
+
     live_intent = os.environ.get("ECPA_H3_OBSERVER_LIVE_INTENT")
     live_receipt = os.environ.get("ECPA_H3_OBSERVER_LIVE_RECEIPT")
-    require(bool(live_intent) == bool(live_receipt), "partial live receipt environment forbidden")
+    require(
+        bool(live_intent) == bool(live_receipt),
+        "partial live receipt environment forbidden",
+    )
     if live_intent:
-        from experiments.formal_campaign.h3_observer_live_registration import validate_for_start
-        scope = validate_for_start(live_intent, live_receipt, args.start_id, check_remote=True)
-        require(scope.value()["base_campaign"]["path"] == str(args.campaign.resolve())
+        from experiments.formal_campaign.h3_observer_live_registration import (
+            validate_for_start,
+        )
+
+        scope = validate_for_start(
+            live_intent, live_receipt, args.start_id, check_remote=True
+        )
+        require(
+            scope.value()["base_campaign"]["path"] == str(args.campaign.resolve())
             and scope.value()["base_receipt"]["path"] == str(args.receipt.resolve()),
-            "live extension bound to another original admission")
+            "live extension bound to another original admission",
+        )
         authority.live_scope = scope
 
     stop = threading.Event()
@@ -720,6 +774,7 @@ def main():
     require(recipe["authority"]["socket"] == str(args.socket), "native socket differs")
     if authority.live_scope is not None:
         from experiments.formal_campaign.h3_observer_live_http import LiveProxyHandler
+
         handler = LiveProxyHandler
     else:
         handler = NativeProxyHandler

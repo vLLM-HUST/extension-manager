@@ -71,9 +71,14 @@ def replay_native_report(
         spec["native_plan_id"] == enrollment["plan_id"]
         and spec["native_launch_id"] == enrollment["launch_id"]
         and all(
-            any(s['process']=={**m['event']['process'],
-                **{k:v for k,v in m['identity'].items() if k!='launch_id'}}
-                for m in enrollment['members'])
+            any(
+                s["process"]
+                == {
+                    **m["event"]["process"],
+                    **{k: v for k, v in m["identity"].items() if k != "launch_id"},
+                }
+                for m in enrollment["members"]
+            )
             for s in spec["senders"]
         )
         and len(spec["senders"]) == 3,
@@ -266,14 +271,19 @@ def verify_native_window(
     enrollments, current, opened = {}, None, None
     revoked, launches, kernels, nonces, memberships = set(), set(), set(), set(), set()
     generation = 0
-    collectors={}
-    transports={}
-    from experiments.formal_campaign.h3_observer_live_route import verify_transport, routing_copy
+    collectors = {}
+    transports = {}
+    from experiments.formal_campaign.h3_observer_live_route import (
+        routing_copy,
+        verify_transport,
+    )
+
     enrolled = [
         e["detail"]["enrollment"] for e in events if e["kind"] == "backend.enrolled"
     ]
     require(
-        len(enrolled)==1 and spec.get("initial_enrollment_sha256") == enrolled[0]["sha256"],
+        len(enrolled) == 1
+        and spec.get("initial_enrollment_sha256") == enrolled[0]["sha256"],
         "initial actual native enrollment differs",
     )
     public = {}
@@ -281,44 +291,71 @@ def verify_native_window(
     peers = {}
     for event in events:
         detail, kind = event["detail"], event["kind"]
-        if kind == 'observer.actual-bound':
-            binding=detail['binding']
-            require(binding['enrollment_sha256'] in enrollments and
-                binding['enrollment_sha256'] not in collectors,
-                'original observer binding absent/duplicated')
-            collectors[binding['enrollment_sha256']]=binding['original_collector_identity']
-        elif kind == 'observer.transport.enrolled':
-            require(opened is None and current is not None and not transports,
-                'transport enrollment before close or repeated')
-            value=detail['transport']
-            committed=[e for e in events if e['kind']=='observer.live-transport.committed'
-                and e['monotonic_ns']<event['monotonic_ns']]
-            require(len(committed)==1 and current['sha256'] in revoked,
-                'transport lacks unique actual committed verifier/old revocation')
-            actual=committed[0]['detail']
-            verify_transport(value,current,receipt=live_receipt,
-                descriptor=actual['successor_descriptor'],commit=actual['actual_transport'],
-                observed_ns=event['monotonic_ns'],revoked=revoked)
-            frontier=sorted({e['detail']['request_id'] for e in private.values()})
-            require(value['commit']['fault']['triggered_ns']==fault_ns and
-                value['commit']['old_client_request_ids']==frontier,
-                'transport original fault/old RID frontier differs')
-            original=current
-            current=routing_copy(value)
-            generation=value['generation']
-            require(current['sha256'] not in enrollments and
-                value['successor_descriptor']['collector']!=collectors[original['sha256']],
-                'transport reused original enrollment/collector epoch')
-            enrollments[current['sha256']]=current
-            transports[current['sha256']]=value
-            collectors[current['sha256']]=value['successor_descriptor']['collector']
-        elif kind == 'observer.transport.route-open':
-            require(current is not None and current['sha256'] in transports and
-                current['sha256'] not in revoked and
-                detail['transport_enrollment_sha256']==current['sha256'] and
-                event['route']['generation']==current['generation'] and opened is None,
-                'new transport route lacks exact fresh source enrollment')
-            opened=current['sha256']
+        if kind == "observer.actual-bound":
+            binding = detail["binding"]
+            require(
+                binding["enrollment_sha256"] in enrollments
+                and binding["enrollment_sha256"] not in collectors,
+                "original observer binding absent/duplicated",
+            )
+            collectors[binding["enrollment_sha256"]] = binding[
+                "original_collector_identity"
+            ]
+        elif kind == "observer.transport.enrolled":
+            require(
+                opened is None and current is not None and not transports,
+                "transport enrollment before close or repeated",
+            )
+            value = detail["transport"]
+            committed = [
+                e
+                for e in events
+                if e["kind"] == "observer.live-transport.committed"
+                and e["monotonic_ns"] < event["monotonic_ns"]
+            ]
+            require(
+                len(committed) == 1 and current["sha256"] in revoked,
+                "transport lacks unique actual committed verifier/old revocation",
+            )
+            actual = committed[0]["detail"]
+            verify_transport(
+                value,
+                current,
+                receipt=live_receipt,
+                descriptor=actual["successor_descriptor"],
+                commit=actual["actual_transport"],
+                observed_ns=event["monotonic_ns"],
+                revoked=revoked,
+            )
+            frontier = sorted({e["detail"]["request_id"] for e in private.values()})
+            require(
+                value["commit"]["fault"]["triggered_ns"] == fault_ns
+                and value["commit"]["old_client_request_ids"] == frontier,
+                "transport original fault/old RID frontier differs",
+            )
+            original = current
+            current = routing_copy(value)
+            generation = value["generation"]
+            require(
+                current["sha256"] not in enrollments
+                and value["successor_descriptor"]["collector"]
+                != collectors[original["sha256"]],
+                "transport reused original enrollment/collector epoch",
+            )
+            enrollments[current["sha256"]] = current
+            transports[current["sha256"]] = value
+            collectors[current["sha256"]] = value["successor_descriptor"]["collector"]
+        elif kind == "observer.transport.route-open":
+            require(
+                current is not None
+                and current["sha256"] in transports
+                and current["sha256"] not in revoked
+                and detail["transport_enrollment_sha256"] == current["sha256"]
+                and event["route"]["generation"] == current["generation"]
+                and opened is None,
+                "new transport route lacks exact fresh source enrollment",
+            )
+            opened = current["sha256"]
         elif kind == "route.closed":
             if current is not None:
                 revoked.add(current["sha256"])
@@ -351,7 +388,7 @@ def verify_native_window(
         elif kind == "route.open.applied":
             require(
                 current is not None
-                and current['sha256'] not in transports
+                and current["sha256"] not in transports
                 and current["sha256"] not in revoked
                 and event["route"]["generation"] == current["generation"]
                 and detail["enrollment_sha256"] == current["sha256"],
@@ -366,11 +403,22 @@ def verify_native_window(
                 "native private route closed",
             )
             aid = detail["admission_id"]
-            require(aid not in private and not any(e['detail']['request_id']==detail['request_id']
-                for e in private.values()), "native request/admission replayed")
-            if current['sha256'] in transports:
-                require(detail['request_id'] not in transports[current['sha256']]['commit']['old_client_request_ids'],
-                    'old unknown/lost RID cannot be replayed through successor')
+            require(
+                aid not in private
+                and not any(
+                    e["detail"]["request_id"] == detail["request_id"]
+                    for e in private.values()
+                ),
+                "native request/admission replayed",
+            )
+            if current["sha256"] in transports:
+                require(
+                    detail["request_id"]
+                    not in transports[current["sha256"]]["commit"][
+                        "old_client_request_ids"
+                    ],
+                    "old unknown/lost RID cannot be replayed through successor",
+                )
             private[aid] = event
         elif kind == "request.peer-bound":
             aid = detail["admission_id"]
@@ -434,7 +482,7 @@ def verify_native_window(
         allow_incomplete or complete, "native original finite60 attempts incomplete"
     )
     lost, ontime, slips = 0, 0, 0
-    recoveries=[]
+    recoveries = []
     anchor = traces[0]["detail"]["schedule_anchor_ns"]
     payload = client.canonical(spec["payload"])
     for rid, event in sends.items():
@@ -484,8 +532,8 @@ def verify_native_window(
             )
         record = json.loads(check_ref(detail["native_report"]).read_bytes())
         body = base64.b64decode(record["response_body_base64"], validate=True)
-        enrollment_key=detail['enrollment_sha256']
-        verify_report_receiver(record,enrollment_key,collectors,transports)
+        enrollment_key = detail["enrollment_sha256"]
+        verify_report_receiver(record, enrollment_key, collectors, transports)
         require(
             detail["status"] == 200
             and detail["request_sha256"]
@@ -546,9 +594,12 @@ def verify_native_window(
             "native successful delivery bytes/clock differs",
         )
         ontime += 1
-        selected=public[aid]
-        if selected['detail']['enrollment_sha256'] in transports and fault_ns < end['finished_ns']:
-            recoveries.append(end['finished_ns'])
+        selected = public[aid]
+        if (
+            selected["detail"]["enrollment_sha256"] in transports
+            and fault_ns < end["finished_ns"]
+        ):
+            recoveries.append(end["finished_ns"])
     times = [e["detail"]["sent_ns"] for e in sends.values()]
     require(
         min(times) < fault_ns and (allow_incomplete or fault_ns < max(times)),
@@ -556,10 +607,12 @@ def verify_native_window(
     )
     # Recovery is first actual on-time original-client delivery using exact
     # successor full native proof; commit/ready/publication clocks are not it.
-    measured_recovery=min(recoveries) if recoveries else None
-    require(recovery_ns is None or recovery_ns==measured_recovery,
-        'caller recovery clock differs from original delivered request')
-    recovery_ns=measured_recovery
+    measured_recovery = min(recoveries) if recoveries else None
+    require(
+        recovery_ns is None or recovery_ns == measured_recovery,
+        "caller recovery clock differs from original delivered request",
+    )
+    recovery_ns = measured_recovery
     covered = (
         complete
         and not slips
@@ -569,7 +622,7 @@ def verify_native_window(
     return {
         "schema": "ecpa-h3-observer-live-finite-delivery/v2",
         "recovery_ns": measured_recovery,
-        "transport_enrollment_sha256": next(iter(transports),None),
+        "transport_enrollment_sha256": next(iter(transports), None),
         "coverage": "complete-finite-delivery-window" if covered else "coverage-failed",
         "requests": 60,
         "requests_expected": 60,
@@ -583,10 +636,14 @@ def verify_native_window(
     }
 
 
-def verify_report_receiver(record,enrollment_key,collectors,transports):
-    require(enrollment_key in collectors and
-        record['descriptor']['collector']==collectors[enrollment_key],
-        'native receiver is not actual enrolled collector epoch')
+def verify_report_receiver(record, enrollment_key, collectors, transports):
+    require(
+        enrollment_key in collectors
+        and record["descriptor"]["collector"] == collectors[enrollment_key],
+        "native receiver is not actual enrolled collector epoch",
+    )
     if enrollment_key in transports:
-        require(record['descriptor']==transports[enrollment_key]['successor_descriptor'],
-            'full native proof came from another successor receiver descriptor')
+        require(
+            record["descriptor"] == transports[enrollment_key]["successor_descriptor"],
+            "full native proof came from another successor receiver descriptor",
+        )

@@ -98,8 +98,15 @@ def authority_readiness_deadline(original, *, native, launched_monotonic):
 
 
 def execute(
-    spec_path, receipt_path, start_id, output, *, check_remote=True, native=False,
-    live_intent=None, live_receipt=None
+    spec_path,
+    receipt_path,
+    start_id,
+    output,
+    *,
+    check_remote=True,
+    native=False,
+    live_intent=None,
+    live_receipt=None,
 ):
     if native:
         from experiments.formal_campaign.h3_observer_carrier import (
@@ -116,20 +123,34 @@ def execute(
         Authority = RegisteredAuthority
     require(native, "observer-loss runner requires its distinct native receipt domain")
     live_environment = None
-    require(bool(live_intent) == bool(live_receipt), "both v2 intent and receipt required")
+    require(
+        bool(live_intent) == bool(live_receipt), "both v2 intent and receipt required"
+    )
     if live_intent:
-        from experiments.formal_campaign.h3_observer_live_registration import validate_for_start
-        scope = validate_for_start(live_intent, live_receipt, start_id, check_remote=check_remote)
-        require(scope.value()["base_campaign"]["path"] == str(Path(spec_path).resolve())
-            and scope.value()["base_receipt"]["path"] == str(Path(receipt_path).resolve()),
-            "live extension cannot substitute original source admission")
-        live_environment = dict(os.environ,
+        from experiments.formal_campaign.h3_observer_live_registration import (
+            validate_for_start,
+        )
+
+        scope = validate_for_start(
+            live_intent, live_receipt, start_id, check_remote=check_remote
+        )
+        require(
+            scope.value()["base_campaign"]["path"] == str(Path(spec_path).resolve())
+            and scope.value()["base_receipt"]["path"]
+            == str(Path(receipt_path).resolve()),
+            "live extension cannot substitute original source admission",
+        )
+        live_environment = dict(
+            os.environ,
             ECPA_H3_OBSERVER_LIVE_INTENT=str(Path(live_intent).resolve()),
-            ECPA_H3_OBSERVER_LIVE_RECEIPT=str(Path(live_receipt).resolve()))
+            ECPA_H3_OBSERVER_LIVE_RECEIPT=str(Path(live_receipt).resolve()),
+        )
     else:
-        require(not os.environ.get("ECPA_H3_OBSERVER_LIVE_INTENT")
+        require(
+            not os.environ.get("ECPA_H3_OBSERVER_LIVE_INTENT")
             and not os.environ.get("ECPA_H3_OBSERVER_LIVE_RECEIPT"),
-            "v1 runner cannot inherit a live extension implicitly")
+            "v1 runner cannot inherit a live extension implicitly",
+        )
 
     require(not output.exists(), "start output must be fresh")
     from experiments.formal_campaign.h3_observer_paths import create_private_directory
@@ -181,11 +202,19 @@ def execute(
         cleanup_context = context_for(spec_path, receipt_path, spec, start)
         if live_intent:
             from experiments.formal_campaign.h3_observer_live_cleanup import (
-                context_for as live_context, observe as live_observe, scopes_for)
-            cleanup_context=live_context(spec_path,receipt_path,spec,start,scope)
-            unix_scopes=scopes_for(scope,template)
-            def observe_cleanup(*args,**kwargs):
-                return live_observe(*args,unix_scopes=unix_scopes,**kwargs)
+                context_for as live_context,
+            )
+            from experiments.formal_campaign.h3_observer_live_cleanup import (
+                observe as live_observe,
+            )
+            from experiments.formal_campaign.h3_observer_live_cleanup import scopes_for
+
+            cleanup_context = live_context(spec_path, receipt_path, spec, start, scope)
+            unix_scopes = scopes_for(scope, template)
+
+            def observe_cleanup(*args, **kwargs):
+                return live_observe(*args, unix_scopes=unix_scopes, **kwargs)
+
         cleanup_before = observe_cleanup(
             cleanup_policy,
             cleanup_ports,
@@ -193,9 +222,9 @@ def execute(
             stage="before-product",
         )
         require(
-            not cleanup_before["listeners"] and
-            (not live_intent or not cleanup_before['owned_unix_sockets']),
-            "registered TCP/control socket scope already externally owned"
+            not cleanup_before["listeners"]
+            and (not live_intent or not cleanup_before["owned_unix_sockets"]),
+            "registered TCP/control socket scope already externally owned",
         )
         import base64
 
@@ -299,7 +328,10 @@ def execute(
             command.append("--native-domain")
         with (output / "carrier.stdout.log").open("xb") as log:
             carrier_process = subprocess.Popen(
-                command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True,
+                command,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
                 env=live_environment,
             )
         carrier_owner = identity(carrier_process.pid)
@@ -443,8 +475,15 @@ def execute(
                 save_new(
                     output / "runner-observer-dead.json", {"observed_dead_ns": dead}
                 )
-            if live_intent and (output/'live-route-publication.json').exists() and not (output/'runner-live-route-observation.json').exists():
-                from experiments.formal_campaign.h3_observer_live_observe import observe as observe_live_route
+            if (
+                live_intent
+                and (output / "live-route-publication.json").exists()
+                and not (output / "runner-live-route-observation.json").exists()
+            ):
+                from experiments.formal_campaign.h3_observer_live_observe import (
+                    observe as observe_live_route,
+                )
+
                 observe_live_route(scope, output, authority_owner, authority)
             preservation = output / "observer-recovery-accounting.json"
             ack = output / "runner-host-preserved-ack.json"
@@ -479,8 +518,15 @@ def execute(
                         "client_stop_ns": stopped[0]["monotonic_ns"],
                         "host_preserved": actual_kernels == expected_hosts,
                         "observed_ns": time.monotonic_ns(),
-                        "replacement_committed": bool(live_intent and (output/'live-route-publication.json').exists()),
-                        **({'live_route_query':authority.call('query')} if live_intent else {}),
+                        "replacement_committed": bool(
+                            live_intent
+                            and (output / "live-route-publication.json").exists()
+                        ),
+                        **(
+                            {"live_route_query": authority.call("query")}
+                            if live_intent
+                            else {}
+                        ),
                     },
                 )
             if carrier_process.poll() is not None:
@@ -582,9 +628,13 @@ def execute(
                 )
 
                 if live_intent:
-                    from experiments.formal_campaign.h3_observer_live_cleanup import observe as live_observe
-                    def observe_cleanup(*args,**kwargs):
-                        return live_observe(*args,unix_scopes=unix_scopes,**kwargs)
+                    from experiments.formal_campaign.h3_observer_live_cleanup import (
+                        observe as live_observe,
+                    )
+
+                    def observe_cleanup(*args, **kwargs):
+                        return live_observe(*args, unix_scopes=unix_scopes, **kwargs)
+
                 after = observe_cleanup(
                     cleanup_policy,
                     cleanup_ports,
@@ -618,17 +668,32 @@ def execute(
     if live_intent:
         # Independent actual-fault/prefix artifacts always precede intake;
         # genuine verifier errors are retained without formal promotion.
-        from experiments.formal_campaign.h3_observer_live_intake import intake as live_intake
+        from experiments.formal_campaign.h3_observer_live_intake import (
+            intake as live_intake,
+        )
+
         try:
-            result=live_intake(spec_path,receipt_path,start_id,output,
-                live_intent=live_intent,live_receipt=live_receipt)
-            save_new(output/'live-start-observation.json',result)
+            result = live_intake(
+                spec_path,
+                receipt_path,
+                start_id,
+                output,
+                live_intent=live_intent,
+                live_receipt=live_receipt,
+            )
+            save_new(output / "live-start-observation.json", result)
         except Exception as exc:
-            result={'schema':'ecpa-h3-observer-live-intake-rejection/v2',
-                'start_id':start_id,'formal_start_validated':False,'formal_result':False,
-                'objective_met':None,'error':type(exc).__name__+': '+str(exc),
-                'source_attempt_retained':True,'cleanup_errors':errors}
-            save_new(output/'live-intake-rejection.json',result)
+            result = {
+                "schema": "ecpa-h3-observer-live-intake-rejection/v2",
+                "start_id": start_id,
+                "formal_start_validated": False,
+                "formal_result": False,
+                "objective_met": None,
+                "error": type(exc).__name__ + ": " + str(exc),
+                "source_attempt_retained": True,
+                "cleanup_errors": errors,
+            }
+            save_new(output / "live-intake-rejection.json", result)
         return result
     # No automatically qualified failure: the new intake must independently
     # validate source admission, actual observations and all raw joins.
