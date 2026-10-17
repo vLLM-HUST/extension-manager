@@ -38,6 +38,67 @@ def observed_host_kernel(process):
     return kernel
 
 
+def native_host_roster(records, plan_id, launch_id):
+    """Join provisional discovery to later immutable Host role assignments.
+
+    Environment unknown/0 is not a Host slot. Retain every original process
+    object, and require every such provisional row to have a later exact-epoch
+    Host binding; never select the last of conflicting assigned identities.
+    """
+    roster = {}
+    bound_epochs = {}
+    provisional = []
+    for event in records:
+        if event["plan_id"] != plan_id or event["launch_id"] != launch_id:
+            continue
+        process = event["process"]
+        # Role/ordinal/assignment change when Host binds the process. Every
+        # remaining field (including host/PID/start_identity/process_epoch) must
+        # match exactly, with canonical JSON preserving scalar types.
+        epoch = canonical(
+            {
+                key: value
+                for key, value in process.items()
+                if key not in {"role", "ordinal", "assignment_source"}
+            }
+        )
+        if process.get("assignment_source") == "environment":
+            require(
+                process["role"] == "unknown"
+                and event["event"] in {"discovered", "resolved"}
+                and event["observation_kind"] == "loader_lifecycle",
+                "native provisional Host row is not pre-assignment discovery",
+            )
+            provisional.append((epoch, event["observed_at_ns"]))
+            continue
+        require(
+            process.get("assignment_source") == "host" and process["role"] != "unknown",
+            "native role requires a concrete Host assignment",
+        )
+        slot = f"{process['role']}/{process['ordinal']}"
+        require(
+            slot not in roster or canonical(roster[slot]) == canonical(process),
+            "native Host role kernel changed",
+        )
+        previous = bound_epochs.get(epoch)
+        require(
+            previous is None or previous[0] == slot,
+            "native Host process epoch assigned multiple roles",
+        )
+        # Preserve the original process object. This is not a rewritten event.
+        roster.setdefault(slot, process)
+        latest = event["observed_at_ns"]
+        if previous is not None:
+            latest = max(latest, previous[1])
+        bound_epochs[epoch] = (slot, latest)
+    for epoch, observed_at_ns in provisional:
+        require(
+            epoch in bound_epochs and bound_epochs[epoch][1] > observed_at_ns,
+            "native provisional Host process lacks a later exact-epoch assignment",
+        )
+    return roster
+
+
 class NativeJournal(DynamicJournal):
     schema = JOURNAL
 
@@ -286,20 +347,9 @@ class NativeAuthority(DynamicAuthority):
             "native publisher command differs from registered source",
         )
         records = self._host_records(self.enrollment["launch_id"])
-        roster = {}
-        for event in records:
-            if (
-                event["plan_id"] != self.enrollment["plan_id"]
-                or event["launch_id"] != self.enrollment["launch_id"]
-            ):
-                continue
-            process = event["process"]
-            slot = f"{process['role']}/{process['ordinal']}"
-            require(
-                slot not in roster or roster[slot] == process,
-                "native Host role kernel changed",
-            )
-            roster[slot] = process
+        roster = native_host_roster(
+            records, self.enrollment["plan_id"], self.enrollment["launch_id"]
+        )
         kernels = {slot: observed_host_kernel(p) for slot, p in roster.items()}
         # Kernel fields follow the original registry. Host process_epoch remains
         # in the original role object, with no role or identity rewriting.
