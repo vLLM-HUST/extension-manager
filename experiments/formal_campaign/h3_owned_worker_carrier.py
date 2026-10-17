@@ -590,7 +590,9 @@ def launch_phase(phase, arm, output, index, timeout):
                             "launch_id": launch_id
                         }
                         worker_kernel = target["identity"] | {"launch_id": launch_id}
-                        ancestry = capture_parent_worker_ancestry(parent, worker_kernel)
+                        target_worker_ancestry = capture_parent_worker_ancestry(
+                            parent, worker_kernel
+                        )
                         sessions, descendants = owned_sessions(owner)
                         require(
                             parent["pid"] in descendants
@@ -660,7 +662,7 @@ def launch_phase(phase, arm, output, index, timeout):
                             "worker": worker_kernel,
                             "parent_event": parents[-1],
                             "worker_event": target["raw"],
-                            "parent_worker_ancestry": ancestry,
+                            "parent_worker_ancestry": target_worker_ancestry,
                             "owned_sessions": [s["pid"] for s in sessions],
                             "observed_ns": time.monotonic_ns(),
                             "route_generation": 0,
