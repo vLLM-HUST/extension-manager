@@ -24,6 +24,20 @@ PROFILE = "ecpa-h3-source-owned-native-private-route/v1"
 JOURNAL = "ecpa-h3-native-authority-journal/v1"
 
 
+def observed_host_kernel(process):
+    """Bind untouched Host role fields to a separately observed current kernel."""
+    from experiments.formal_campaign.h3_worker_relaunch import identity
+
+    kernel = identity(process["pid"])
+    require(
+        process.get("assignment_source") == "host"
+        and process["start_identity"]
+        == f"pid:{kernel['pid']}:start_ticks:{kernel['start_ticks']}",
+        "original Host role start identity differs from actual kernel",
+    )
+    return kernel
+
+
 class NativeJournal(DynamicJournal):
     schema = JOURNAL
 
@@ -286,17 +300,23 @@ class NativeAuthority(DynamicAuthority):
                 "native Host role kernel changed",
             )
             roster[slot] = process
-        kernels = {
-            slot: {k: p[k] for k in ("pid", "start_ticks", "session", "boot_id")}
-            for slot, p in roster.items()
-        }
+        kernels = {slot: observed_host_kernel(p) for slot, p in roster.items()}
         # Kernel fields follow the original registry. Host process_epoch remains
         # in the original role object, with no role or identity rewriting.
         bootstrap = phase["native_bootstrap"]
         sources = bootstrap["source_files"]
         peers = []
         for member in self.enrollment["members"]:
-            process = member["event"]["process"]
+            original_process = member["event"]["process"]
+            slot = f"{original_process['role']}/{original_process['ordinal']}"
+            kernel = observed_host_kernel(original_process)
+            require(
+                original_process == roster[slot] and kernel == kernels[slot],
+                "native sender original Host role/kernel differs from roster",
+            )
+            # The collector's existing sender ABI is the original Host process
+            # plus independently observed kernel fields, never a rewritten event.
+            process = {**original_process, **kernel}
             status = Path(f"/proc/{process['pid']}/status").read_text().splitlines()
             uid = int(next(s for s in status if s.startswith("Uid:")).split()[2])
             gid = int(next(s for s in status if s.startswith("Gid:")).split()[2])

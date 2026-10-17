@@ -22,8 +22,6 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from jsonschema import Draft7Validator
-
 from experiments.formal_campaign import h3_client_trace as client
 from experiments.formal_campaign.h3_worker_recovery import (
     capture_parent_worker_ancestry,
@@ -35,6 +33,7 @@ from experiments.formal_campaign.h3_worker_relaunch import (
     owned_sessions,
     worker,
 )
+from jsonschema import Draft7Validator
 from vllm_hust_ext.host_evidence import parse_host_event
 from vllm_hust_ext.plan_artifact import read_plan_artifact
 from vllm_hust_ext.runtime_phase_handoff import (
@@ -590,7 +589,9 @@ def launch_phase(phase, arm, output, index, timeout):
                             "launch_id": launch_id
                         }
                         worker_kernel = target["identity"] | {"launch_id": launch_id}
-                        ancestry = capture_parent_worker_ancestry(parent, worker_kernel)
+                        target_worker_ancestry = capture_parent_worker_ancestry(
+                            parent, worker_kernel
+                        )
                         sessions, descendants = owned_sessions(owner)
                         require(
                             parent["pid"] in descendants
@@ -660,7 +661,7 @@ def launch_phase(phase, arm, output, index, timeout):
                             "worker": worker_kernel,
                             "parent_event": parents[-1],
                             "worker_event": target["raw"],
-                            "parent_worker_ancestry": ancestry,
+                            "parent_worker_ancestry": target_worker_ancestry,
                             "owned_sessions": [s["pid"] for s in sessions],
                             "observed_ns": time.monotonic_ns(),
                             "route_generation": 0,
