@@ -22,6 +22,8 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from jsonschema import Draft7Validator
+
 from experiments.formal_campaign import h3_client_trace as client
 from experiments.formal_campaign.h3_worker_recovery import (
     capture_parent_worker_ancestry,
@@ -33,7 +35,6 @@ from experiments.formal_campaign.h3_worker_relaunch import (
     owned_sessions,
     worker,
 )
-from jsonschema import Draft7Validator
 from vllm_hust_ext.host_evidence import parse_host_event
 from vllm_hust_ext.plan_artifact import read_plan_artifact
 from vllm_hust_ext.runtime_phase_handoff import (

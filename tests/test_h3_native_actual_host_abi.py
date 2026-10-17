@@ -9,12 +9,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from test_host_evidence import PLAN, raw_event
+
 from experiments.formal_campaign import h3_native_authority as authority
 from experiments.formal_campaign import h3_native_bootstrap
 from experiments.formal_campaign import h3_owned_worker_carrier as carrier
 from experiments.formal_campaign.h3_worker_recovery import verify_parent_worker_ancestry
 from experiments.formal_campaign.h3_worker_relaunch import identity
-from test_host_evidence import PLAN, raw_event
 from vllm_hust_ext.exposure_gate import GateError
 from vllm_hust_ext.host_evidence import parse_host_event
 from vllm_hust_ext.plan_artifact import plan_artifact_bytes
