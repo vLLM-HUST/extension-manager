@@ -207,49 +207,98 @@ class RegisteredAuthority:
         )
 
     def call(self, operation, **fields):
-        self._verify_authority()
-        request = {
-            "operation": operation,
-            "registration_sha256": self.registration_sha,
-            "holder": self.grant["grant_holder"],
-            "token": self.grant["grant_token"],
-            **fields,
-        }
-        raw = client.canonical(request)
-        require(len(raw) <= 64 * 1024, "authority command exceeds protocol bound")
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
-            channel.settimeout(5)
-            channel.connect(self.socket)
-            peer = struct.unpack(
-                "3i", channel.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
-            )
-            require(
-                peer == (self.process["pid"], self.uid, self.gid),
-                (
-                    "connected authority peer is not the registered actual process; "
-                    "no grant sent"
-                ),
-            )
-            self._verify_authority()
-            channel.sendall(raw + b"\n")
-            data = b""
-            while not data.endswith(b"\n"):
-                piece = channel.recv(4096)
-                require(
-                    piece and len(data) + len(piece) <= 64 * 1024,
-                    "authority response is truncated/oversize",
-                )
-                data += piece
-            self._verify_authority()
-        result = json.loads(data)
+        return self._call(operation, fields)
+
+    def _call(self, operation, fields, *, response_deadline_ns=None):
+        # Only native pre-admission preparation may use its original ready bound.
         require(
-            result.get("ok") is True,
-            "registered authority rejected "
-            + operation
-            + ": "
-            + str(result.get("error")),
+            response_deadline_ns is None
+            or (
+                isinstance(self, NativeRegisteredAuthority)
+                and operation == "prepare_native_epoch"
+                and type(response_deadline_ns) is int
+            ),
+            "extended control response bound is native preparation only",
         )
-        return result
+        stage = "authority-verification"
+        try:
+            self._verify_authority()
+            request = {
+                "operation": operation,
+                "registration_sha256": self.registration_sha,
+                "holder": self.grant["grant_holder"],
+                "token": self.grant["grant_token"],
+                **fields,
+            }
+            raw = client.canonical(request)
+            require(len(raw) <= 64 * 1024, "authority command exceeds protocol bound")
+            stage = "connect"
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as channel:
+                channel.settimeout(5)
+                channel.connect(self.socket)
+                peer = struct.unpack(
+                    "3i", channel.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
+                )
+                require(
+                    peer == (self.process["pid"], self.uid, self.gid),
+                    (
+                        "connected authority peer is not the registered "
+                        "actual process; "
+                        "no grant sent"
+                    ),
+                )
+                self._verify_authority()
+                stage = "send"
+                if (
+                    response_deadline_ns is not None
+                    and time.monotonic_ns() >= response_deadline_ns
+                ):
+                    raise TimeoutError(
+                        "original readiness deadline expired before send"
+                    )
+                channel.sendall(raw + b"\n")
+                stage = "response"
+                data = b""
+                while not data.endswith(b"\n"):
+                    if response_deadline_ns is not None:
+                        remaining_ns = response_deadline_ns - time.monotonic_ns()
+                        if remaining_ns <= 0:
+                            raise TimeoutError("original readiness deadline expired")
+                        channel.settimeout(remaining_ns / 1e9)
+                    piece = channel.recv(4096)
+                    require(
+                        piece and len(data) + len(piece) <= 64 * 1024,
+                        "authority response is truncated/oversize",
+                    )
+                    data += piece
+                self._verify_authority()
+                if (
+                    response_deadline_ns is not None
+                    and time.monotonic_ns() > response_deadline_ns
+                ):
+                    raise TimeoutError(
+                        "original readiness deadline expired after response"
+                    )
+            result = json.loads(data)
+            require(
+                result.get("ok") is True,
+                "registered authority rejected "
+                + operation
+                + ": "
+                + str(result.get("error")),
+            )
+            if (
+                response_deadline_ns is not None
+                and time.monotonic_ns() > response_deadline_ns
+            ):
+                raise TimeoutError(
+                    "original readiness deadline expired before acceptance"
+                )
+            return result
+        except TimeoutError as exc:
+            raise TimeoutError(
+                "authority control " + operation + " timed out during " + stage
+            ) from exc
 
     def preflight(self):
         result = self.call("capabilities")
@@ -291,6 +340,17 @@ class RegisteredAuthority:
 class NativeRegisteredAuthority(RegisteredAuthority):
     receipt_schema = "ecpa-h3-native-deployment-receipt/v1"
     profile = "ecpa-h3-source-owned-native-private-route/v1"
+
+    def prepare_native_epoch(self, *, phase_index, handoff, ready_deadline_ns):
+        require(
+            type(ready_deadline_ns) is int and ready_deadline_ns > time.monotonic_ns(),
+            "native preparation exceeds original Host readiness deadline",
+        )
+        return self._call(
+            "prepare_native_epoch",
+            {"phase_index": phase_index, "handoff": handoff},
+            response_deadline_ns=ready_deadline_ns,
+        )
 
     @classmethod
     def _registered_start(cls, registration, start_id):
@@ -911,12 +971,15 @@ def main():
             )
             generation = enrollment["generation"]
             if args.native_domain:
-                authority.call(
-                    "prepare_native_epoch",
+                authority.prepare_native_epoch(
                     phase_index=index,
                     handoff=reference(
                         output / f"phase{index}.native-source-handoff.json"
                     ),
+                    ready_deadline_ns=load(
+                        output / f"phase{index}.launch-observation.json"
+                    )["launched_monotonic_ns"]
+                    + int(campaign["probe"]["ready_timeout_s"] * 1e9),
                 )
             observed["route_generation"] = generation
             label = "before" if index == 0 else "after"
