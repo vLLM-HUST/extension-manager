@@ -217,6 +217,7 @@ def test_queue_retains_failed_slot_and_only_continues_after_independent_release(
     starts = [
         dict(
             start_id=f"original-{i}",
+            run_directory=str(tmp_path / f"run-{i}"),
             phase=dict(path="/root/frozen-phase", sha256="a" * 64),
         )
         for i in range(9)
@@ -255,7 +256,8 @@ def test_queue_retains_failed_slot_and_only_continues_after_independent_release(
             target.mkdir()
             (target / "independent-root-terminal.json").write_text('{"released":true}')
         else:
-            target.write_text(
+            target.mkdir()
+            (target / "independent-start-observation.json").write_text(
                 json.dumps(
                     dict(
                         formal_start_validated=True,
@@ -266,6 +268,7 @@ def test_queue_retains_failed_slot_and_only_continues_after_independent_release(
                     )
                 )
             )
+            (target / "record.json").write_text('{"status":"failed"}')
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(queue.subprocess, "run", transport)
@@ -277,10 +280,11 @@ def test_queue_retains_failed_slot_and_only_continues_after_independent_release(
             s["start_id"] for s in starts
         ]
         assert all(
-            r["status"] == "failed" and not r["performance_eligible"]
+            r["status"] == "failed" and (not r["performance_eligible"])
             for r in terminal["rows"]
         )
-        assert len(calls) == 18  # one observer + one intake; no retries
+        assert len(calls) == 18
+        assert len((output / "records.jsonl").read_bytes().splitlines()) == 9
     else:
         assert terminal["rows"] == []
         assert len(calls) == 1

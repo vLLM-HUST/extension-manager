@@ -363,6 +363,25 @@ def drive_requests(
     return sorted(rows, key=lambda row: row["all_index"])
 
 
+def runtime_interruption(error):
+    """Classify the actual caught exception; never classify by message text."""
+    if isinstance(error, TimeoutError):
+        family = "timeout"
+    elif isinstance(error, ConnectionError):
+        family = "connection"
+    elif isinstance(error, subprocess.TimeoutExpired):
+        family = "process-timeout"
+    else:
+        return None
+    return dict(
+        schema="ecpa-h4-source-runtime-interruption/v1",
+        family=family,
+        exception_type=type(error).__module__ + "." + type(error).__qualname__,
+        observed_monotonic_ns=time.monotonic_ns(),
+        observed_raw_ns=raw_ns(),
+    )
+
+
 def source_admission(campaign, start, receipt, phase, closure, launch, owner, timing):
     """Recomputed by intake; minted only by the actual product Popen callback."""
 
@@ -554,6 +573,7 @@ def run_start(
             )
             else "unqualified-verification-error"
         )
+        result["runtime_interruption"] = runtime_interruption(error)
         result["failure_observed_monotonic_ns"] = time.monotonic_ns()
         result["failure_observed_raw_ns"] = raw_ns()
     finally:

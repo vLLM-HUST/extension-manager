@@ -68,6 +68,21 @@ def save(path, value):
         os.fsync(stream.fileno())
 
 
+def runner_terminal(returncode, owner, popen_reference, observed_monotonic_ns):
+    """Source-owned actual Popen.poll result; no guessed raw waitstatus."""
+    require(type(returncode) is int, "actual runner returncode must be integer")
+    return dict(
+        schema="ecpa-h4-independent-runner-terminal/v1",
+        kernel={k: owner[k] for k in ("pid", "start_ticks", "session", "boot_id")},
+        returncode=returncode,
+        kind="signal" if returncode < 0 else "exit",
+        signal=-returncode if returncode < 0 else None,
+        popen=popen_reference,
+        observed_monotonic_ns=observed_monotonic_ns,
+        wait_api="subprocess.Popen.poll",
+    )
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     for name in ("campaign", "launch-spec", "output"):
@@ -209,6 +224,17 @@ def main():
                     break
                 time.sleep(0.25)
         result["runner_exit_code"] = rc
+        popen_path = a.output / "actual-runner-Popen.json"
+        result["runner_terminal"] = runner_terminal(
+            rc,
+            owner,
+            dict(
+                path=str(popen_path),
+                sha256=hashlib.sha256(popen_path.read_bytes()).hexdigest(),
+            ),
+            time.monotonic_ns(),
+        )
+
         # Exit status is an observed outcome, never a substitute for cleanup.
         admission = read(run / "source-admission.json")
         timing = read(run / "phase0.product-popen-timing.json")

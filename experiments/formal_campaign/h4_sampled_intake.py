@@ -441,6 +441,143 @@ def verify_present_native_history(boot):
     )
 
 
+def independent_runner_signal(root, root_ref, expected_argv):
+    """Authenticate a real negative Popen wait result against its original epoch."""
+    terminal = root.get("runner_terminal")
+    if terminal is None:
+        return None
+    require(
+        type(terminal) is dict
+        and set(terminal)
+        == {
+            "schema",
+            "kernel",
+            "returncode",
+            "kind",
+            "signal",
+            "popen",
+            "observed_monotonic_ns",
+            "wait_api",
+        },
+        "malformed independent runner termination",
+    )
+    require(
+        terminal["schema"] == "ecpa-h4-independent-runner-terminal/v1"
+        and terminal["wait_api"] == "subprocess.Popen.poll"
+        and type(terminal["returncode"]) is int
+        and type(root["runner_exit_code"]) is int
+        and terminal["returncode"] == root["runner_exit_code"],
+        "independent runner exit ABI differs",
+    )
+    path = check_ref(terminal["popen"])
+    require(
+        path == Path(root_ref["path"]).parent / "actual-runner-Popen.json",
+        "runner Popen witness moved to another observation",
+    )
+    launch = read(path)
+    kernel = {
+        k: launch["kernel"][k] for k in ("pid", "start_ticks", "session", "boot_id")
+    }
+    require(
+        same(kernel, terminal["kernel"])
+        and launch["argv"] == expected_argv
+        and type(launch["observed_monotonic_ns"]) is int
+        and type(terminal["observed_monotonic_ns"]) is int
+        and 0 < launch["observed_monotonic_ns"] <= terminal["observed_monotonic_ns"]
+        and any(
+            same({k: epoch[k] for k in kernel}, kernel)
+            for epoch in root["all_observed_epochs"]
+        ),
+        "independent runner signal lacks exact source command/kernel/clock witness",
+    )
+    if terminal["returncode"] >= 0:
+        require(
+            terminal["kind"] == "exit" and terminal["signal"] is None,
+            "ordinary exit mislabeled as signal termination",
+        )
+        return None
+    require(
+        terminal["kind"] == "signal"
+        and type(terminal["signal"]) is int
+        and terminal["signal"] == -terminal["returncode"],
+        "actual negative signal wait result differs",
+    )
+    return dict(kind="independently-observed-runner-signal", terminal=terminal)
+
+
+def no_epoch_runtime_cause(outcome, root, root_ref, expected_argv, admission):
+    """No generic nonzero or schema/integrity error becomes formal failure."""
+    require(root.get("released") is True, "independent cleanup not released")
+    require(
+        type(root.get("runner_exit_code")) is int, "typed actual runner exit required"
+    )
+    signal = independent_runner_signal(root, root_ref, expected_argv)
+    if outcome is not None:
+        require(
+            outcome["schema"] == "ecpa-h4-sampled-live-source-observation/v1",
+            "wrong source outcome schema",
+        )
+        if outcome.get("failure_category") == "unqualified-verification-error":
+            raise ValueError(
+                "explicit source/schema/ABI/integrity failure remains unqualified"
+            )
+        category = outcome.get("failure_category")
+        if category is not None:
+            require(
+                category == "runtime-interruption", "unknown source failure taxonomy"
+            )
+            event = outcome.get("runtime_interruption")
+            require(
+                type(event) is dict
+                and set(event)
+                == {
+                    "schema",
+                    "family",
+                    "exception_type",
+                    "observed_monotonic_ns",
+                    "observed_raw_ns",
+                }
+                and event["schema"] == "ecpa-h4-source-runtime-interruption/v1"
+                and event["family"] in {"timeout", "connection", "process-timeout"}
+                and event["exception_type"]
+                in {
+                    "timeout": {"builtins.TimeoutError"},
+                    "connection": {
+                        "builtins.ConnectionError",
+                        "builtins.ConnectionRefusedError",
+                        "builtins.ConnectionResetError",
+                        "builtins.ConnectionAbortedError",
+                        "builtins.BrokenPipeError",
+                        "http.client.RemoteDisconnected",
+                    },
+                    "process-timeout": {"subprocess.TimeoutExpired"},
+                }[event["family"]]
+                and type(outcome.get("failure_observed_monotonic_ns")) is int
+                and type(outcome.get("failure_observed_raw_ns")) is int
+                and type(event["observed_monotonic_ns"]) is int
+                and type(event["observed_raw_ns"]) is int
+                and admission["before_monotonic_ns"]
+                <= event["observed_monotonic_ns"]
+                <= outcome["failure_observed_monotonic_ns"]
+                and admission["after_ns"]
+                <= event["observed_raw_ns"]
+                <= outcome["failure_observed_raw_ns"]
+                and type(outcome.get("failure")) is str
+                and bool(outcome["failure"]),
+                "runtime interruption lacks source-owned typed cause/clocks",
+            )
+            return dict(kind="source-observed-runtime-interruption", source=event)
+        require(
+            outcome.get("failure") is None
+            and outcome.get("runtime_interruption") is None,
+            "untyped source failure remains unqualified",
+        )
+    require(
+        signal is not None, "generic nonzero exit or missing cause remains unqualified"
+    )
+    return signal
+
+
 def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref):
     campaign, launch, workload, native = validate_inputs(
         campaign_path, launch_path, require_fresh_paths=False
@@ -503,6 +640,27 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         root["execution_domain"] == "registered-original-start",
         "qualification cannot become formal start",
     )
+    # This version's source-owned root producer always writes this raw fact.
+    # Validate it for every registered result, including complete positive rows.
+    # Old root artifacts cannot borrow the new source qualification.
+    require(
+        type(root.get("runner_terminal")) is dict,
+        "registered start lacks mandatory independent runner terminal",
+    )
+    registered_runner_argv = [
+        phase["argv"][0],
+        "-m",
+        "experiments.formal_campaign.run_h4_sampled",
+        "--campaign",
+        str(campaign_path),
+        "--launch-spec",
+        str(launch_path),
+        "--deployment-receipt",
+        str(receipt_path),
+        "--start-id",
+        start_id,
+    ]
+    independent_runner_signal(root, root_cleanup_ref, registered_runner_argv)
     pinned_terminal(root, output)
     epoch_path = output / "sampled-epoch-archive.json"
     if not epoch_path.exists():
@@ -523,18 +681,8 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         )
         result_path = output / "sampled-source-result.json"
         outcome = read(result_path) if result_path.exists() else None
-        require(
-            root["runner_exit_code"] != 0
-            or (
-                outcome is not None
-                and outcome.get("failure_category") == "runtime-interruption"
-                and type(outcome.get("failure")) is str
-                and bool(outcome["failure"])
-            ),
-            (
-                "missing epoch is not an authenticated runtime interruption; "
-                "schema/verification errors remain unqualified"
-            ),
+        cause = no_epoch_runtime_cause(
+            outcome, root, root_cleanup_ref, registered_runner_argv, admission
         )
         return failed_observation(
             campaign,
@@ -544,6 +692,7 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
             verified=[],
             reason=dict(
                 kind="post-Popen-startup-failure",
+                authenticated_runtime_cause=cause,
                 runner_exit_code=root["runner_exit_code"],
                 source_failure=outcome["failure"] if outcome else None,
             ),

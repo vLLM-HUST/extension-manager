@@ -536,6 +536,7 @@ SAMPLED_PROTOCOL_FILES = (
     "h4_sampled_root_observer.py",
     "h4_sampled_queue.py",
     "h4_sampled_calibration.py",
+    "h4_sampled_record_bridge.py",
 )
 
 

@@ -22,12 +22,35 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     for key in ("campaign", "launch-spec", "deployment-receipt", "output"):
         p.add_argument("--" + key, type=Path, required=True)
+    p.add_argument(
+        "--artifact-root",
+        type=Path,
+        help=(
+            "Default: common ancestor of the exact packet, "
+            "original runs and queue output"
+        ),
+    )
     a = p.parse_args()
     if os.geteuid() != 0:
         raise ValueError("independent root queue required")
-    os.umask(0o077)
-    a.output.mkdir(mode=0o700, exist_ok=False)
+    os.umask(63)
+    a.output.mkdir(mode=448, exist_ok=False)
     campaign, _, _, native = validate_inputs(a.campaign, a.launch_spec)
+    if a.artifact_root is None:
+        a.artifact_root = Path(
+            os.path.commonpath(
+                [
+                    str(path.absolute())
+                    for path in (
+                        a.campaign,
+                        a.launch_spec,
+                        a.deployment_receipt,
+                        a.output,
+                        *(Path(start["run_directory"]) for start in native["starts"]),
+                    )
+                ]
+            )
+        )
     rows = []
     error = None
     try:
@@ -36,7 +59,7 @@ def main():
             if sys.executable != phase["argv"][0]:
                 raise ValueError("exact selected runtime interpreter required")
             out = a.output / f"start-{index:02d}"
-            out.mkdir(mode=0o700)
+            out.mkdir(mode=448)
             env_path = out / "actual-frozen-phase-environment.json"
             write_new(env_path, phase["environment"])
             command = [
@@ -74,7 +97,6 @@ def main():
                     check=False,
                 )
             if result.returncode:
-                # A failed cleanup/observer is never eligible to continue.
                 raise ValueError(
                     "independent root observation/release failed; stop original queue"
                 )
@@ -83,7 +105,7 @@ def main():
             command = [
                 sys.executable,
                 "-m",
-                "experiments.formal_campaign.h4_sampled_intake",
+                "experiments.formal_campaign.h4_sampled_record_bridge",
                 "--campaign",
                 str(a.campaign),
                 "--launch-spec",
@@ -97,7 +119,9 @@ def main():
                 "--root-cleanup-sha256",
                 root_sha,
                 "--output",
-                str(out / "independent-start-observation.json"),
+                str(out / "formal-record"),
+                "--artifact-root",
+                str(a.artifact_root),
             ]
             write_new(out / "independent-intake-command.json", command)
             with (
@@ -117,7 +141,7 @@ def main():
                     "independent full sampled intake rejected; original run unmodified"
                 )
             observation = json.loads(
-                (out / "independent-start-observation.json").read_bytes()
+                (out / "formal-record/independent-start-observation.json").read_bytes()
             )
             if observation.get("formal_start_validated") is not True:
                 raise ValueError("source-owned start not admitted")
@@ -126,8 +150,12 @@ def main():
                     index=index,
                     start_id=start["start_id"],
                     independent_observation=str(
-                        out / "independent-start-observation.json"
+                        out / "formal-record/independent-start-observation.json"
                     ),
+                    record=str(out / "formal-record/record.json"),
+                    record_sha256=hashlib.sha256(
+                        (out / "formal-record/record.json").read_bytes()
+                    ).hexdigest(),
                     formal_start_validated=True,
                     performance_eligible=observation["performance_eligible"],
                     status=observation["status"],
@@ -138,6 +166,16 @@ def main():
     except Exception as exc:
         error = repr(exc)
     finally:
+        with (a.output / "records.jsonl").open("xb") as ledger:
+            for row in rows:
+                raw = Path(row["record"]).read_bytes()
+                if hashlib.sha256(raw).hexdigest() != row["record_sha256"]:
+                    raise ValueError(
+                        "verified slot record changed before queue ledger write"
+                    )
+                ledger.write(raw + b"\n")
+            ledger.flush()
+            os.fsync(ledger.fileno())
         write_new(
             a.output / "queue-terminal.json",
             dict(
