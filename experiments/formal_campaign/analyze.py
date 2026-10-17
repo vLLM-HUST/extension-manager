@@ -721,6 +721,60 @@ def h4_decode_body(binding: dict[str, Any]) -> bytes:
     return body
 
 
+def h4_request_identity_observation(
+    request_id: str,
+    request_headers: list[list[str]],
+    response: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Derive returned IDs from raw HTTP evidence, never from the local label.
+
+    A completion-ID match is only an API transport observation. It does not
+    establish an opaque native runtime ID, invocation, or KV semantic effect.
+    Missing/ambiguous returned IDs remain null rather than an assumed echo.
+    """
+    sent = [
+        value
+        for name, value in request_headers
+        if name.lower() == "x-request-id"
+    ]
+    if sent != [request_id]:
+        raise ValueError("H4 transmitted request-ID header differs from local row")
+    returned_header = None
+    completion_id = None
+    if response is not None:
+        returned = [
+            value
+            for name, value in response["headers"]
+            if name.lower() == "x-request-id"
+        ]
+        if len(returned) == 1 and returned[0]:
+            returned_header = returned[0]
+        # The real completion response body is the primary Host API witness;
+        # do not substitute a locally expected cmpl-ID when the body lacks it.
+        body = h4_decode_body(response)
+        if response["status_code"] == 200:
+            try:
+                parsed = json.loads(body)
+            except (ValueError, UnicodeDecodeError):
+                parsed = None
+            if isinstance(parsed, dict):
+                value = parsed.get("id")
+                if isinstance(value, str) and value:
+                    completion_id = value
+    return {
+        "schema": "ecpa-h4-http-request-identity-observation/v1",
+        "sent_header_request_id": sent[0],
+        "server_header_request_id": returned_header,
+        "server_completion_id": completion_id,
+        "server_header_matches_sent_request_id": (
+            None if returned_header is None else returned_header == sent[0]
+        ),
+        "server_completion_matches_sent_request_id": (
+            None if completion_id is None else completion_id == f"cmpl-{sent[0]}"
+        ),
+    }
+
+
 def h4_response_summary(response: dict[str, Any] | None) -> dict[str, Any]:
     """Recompute summaries from retained transport status and response bytes."""
     result = {
@@ -772,6 +826,26 @@ def _verify_h4_requests(raw: dict[str, Any], workload: dict[str, Any]) -> None:
             raise ValueError("H4 request bytes differ from frozen workload")
         if "http_response" not in item:
             raise ValueError("H4 raw HTTP response missing; unverified")
+        # Legacy rows without these new transport observations retain their
+        # original validation. New rows must bind both fields to original bytes.
+        if "request_headers" in item or "request_identity" in item:
+            if "request_headers" not in item or "request_identity" not in item:
+                raise ValueError("H4 request identity observation is incomplete")
+            observed = h4_request_identity_observation(
+                item["request_id"], item["request_headers"], item["http_response"]
+            )
+            if (
+                _canonical_digest(item["request_identity"])
+                != _canonical_digest(observed)
+            ):
+                raise ValueError("H4 request identity differs from raw HTTP evidence")
+            if (
+                observed["server_header_matches_sent_request_id"] is False
+                or observed["server_completion_matches_sent_request_id"] is False
+            ):
+                raise ValueError("H4 Host returned a different request identity")
+            # Null is explicitly unconfirmed, not a positive native join. It
+            # does not alter the original H4 success/performance thresholds.
         summary = h4_response_summary(item["http_response"])
         if any(item.get(key) != value for key, value in summary.items()):
             raise ValueError("H4 response summary differs from raw HTTP evidence")

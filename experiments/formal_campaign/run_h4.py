@@ -24,6 +24,7 @@ from analyze import (
     _digest_bytes,
     _recompute_h4_metrics,
     h4_body_binding,
+    h4_request_identity_observation,
     h4_request_payload,
     h4_response_summary,
     load_h4_campaign,
@@ -201,7 +202,10 @@ def request_once(
     request = urllib.request.Request(
         endpoint,
         data=payload,
-        headers={"content-type": "application/json"},
+        headers={
+            "content-type": "application/json",
+            "X-Request-Id": request_id,
+        },
         method="POST",
     )
     try:
@@ -221,11 +225,20 @@ def request_once(
         error = f"HTTPError: {exc}"
     except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"
+    completed_ns = now_ns()
+    # Retain the Request object's actual header values submitted to urllib.
+    # This alone does not prove that the Host consumed a request ID; only the
+    # independently retained response can supply a returned ID/match observation.
+    request_headers = [list(pair) for pair in request.header_items()]
     return {
         "request_id": request_id,
+        "request_headers": request_headers,
+        "request_identity": h4_request_identity_observation(
+            request_id, request_headers, response_evidence
+        ),
         "kind": kind,
         "dispatch_ns": dispatch,
-        "complete_ns": now_ns(),
+        "complete_ns": completed_ns,
         "error": error,
         "http_request": h4_body_binding(payload),
         "http_response": response_evidence,
