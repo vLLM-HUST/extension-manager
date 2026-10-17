@@ -18,6 +18,7 @@ API_SOURCE_SUFFIXES = (
     "/vllm/plugins/native_block_table_observer.py",
     "/vllm/plugins/native_phase_drain.py",
     "/vllm/plugins/native_semantic_bootstrap.py",
+    "/vllm/plugins/native_observer_rebind.py",
     "/vllm/plugins/native_semantic_collector.py",
     "/vllm/v1/engine/input_processor.py",
     "/experiments/exposure_gate/native_semantic_collector.py",

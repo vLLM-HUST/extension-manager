@@ -98,10 +98,7 @@ def ensure_registered(register_observer) -> bool:
     return True
 
 
-def write_context(
-    path: Path, *, spec_path: Path, ready: dict, source_files: list
-) -> str:
-    """Launcher helper; readiness must already be independently peer/source checked."""
+def context_value(*, spec_path, ready, source_files):
     value = {
         "schema": BOOTSTRAP,
         "classification": "CPU_REVIEW_CANDIDATE_ONLY",
@@ -115,6 +112,14 @@ def write_context(
         "spec_sha256": ready["spec_sha256"],
         "source_files": source_files,
     }
+    return value
+
+
+def write_context(
+    path: Path, *, spec_path: Path, ready: dict, source_files: list
+) -> str:
+    """Launcher helper; readiness must already be independently peer/source checked."""
+    value = context_value(spec_path=spec_path, ready=ready, source_files=source_files)
     raw = canonical(value)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:

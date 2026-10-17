@@ -83,6 +83,8 @@ def start_native_epoch(
     native_context_path,
     tensor_context_path,
     source_files,
+    _observer_successor=False,
+    _before_context_publication=None,
 ):
     """Start actual peer-authenticated intake; return its owned Popen and descriptor.
 
@@ -92,7 +94,11 @@ def start_native_epoch(
     """
     output = Path(output)
     require(output.resolve() == output, "native output must be canonical")
-    output.mkdir(mode=0o700)
+    if _observer_successor:
+        from experiments.formal_campaign.h3_observer_paths import create_private_directory
+        create_private_directory(output)
+    else:
+        output.mkdir(mode=0o700)
     require(len(phases) == 60, "H3 native epoch must retain all60 client IDs")
     verify_senders(senders)
     senders, source_files = scope_native_senders(senders, source_files)
@@ -117,7 +123,10 @@ def start_native_epoch(
     for sender in senders[1:]:
         pid = sender["process"]["pid"]
         path = output / f"worker-{pid}"
-        path.mkdir(mode=0o700)
+        if _observer_successor:
+            create_private_directory(path)
+        else:
+            path.mkdir(mode=0o700)
         info = path.stat()
         directories[str(pid)] = {
             "path": str(path),
@@ -207,6 +216,14 @@ def start_native_epoch(
             drain_policy_path=drain_path,
         )
         verify_senders(senders)
+        if _before_context_publication is not None:
+            _before_context_publication(process=process, descriptor=descriptor,
+                contexts={
+                    "semantic": native_semantic_bootstrap.context_value(
+                        spec_path=spec_path, ready=ready, source_files=source_files),
+                    "tensor": artifact_bootstrap.context_value(spec_path=spec_path,
+                        policy_path=policy_path, ready=ready, source_files=source_files),
+                })
         native_semantic_bootstrap.write_context(
             Path(native_context_path),
             spec_path=spec_path,
