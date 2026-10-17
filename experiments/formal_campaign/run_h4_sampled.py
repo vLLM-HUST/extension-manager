@@ -213,7 +213,9 @@ def exchange(
         connection.close()
 
 
-def drive_requests(epoch, verifier, endpoint, workload, schedule, raw_path):
+def drive_requests(
+    epoch, verifier, endpoint, workload, schedule, raw_path, *, calibration_one=False
+):
     payload = h4_request_payload(workload, workload["served_model"])
     payload_sha = hashlib.sha256(payload).hexdigest()
     rows, lock = [], threading.Lock()
@@ -334,6 +336,7 @@ def drive_requests(epoch, verifier, endpoint, workload, schedule, raw_path):
         except Exception as error:
             row["error"] = type(error).__name__ + ": " + str(error)
         finally:
+            row["native_clock"]["outcome_observed_ns"] = time.monotonic_ns()
             row.setdefault("complete_ns", raw_ns())
             if row["http_response"] is None:
                 row.update(h4_response_summary(None))
@@ -345,9 +348,12 @@ def drive_requests(epoch, verifier, endpoint, workload, schedule, raw_path):
         return row
 
     try:
-        # Match the original separate warmup/measured pools. No selected-only
-        # traffic, retries, extra POST readiness probe or missing-proof refill.
-        for declarations in (schedule["requests"][:16], schedule["requests"][16:]):
+        batches = (
+            ([schedule["requests"][0]],)
+            if calibration_one
+            else (schedule["requests"][:16], schedule["requests"][16:])
+        )
+        for declarations in batches:
             with ThreadPoolExecutor(max_workers=8) as executor:
                 futures = [executor.submit(request_once, row) for row in declarations]
                 for future in futures:
@@ -357,7 +363,35 @@ def drive_requests(epoch, verifier, endpoint, workload, schedule, raw_path):
     return sorted(rows, key=lambda row: row["all_index"])
 
 
-def run_start(campaign, launch, workload, native, start, receipt):
+def source_admission(campaign, start, receipt, phase, closure, launch, owner, timing):
+    """Recomputed by intake; minted only by the actual product Popen callback."""
+
+    def digest(value):
+        return hashlib.sha256(
+            json.dumps(
+                value, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode()
+        ).hexdigest()
+
+    return dict(
+        schema="ecpa-h4-sampled-product-source-admission/v1",
+        campaign_sha256=campaign["_raw_sha256"],
+        start_id=start["start_id"],
+        phase=start["phase"],
+        receipt_sha256=digest(receipt),
+        runtime_closure_sha256=digest(closure),
+        semantic_launch_sha256=digest(launch),
+        owner=owner,
+        argv=phase["argv"],
+        before_ns=timing["before_ns"],
+        after_ns=timing["after_ns"],
+        before_monotonic_ns=timing["before_monotonic_ns"],
+    )
+
+
+def run_start(
+    campaign, launch, workload, native, start, receipt, *, calibration_guard=None
+):
     phase = json.loads(checked(start["phase"]))
     output = Path(start["run_directory"])
     # All complete source/wheel audits are qualification before measured Popen.
@@ -368,7 +402,17 @@ def run_start(campaign, launch, workload, native, start, receipt):
         native["repositories"],
         native["runtime_wheels"],
     )
-    guard = build_plan_guard(campaign, native, start, receipt)
+    if calibration_guard is not None:
+        from .h3_native_plan_guard import NativePlanGuard
+
+        if type(calibration_guard) is not NativePlanGuard or receipt is not None:
+            raise ValueError(
+                "unregistered calibration requires exact source-derived guard "
+                "and no receipt"
+            )
+        guard = calibration_guard
+    else:
+        guard = build_plan_guard(campaign, native, start, receipt)
     qualification_end = raw_ns()
     sampler, epoch, collector = None, None, None
     result = dict(
@@ -381,11 +425,29 @@ def run_start(campaign, launch, workload, native, start, receipt):
         qualification_end_ns=qualification_end,
         failure=None,
         source_native_complete=False,
+        execution_domain="unregistered-calibration"
+        if calibration_guard is not None
+        else "registered-original-start",
     )
 
     def on_popen(process):
         nonlocal sampler
         owner = identity(process.pid)
+        timing = json.loads((output / "phase0.product-popen-timing.json").read_bytes())
+        if (
+            timing["actual_kernel"] != owner
+            or timing["argv"] != phase["argv"]
+            or not (0 < timing["before_ns"] <= timing["after_ns"] <= raw_ns())
+        ):
+            raise ValueError("actual product Popen callback identity/clock mismatch")
+        write_new(output / "actual-runtime-closure.json", closure)
+        write_new(
+            output / "source-admission.json",
+            source_admission(
+                campaign, start, receipt, phase, closure, guard.launch, owner, timing
+            ),
+        )
+        result["product_owner"] = owner
         sampler = OwnedTreeResourceSampler(
             process.pid,
             launch["npu_memory_command"],
@@ -398,7 +460,6 @@ def run_start(campaign, launch, workload, native, start, receipt):
         epoch = observe_native_epoch(
             phase, start["arm"], output, guard, on_popen=on_popen
         )
-        write_new(output / "actual-runtime-closure.json", closure)
         boot = phase["native_bootstrap"]
         read_registered_schedule(start["schedule"], boot["phases"])
         collector, descriptor = start_native_epoch(
@@ -432,7 +493,7 @@ def run_start(campaign, launch, workload, native, start, receipt):
             (output / "phase0.product-popen-timing.json").read_bytes()
         )
         health_deadline = popen_timing["before_monotonic_ns"] + int(
-            launch["startup_timeout_seconds"] * 1e9
+            launch["startup_timeout_seconds"] * 1000000000.0
         )
         health_attempts = []
         while True:
@@ -466,8 +527,17 @@ def run_start(campaign, launch, workload, native, start, receipt):
             traffic_workload,
             schedule,
             output / "request-results.jsonl",
+            calibration_one=calibration_guard is not None,
         )
-        write_new(output / "all272-request-results.json", rows)
+        write_new(
+            output
+            / (
+                "calibration-one-request-results.json"
+                if calibration_guard is not None
+                else "all272-request-results.json"
+            ),
+            rows,
+        )
         result.update(
             request_count=len(rows),
             selected_count=sum(r["selected"] for r in rows),
@@ -477,17 +547,24 @@ def run_start(campaign, launch, workload, native, start, receipt):
         )
     except Exception as error:
         result["failure"] = type(error).__name__ + ": " + str(error)
+        result["failure_category"] = (
+            "runtime-interruption"
+            if isinstance(
+                error, (TimeoutError, ConnectionError, subprocess.TimeoutExpired)
+            )
+            else "unqualified-verification-error"
+        )
+        result["failure_observed_monotonic_ns"] = time.monotonic_ns()
+        result["failure_observed_raw_ns"] = raw_ns()
     finally:
         cleanup_errors = []
         if epoch is not None:
             try:
-                # Preserve entire original Host history before real cleanup;
-                # offline intake never asks dead processes for fresh identities.
                 host_raw = Path(epoch["host_journal"]).read_bytes()
                 fd = os.open(
                     output / "final-original-Host.jsonl",
                     os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                    0o600,
+                    384,
                 )
                 with os.fdopen(fd, "wb") as stream:
                     stream.write(host_raw)
@@ -529,8 +606,6 @@ def run_start(campaign, launch, workload, native, start, receipt):
                 result["actual_epochs_gone"] = all(not live(item) for item in expected)
             except Exception as error:
                 cleanup_errors.append("owned Host tree: " + repr(error))
-        # Always retain actual device-command bytes, even after an earlier
-        # archive/cleanup error. No exception suppresses the next cleanup step.
         if output.exists():
             try:
                 env = dict(os.environ, ECPA_H4_RUN_DIRECTORY=str(output))

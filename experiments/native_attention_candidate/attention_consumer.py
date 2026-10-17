@@ -66,6 +66,7 @@ def _verify_attention_archive(
     drain_protocol=None,
     _owner,
     _owned_materializations=None,
+    _allow_incomplete=False,
 ):
     """Portable bytes oracle. An ACK prefix must come from authenticated live status.
 
@@ -73,6 +74,10 @@ def _verify_attention_archive(
     file inodes are not portable; the original identities remain recorded, while
     the archived payload's exact bytes/digest are independently checked.
     """
+    require(
+        type(_allow_incomplete) is bool,
+        "typed private archive completeness mode required",
+    )
     spec_raw = Path(spec_path).read_bytes()
     policy_raw = Path(policy_path).read_bytes()
     spec, policy = json.loads(spec_raw), json.loads(policy_raw)
@@ -450,8 +455,9 @@ def _verify_attention_archive(
             ]["layer_indices"]
         }
     ]
+    full_phase_source_drained = None
     if drain_module is not None:
-        require(
+        full_phase_source_drained = bool(
             maps
             and all(
                 {
@@ -461,7 +467,10 @@ def _verify_attention_archive(
                 }
                 == set(phase["expected_ranks"])
                 for runtime, phase in maps.items()
-            ),
+            )
+        )
+        require(
+            _allow_incomplete or full_phase_source_drained,
             "portable full phase source drain is incomplete",
         )
     return {
@@ -479,7 +488,10 @@ def _verify_attention_archive(
         "full_model_quality": None,
         "formal_registration": False,
         **(
-            {"source_drains": list(drained.values()), "full_phase_source_drained": True}
+            {
+                "source_drains": list(drained.values()),
+                "full_phase_source_drained": full_phase_source_drained,
+            }
             if drain_module is not None
             else {}
         ),

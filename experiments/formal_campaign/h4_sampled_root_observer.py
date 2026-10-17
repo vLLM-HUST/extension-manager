@@ -70,9 +70,12 @@ def save(path, value):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    for name in ("campaign", "launch-spec", "deployment-receipt", "output"):
+    for name in ("campaign", "launch-spec", "output"):
         p.add_argument("--" + name, type=Path, required=True)
     p.add_argument("--start-id", required=True)
+    p.add_argument("--deployment-receipt", type=Path)
+    p.add_argument("--unregistered-calibration", action="store_true")
+    p.add_argument("--source-repositories", type=Path)
     p.add_argument("--python", type=Path, required=True)
     p.add_argument("--sdk", type=Path, required=True)
     p.add_argument(
@@ -104,25 +107,53 @@ def main():
         "actual interpreter/SDK differs",
     )
     env = read(a.environment)
-    argv = [
-        str(a.python),
-        "-m",
-        "experiments.formal_campaign.run_h4_sampled",
-        "--campaign",
-        str(a.campaign),
-        "--launch-spec",
-        str(a.launch_spec),
-        "--deployment-receipt",
-        str(a.deployment_receipt),
-        "--start-id",
-        a.start_id,
-    ]
+    if a.unregistered_calibration:
+        require(
+            a.deployment_receipt is None and a.source_repositories is not None,
+            "unregistered qualifier cannot consume a deployment receipt",
+        )
+        argv = [
+            str(a.python),
+            "-m",
+            "experiments.formal_campaign.h4_sampled_calibration",
+            "--produce",
+            "--campaign",
+            str(a.campaign),
+            "--launch-spec",
+            str(a.launch_spec),
+            "--source-repositories",
+            str(a.source_repositories),
+            "--start-id",
+            a.start_id,
+            "--output",
+            str(a.output / "calibration-artifacts"),
+        ]
+    else:
+        require(
+            a.deployment_receipt is not None, "registered start requires real receipt"
+        )
+        argv = [
+            str(a.python),
+            "-m",
+            "experiments.formal_campaign.run_h4_sampled",
+            "--campaign",
+            str(a.campaign),
+            "--launch-spec",
+            str(a.launch_spec),
+            "--deployment-receipt",
+            str(a.deployment_receipt),
+            "--start-id",
+            a.start_id,
+        ]
     result = dict(
         schema="ecpa-h4-sampled-independent-root-terminal/v1",
         run_directory=str(run),
         released=False,
         formal_result=False,
         qualification_or_hypothesis_claim=False,
+        execution_domain="unregistered-calibration"
+        if a.unregistered_calibration
+        else "registered-original-start",
     )
     seen = {}
     sessions = set()
@@ -178,12 +209,21 @@ def main():
                     break
                 time.sleep(0.25)
         result["runner_exit_code"] = rc
+        # Exit status is an observed outcome, never a substitute for cleanup.
+        admission = read(run / "source-admission.json")
+        timing = read(run / "phase0.product-popen-timing.json")
         require(
-            rc == 0, "actual source runner failed; no automatic release or replacement"
+            admission["owner"] == timing["actual_kernel"],
+            "actual product admission differs",
         )
-        epoch = read(run / "sampled-epoch-archive.json")
-        result["product_root"] = epoch["owner"]
-        for e in (epoch["owner"], *epoch["kernels"].values()):
+        result["product_root"] = admission["owner"]
+        epoch_path = run / "sampled-epoch-archive.json"
+        epoch = read(epoch_path) if epoch_path.exists() else None
+        expected_epochs = (
+            admission["owner"],
+            *(epoch["kernels"].values() if epoch is not None else ()),
+        )
+        for e in expected_epochs:
             require(
                 any(same_epoch(e, x) for x in seen.values()),
                 "actual role not independently observed; no retrospective promotion",
@@ -236,6 +276,26 @@ def main():
             ),
             "retained epoch reappeared",
         )
+        # Pin exact terminal files actually observed after this runner exited.
+        # Omitted files stay omitted; no fabricated trace, stop, or completion.
+        paths = [
+            run / name
+            for name in (
+                "source-admission.json",
+                "phase0.product-popen-timing.json",
+                "actual-runtime-closure.json",
+                "sampled-source-result.json",
+                "sampled-epoch-archive.json",
+                "request-results.jsonl",
+                "all272-request-results.json",
+                "owned-resources.json",
+            )
+        ]
+        result["terminal_artifacts"] = {
+            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in paths
+            if path.exists() and path.is_file() and not path.is_symlink()
+        }
         result["released"] = True
         return 0
     except Exception as exc:

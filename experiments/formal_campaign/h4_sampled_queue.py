@@ -74,8 +74,9 @@ def main():
                     check=False,
                 )
             if result.returncode:
+                # A failed cleanup/observer is never eligible to continue.
                 raise ValueError(
-                    "actual observer/source run failed; original streams retained"
+                    "independent root observation/release failed; stop original queue"
                 )
             root = out / "root-observation/independent-root-terminal.json"
             root_sha = hashlib.sha256(root.read_bytes()).hexdigest()
@@ -129,6 +130,9 @@ def main():
                     ),
                     formal_start_validated=True,
                     performance_eligible=observation["performance_eligible"],
+                    status=observation["status"],
+                    coverage=observation["coverage"],
+                    observed_failure=observation["observed_failure"],
                 )
             )
     except Exception as exc:

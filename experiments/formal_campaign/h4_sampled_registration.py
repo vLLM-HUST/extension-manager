@@ -193,7 +193,9 @@ def preflight_native_spec(phase):
     )
 
 
-def validate_inputs(campaign_path, launch_path, *, require_fresh_paths=True):
+def validate_inputs(
+    campaign_path, launch_path, *, require_fresh_paths=True, _calibration_only=False
+):
     campaign_path, launch_path = Path(campaign_path), Path(launch_path)
     campaign_raw = campaign_path.read_bytes()
     campaign = json.loads(campaign_raw)
@@ -229,24 +231,36 @@ def validate_inputs(campaign_path, launch_path, *, require_fresh_paths=True):
         native["provider_parameters"] == {"kv_budget": 1024, "recompute_window": 128},
         "registered actual provider configuration differs",
     )
-    calibration = json.loads(checked(native["new_tokenizer_and_native_calibration"]))
-    require(
-        calibration["schema"] == "ecpa-h4-new-workload-actual-calibration/v1"
-        and calibration["workload_sha256"] == campaign["workload"]["sha256"]
-        and calibration["fixed_identity"] == campaign["fixed_identity"]
-        and type(calibration["prompt_tokens"]) is int
-        and calibration["prompt_tokens"] >= 1152
-        and calibration["historical_receipts_reused"] is False,
-        (
-            "new workload requires its own actual tokenizer/N"
-            "PU calibration, not old intent"
-        ),
-    )
-    # Every calibration proof raw leaf is mandatory and independently retained.
-    # A boolean label alone never supplies native qualification.
-    for ref in calibration["raw_refs"]:
-        checked(ref)
-    require(calibration["raw_refs"], "actual calibration raw inputs missing")
+    if _calibration_only:
+        require(
+            campaign.get("execution_domain") == "unregistered-calibration",
+            "qualification requires its own explicit namespace/domain",
+        )
+        intent = json.loads(checked(native["new_tokenizer_and_native_calibration"]))
+        require(
+            set(intent) == {"schema", "workload_sha256", "fixed_identity"}
+            and intent["schema"] == "ecpa-h4-unregistered-calibration-intent/v1"
+            and (intent["workload_sha256"] == campaign["workload"]["sha256"])
+            and (
+                canonical(intent["fixed_identity"])
+                == canonical(campaign["fixed_identity"])
+            ),
+            "explicit unregistered qualification intent required",
+        )
+    else:
+        require(
+            campaign.get("execution_domain") != "unregistered-calibration",
+            "qualification packet cannot become a formal deployment",
+        )
+        from .h4_sampled_calibration import validate_calibration
+
+        validate_calibration(
+            native["new_tokenizer_and_native_calibration"],
+            campaign=campaign,
+            launch=launch,
+            workload=workload,
+            native=native,
+        )
     expected = [
         (r, order, arm)
         for r, row in enumerate(campaign["schedule"], 1)
@@ -388,10 +402,16 @@ def build_plan_guard(campaign, native, start, receipt):
         "actual registered original H4 receipt required",
     )
     source_provenance.receipt_schema(receipt, campaign, "h4")
+    return _build_guard_from_observation(
+        campaign, native, start, receipt["source_provenance_observation"]
+    )
+
+
+def _build_guard_from_observation(campaign, native, start, observation):
+    """Shared exact fresh input/Plan predicates; no synthetic receipt object."""
     phase = json.loads(checked(start["phase"]))
     policy = json.loads(checked(phase["native_guard"]))
     args = policy["source_arguments"]
-    observation = receipt["source_provenance_observation"]
     require(
         canonical(args["observation"]) == canonical(observation),
         "per-start source observation differs from actual issuer receipt",
@@ -435,6 +455,19 @@ def build_plan_guard(campaign, native, start, receipt):
     )
     guard.verify_plan_current()
     return guard
+
+
+def build_calibration_guard(campaign, native, start, locations):
+    """Own fresh canonical source observations, never caller-provided trust roots."""
+    observation = source_provenance.observe_sources(
+        campaign["fixed_identity"], campaign["source_provenance_policy"], locations
+    )
+    verify_sampled_protocol_sources(
+        native,
+        Path(locations["manager"]["path"]),
+        campaign["fixed_identity"]["manager_commit"],
+    )
+    return _build_guard_from_observation(campaign, native, start, observation)
 
 
 def issue(campaign_path, launch_path, repository_locations_path, output):
@@ -502,6 +535,7 @@ SAMPLED_PROTOCOL_FILES = (
     "h4_sampled_intake.py",
     "h4_sampled_root_observer.py",
     "h4_sampled_queue.py",
+    "h4_sampled_calibration.py",
 )
 
 

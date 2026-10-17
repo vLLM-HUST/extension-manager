@@ -158,7 +158,7 @@ def prepare_intent(source_ref, output):
     return workload_ref
 
 
-def freeze_from_bindings(binding_ref, output):
+def freeze_from_bindings(binding_ref, output, *, calibration_only=False):
     """Freeze complete real prepared phase/guard inputs; never fill absent refs.
 
     This stage follows actual installed pair Plan compilation and new tokenizer/
@@ -275,6 +275,9 @@ def freeze_from_bindings(binding_ref, output):
     campaign = json.loads(checked_native(binding["campaign_template"]))
     campaign.update(
         cell_id="compatible-resource-pair.sampled-invocation",
+        execution_domain="unregistered-calibration"
+        if calibration_only
+        else "registered-original-starts",
         fixed_identity=binding["fixed_identity"],
         source_provenance_policy=binding["source_provenance_policy"],
         workload=dict(path="workload.json", sha256=workload_ref["sha256"]),
@@ -285,7 +288,43 @@ def freeze_from_bindings(binding_ref, output):
         score_eligible=False,
     )
     campaign_ref = save(output / "campaign.json", campaign)
-    validate_inputs(Path(campaign_ref["path"]), output / "launch-spec.json")
+    validate_inputs(
+        Path(campaign_ref["path"]),
+        output / "launch-spec.json",
+        _calibration_only=calibration_only,
+    )
+    if calibration_only:
+        save(
+            output / "commands.json",
+            dict(
+                domain="unregistered-calibration",
+                formal_result=False,
+                deployment_receipt=None,
+                root_observer=[
+                    binding["python"],
+                    "-m",
+                    "experiments.formal_campaign.h4_sampled_root_observer",
+                    "--campaign",
+                    str(output / "campaign.json"),
+                    "--launch-spec",
+                    str(output / "launch-spec.json"),
+                    "--start-id",
+                    starts[0]["start_id"],
+                    "--python",
+                    binding["python"],
+                    "--sdk",
+                    json.loads(checked_native(starts[0]["phase"]))["cwd"],
+                    "--environment",
+                    binding["calibration_environment_path"],
+                    "--source-repositories",
+                    binding["repository_locations_path"],
+                    "--unregistered-calibration",
+                    "--output",
+                    str(output / "independent-calibration-root"),
+                ],
+            ),
+        )
+        return campaign_ref
     save(
         output / "commands.json",
         dict(
@@ -332,6 +371,13 @@ def main():
     parser.add_argument("--source-native-text", type=Path)
     parser.add_argument("--source-native-text-sha256")
     parser.add_argument("--prepared-bindings", type=Path)
+    parser.add_argument(
+        "--calibration-only",
+        action="store_true",
+        help=(
+            "Distinct unregistered qualification namespace; no receipt/first9 commands"
+        ),
+    )
     parser.add_argument("--prepared-bindings-sha256")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -344,6 +390,7 @@ def main():
                 sha256=args.prepared_bindings_sha256,
             ),
             args.output.resolve(),
+            calibration_only=args.calibration_only,
         )
     else:
         if not args.source_native_text or not args.source_native_text_sha256:

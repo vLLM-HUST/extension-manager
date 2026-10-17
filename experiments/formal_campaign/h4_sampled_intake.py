@@ -64,15 +64,21 @@ def read(path):
     return json.loads(path.read_bytes())
 
 
-def verify_traffic(rows, schedule, payload):
+def verify_traffic(rows, schedule, payload, *, allow_incomplete=False):
     """Recompute all272 body/status/latency/identity rows, never selected-only."""
     require(
-        len(rows) == 272 and len(schedule["requests"]) == 272,
+        type(allow_incomplete) is bool
+        and len(schedule["requests"]) == 272
+        and (len(rows) <= 272 if allow_incomplete else len(rows) == 272),
         "original272 coverage incomplete",
     )
     indexed = {}
     for row in rows:
         index = row["all_index"]
+        require(
+            type(row["native_verified"]) is bool,
+            "typed original native result required",
+        )
         require(
             type(index) is int and index not in indexed and 0 <= index < 272,
             "duplicate/invalid original request index",
@@ -149,12 +155,19 @@ def verify_traffic(rows, schedule, payload):
                 "unselected request carries false semantic qualification",
             )
         indexed[index] = row
-    require(set(indexed) == set(range(272)), "missing original requests")
-    require(
-        max(indexed[i]["complete_ns"] for i in range(16))
-        <= min(indexed[i]["dispatch_ns"] for i in range(16, 272)),
-        "measured requests started before original warmup HTTP completed",
-    )
+    if not allow_incomplete:
+        require(set(indexed) == set(range(272)), "missing original requests")
+    measured = [r for i, r in indexed.items() if i >= 16]
+    if measured:
+        require(
+            set(range(16)) <= set(indexed),
+            "measured traffic lacks completed original warmups",
+        )
+        require(
+            max(indexed[i]["complete_ns"] for i in range(16))
+            <= min(r["dispatch_ns"] for r in measured),
+            "measured requests started before original warmup HTTP completed",
+        )
     boundaries = sorted(
         (r[k], delta)
         for r in rows
@@ -164,7 +177,7 @@ def verify_traffic(rows, schedule, payload):
     for _, delta in boundaries:
         active += delta
         require(0 <= active <= 8, "actual HTTP window exceeds original concurrency8")
-    return [indexed[i] for i in range(272)]
+    return [indexed[i] for i in sorted(indexed)]
 
 
 def coherent_roster(archive, owner, roster, kernels):
@@ -344,6 +357,90 @@ def verify_root_cleanup(root_ref, output, owner, kernels, ports):
     return root
 
 
+def pinned_terminal(root, output):
+    """Check all original file-presence decisions against independent root bytes."""
+    names = (
+        "source-admission.json",
+        "phase0.product-popen-timing.json",
+        "actual-runtime-closure.json",
+        "sampled-source-result.json",
+        "sampled-epoch-archive.json",
+        "request-results.jsonl",
+        "all272-request-results.json",
+        "owned-resources.json",
+    )
+    expected = {str(output / name) for name in names if (output / name).exists()}
+    require(set(root["terminal_artifacts"]) == expected, "terminal file set changed")
+    for name, digest in root["terminal_artifacts"].items():
+        check_ref(dict(path=name, sha256=digest))
+
+
+def failed_observation(campaign, start, root_ref, *, rows, verified, reason):
+    """An admitted actual failure is retained; unknown metrics are never zero."""
+    return dict(
+        schema="ecpa-h4-sampled-native-independent-start-observation/v1",
+        start_id=start["start_id"],
+        cell_id=campaign["cell_id"],
+        arm=start["arm"],
+        repetition=start["repetition"],
+        arm_order=start["arm_order"],
+        formal_start_validated=True,
+        start_validation="source-admitted-actual-sampled-start",
+        status="failed",
+        observed_failure=reason,
+        coverage="complete-observed" if len(rows) == 272 else "incomplete-observed",
+        full_native_sample_count=len(verified),
+        all_http_request_count=len(rows),
+        successful_measured=None,
+        source_native_complete=False,
+        resources=None,
+        performance_eligible=False,
+        phase_bins=None,
+        phase_bins_status="unavailable",
+        independent_root_cleanup=root_ref,
+        formal_result=False,
+        H4_hypothesis_claim=False,
+        limitation=(
+            "Authenticated negative start only; "
+            "no successful native token or performance claim"
+        ),
+    )
+
+
+def verify_present_native_history(boot):
+    """Validate every original fact with no ACK/completion invented from a prefix.
+
+    The private oracle retains every source, sender, epoch, tensor, OP and ACK
+    predicate. Its typed incomplete drain result is allowed only in this offline
+    negative-observation path; it cannot mint a native request proof.
+    """
+    from experiments.native_attention_candidate.attention_consumer import (
+        _verify_attention_archive,
+    )
+
+    from . import h4_sampled_native_collector
+
+    root = Path(boot["output"])
+    journal = root / "native.jsonl"
+    if not journal.exists():
+        require(
+            not (root / "snapshots").exists()
+            or not any((root / "snapshots").iterdir()),
+            "native snapshots exist without original journal",
+        )
+        return None
+    return _verify_attention_archive(
+        root / "native-spec.json",
+        root / "tensor-policy.json",
+        journal,
+        drain_policy_path=root / "drain-policy.json",
+        drain_protocol=h4_sampled_native_collector,
+        acknowledged_prefix=None,
+        _owner=object(),
+        _allow_incomplete=True,
+    )
+
+
 def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref):
     campaign, launch, workload, native = validate_inputs(
         campaign_path, launch_path, require_fresh_paths=False
@@ -374,12 +471,99 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
     plan, invocations = (
         guard.verify_plan_current()
     )  # full sources + actual2 artifacts, no dead-PID check
-    epoch = read(output / "sampled-epoch-archive.json")
+    from .run_h4_sampled import source_admission
+
+    admission = read(output / "source-admission.json")
+    timing = read(output / "phase0.product-popen-timing.json")
+    require(
+        same(
+            admission,
+            source_admission(
+                campaign,
+                start,
+                receipt,
+                phase,
+                closure,
+                guard.launch,
+                timing["actual_kernel"],
+                timing,
+            ),
+        ),
+        "actual product source admission changed",
+    )
+    require(
+        type(timing["before_ns"]) is int
+        and type(timing["after_ns"]) is int
+        and 0 < timing["before_ns"] <= timing["after_ns"]
+        and timing["argv"] == phase["argv"],
+        "actual Popen clocks/argv changed",
+    )
+    root = json.loads(check_ref(root_cleanup_ref).read_bytes())
+    require(
+        root["execution_domain"] == "registered-original-start",
+        "qualification cannot become formal start",
+    )
+    pinned_terminal(root, output)
+    epoch_path = output / "sampled-epoch-archive.json"
+    if not epoch_path.exists():
+        # Full source admission occurred in the real Popen callback. No native
+        # enrollment/proof is fabricated when startup failed before it existed.
+        verify_root_cleanup(
+            root_cleanup_ref,
+            output,
+            admission["owner"],
+            {},
+            native["allocated_tcp_ports"],
+        )
+        require(
+            not (output / "request-results.jsonl").exists()
+            and not (output / "all272-request-results.json").exists()
+            and not Path(phase["native_bootstrap"]["output"]).exists(),
+            "pre-enrollment failure carries unexplained native/request facts",
+        )
+        result_path = output / "sampled-source-result.json"
+        outcome = read(result_path) if result_path.exists() else None
+        require(
+            root["runner_exit_code"] != 0
+            or (
+                outcome is not None
+                and outcome.get("failure_category") == "runtime-interruption"
+                and type(outcome.get("failure")) is str
+                and bool(outcome["failure"])
+            ),
+            (
+                "missing epoch is not an authenticated runtime interruption; "
+                "schema/verification errors remain unqualified"
+            ),
+        )
+        return failed_observation(
+            campaign,
+            start,
+            root_cleanup_ref,
+            rows=[],
+            verified=[],
+            reason=dict(
+                kind="post-Popen-startup-failure",
+                runner_exit_code=root["runner_exit_code"],
+                source_failure=outcome["failure"] if outcome else None,
+            ),
+        )
+    epoch = read(epoch_path)
     require(
         epoch["schema"] == "ecpa-h4-sampled-actual-epoch-archive/v1",
         "wrong actual epoch domain",
     )
-    result = read(output / "sampled-source-result.json")
+    result_path = output / "sampled-source-result.json"
+    if result_path.exists():
+        result = read(result_path)
+    else:
+        require(
+            root["runner_exit_code"] != 0,
+            "missing terminal result without actual runner failure",
+        )
+        # Only observed nonzero exit supplies this negative outcome; no cleanup
+        # or request-success flags are manufactured from the absent source file.
+        result = dict(failure=None, resources=None)
     timing = read(output / "phase0.product-popen-timing.json")
     require(
         same(timing["actual_kernel"], epoch["owner"])
@@ -400,20 +584,36 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         and epoch["enrollment"]["native_plan_id"] == guard.launch["native_plan_id"],
         "full semantic context/Plan differs",
     )
-    require(
-        not result["cleanup_errors"]
-        and result["actual_epochs_gone"] is True
-        and result["actual_ports_closed"] is True,
-        "original source cleanup incomplete",
-    )
-    resources = h4_owned_resources.verify_archive(
-        output / "owned-resources.json", epoch["owner"], result["resources"]
-    )
-    require(
-        resources["device_command"] == launch["npu_memory_command"],
-        "registered resource observation changed",
-    )
-    coherent_roster(resources, epoch["owner"], epoch["roster"], epoch["kernels"])
+    if result_path.exists():
+        require(
+            not result["cleanup_errors"]
+            and result.get("actual_epochs_gone") is True
+            and result.get("actual_ports_closed") is True,
+            "original source cleanup incomplete",
+        )
+    # Missing final resource archive after a real nonzero runner exit is not
+    # replaced with zeros. Full independent root role/cleanup joins still apply.
+    resource_path = output / "owned-resources.json"
+    resources = None
+    if resource_path.exists():
+        stored_resources = read(resource_path)
+        resources = h4_owned_resources.verify_archive(
+            resource_path,
+            epoch["owner"],
+            result.get("resources")
+            if result_path.exists()
+            else stored_resources["resources"],
+        )
+        require(
+            resources["device_command"] == launch["npu_memory_command"],
+            "registered resource observation changed",
+        )
+        coherent_roster(resources, epoch["owner"], epoch["roster"], epoch["kernels"])
+    else:
+        require(
+            root["runner_exit_code"] != 0,
+            "resource archive missing without actual runner failure",
+        )
     raw = (output / "final-original-Host.jsonl").read_bytes()
     require(
         hashlib.sha256(raw).hexdigest() == epoch["host_journal_sha256"],
@@ -534,6 +734,11 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
     schedule, schedule_raw = read_registered_schedule(start["schedule"], boot["phases"])
     spec = read(Path(boot["output"]) / "native-spec.json")
     bind_selected_phases(spec, schedule)
+    require(
+        spec["native_plan_id"] == epoch["enrollment"]["native_plan_id"]
+        and spec["native_launch_id"] == epoch["enrollment"]["native_launch_id"],
+        "original full native history is for another Plan/launch",
+    )
     senders, _ = scope_native_senders(
         epoch["peers"] if "peers" in epoch else epoch["enrollment"]["source_peers"],
         boot["source_files"],
@@ -550,44 +755,83 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         "registered28layer tensor inventory changed",
     )
     payload = h4_request_payload(workload, launch["arms"][start["arm"]]["served_model"])
-    rows = [
-        json.loads(line)
-        for line in (output / "request-results.jsonl").read_bytes().splitlines()
-    ]
-    require(
-        same(
-            sorted(rows, key=lambda r: r["all_index"]),
-            read(output / "all272-request-results.json"),
-        ),
-        "original traffic copies diverge",
+    trace_path = output / "request-results.jsonl"
+    trace = trace_path.read_bytes() if trace_path.exists() else b""
+    require(not trace or trace.endswith(b"\n"), "truncated original request row")
+    rows = [json.loads(line) for line in trace.splitlines()]
+    aggregate = output / "all272-request-results.json"
+    if aggregate.exists():
+        require(
+            same(sorted(rows, key=lambda r: r["all_index"]), read(aggregate)),
+            "original traffic copies diverge",
+        )
+    else:
+        require(
+            result["failure"] is not None or root["runner_exit_code"] != 0,
+            "missing traffic aggregate without observed interruption",
+        )
+    rows = verify_traffic(rows, schedule, payload, allow_incomplete=True)
+    from .h4_sampled_calibration import validate_calibration
+
+    tokenization = validate_calibration(
+        native["new_tokenizer_and_native_calibration"],
+        campaign=campaign,
+        launch=launch,
+        workload=workload,
+        native=native,
     )
-    rows = verify_traffic(rows, schedule, payload)
+    for row in rows:
+        if row["http_response"] is not None and row["status_code"] == 200:
+            response = json.loads(h4_decode_body(row["http_response"]))
+            require(
+                type(response["usage"]["prompt_tokens"]) is int
+                and response["usage"]["prompt_tokens"]
+                == len(tokenization["input_ids"]),
+                (
+                    "actual272 response tokenization differs from "
+                    "independent full input IDs"
+                ),
+            )
     verified, prefixes = [], []
     for row in rows:
         if not row["selected"]:
             continue
-        require(
-            row["native_verified"] is True
-            and row["native_error"] is None
-            and row["error"] is None,
-            "selected sample has no complete original semantic proof",
-        )
-        reference = row["native_report"]
         expected = (
             Path(boot["output"])
             / "snapshots"
             / hashlib.sha256(row["request_id"].encode()).hexdigest()
             / "native-consume-report.json"
         )
+        reference = row.get("native_report")
+        if reference is None:
+            require(
+                row["native_verified"] is False, "native success has no original report"
+            )
+            if not expected.exists():
+                continue
+            # A proof written before consume/response failure still gets full
+            # replay. Missing summary flags cannot hide a corrupt report.
+            stored = read(expected)
+            reference = dict(
+                path=str(expected),
+                sha256=hashlib.sha256(expected.read_bytes()).hexdigest(),
+                profiler_snapshot_path=stored["profiler_snapshot"],
+                profiler_snapshot_sha256=stored["profiler_snapshot_sha256"],
+            )
         require(
             Path(reference["path"]) == expected, "native proof moved to another request"
         )
         clock = row["native_clock"]
-        require(
-            type(clock["consumed_ns"]) is int
-            and clock["received_ns"] <= clock["consumed_ns"] <= clock["deadline_ns"],
-            "native proof consumed after original deadline",
-        )
+        if row["native_verified"]:
+            require(
+                row["native_error"] is None
+                and row["error"] is None
+                and type(clock.get("consumed_ns")) is int
+                and clock["received_ns"]
+                <= clock["consumed_ns"]
+                <= clock["deadline_ns"],
+                "native success was not consumed before original deadline",
+            )
         response = h4_decode_body(row["http_response"])
         record = replay_sampled_native_report(
             reference,
@@ -616,7 +860,10 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
             and record["original_sent_ns"] == clock["sent_ns"]
             and record["backend_sent_ns"] == clock["backend_sent_ns"]
             and record["backend_received_ns"] == clock["received_ns"]
-            and record["verified_monotonic_ns"] <= clock["consumed_ns"],
+            and (
+                not row["native_verified"]
+                or record["verified_monotonic_ns"] <= clock["consumed_ns"]
+            ),
             "sample original clocks/schedule differ",
         )
         verify_profiler(record, reference, epoch, raw)
@@ -628,39 +875,82 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         require(
             reference["profiler_snapshot_path"] == record["profiler_snapshot"]
             and reference["profiler_snapshot_sha256"]
-            == record["profiler_snapshot_sha256"]
-            and reference["runtime_request_id"] == transaction["runtime_request_id"]
-            and reference["transaction_id"] == transaction["transaction_id"],
-            "sample summary opaque request differs",
+            == record["profiler_snapshot_sha256"],
+            "sample profiler summary differs",
         )
+        if row.get("native_report") is not None:
+            require(
+                reference["runtime_request_id"] == transaction["runtime_request_id"]
+                and reference["transaction_id"] == transaction["transaction_id"],
+                "sample summary opaque request differs",
+            )
         verified.append(transaction["runtime_request_id"])
         prefixes.append(Path(record["journal"]).read_bytes())
+    require(len(verified) == len(set(verified)), "selected opaque requests alias")
+    history = verify_present_native_history(boot)
+    journal_path = Path(boot["output"]) / "native.jsonl"
+    original_native = journal_path.read_bytes() if journal_path.exists() else b""
     require(
-        len(verified) == len(set(verified)) == 32,
-        "selected opaque requests alias/missing",
+        all(original_native.startswith(prefix) for prefix in prefixes),
+        "original global native history forks",
     )
-    original_native = (Path(boot["output"]) / "native.jsonl").read_bytes()
-    require(
-        prefixes
-        and max(prefixes, key=len) == original_native
-        and all(original_native.startswith(prefix) for prefix in prefixes),
-        "original global native history has unverified tail/fork",
+    # Every snapshot report is accounted for, including reports for a request
+    # whose completion row was lost. No orphan successful proof is silently skipped.
+    snapshots = Path(boot["output"]) / "snapshots"
+    existing_reports = (
+        set(snapshots.glob("*/native-consume-report.json"))
+        if snapshots.exists()
+        else set()
     )
-    cleanup = read(output / "device-cleanup-command.json")
+    accounted_reports = {
+        snapshots
+        / hashlib.sha256(r["request_id"].encode()).hexdigest()
+        / "native-consume-report.json"
+        for r in rows
+        if r["selected"]
+    }
     require(
-        cleanup["argv"] == launch["device_cleanup_command"]
-        and cleanup["exit_code"] == 0,
-        "actual device cleanup command failed",
+        existing_reports <= accounted_reports,
+        "native report lacks its original request row",
     )
-    cleanup_body = json.loads(base64.b64decode(cleanup["stdout_base64"], validate=True))
-    smi, _ = decode_observation(cleanup_body["original_command"])
-    require(
-        cleanup_body["devices_reclaimed"] is True
+    complete = (
+        len(rows) == 272
+        and len(verified) == 32
         and all(
-            f"No running processes found in NPU {d}".encode() in smi for d in (0, 3)
-        ),
-        "source terminal device bytes not empty",
+            r["native_verified"] and r["native_error"] is None and r["error"] is None
+            for r in rows
+            if r["selected"]
+        )
     )
+    if complete:
+        require(
+            prefixes and max(prefixes, key=len) == original_native,
+            "complete native proof has unverified global tail",
+        )
+    cleanup_path = output / "device-cleanup-command.json"
+    if cleanup_path.exists():
+        cleanup = read(cleanup_path)
+        require(
+            cleanup["argv"] == launch["device_cleanup_command"]
+            and cleanup["exit_code"] == 0,
+            "actual device cleanup command failed",
+        )
+        cleanup_body = json.loads(
+            base64.b64decode(cleanup["stdout_base64"], validate=True)
+        )
+        smi, _ = decode_observation(cleanup_body["original_command"])
+        require(
+            cleanup_body["devices_reclaimed"] is True
+            and all(
+                f"No running processes found in NPU {d}".encode() in smi for d in (0, 3)
+            ),
+            "source terminal device bytes not empty",
+        )
+    else:
+        require(
+            root["runner_exit_code"] != 0,
+            "source device evidence absent without actual runner failure",
+        )
     verify_root_cleanup(
         root_cleanup_ref,
         output,
@@ -668,6 +958,25 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         epoch["kernels"],
         native["allocated_tcp_ports"],
     )
+    if not complete or result["failure"] is not None or root["runner_exit_code"] != 0:
+        return failed_observation(
+            campaign,
+            start,
+            root_cleanup_ref,
+            rows=rows,
+            verified=verified,
+            reason=dict(
+                kind="observed-sampled-runtime-failure",
+                source_failure=result["failure"],
+                runner_exit_code=root["runner_exit_code"],
+                missing_original_requests=272 - len(rows),
+                missing_complete_native_samples=32
+                - sum(r["native_verified"] for r in rows if r["selected"]),
+                full_phase_source_drained=history["full_phase_source_drained"]
+                if history
+                else None,
+            ),
+        )
     measured = [r for r in rows if r["kind"] == "measured"]
     successful = sum(
         r["status_code"] == 200
@@ -701,6 +1010,13 @@ def intake(campaign_path, launch_path, receipt_path, start_id, root_cleanup_ref)
         successful_measured=successful,
         source_native_complete=True,
         resources=result["resources"],
+        status="succeeded" if successful == 256 else "failed",
+        coverage="complete-observed",
+        observed_failure=None
+        if successful == 256
+        else dict(
+            kind="HTTP-success-threshold-not-met", successful_measured=successful
+        ),
         performance_eligible=successful == 256 and result["failure"] is None,
         phase_bins=None,
         phase_bins_status="unobserved; no zero substitution",
