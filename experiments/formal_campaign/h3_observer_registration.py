@@ -129,12 +129,14 @@ def _native_wheel_payloads(audit):
     from experiments.native_attention_candidate import live_route_reader as routes
 
     result = {}
-    fresh = routes.audit_cell_inputs(audit["config"]["path"], audit["recipe"]["path"])
+    fresh, installed = routes._audit_cell_inputs_with_payloads(
+        audit["config"]["path"], audit["recipe"]["path"]
+    )
     require(
         canonical(fresh) == canonical(audit),
         "native wheel input audit differs from fresh observation",
     )
-    states = {}
+    states = dict(fresh["file_state"])
     config_path = routes._path(fresh["config"]["path"])
     config_raw = config_path.read_bytes()
     require(
@@ -147,16 +149,9 @@ def _native_wheel_payloads(audit):
         and set(fresh["wheel_sha256"]) == set(routes.DISTRIBUTIONS),
         "native original seven wheel roles differ",
     )
-    installed = {}
-    for role, distribution in routes.DISTRIBUTIONS.items():
-        wheel = wheels[role]
-        require(
-            routes._hash(wheel["path"], states)
-            == fresh["wheel_sha256"][role]
-            == wheel["sha256"],
-            "native genuine wheel bytes changed after independent audit",
-        )
-        installed[role] = routes._installed_payload(wheel, distribution, states)
+    # These are actual observations returned by this exact fresh audit above,
+    # not a caller manifest or an earlier invocation. Every member was read.
+    routes._check_captured_payloads(wheels, installed, states)
     require(
         routes.registry.sha(routes.registry.canonical(installed))
         == fresh["installed_payload_sha256"],
