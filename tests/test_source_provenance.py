@@ -27,6 +27,7 @@ def source(tmp_path, monkeypatch):
     remote = tmp_path / "remote.git"
     subprocess.run(["git", "clone", "--bare", "-q", str(repo), str(remote)], check=True)
     git(repo, "remote", "add", "origin", str(remote))
+    git(remote, "config", "uploadpack.allowFilter", "true")
     # CPU fixture only: real subprocess fetches/commit/tree/clean checks;
     # independent URL identity is not a claim about public repository admission.
     original = p._git
@@ -34,13 +35,12 @@ def source(tmp_path, monkeypatch):
     def fixture_git(root, *args):
         if args == ("remote", "get-url", "origin"):
             return b"https://github.com/example/accelerator.git\n"
-        if args[:4] == (
-            "fetch",
-            "--quiet",
-            "--no-tags",
-            "https://github.com/example/accelerator.git",
-        ):
-            args = (*args[:3], str(remote), *args[4:])
+        if args and args[0] == "fetch":
+            assert args[:4] == ("fetch", "--quiet", "--no-tags", "--filter=blob:none")
+            assert args[4] == "https://github.com/example/accelerator.git"
+            # file:// uses actual upload-pack filtering; a bare filesystem path
+            # may optimize local transfer and ignore the requested filter.
+            args = (*args[:4], remote.as_uri(), *args[5:])
         return original(root, *args)
 
     monkeypatch.setattr(p, "_git", fixture_git)
@@ -199,3 +199,90 @@ def test_receipt_policy_cannot_downgrade_or_change_exact_tuple():
         )
         with pytest.raises(ValueError, match="source differs"):
             p.receipt_schema(bad, campaign, family)
+
+
+def test_blobless_fetch_keeps_full_ancestry_and_no_payload_blobs(source, monkeypatch):
+    repo, remote, base, definition, location = source
+    # Main is two genuine commits beyond selected; proving admission requires
+    # ancestry across that full graph, not equality of selected and main tips.
+    for index in (2, 3):
+        (repo / "effect.py").write_text(f"actual_source = {index}\n")
+        git(repo, "commit", "-qam", f"main-{index}")
+    main = git(repo, "rev-parse", "HEAD")
+    git(repo, "push", "-q", "origin", "HEAD:refs/heads/main")
+    git(repo, "checkout", "-q", "--detach", base)
+    original_run = subprocess.run
+    fetches, inspected = [], []
+
+    def inspect_graph(command, *args, **kwargs):
+        result = original_run(command, *args, **kwargs)
+        if len(command) > 3 and command[0] == "git":
+            if command[3] == "fetch":
+                fetches.append(tuple(command))
+            if command[3:5] == ["merge-base", "--is-ancestor"]:
+                quarantine = Path(command[2])
+                assert (
+                    git(quarantine, "rev-parse", "--is-shallow-repository") == "false"
+                )
+                assert not (quarantine / "shallow").exists()
+                assert not (quarantine / "objects/info/alternates").exists()
+                assert git(quarantine, "rev-list", "--count", main) == "3"
+                kinds = git(
+                    quarantine,
+                    "cat-file",
+                    "--batch-all-objects",
+                    "--batch-check=%(objecttype)",
+                ).splitlines()
+                assert kinds.count("commit") == 3 and "tree" in kinds
+                assert "blob" not in kinds
+                inspected.append(result.returncode)
+        return result
+
+    monkeypatch.setattr(subprocess, "run", inspect_graph)
+    observed = p.observe_component(
+        "accelerator", base, dict(definition, requirement="merged-main"), location
+    )
+    assert observed["remote_commit"] == base and observed["main_commit"] == main
+    assert observed["tree"] == git(repo, "rev-parse", base + "^{tree}")
+    assert observed["merged_to_main"] is True and inspected == [0]
+    assert len(fetches) == 2 and [c[-1] for c in fetches] == [base, "refs/heads/main"]
+    assert all("--filter=blob:none" in c for c in fetches)
+    assert all(
+        not any(a.startswith(("--depth", "--shallow", "--deepen")) for a in c)
+        for c in fetches
+    )
+    assert not Path(fetches[0][2]).exists()
+
+
+def test_blobless_published_branch_still_rejects_nonancestor_without_retry(
+    source, monkeypatch
+):
+    repo, remote, base, definition, location = source
+    (repo / "effect.py").write_text("main_only = True\n")
+    git(repo, "commit", "-qam", "main-only")
+    git(repo, "push", "-q", "origin", "HEAD:refs/heads/main")
+    git(repo, "checkout", "-q", "--detach", base)
+    (repo / "effect.py").write_text("unmerged_candidate = True\n")
+    git(repo, "commit", "-qam", "unmerged")
+    candidate = git(repo, "rev-parse", "HEAD")
+    git(repo, "push", "-q", "origin", "HEAD:refs/heads/candidate")
+    original = p._git
+    fetches = []
+
+    def record(root, *args):
+        if args and args[0] == "fetch":
+            fetches.append((str(root), args))
+        return original(root, *args)
+
+    monkeypatch.setattr(p, "_git", record)
+    with pytest.raises(ValueError, match="not merged"):
+        p.observe_component(
+            "accelerator",
+            candidate,
+            dict(definition, requirement="merged-main"),
+            location,
+        )
+    assert len(fetches) == 2  # Predicate rejection is not a transport retry.
+    assert all("--filter=blob:none" in args for _, args in fetches)
+    assert len({root for root, _ in fetches}) == 1
+    assert all(not Path(root).exists() for root, _ in fetches)
