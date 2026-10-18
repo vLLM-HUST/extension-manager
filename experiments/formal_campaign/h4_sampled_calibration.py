@@ -78,8 +78,48 @@ def _host_arguments(phase):
     return host[3:]
 
 
+# These are product-launch controls, not tokenizer/configuration inputs.  A CPU
+# replay must not impersonate a Host epoch or attach its native collectors.
+_TOKENIZER_RUNTIME_ENVIRONMENT = frozenset(
+    {
+        "VLLM_ECPA_EVIDENCE_SINK",
+        "VLLM_ECPA_EVIDENCE_STRICT",
+        "VLLM_ECPA_PLAN_ID",
+        "VLLM_ECPA_LAUNCH_ID",
+        "VLLM_ECPA_PROCESS_ROLE",
+        "VLLM_ECPA_PROCESS_ORDINAL",
+        "VLLM_ECPA_PROCESS_EPOCH",
+        "VLLM_HUST_EXT_EVIDENCE_PATH",
+        "ECPA_NATIVE_SEMANTIC_BOOTSTRAP",
+        "ECPA_NATIVE_TENSOR_ARTIFACT_BOOTSTRAP",
+        "ECPA_NATIVE_ATTENTION_OPERATOR_OBSERVER",
+        "ECPA_NATIVE_PHASE_DRAIN",
+        "ECPA_NATIVE_OBSERVER_REBIND_POLICY",
+        "ECPA_NATIVE_OBSERVER_REBIND_DIRECTORY",
+        "ECPA_H4_NATIVE_SAMPLED_SELECTION",
+    }
+)
+
+
+def _tokenizer_environment(environment):
+    child = dict(environment)
+    for name in _TOKENIZER_RUNTIME_ENVIRONMENT:
+        child.pop(name, None)
+    child.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1")
+    return child
+
+
 def tokenizer_worker(document):
     """Actual selected Host APIs; no device/model forward or network download."""
+    # Baseline activation is configuration, not Host runtime evidence.  Bind
+    # through the original validator before importing vllm (platform/plugin
+    # imports can already load the selected KV plugin).
+    from vllm_hust_ext.activation_profile import profile_from_environment
+
+    profile = profile_from_environment()
+    if profile is not None:
+        profile.bind_environment()
+
     from vllm.engine.arg_utils import AsyncEngineArgs
     from vllm.entrypoints.launchers.cli_args import make_arg_parser
     from vllm.entrypoints.openai.completion.protocol import CompletionRequest
@@ -200,11 +240,11 @@ def replay_tokenizer(phase, payload, fixed, native, output=None):
         all(canonical(p) == canonical(providers[0]) for p in providers),
         "provider statistics artifacts differ",
     )
-    # Exact admitted interpreter/environment/cwd; no shell, pip, retry or global env.
+    # Audit the original Host phase above/below; only this CPU child omits
+    # product-launch evidence/bootstrap controls.  No parent/global env mutation.
     command = [phase["argv"][0], str(Path(__file__).resolve()), "--tokenizer-worker"]
     document = dict(host_arguments=_host_arguments(phase), payload=payload)
-    environment = dict(phase["environment"])
-    environment.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1")
+    environment = _tokenizer_environment(phase["environment"])
     child = subprocess.run(
         command,
         input=canonical(document),
