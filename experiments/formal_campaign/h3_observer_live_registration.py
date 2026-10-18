@@ -135,30 +135,11 @@ def _inputs(intent_path, *, check_remote, _selected_start_id=None):
             campaign_path, receipt_path, check_remote=check_remote
         )
     else:
-        # This existing API validates the whole campaign/receipt/static rows and
-        # freshly rebuilds only the selected start's actual runtime/Plan guards.
-        native_scope = original.validate_receipt_for_start(
-            campaign_path,
-            receipt_path,
-            _selected_start_id,
-            check_remote=check_remote,
-        )
-        context, campaign, selected = native_scope.selected(_selected_start_id)
-        # The remaining nine rows are static declaration data, never a returned
-        # whole-campaign validity capability. Recheck both original byte refs.
+        # These are SHA-bound declaration inputs, not an admission. Finish all
+        # live/source checks before independently minting the native scope below.
         spec = _checked_json(intent["base_campaign"])
         receipt = _checked_json(intent["base_receipt"])
-        require(
-            canonical({k: v for k, v in spec.items() if k != "starts"})
-            == canonical(context)
-            and [s for s in spec["starts"] if s["start_id"] == _selected_start_id]
-            == [selected]
-            and [s for s in receipt["starts"] if s["start_id"] == _selected_start_id]
-            == [native_scope.authority_binding(_selected_start_id)]
-            and receipt["source_observation"]
-            == native_scope.guard_receipt(_selected_start_id)["source_observation"],
-            "selected native scope differs from original static declaration",
-        )
+        campaign = _checked_json(spec["original_campaign"])
     require(
         campaign["cell_id"] == "observer-loss"
         and campaign["objective"]["max_recovery_ms"] == 30000,
@@ -292,15 +273,52 @@ def _inputs(intent_path, *, check_remote, _selected_start_id=None):
         "from independently issued original source "
         "admission",
     )
+    native_scope = None
+    if _selected_start_id is not None:
+        # Last expensive admission operation: whole-receipt/static checks plus
+        # fresh selected model/wheel/source/Plan checks, never an earlier cache.
+        native_scope = original.validate_receipt_for_start(
+            campaign_path,
+            receipt_path,
+            _selected_start_id,
+            check_remote=check_remote,
+        )
+        context, admitted_campaign, selected = native_scope.selected(_selected_start_id)
+        require(
+            canonical({k: v for k, v in spec.items() if k != "starts"})
+            == canonical(context)
+            and canonical(campaign) == canonical(admitted_campaign)
+            and [s for s in spec["starts"] if s["start_id"] == _selected_start_id]
+            == [selected]
+            and [s for s in receipt["starts"] if s["start_id"] == _selected_start_id]
+            == [native_scope.authority_binding(_selected_start_id)]
+            and receipt["source_observation"]
+            == native_scope.guard_receipt(_selected_start_id)["source_observation"]
+            and canonical(_checked_json(intent["base_campaign"])) == canonical(spec)
+            and canonical(_checked_json(intent["base_receipt"])) == canonical(receipt)
+            and canonical(_checked_json(spec["original_campaign"]))
+            == canonical(campaign),
+            "selected native scope differs from original static declaration",
+        )
     require(
         reference(intent_path) == intent_ref,
         "live intent changed during reconstruction",
     )
-    return intent, spec, campaign, receipt, binding, observed, host_sources, intent_ref
+    return (
+        intent,
+        spec,
+        campaign,
+        receipt,
+        binding,
+        observed,
+        host_sources,
+        intent_ref,
+        native_scope,
+    )
 
 
 def _body_from_inputs(intent_path, inputs):
-    intent, spec, campaign, receipt, binding, observed, host_sources, intent_ref = (
+    intent, spec, campaign, receipt, binding, observed, host_sources, intent_ref, _ = (
         inputs
     )
     require(
@@ -350,12 +368,23 @@ def issue(intent_path, output):
 
 
 class ValidatedLiveStart:
-    __slots__ = ("_raw", "_receipt_ref")
+    __slots__ = ("_raw", "_receipt_ref", "_native_scope")
 
-    def __init__(self, raw, receipt_ref, *, _issuer=None):
+    def __init__(self, raw, receipt_ref, *, _issuer=None, _native_scope=None):
         require(_issuer is _ISSUER, "live start scope must be independently issued")
         object.__setattr__(self, "_raw", canonical(raw))
+        require(
+            type(_native_scope) is original._ValidatedNativeStart,
+            "live native admission must be an independently issued typed scope",
+        )
+        _, campaign, start = _native_scope.selected(raw["start"]["start_id"])
+        require(
+            canonical(start) == canonical(raw["start"])
+            and canonical(campaign) == canonical(raw["original"]),
+            "live/native admission scope substitution",
+        )
         object.__setattr__(self, "_receipt_ref", canonical(receipt_ref))
+        object.__setattr__(self, "_native_scope", _native_scope)
 
     def __setattr__(self, *args):
         raise AttributeError("live start validation is immutable")
@@ -365,6 +394,36 @@ class ValidatedLiveStart:
 
     def receipt_ref(self):
         return json.loads(self._receipt_ref)
+
+    def native_admission(self, start_id):
+        require(
+            type(start_id) is str and self.value()["start"]["start_id"] == start_id,
+            "live native admission belongs to another start",
+        )
+        value = self.value()
+        for ref in (
+            value["base_campaign"],
+            value["base_receipt"],
+            value["intent"],
+            self.receipt_ref(),
+        ):
+            require(
+                reference(ref["path"]) == ref,
+                "live native admission input bytes changed after validation",
+            )
+        # Return the original issuer-owned capability, never parsed dictionaries
+        # relabelled as a scope or a caller-provided validity flag.
+        require(
+            type(self._native_scope) is original._ValidatedNativeStart,
+            "live native admission typed scope changed",
+        )
+        _, campaign, start = self._native_scope.selected(start_id)
+        require(
+            canonical(start) == canonical(self.value()["start"])
+            and canonical(campaign) == canonical(self.value()["original"]),
+            "live native admission integrity changed",
+        )
+        return self._native_scope
 
 
 def validate_for_start(intent_path, receipt_path, start_id, *, check_remote=True):
@@ -391,14 +450,14 @@ def validate_for_start(intent_path, receipt_path, start_id, *, check_remote=True
         canonical(actual) == canonical(expected),
         "live receipt differs from fresh independent source/Latin/Plan reconstruction",
     )
-    intent, spec, campaign, base, _, _, _, _ = inputs
+    intent, spec, campaign, base, _, _, _, intent_ref, native_scope = inputs
     starts = [s for s in spec["starts"] if s["start_id"] == start_id]
     declarations = [s for s in intent["starts"] if s["start_id"] == start_id]
     require(
         len(starts) == len(declarations) == 1, "exact original selected start required"
     )
     require(
-        reference(intent_path) == inputs[-1] and reference(receipt_path) == receipt_ref,
+        reference(intent_path) == intent_ref and reference(receipt_path) == receipt_ref,
         "live intent or receipt changed before selected scope",
     )
     return ValidatedLiveStart(
@@ -408,8 +467,9 @@ def validate_for_start(intent_path, receipt_path, start_id, *, check_remote=True
             "base_campaign": intent["base_campaign"],
             "base_receipt": intent["base_receipt"],
             "original": campaign,
-            "intent": inputs[-1],
+            "intent": intent_ref,
         },
         receipt_ref,
         _issuer=_ISSUER,
+        _native_scope=native_scope,
     )
