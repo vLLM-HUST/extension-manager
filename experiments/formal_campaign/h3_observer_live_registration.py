@@ -96,8 +96,21 @@ def reference(path):
     return {"path": str(path), "sha256": digest(path.read_bytes())}
 
 
-def _inputs(intent_path, *, check_remote):
-    intent = json.loads(Path(intent_path).read_bytes())
+def _checked_json(reference):
+    # Parse exactly the bytes whose digest is checked, including after any
+    # path read performed by the original reference validator.
+    raw = check_ref(reference).read_bytes()
+    require(digest(raw) == reference["sha256"], "checked JSON readback bytes changed")
+    return json.loads(raw)
+
+
+def _inputs(intent_path, *, check_remote, _selected_start_id=None):
+    intent_raw = Path(intent_path).read_bytes()
+    intent = json.loads(intent_raw)
+    intent_ref = {
+        "path": str(Path(intent_path).resolve()),
+        "sha256": digest(intent_raw),
+    }
     require(
         set(intent)
         == {
@@ -116,9 +129,36 @@ def _inputs(intent_path, *, check_remote):
     receipt_path = check_ref(intent["base_receipt"])
     # This reconstructs original source/native Plan guards and independent actual
     # wheel/source input audits. No arbitrary caller trust-root set is accepted.
-    spec, campaign, receipt = original.validate_receipt(
-        campaign_path, receipt_path, check_remote=check_remote
-    )
+    if _selected_start_id is None:
+        # Issuance and the default full reconstruction retain all nine starts.
+        spec, campaign, receipt = original.validate_receipt(
+            campaign_path, receipt_path, check_remote=check_remote
+        )
+    else:
+        # This existing API validates the whole campaign/receipt/static rows and
+        # freshly rebuilds only the selected start's actual runtime/Plan guards.
+        native_scope = original.validate_receipt_for_start(
+            campaign_path,
+            receipt_path,
+            _selected_start_id,
+            check_remote=check_remote,
+        )
+        context, campaign, selected = native_scope.selected(_selected_start_id)
+        # The remaining nine rows are static declaration data, never a returned
+        # whole-campaign validity capability. Recheck both original byte refs.
+        spec = _checked_json(intent["base_campaign"])
+        receipt = _checked_json(intent["base_receipt"])
+        require(
+            canonical({k: v for k, v in spec.items() if k != "starts"})
+            == canonical(context)
+            and [s for s in spec["starts"] if s["start_id"] == _selected_start_id]
+            == [selected]
+            and [s for s in receipt["starts"] if s["start_id"] == _selected_start_id]
+            == [native_scope.authority_binding(_selected_start_id)]
+            and receipt["source_observation"]
+            == native_scope.guard_receipt(_selected_start_id)["source_observation"],
+            "selected native scope differs from original static declaration",
+        )
     require(
         campaign["cell_id"] == "observer-loss"
         and campaign["objective"]["max_recovery_ms"] == 30000,
@@ -143,7 +183,7 @@ def _inputs(intent_path, *, check_remote):
             set(decl) == {"start_id", "grant_directory", "successor", "operator"},
             "unknown live declaration fields",
         )
-        recipe = json.loads(check_ref(start["recipe_template"]).read_bytes())
+        recipe = _checked_json(start["recipe_template"])
         phase = recipe["arms"][start["arm"]]["phases"][0]
         root = Path(phase["native_bootstrap"]["output"]).parent
         directory = Path(decl["grant_directory"])
@@ -157,8 +197,8 @@ def _inputs(intent_path, *, check_remote):
             phase["environment"].get("ECPA_NATIVE_OBSERVER_REBIND_DIRECTORY")
             == str(directory)
             and "ECPA_NATIVE_OBSERVER_REBIND_POLICY" not in phase["environment"],
-            'actual Host environment lacks source-owned'
-            ' per-producer directory bootstrap',
+            "actual Host environment lacks source-owned"
+            " per-producer directory bootstrap",
         )
         successor = decl["successor"]
         require(
@@ -213,7 +253,7 @@ def _inputs(intent_path, *, check_remote):
             )
         admitted = {
             r["path"]: r["sha256"].removeprefix("sha256:")
-            for r in json.loads(check_ref(start["policy"]).read_bytes())["source_refs"]
+            for r in _checked_json(start["policy"])["source_refs"]
         }
         source_rows = phase["native_bootstrap"]["source_files"]
         for filename in HOST_FILES:
@@ -248,21 +288,28 @@ def _inputs(intent_path, *, check_remote):
     )
     require(
         canonical(observed) == canonical(receipt["source_observation"]),
-        'live extension source observation differs '
-        'from independently issued original source '
-        'admission',
+        "live extension source observation differs "
+        "from independently issued original source "
+        "admission",
     )
-    return intent, spec, campaign, receipt, binding, observed, host_sources
+    require(
+        reference(intent_path) == intent_ref,
+        "live intent changed during reconstruction",
+    )
+    return intent, spec, campaign, receipt, binding, observed, host_sources, intent_ref
 
 
-def _body(intent_path, *, check_remote):
-    intent, spec, campaign, receipt, binding, observed, host_sources = _inputs(
-        intent_path, check_remote=check_remote
+def _body_from_inputs(intent_path, inputs):
+    intent, spec, campaign, receipt, binding, observed, host_sources, intent_ref = (
+        inputs
+    )
+    require(
+        reference(intent_path) == intent_ref, "live intent changed before receipt body"
     )
     return dict(
         schema=RECEIPT,
         domain=DOMAIN,
-        intent=reference(intent_path),
+        intent=intent_ref,
         base_campaign=intent["base_campaign"],
         base_receipt=intent["base_receipt"],
         original_campaign=spec["original_campaign"],
@@ -280,13 +327,24 @@ def _body(intent_path, *, check_remote):
     )
 
 
+def _body(intent_path, *, check_remote):
+    return _body_from_inputs(
+        intent_path, _inputs(intent_path, check_remote=check_remote)
+    )
+
+
 def issue(intent_path, output):
     intent = json.loads(Path(intent_path).read_bytes())
     require(
         str(Path(output).resolve()) == intent["receipt_path"],
         "v2 receipt output differs from frozen intent",
     )
-    result = _body(intent_path, check_remote=True)
+    inputs = _inputs(intent_path, check_remote=True)
+    require(
+        str(Path(output).resolve()) == inputs[0]["receipt_path"],
+        "v2 receipt output differs from reconstructed intent",
+    )
+    result = _body_from_inputs(intent_path, inputs)
     save_new(Path(output), result)
     return result
 
@@ -315,19 +373,33 @@ def validate_for_start(intent_path, receipt_path, start_id, *, check_remote=True
         str(Path(receipt_path).resolve()) == intent["receipt_path"],
         "v2 receipt path substitution",
     )
-    expected = _body(intent_path, check_remote=check_remote)
-    actual = json.loads(Path(receipt_path).read_bytes())
+    inputs = _inputs(
+        intent_path, check_remote=check_remote, _selected_start_id=start_id
+    )
+    require(
+        str(Path(receipt_path).resolve()) == inputs[0]["receipt_path"],
+        "v2 receipt path differs from reconstructed intent",
+    )
+    expected = _body_from_inputs(intent_path, inputs)
+    receipt_raw = Path(receipt_path).read_bytes()
+    actual = json.loads(receipt_raw)
+    receipt_ref = {
+        "path": str(Path(receipt_path).resolve()),
+        "sha256": digest(receipt_raw),
+    }
     require(
         canonical(actual) == canonical(expected),
         "live receipt differs from fresh independent source/Latin/Plan reconstruction",
     )
-    intent, spec, campaign, base, _, _, _ = _inputs(
-        intent_path, check_remote=check_remote
-    )
+    intent, spec, campaign, base, _, _, _, _ = inputs
     starts = [s for s in spec["starts"] if s["start_id"] == start_id]
     declarations = [s for s in intent["starts"] if s["start_id"] == start_id]
     require(
         len(starts) == len(declarations) == 1, "exact original selected start required"
+    )
+    require(
+        reference(intent_path) == inputs[-1] and reference(receipt_path) == receipt_ref,
+        "live intent or receipt changed before selected scope",
     )
     return ValidatedLiveStart(
         {
@@ -336,8 +408,8 @@ def validate_for_start(intent_path, receipt_path, start_id, *, check_remote=True
             "base_campaign": intent["base_campaign"],
             "base_receipt": intent["base_receipt"],
             "original": campaign,
-            "intent": reference(intent_path),
+            "intent": inputs[-1],
         },
-        reference(receipt_path),
+        receipt_ref,
         _issuer=_ISSUER,
     )
