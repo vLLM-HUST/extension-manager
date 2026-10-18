@@ -10,11 +10,11 @@ import json
 from unittest.mock import patch
 
 import pytest
+
+from experiments.formal_campaign import conditional_oracle as oracle
 from experiments.formal_campaign.conditional_common import canonical, sha
 from experiments.formal_campaign.conditional_intake import verify_terminal_epoch
 from experiments.formal_campaign.qualify_conditional import request_schedule
-
-from experiments.formal_campaign import conditional_oracle as oracle
 
 
 def fixture():
@@ -341,7 +341,6 @@ def test_independently_compiled_plan_roundtrips_original_resource_uri_profile():
     from types import SimpleNamespace as N
 
     from experiments.formal_campaign.conditional_plan import compile_actual
-
     from vllm_hust_ext.ecpa_model import PluginIdentity
 
     ids = ["org.vllm-hust.bidkv", "org.vllm-hust.pipeline-microbatch"]
@@ -725,7 +724,6 @@ def test_noepoch_actual_timeout_uses_original_exact_typed_clock_taxonomy():
 
 def receipt_fixture(tmp_path):
     from experiments.formal_campaign.conditional_common import reference
-
     from vllm_hust_ext.ecpa_model import (
         EvidenceObligation,
         HostCompatibility,

@@ -3,6 +3,7 @@
 import copy
 
 import pytest
+
 from experiments.formal_campaign.conditional_registration import require_same_activation
 
 
