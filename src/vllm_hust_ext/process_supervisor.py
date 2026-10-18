@@ -49,7 +49,7 @@ def _manager_phase_canonical(value: object) -> bytes:
 
 def _manager_phase_read(
     connection: socket.socket, deadline: int, cancelled: Callable[[], bool]
-) -> tuple[dict, bytes]:
+) -> tuple[dict[str, object], bytes]:
     raw = b""
     while not raw.endswith(b"\n"):
         if cancelled():
