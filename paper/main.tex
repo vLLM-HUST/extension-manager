@@ -23,7 +23,7 @@
 \def\UrlBreaks{\do\/\do-\do\_}
 \sloppy
 \hbadness=10000
-\title{\Large \bf From Enabled to Effective: Evidence-Bound Activation for LLM Inference Extensions}
+\title{\Large \bf Making LLM Inference Extensions Compose: Contracts for Interfaces, Dependencies, and Runtime Effects}
 \author{Anonymous Submission}
 \date{}
 
@@ -36,136 +36,99 @@
 \maketitle
 
 \begin{abstract}
-Modern LLM inference engines continually add KV-cache management, preemption,
-offload, tiered storage, scheduling, observability, and disaggregated serving.
-These extensions increasingly enter through forks, hard-coded hooks, or
-package entry points, which establish discovery and loading but do not show
-that independently developed extensions compose correctly or affect every
-process that can serve a request. This gap creates \emph{false-effective}
-states: deployment state reports success while workers execute a partial,
-stale, inert, or conflicting configuration. We present ECPA, an inference-system
-extension contract and runtime. Contracts declare capabilities, resource and
-lifecycle authority, dependencies, process coverage, failure policy, and
-verifiable effect conditions. A compiler turns multiple contracts into an
-immutable execution plan; the protocol orders prepare, activate, observe,
-expose, and rollback phases. Authority-owned evidence discharges
-plan obligations, and the design specifies an ExposureGate that should make a
-generation externally visible only after fresh evidence covers its
-epoch-scoped targets.  A separate real TP2 qualification demonstrates
-invocation-coverage admission and revocation through an independent HTTP
-authority; formal traffic-boundary prevention remains unestablished.  We derive the model
-from the plugin page's source-bound population of \ECPAWorkshopMods{} MODs,
-spanning scheduling, speculative decoding, KV data paths, model execution,
-communication, and observability.  We implement a host-neutral
-coordinator, a narrow adapter for one vLLM-compatible prototype host, and an
-adversarial evaluation harness covering namespace errors, resource conflicts,
-partial worker coverage, replay, crash recovery, lease expiration, and failed
-compensation.  The first preregistered real-host study ran nine independent
-cold TP2 starts across entry-point, manual-integration, and ECPA arms.  All
-nine records passed offline evidence validation, but after one worker's
-evidence was quarantined, all three ECPA repetitions still claimed effective
-with only 0.5 process coverage.  This falsifies the tested H1 prevention claim
-and identifies independent traffic-boundary enforcement as a system requirement.
-The later invocation-only qualification does not change this falsification.  The study makes no
-throughput, latency, rollback, or cross-runtime claim.  A separate
-source-bound H2 subset currently scores \ECPAHTwoScoredCases{} definite
-compositions ($TP=\ECPAHTwoTruePositive{},TN=\ECPAHTwoTrueNegative{},
-FP=\ECPAHTwoFalsePositive{},FN=\ECPAHTwoFalseNegative{}$).  Its observed
-precision and recall are 1.0, but this
-sample is too small and omits important conflict surfaces, so H2 remains open.
+LLM inference extensions enter through incompatible integration surfaces:
+package entry points, private host hooks, direct patches, and extracted policy
+modules. Their dependencies extend beyond package versions to host symbols,
+configuration predicates, import order, process scope, and shared runtime
+state. Consequently, individually installable extensions need not form a
+working composition. We study how to make these requirements explicit and
+checkable without treating successful loading as proof of compatibility.
+ECPA combines extension contracts, a conflict-aware plan compiler, typed host
+adapters, and authority-owned runtime evidence. Contracts describe interfaces,
+dependencies, resource ownership, and effect obligations; adapters bind those
+declarations to concrete execution paths. The compiler checks declared
+constraints, while runtime evidence is required for claims that static checks
+cannot establish. A source audit distinguishes original integration behavior
+from ECPA-added descriptors and identifies both representable requirements and
+unresolved adaptation work. We redesign the composition evaluation around
+independently labeled source cases, installation-order controls, real effect
+checks, and measured adaptation effort. This expanded study is planned, not
+a completed result. Existing evidence comprises a
+\ECPAHTwoScoredCases{}-case definite H2 subset and an earlier nine-start H1
+study that falsified the tested implementation's prevention claim.
+The current prototype therefore does not yet establish general composability,
+recovery safety, or bounded overhead.
 \end{abstract}
 
 \section{Introduction}
-Plugins are becoming the de facto change boundary for fast-moving inference
-systems.  A scheduler policy may be delivered as a Python entry point; a KV
-connector may depend on an external service; a production-stack adapter may
-translate intent into Kubernetes configuration; and a provider may map a
-portable capability to a host-specific command-line flag.  This modularity is
-valuable, but it creates a gap between packaging facts and runtime facts.
+Inference systems increasingly depend on independently developed extensions
+for scheduling, KV-cache management, speculative decoding, communication,
+and observability. Operators want to combine these extensions on one serving
+stack. Yet the integration unit is often not a stable interface. One MOD
+registers a plugin, another wraps a private scheduler method, and a third
+provides a policy that still needs a host executor. Package dependency
+resolution cannot determine whether these implementations can work together.
 
-Consider an operator who installs a plugin distribution, sees its configuration
-saved, enables it, and launches an engine with multiple worker processes.  The
-parent process may discover the distribution while one worker imports a
-different version, never invokes the hook, or lacks the provider.  Two plugins
-may independently validate yet both claim the same KV connector option.  An
-external service may fail after intent is persisted.  Conventional loaders
-often collapse these cases into an ``enabled'' bit.  That bit is useful intent,
-but it is not evidence that the plugin changed the running system.
+Our central question is: \emph{how can a serving system turn heterogeneous
+extension interfaces and implicit dependencies into a composition whose
+requirements, conflicts, and runtime effects are explicit and checkable?}
+The challenge begins before failure recovery: an extension must first have
+a concrete integration path, and the composition must preserve that path's
+preconditions and ownership boundaries.
 
-The repository that motivated this work contains a smaller but revealing
-incident.  A one-line ``bugfix'' changed discovery from the host-owned static
-bundle namespace to an upstream-looking namespace.  Sixty-six unit tests still
-passed.  Yet an installed KV-connector provider registered one bundle in the
-declared namespace, the modified manager selected zero entries, and discovery
-returned no bundles.
-Installation succeeded; the code imported; runtime intent could still exist;
-the plugin was nevertheless absent from the activation path.  The incident is
-not important because of the spelling error itself.  It demonstrates that
-tests and static state can agree while authority and runtime effect disagree.
+The real sources expose three connected problems. First, an installable
+package may require undocumented or separately documented host symbols and
+configuration. KNorm declares no package dependencies, but its activation
+guard enumerates private host surfaces; its compression predicate also
+requires an explicit environment switch, a compression ratio below one, and
+disabled prefix caching. Second, different resource names can hide the same
+execution path. KNorm and KVCompress both wrap
+\code{Scheduler.update\_from\_output}; a shared symbol is a reason to inspect
+ordering and state interaction, not by itself proof of a conflict. Third,
+a discoverable descriptor may not have an executable host integration.
+The audited QoS, split-batch, and unified-communication snapshots expose
+import-only components and proposed host contracts. Discovering those
+descriptors does not activate the corresponding scheduler, graph executor,
+or native collective.
 
-We ask: \emph{how can an inference system make extensions discoverable,
-composable, verifiable, and rollback-safe when runtime effectiveness cannot be
-proved statically?}  We build \system, an extension contract and transactional
-runtime centered on evidence-bound activation.  The Extension Manager is its
-reference implementation; the contract, corpus, and conformance suite define
-what another implementation must reproduce.  A decision is not ``enable plugin $p$'' but an activation plan
-for a concrete host version, provider set, plugin set, process topology, and
-resource-ownership graph.  The plan records evidence obligations.  Each
-obligation must be discharged by its declared authority; a plan-bound process
-invocation can discharge only its corresponding process or invocation
-obligation.  A manager cannot manufacture runtime effectiveness from
-configuration.
+We build \system to make these distinctions part of extension composition.
+A contract describes capabilities, host requirements, lifecycle authority,
+resource claims, process scope, and observable effects. A compiler produces
+an immutable plan and checks declared dependencies and ownership. A typed
+adapter binds that plan to the selected host, and runtime authorities provide
+evidence for the obligations they can actually observe. The decision is
+therefore about a concrete host, provider set, configuration, and topology,
+not just whether a package is installed.
 
-Figure~\ref{fig:architecture} summarizes this split: portable contracts and
-transactions stop at a typed adapter, while host and provider authorities send
-effect evidence back across that boundary.  Neither the adapter nor an
-individual plugin can open the traffic gate by self-report.
+This design has an important boundary. ECPA does not automatically infer
+arbitrary MOD semantics, supply a missing host hook, or prove that two
+wrappers commute. Contracts are audited inputs rather than ground truth.
+Known incompatibility may justify rejection; missing knowledge must remain
+unverified. An ECPA adapter that adds a new integration seam is measured as
+adaptation work, not counted as a capability of the original MOD.
 
-Our intended safety property is: \emph{no activation is exposed as effective unless
-every required plan obligation in the current epoch has fresh evidence from
-the authority that can observe its planned effect}.  Process-scoped obligations
-also require coverage of their frozen target set.  ECPA is not the first
-plugin system, a deployment controller, or a software-supply-chain attestation
-scheme.  Its contribution is an evidence-bound activation protocol for
-extensions whose effect spans multiple inference processes and authority
-domains.  Existing plugin APIs, controllers, and provenance systems are inputs
-to that protocol, not components that ECPA replaces.  The completed H1 cell
-shows that the reference runtime does not yet realize this property, so the
-present contribution is the contract, protocol, and falsifiable test method,
-not a validated prevention mechanism.
-
-The contract, compiler, coordinator, and evidence protocol do not name a host
-runtime or plugin package.  We evaluate them through a deep study on one
-vLLM-compatible prototype host, connected only through a typed host adapter.
-Within that host we cover multiple independently implemented extension classes,
-parent/engine/worker process scopes, versions and topologies, authority
-boundaries, and fault modes.  This is single-host evidence, not a claim of
-cross-framework validation; a second runtime is future external-validity work.
-
-This paper makes three contributions, with claim strength bounded by
-the evidence available today:
+Figure~\ref{fig:architecture} shows the resulting separation between
+contracts, planning, host execution, and evidence. Our contribution is
+organized around the full composition problem:
 \begin{itemize}
-  \item an inference-extension contract that expresses capabilities,
-  resources, lifecycle authority, dependencies, process coverage, and
-  machine-checkable effect obligations rather than only loadable APIs;
-  \item a contract compiler and transactional runtime that produce immutable
-  execution plans and define multi-process prepare, activation, exposure,
-  replacement, failure, and rollback semantics; and
-  \item a host-evidence model and independent evaluation method for detecting
-  false-effective extensions across correctness, conflict, skew, recovery,
-  multi-process consistency, and overhead experiments.
+  \item a source-grounded account of heterogeneous integration surfaces,
+  implicit prerequisites, and shared-state hazards in real inference MODs;
+  \item a contract, compiler, and runtime that express and check known
+  requirements while separating declaration, invocation, and effect; and
+  \item a falsifiable composition study that separates independent labels
+  from predictions, tests both orders and singleton controls, and accounts
+  for unsupported cases and adaptation cost.
 \end{itemize}
-The contract compiler, reference coordinator, evidence protocol, and
-fail-closed formal harness are implemented.  Release \ECPAReleaseVersion{}
-freezes Manifest \ECPAManifestVersion{} and records one pinned native-host
-lifecycle qualification.  The source-bound static corpus is measured, and the
-first matched prototype-host H1 cell is complete and falsifies its prevention
-hypothesis.  H2 has a \ECPAHTwoScoredCases{}-case real-source subset but lacks the breadth to
-support its population claim; H3 and H4 each have zero formal runs.  A real
-authority-owned HTTP route now has invocation-only qualification, while its
-formal prevention and effect-semantics evaluation remains incomplete.  We do not present
-modeled decisions, interface fixtures, release qualification, or lifecycle
-startup fields as substitutes for those experiments.
+The first contribution is a source audit; the expanded study is not yet
+complete. We evaluate one vLLM-compatible host family and do not claim
+cross-framework validation. Existing H2 evidence has only
+\ECPAHTwoScoredCases{} definite cases. The earlier matched H1 experiment
+found that all three ECPA repetitions retained an effective claim at 0.5
+process coverage, falsifying that implementation's prevention claim.
+Recovery (H3) and overhead (H4) remain supporting validation, with no completed
+formal results. Release \ECPAReleaseVersion{} and Manifest
+\ECPAManifestVersion{} describe implementation status, not proof that the
+proposed composition guarantees have been achieved.
 
 \begin{figure*}[t]
 \centering
@@ -230,6 +193,33 @@ Vanilla entry points provide a deliberately lightweight extension mechanism
 and operator checks.  Both are legitimate baselines.  Their limitation is not
 that they can never be made safe; it is that evidence obligations, ownership,
 and rollback are convention rather than a common machine-checkable contract.
+
+\subsection{From Source Requirements to Composition Obligations}
+The new audit preserves exact source revisions and distinguishes three
+levels of evidence: source-observed requirements, independently observed
+execution outcomes, and unresolved composition hypotheses. The frozen
+\ECPAWorkshopMods{}-MOD page population remains the sampling frame;
+newer revisions are separate observations, not replacements for its historical
+counts. Host and backend dependencies are supporting sources, not extra MODs.
+
+For example, KNorm's source checks an in-tree duplicate and required host
+modules, gates compression on configuration, and rebinds already-imported
+aliases. ECPA can represent the known prerequisites and bind invocation
+obligations, but it cannot claim to discover every alias or prove a useful
+compression effect merely from registration. Similarly, an import-only
+communication descriptor needs a real provider before its process-group
+ownership contract can be exercised. These gaps guide the experiment rather
+than being filled with invented compatibility labels. The source-to-contract
+audit records each issue, its existing ECPA mechanism, required adaptation,
+and remaining verification obligation. A concrete source-level exclusion
+illustrates the need for topology predicates: the audited Pipeline policy
+requires PP greater than one, while the audited KVCompress stateful adapter
+requires PP equal to one. Their supported configuration domains do not
+intersect; this source fact is separate from a native conflict result.
+A separate CPU ABI preflight also found that an Ascend runner transitively
+imports a Host model-config module absent in a newer Host revision, despite
+accepted version metadata. That preflight is a tool observation, not evidence
+that the ECPA compiler automatically discovered the hidden dependency.
 
 \section{Problem and Formal Model}
 \subsection{System Model}
@@ -453,6 +443,16 @@ with provenance.  Negotiation produces a graph whose edges explain which
 authority satisfies each requirement.  Missing, ambiguous, or incompatible
 edges reject activation.  Untested version tuples remain \emph{unverified}, not
 implicitly compatible.
+
+\paragraph{Contract acquisition and its limits.}
+The current prototype consumes manually supplied contracts and adapters.
+It does not infer hidden dependencies from arbitrary source or learn
+conflicts from package names. The audit therefore traces each declaration
+back to original source and records separately any ECPA-added requirement,
+resource alias, adapter, or host modification. Static acceptance is conditional
+on those inputs; unknown interfaces and missing effect evidence do not become
+compatibility facts. Automatic contract extraction is not an implemented
+contribution of this paper.
 
 \subsection{Conflict Planning}
 Plugins claim resources such as a command-line/configuration key, hook slot,
@@ -749,26 +749,11 @@ not a cross-runtime ECPA experiment.  Our generality evidence is therefore the
 combination of corpus diversity, prototype-host process scopes, the fault model, and
 the explicit contract/host boundary---not cross-framework validation.
 
-The first L2 study froze a canonical resource-and-alias taxonomy,
-\ECPAPlannerCases{} modeled
-single/pair/triple compositions, and a separately stored manual candidate
-oracle before implementing the evaluator.  The models cover all
-\ECPAPlannerSeedExtensions{} seed extensions and add explicitly marked
-synthetic controls for otherwise absent
-conflict boundaries; the \ECPAAdaptationCandidates{} adaptation candidates
-remain excluded.  The
-oracle passed independent exact-digest label review.  This preregistration is
-evaluated after review: the reference planner matches all \ECPAPlannerAdmits{}
-admits and \ECPAPlannerRejects{}
-rejects, including reject error codes.  Reject precision, reject recall, and
-admit recall are respectively \ECPAPlannerRejectPrecision{},
-\ECPAPlannerRejectRecall{}, and \ECPAPlannerAdmitRecall{}; a reject-all baseline
-has precision $\ECPAPlannerRejects/\ECPAPlannerCases$ and admit
-recall 0.  This early modeled seed establishes conformance only to its small
-static corpus.  Every conflict case contains a synthetic boundary control.  We
-retain it as a reproducibility fixture and do not use it as H2 evidence; the
-source-bound result in Section~\ref{sec:h2-partial} supersedes it for current
-claim accounting.
+The earlier \ECPAPlannerCases{}-case modeled study retains its canonical
+resource-and-alias taxonomy, synthetic boundary controls, and frozen oracle
+as a reproducibility fixture. It is not real-MOD H2 evidence. Its detailed
+metrics remain in the artifact; Section~\ref{sec:h2-partial} reports the
+separate source-bound H2 subset.
 
 \section{Evaluation Methodology and Current Evidence}
 \label{sec:evaluation}
@@ -780,7 +765,7 @@ derives outcomes from preregistered truth predicates
 and raw runtime observations; implementation decisions are not accepted as
 ground truth.  The checked r5 campaign has \ECPAFormalStarts{} complete
 formal-real starts in one scenario cell.  H2 has a partial source-bound result
-outside that matched runtime aggregate; H3 and H4 have zero formal runs.  A
+outside that matched runtime aggregate; H3 and H4 have no completed formal results.  A
 \ECPAReferenceStarts{}-start helper-process run tests the
 harness lifecycle and failure classification, but is explicitly
 reference-synthetic and excluded from paper aggregates.  Formal ingestion is
@@ -880,8 +865,8 @@ occurred cannot falsify the corresponding premise.
 The static planner and transaction model have only modeled results; the
 source-bound page corpus, partial H2 subset, and one NPU lifecycle qualification
 are observed but outside the matched runtime aggregate.  The first matched
-runtime cell is complete.  H3 recovery and H4 overhead each remain at zero
-formal runs, with \ECPAFormalCompleted{} complete H1 scenario cell and
+runtime cell is complete.  H3 recovery and H4 overhead have no completed
+formal results, with \ECPAFormalCompleted{} complete H1 scenario cell and
 \ECPAVerifiedAdapters{} registered adapters.
 
 \begin{table}[t]
@@ -912,6 +897,46 @@ result therefore concerns evidence coverage and the recorded effectiveness
 claim, not traffic exposure or whether computation stopped.  The r2--r4 campaigns
 are excluded from this aggregate.  Recorded startup durations are lifecycle
 fields for H1 and are not interpreted as H4 performance measurements.
+
+\subsection{H2 Redesign: Real MOD Composition}
+\label{sec:h2-redesign}
+H2 becomes the main composition evaluation; H1, H3, and H4 respectively
+test effect truthfulness, behavior under failures, and system cost. The
+expanded protocol is prospective. It preserves the original H2 precision and
+recall target of 0.95 and does not relabel historical source or runtime data.
+
+The unit is a pinned set of MOD implementations, host/backend revisions,
+configuration, topology, workload, and installation order. We first audit the
+full frozen population, then select cases across interface, version/symbol,
+configuration, shared-hook, shared-state, and external-authority surfaces.
+Every case separates original delivery from ECPA adaptation. A discovery set
+informs the contract vocabulary; a held-out set grouped by MOD family is
+frozen before final predictions to prevent a reordered variant of a known
+pair from masquerading as generalization.
+
+An independent oracle records compatible, incompatible, or unresolved with
+supporting source and execution predicates. Its labels and diagnostic verdicts
+are unavailable to the prediction path. Source-only labels concern stated
+constraints, not native semantics. We compare package/version checks,
+documented manual integration, and full ECPA, with additional ablations for
+resource normalization and runtime effect checks. Manual integration receives
+the same source access and a declared effort budget, not a deliberately broken
+configuration.
+
+Positive runtime cells require each singleton to work and the composition to
+preserve both intended effects. Both registration orders are tested; public
+request success alone is insufficient. A compression composition must cross
+its real activation threshold, and an observer must cover the relevant
+processes. Missing hardware or a missing provider remains unsupported or
+unresolved. Early rejection is evaluated separately from safe serving, and
+source-level precision cannot be presented as runtime correctness.
+
+We report definite-case precision/recall together with abstention coverage,
+compatible-case admission, and unsafe admissions, including all unknowns in
+the inventory. Adaptation is measured as changed files/lines, host changes,
+human effort, and reuse on a held-out revision. Native comparisons retain
+three matched arms, three independent starts, and the original hardware and
+workload controls. No new H2 result is asserted by this design.
 
 \subsection{Partial Source-Bound H2 Result}
 \label{sec:h2-partial}
@@ -970,87 +995,32 @@ DiffSpec/KVCompress pair is also excluded pending physical-ownership and
 installation-order review.  We therefore report the observed 1.0 values with
 $n=\ECPAHTwoScoredCases{}$ and keep H2 incomplete.
 
-\subsection{Reference ExposureGate Artifact}
-The SQLite reference gate exercises synthetic evidence opening, generation
-attribution, crash recovery, draining, and rollback.  Its fault matrix is
-reference conformance, not real-plugin or production evidence.
-A separate real Qwen2.5-7B-Instruct TP2 qualification on two Ascend 910B2s uses
-an independent HTTP authority and actual Host invocation journals.  Quarantining
-one worker's journal lowers coverage to \ECPARealGatePartialCoverage{}:
-candidate admission fails and the closed predecessor returns 503.  Restoring
-those bytes raises coverage to \ECPARealGateCompleteCoverage{} and admits
-\ECPARealGateCompletions{} real completion (200).  Repeating quarantine revokes
-the candidate (503).  Both blocked requests leave backend log bytes unchanged;
-direct backend health remains 200.
+\subsection{Supporting Gate and Recovery Evidence}
+The SQLite reference gate exercises synthetic attribution, crash recovery,
+draining, and rollback. A separate real Qwen2.5-7B-Instruct TP2 qualification
+uses an independent HTTP authority: quarantining one worker's journal blocks
+candidate traffic, restoring it admits a completion, and a second quarantine
+revokes admission. This establishes an invocation-coverage boundary, not
+general semantic correctness or the H1 prevention claim.
 
-Invocation-only replay retains \ECPARealGateFailedAttempts{} failed attempts.
-A separate native TP2 trial binds \ECPANativeTransportMappings{} request mapping
-to \ECPANativeTransportUploads{} NPU uploads
-(\ECPANativeTransportRankUploads{} per rank), with a fresh nonce and
-\ECPANativeTransportCompletionTokens{} completion tokens.  Source, epoch, peer,
-ACK and cleanup replay retains \ECPANativeTransportFailedAttempts{} failed startup.
-This qualifies transport only.
+Separate native transport, KV-byte, and source-drained attention trials retain
+their full raw journals, failures, and exact source identities in the artifact.
+They qualify only the declared finite observations; numerical correctness,
+quality, and performance remain unestablished. The earlier controller-crash
+window retained \ECPAHThreeWindowRequests{} single-attempt requests with
+deadline loss \ECPAHThreeWindowDeadlineLoss{}/\ECPAHThreeWindowRequests{},
+but kept the predecessor model alive. It is control-route recovery, not
+model-backend restart. Baselines, complete objectives, and native replacement
+remain missing; these trials are \code{QUALIFIED\_NONFORMAL} and do not
+populate the formal H3/H4 results.
 
-A KV TP2 trial returns the exact two-copy nonce (1,201 prompt,
-\ECPAKVMetadataCompletionTokens{} completion tokens), with
-\ECPAKVMetadataProjections{} projections and \ECPAKVMetadataUploads{} uploads.
-Its frozen final-prefix ACK policy replays six modules and
-\ECPAKVMetadataLateIntakes{} late intakes; the old strict-window rejection remains.
-A fresh nonformal trial joins \ECPASelectedKVReceipts{} logical K/V byte records
-across \ECPASelectedKVLayersPerRank{} layers per rank to HTTP/ACK
-(\ECPASelectedKVCompletionTokens{} completion tokens). All
-\ECPASelectedKVRawRecords{} rows and receiver bytes replay from frozen sources.
-A further source-drained trial joins \ECPAAttentionCompletionReceipts{} native
-completions and \ECPAAttentionWorkerClosures{} closures in a
-\ECPAAttentionSourceRecords{}-row final ACK. This closes the declared observation,
-not continuing effectiveness. Full storage, numerical correctness, quality and
-performance remain unknown; none proves prevention or formal H3/H4.
-
-The H3 oracle binds \ECPAHThreeNativeSources{} source snapshots.
-\ECPAHThreePrepareNABaselines{} baseline arms lack a durable Manager transaction;
-their \code{manager-crash-afterprepare} phases are not applicable.
-Worker-crash/full-relaunch cannot replace this incomplete cell.
-Host worker death stops the executor without native replacement.
-
-The verifier checks process epochs, authority chains, SQLite intent/rollback
-prefixes and unchanged predecessor routes, rejecting candidate exposure.
-An earlier ECPA-only trial retains \ECPAHThreeModelTPBackends{} live TP2 backends,
-\ECPAHThreeModelMarkerCompletions{} marker completions, SQLite prepare and
-coordinator SIGKILL/restart (\ECPAHThreeModelRawFiles{} raw files,
-\ECPAHThreeModelFailedAttempts{} failed/interrupted attempts).  Markers alone
-leave whole-window loss unknown.  A later qualification freezes
-\ECPAHThreeWindowRequests{} single-attempt requests before, during and after
-that controller fault.  Independent analysis checks \ECPAHThreeWindowRawFiles{}
-raw files: deadline delivery loss is
-\ECPAHThreeWindowDeadlineLoss{}/\ECPAHThreeWindowRequests{}, duplicate admissions
-\ECPAHThreeWindowDuplicateAdmissions{}, and reused delivered IDs
-\ECPAHThreeWindowReusedResponseIds{}.  The predecessor model remains live;
-this is control-route recovery, not model-backend restart.  Execution duplication
-and the full objective stay unknown.  Runtime \code{3a559522} and later
-\code{49f1c153} analysis are distinct; a failed CPU fixture is retained.
-Host admission and matched baselines remain missing:
-\code{QUALIFIED\_NONFORMAL}, formal H3/H4 zero, \code{NO-GO}.
-
-\subsection{Preliminary Evidence and Missing Results}
-The incident's pre-fix and namespace-modified implementations both pass 66 CPU
-tests.  The installed-package probe nonetheless finds one Mooncake entry point
-in the documented group, none in the changed group, and zero bundles.  This
-retained M0 negative fixture demonstrates that tests and installation alone
-do not imply activation.
-
-The modeled L2 seed has \ECPAPlannerCases{} cases over
-\ECPAPlannerSeedExtensions{} extensions; all \ECPAPlannerAdmits{} admits
-and \ECPAPlannerRejects{} rejects match the independent oracle.
-\ECPASourceObjects{} cited Git objects across \ECPASourceRepositories{}
-repositories bind this taxonomy conformance result to source, not to H2
-prevalence or runtime effectiveness.
-
-H1 is measured and falsified: Manager activation did not revoke the effective
-claim when coverage fell to 0.5.  H2 remains the partial \ECPAHTwoScoredCases{}-case subset;
-H3/H4 have zero formal runs.  Qualification cannot populate formal cells,
-and generators reject zero-filled missing values.  Registered effect-obligation
-validation at a real traffic authority remains required before claiming
-prevention.  The overall decision remains \code{NO-GO}.
+\subsection{Remaining Evidence Gaps}
+The current contribution is a source-grounded composition problem,
+implemented contract/planning machinery, and an incomplete evaluation.
+H1 remains falsified for the tested implementation; H2 retains only the
+\ECPAHTwoScoredCases{} definite cases above. The expanded H2 study, traffic
+prevention, recovery, and overhead remain unestablished. Source snapshots,
+modeled checks, and observed finite qualifications retain distinct scopes.
 
 \section{Related Work}
 \textbf{Inference and module plugins.}  vLLM's Plugin System loads registered
@@ -1178,21 +1148,19 @@ paper nor the \ECPAWorkshopMods{}-MOD page population
 supports a cross-framework or industry-standard claim.
 
 \section{Conclusion}
-Inference plugin systems need a truth model stronger than successful
-installation or saved enablement.  \system treats activation as a typed,
-conflict-checked plan with explicit authorities and evidence obligations.
-Its protocol separates lifecycle predicates, requires runtime facts from their
-owning processes, and calls for fail-closed admission and deterministic rollback.
-A real namespace regression demonstrates the value of installed-package evidence
-over mock-only tests, while a pinned native NPU lifecycle shows that the
-process-owned evidence and cleanup path can execute end to end.  More
-significantly, the first matched nine-start study finds false-effective state
-in all three ECPA repetitions after partial evidence loss.  The tested runtime
-therefore does not yet enforce its intended prevention property.  The partial
-H2 subset correctly classifies \ECPAHTwoTruePositive{} admits and
-\ECPAHTwoTrueNegative{} rejects ($n=\ECPAHTwoScoredCases{}$), but is not
-broad enough to establish composability. Formal traffic-gate, broader composition,
-version-skew, recovery and overhead validation remain necessary.
+Inference extension composition is constrained by heterogeneous interfaces,
+implicit host dependencies, configuration predicates, and shared runtime
+ownership. ECPA makes known requirements explicit through contracts and
+plans, then binds effect claims to the authorities that observe execution.
+The real-source audit also exposes its limits: a descriptor is not a host
+integration, an undeclared wrapper is not automatically detected, and static
+acceptance does not prove semantic compatibility. The expanded H2 study
+therefore evaluates original MODs, adaptation effort, independent conflict
+labels, and preserved runtime effects together. Existing evidence remains
+limited: the first H1 implementation was falsified, H2 has only
+\ECPAHTwoScoredCases{} definite cases, and recovery and overhead validation
+are incomplete. The composition-centered study is the path to testing the
+system's intended contribution, not an already established result.
 
 \bibliographystyle{plain}
 \bibliography{references}

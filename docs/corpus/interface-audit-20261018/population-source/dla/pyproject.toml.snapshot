@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-hust-dla"
+dynamic = ["version"]
+description = "DLA: decode-length-aware preemption & admission for vLLM-HUST"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8", "ruff>=0.12"]
+predict = ["torch>=2.0"]
+
+[tool.setuptools.dynamic]
+version = {attr = "dla._version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dla = ["manifests/*.json"]
+
+# Static Bundle registration (typed path, Extension Bundle v1).
+# name == bundle_id; value is a plain Python module directory holding the
+# manifest; must NOT be a module:callable and must not require load().
+[project.entry-points."vllm.extension_bundles"]
+"org.vllm-hust.dla" = "dla.manifests"
+
+# Legacy provider path (compat with cores that only read vllm.victim_selector).
+[project.entry-points."vllm.victim_selector"]
+dla = "dla.selector:DlaVictimSelector"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP"]

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-betterscale"
+version = "0.5.1"
+description = "Modular graph and replay optimizations for vLLM Ascend"
+readme = "docs/PYPI.md"
+license = "Apache-2.0 AND MIT AND BSD-3-Clause AND LicenseRef-CANN-1.0 AND LicenseRef-CANN-2.0"
+license-files = ["licenses/Apache-2.0.txt", "licenses/FLA-MIT.txt", "licenses/GDN-BSD-3-Clause.txt", "licenses/CANN-1.0.txt", "licenses/CANN-2.0.txt", "THIRD_PARTY_NOTICES.md"]
+authors = [{name = "Fletcher Tian"}]
+classifiers = ["Development Status :: 4 - Beta", "Programming Language :: Python :: 3.12", "Operating System :: POSIX :: Linux"]
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"betterscale.patches.qwen_fia" = ["*.json", "*.cpp", "*.so", "README.md"]
+betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json"]
+"*" = ["README.md"]
+"betterscale.patches.qwen_gdn" = ["*.json", "*.h", "*.cpp", "*.sh", "*.so", "README.md"]
+"betterscale.patches.hc_workspace" = ["*.json", "*.so", "*.patch", "*.txt", "README.md"]
+
+[project.urls]
+Homepage = "https://vllm-hust.sage.org.ai/betterscale.html"
+Documentation = "https://vllm-hust.sage.org.ai/betterscale.html#integration"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.black]
+target-version = ["py312"]

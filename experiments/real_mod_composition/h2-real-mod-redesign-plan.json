@@ -1,0 +1,254 @@
+{
+  "schema": "ecpa-real-mod-h2-prospective-plan/v1",
+  "status": "draft-not-preregistered",
+  "priority": "real-mod-interface-dependency-composition",
+  "historical_protocols_modified": false,
+  "historical_definite_cases": 4,
+  "modeled_cases_are_formal_H2": false,
+  "original_precision_threshold": 0.95,
+  "original_recall_threshold": 0.95,
+  "new_results": [],
+  "population": "docs/corpus/workshop-mods.json",
+  "population_members": 24,
+  "split": {
+    "status": "not-frozen",
+    "budget_units": 24,
+    "proposed_discovery": 12,
+    "proposed_heldout": 12,
+    "group_by": [
+      "MOD-family",
+      "fork-lineage",
+      "adapter-lineage"
+    ],
+    "already_read_or_labeled_cases": "development-only",
+    "sealed_heldout_exists": false
+  },
+  "prediction_input_policy": {
+    "oracle_files_allowed": false,
+    "oracle_decision_allowed": false,
+    "prediagnosed_ownership_conflicts_allowed": false,
+    "verdicts_are_ground_truth": false
+  },
+  "evaluation_layers": [
+    "source-constraints",
+    "installation-and-import",
+    "native-effects"
+  ],
+  "baselines": [
+    "native-delivery",
+    "documented-manual-integration",
+    "ecpa"
+  ],
+  "offline_ablations": [
+    "manifest-version-and-same-name-claims-only",
+    "without-canonical-resource-aliases",
+    "without-runtime-effect-checks"
+  ],
+  "runtime_protocol": {
+    "matched_arms": 3,
+    "independent_starts_per_arm": 3,
+    "singletons_required": true,
+    "pair_registration_orders": [
+      "A-B",
+      "B-A"
+    ],
+    "installation_order_separate_from_activation_order": true,
+    "all_failures_preserved": true,
+    "threshold_trigger_required": true,
+    "same_algorithm_and_host_binaries_for_manual_and_ecpa": true
+  },
+  "reporting": [
+    "full-three-way-confusion-matrix",
+    "definite-case-precision-recall",
+    "coverage-on-all-known-labels",
+    "admit-recall-against-reject-all",
+    "unsafe-admissions",
+    "unknown-and-exclusion-reasons",
+    "per-family-and-per-surface-results",
+    "adapter-and-port-cost",
+    "host-modifications",
+    "actual-human-time-or-unknown"
+  ],
+  "cases": [
+    {
+      "id": "H2N01",
+      "mods": [
+        "knorm-migration"
+      ],
+      "surface": "configuration-and-private-host-API",
+      "stage": "source-and-singleton",
+      "device_priority": null,
+      "question": "Do version/package checks miss required symbols or activation predicates?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "exact compatible singleton host",
+        "real effect trigger"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N02",
+      "mods": [
+        "kvcompress-ascend",
+        "request-lifecycle-profiler"
+      ],
+      "surface": "data-path-plus-observer",
+      "stage": "native-pair",
+      "device_priority": 1,
+      "question": "Do compression and process observation both remain effective in both orders?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "fresh exact tuple",
+        "above-threshold workload",
+        "independent effect reader"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N03",
+      "mods": [
+        "pipeline-microbatch-migration",
+        "bidkv"
+      ],
+      "surface": "scheduler-composition",
+      "stage": "native-pair",
+      "device_priority": 2,
+      "question": "Do batch policy and victim selection preserve each intended effect under real pressure?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "new PP2TP1 source/wheel binding",
+        "singletons",
+        "actual supported model profile",
+        "pressure sufficient to trigger selection"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N04",
+      "mods": [
+        "kvcompress-ascend",
+        "knorm-migration"
+      ],
+      "surface": "shared-hook-and-KV-state",
+      "stage": "native-pair",
+      "device_priority": 3,
+      "question": "Do wrappers and KV-state transitions commute under either order?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "KNorm active carrier absent in frozen H2 manifest",
+        "compatible singleton host",
+        "any algorithm port reported separately"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N05",
+      "mods": [
+        "diffspec",
+        "vspec"
+      ],
+      "surface": "version-intersection-and-shared-symbols",
+      "stage": "source-constraint",
+      "device_priority": null,
+      "question": "Is there a real common supported host before shared-hook semantics are investigated?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "fresh original source audit",
+        "no assumed compatible host"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N06",
+      "mods": [
+        "qos-scheduler-migration",
+        "bidkv"
+      ],
+      "surface": "import-only-versus-scheduler-integration",
+      "stage": "source-and-import",
+      "device_priority": null,
+      "question": "Can a discoverable descriptor be distinguished from an executable policy?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "real QoS host adapter absent in frozen snapshot"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N07",
+      "mods": [
+        "split-batch-full-graph-migration",
+        "diffspec"
+      ],
+      "surface": "graph-and-speculation-preconditions",
+      "stage": "source-constraint",
+      "device_priority": null,
+      "question": "Can declared graph restrictions be checked without pretending a missing executor works?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "native executor absent in frozen snapshot",
+        "exact feature config"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N08",
+      "mods": [
+        "unified-communication-migration"
+      ],
+      "surface": "native-owner-boundary",
+      "stage": "source-and-import",
+      "device_priority": null,
+      "question": "Is registry import distinguished from real communicator ownership and collectives?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "real backend provider and hardware observations"
+      ],
+      "partition": "development-candidate-not-heldout"
+    },
+    {
+      "id": "H2N09",
+      "mods": [
+        "pipeline-microbatch-migration",
+        "kvcompress-ascend"
+      ],
+      "surface": "topology-predicate-intersection",
+      "stage": "source-constraint",
+      "device_priority": null,
+      "question": "Can PP>1 and PP=1 requirements be represented and rejected before launch without algorithm porting?",
+      "status": "planned",
+      "oracle_label": null,
+      "prediction": null,
+      "runtime_result": null,
+      "blockers": [
+        "independently freeze source constraint label",
+        "do not broaden algorithm support to create a positive"
+      ],
+      "partition": "development-candidate-not-heldout"
+    }
+  ]
+}

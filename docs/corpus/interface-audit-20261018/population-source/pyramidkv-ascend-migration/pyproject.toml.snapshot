@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vllm-ascend-pyramidkv-hust"
+version = "0.1.0.dev0"
+description = "Owner-maintained PyramidKV migration package for the vLLM-HUST Ascend stack"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+maintainers = [{name = "Irisuko"}]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust"
+Issues = "https://github.com/vLLM-HUST/vllm-ascend-pyramidkv-hust/issues"
+
+[project.optional-dependencies]
+provider = ["torch>=2.5"]
+test = [
+  "pytest>=8",
+  "ruff>=0.12",
+  "torch>=2.5",
+  "vllm-hust-ext==0.2.0.dev0",
+]
+
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.ascend-pyramidkv" = "vllm_ascend_pyramidkv"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vllm_ascend_pyramidkv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP"]
