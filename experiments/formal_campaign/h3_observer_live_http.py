@@ -154,7 +154,8 @@ class LiveProxyHandler(DynamicProxyHandler):
             self.connection.settimeout(10)
             body = self.rfile.read(count)
             require(len(body) == count, "native request body incomplete")
-            start = authority.bound_client.request(request_id, body, self.connection)
+            bound_client = authority.original_client_for_request()
+            start = bound_client.request(request_id, body, self.connection)
             deadline = start["deadline_ns"]
             with authority.lock:
                 require(
@@ -231,13 +232,11 @@ class LiveProxyHandler(DynamicProxyHandler):
                     received_ns=received,
                     backend_sent_ns=backend_sent_ns,
                     deadline_ns=deadline,
-                    response_expectation=authority.bound_client.spec[
-                        "response_expectation"
-                    ],
+                    response_expectation=bound_client.spec["response_expectation"],
                 )
                 with authority.lock:
                     self._same_epoch(authority, enrollment)
-                    authority.bound_client.verify()
+                    bound_client.verify()
                     native_report = verifier.consume(
                         proof,
                         request_id=request_id,

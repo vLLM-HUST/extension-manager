@@ -8,6 +8,7 @@ completion is checked per request and never inferred from source readiness.
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 
 from experiments.formal_campaign.h3_dynamic_authority import (
@@ -173,7 +174,29 @@ class NativeAuthority(DynamicAuthority):
         self.native_plan_guards = tuple(plan_guards)
         self.native_epochs = {}
         self.bound_client = None
+        self._bound_client_ready = threading.Event()
         super().__init__(policy, journal)
+
+    def original_client_for_request(self):
+        """Rendezvous with the actual binding, without moving its send deadline.
+
+        The unchanged client writes ready and starts request zero immediately;
+        the authenticated control channel may still be binding that same client.
+        Waiting grants no request identity: BoundOriginalClient.request performs
+        all original kernel/socket/trace/body and absolute-deadline checks next.
+        """
+        require(
+            self._bound_client_ready.wait(timeout=10),
+            "actual original client binding unavailable within request budget",
+        )
+        from experiments.formal_campaign.h3_native_http import BoundOriginalClient
+
+        with self.lock:
+            require(
+                type(self.bound_client) is BoundOriginalClient,
+                "actual original client binding is not source-owned",
+            )
+            return self.bound_client
 
     @staticmethod
     def policy_validator(policy):
@@ -646,6 +669,7 @@ class NativeAuthority(DynamicAuthority):
                 self.route,
                 client_kernel=value["process_identity"],
             )
+            self._bound_client_ready.set()
             return {"client": "actual-original60-bound"}
 
     def check_observer(self):
