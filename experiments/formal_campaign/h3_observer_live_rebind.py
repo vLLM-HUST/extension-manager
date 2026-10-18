@@ -83,6 +83,25 @@ def frame(connection, deadline_ns):
     return value
 
 
+class ProducerRejected(ValueError):
+    """Exact authenticated peer's bounded canonical rejection; never an ACK."""
+
+    def __init__(self, response, endpoint, command):
+        self.evidence = dict(
+            response=response,
+            response_sha256=native.sha(native.canonical(response) + b"\n"),
+            producer=endpoint["producer"],
+            socket_identity=endpoint["socket_identity"],
+            operation=command["operation"],
+            transition_nonce=command["transition_nonce"],
+            command_sha256=native.sha(native.canonical(command) + b"\n"),
+            native_completion_proved=False,
+        )
+        super().__init__(
+            "authenticated producer rejected rebind: " + str(response.get("reason"))
+        )
+
+
 def call(endpoint, command, deadline_ns):
     path = Path(endpoint["socket_path"])
     require(
@@ -117,6 +136,14 @@ def call(endpoint, command, deadline_ns):
         )
         connection.sendall(native.canonical(command) + b"\n")
         response = frame(connection, deadline_ns)
+    if (
+        set(response) == {"schema", "state", "reason", "native_completion_proved"}
+        and response["schema"] == REPLY
+        and response["state"] == "rejected"
+        and type(response["reason"]) is str
+        and response["native_completion_proved"] is False
+    ):
+        raise ProducerRejected(response, endpoint, command)
     require(
         response.get("schema") == REPLY
         and response.get("domain") == DOMAIN
@@ -366,8 +393,8 @@ class Coordinator:
                 and authority.observer_lost
                 and authority._epoch(authority.enrollment) is old
                 and all(kernel_alive(e["producer"]) for e in self.endpoints),
-                'original authority/Host/predecessor epoch '
-                'changed before verifier commit',
+                "original authority/Host/predecessor epoch "
+                "changed before verifier commit",
             )
             require(
                 time.monotonic_ns() <= self._committed["original_deadline_ns"],
@@ -480,8 +507,8 @@ class Coordinator:
                 for event in events
                 if event["kind"] == "request.private-forward"
             ),
-            'old native admissions not frozen behind ex'
-            'act original observer-close fence',
+            "old native admissions not frozen behind ex"
+            "act original observer-close fence",
         )
         old_client_ids = sorted(
             {
@@ -588,5 +615,7 @@ class Coordinator:
             # replay is still required. No recovery time is invented here.
         except Exception as error:
             result["error"] = type(error).__name__ + ": " + str(error)
+            if isinstance(error, ProducerRejected):
+                result["producer_rejection"] = error.evidence
         result["recorded_ns"] = time.monotonic_ns()
         return result
