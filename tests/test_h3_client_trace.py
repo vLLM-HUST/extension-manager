@@ -181,9 +181,34 @@ def test_real_continuous_http_stop_resume_backend_and_unknown_execution(tmp_path
             owner = json.loads(client_ready.read_text())["client"]
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
+                raw_client = client_trace.read_bytes()
+                if not raw_client.endswith(b"\n"):
+                    time.sleep(0.01)
+                    continue
                 events = read_client_trace(client_trace)
-                if sum(e["kind"] == "request.finish" for e in events) >= 5:
+                starts = {
+                    e["detail"]["request_id"]: e["detail"]
+                    for e in events
+                    if e["kind"] == "request.start"
+                }
+                successful = [
+                    e
+                    for e in events
+                    if e["kind"] == "request.finish"
+                    and e["detail"]["status"] == 200
+                    and e["detail"]["finished_ns"]
+                    <= starts[e["detail"]["request_id"]]["deadline_ns"]
+                ]
+                # Synchronize at the FIRST actual on-time HTTP response rather
+                # than five finishes, which also counted failed/timeout attempts
+                # and consumed the short CPU fixture's finite dispatch window.
+                if successful:
+                    assert len(starts) < spec["request_count"], (
+                        "CPU fixture dispatch already exhausted before fault",
+                        events,
+                    )
                     break
+                assert client.poll() is None, "client exited before successful traffic"
                 time.sleep(0.01)
             else:
                 raise TimeoutError("no pre-fault successful client traffic")
@@ -202,8 +227,38 @@ def test_real_continuous_http_stop_resume_backend_and_unknown_execution(tmp_path
                 "fault_ns": fault_ns,
                 "recovery_ns": recovery_ns,
             }
+            # Keep original raw traces and observed schedule diagnostics even
+            # when a loaded CI runner genuinely misses the compressed deadline.
+            # Such a miss still FAILS the strict original coverage assertion.
+            observed = read_client_trace(client_trace)
+            actual_sends = [
+                e["detail"] for e in observed if e["kind"] == "request.start"
+            ]
+            timing = {
+                "fault_ns": fault_ns,
+                "recovery_ns": recovery_ns,
+                "request_starts": len(actual_sends),
+                "request_finishes": sum(
+                    e["kind"] == "request.finish" for e in observed
+                ),
+                "max_dispatch_lag_ns": max(
+                    e["sent_ns"] - e["scheduled_ns"] for e in actual_sends
+                ),
+                "dispatch_slack_ns": int(spec["dispatch_slack_s"] * 1e9),
+                "minimum_sent_ns": min(e["sent_ns"] for e in actual_sends),
+                "maximum_sent_ns": max(e["sent_ns"] for e in actual_sends),
+                "during_fault_sends": sum(
+                    fault_ns <= e["sent_ns"] <= recovery_ns for e in actual_sends
+                ),
+            }
+            (tmp_path / "fault-markers.json").write_bytes(canonical(kwargs))
+            (tmp_path / "observed-window-timing.json").write_bytes(canonical(timing))
             result = verify_window(spec, client_trace, authority_journal, **kwargs)
-            assert result["coverage"] == "complete-finite-delivery-window"
+            (tmp_path / "verification.json").write_bytes(canonical(result))
+            assert result["coverage"] == "complete-finite-delivery-window", (
+                result,
+                timing,
+            )
             assert 0 < result["lost_requests"] < spec["request_count"]
             assert result["duplicated_requests"] is None
             assert result["reused_successful_response_ids"] == 0
@@ -213,8 +268,6 @@ def test_real_continuous_http_stop_resume_backend_and_unknown_execution(tmp_path
                 == "frozen-live-process-and-response-bound"
             )
             assert result["formal_result"] is False
-            (tmp_path / "verification.json").write_bytes(canonical(result))
-            (tmp_path / "fault-markers.json").write_bytes(canonical(kwargs))
             for label in ("client", "authority"):
                 missing = tmp_path / (label + "-missing.jsonl")
                 paths = (
@@ -277,8 +330,7 @@ def test_real_continuous_http_stop_resume_backend_and_unknown_execution(tmp_path
                 for e in changed
                 if e["kind"] == "request.finish"
                 and e["detail"]["status"] == 200
-                and e["detail"]["finished_ns"]
-                <= deadlines[e["detail"]["request_id"]]
+                and e["detail"]["finished_ns"] <= deadlines[e["detail"]["request_id"]]
             )
             served["detail"]["admission_id"] = "replayed-admission"
             fake = tmp_path / "fake.jsonl"
