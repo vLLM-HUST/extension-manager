@@ -9,7 +9,7 @@ import socket
 import stat
 import struct
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from experiments.exposure_gate import native_semantic_collector as native
 from experiments.formal_campaign.h3_dynamic_authority import check_ref, require
@@ -47,19 +47,121 @@ def write_private(path, value):
     return {"path": str(path), "sha256": native.sha(raw)}
 
 
+def _protocol_source_files(protocol_sources):
+    """Resolve the issuer's two explicit namespaces, retaining ALL code pins.
+
+    runtime-sdk keys are logical provenance identifiers created by the original
+    _protocol_binding. Their bytes belong to the actually imported SDK package,
+    which must still equal the admitted checkout's exact corresponding sources.
+    They are never relative filesystem paths or caller-selected path rewrites.
+    """
+    import vllm_hust_ext
+
+    require(
+        type(protocol_sources) is dict and protocol_sources,
+        "complete issued protocol source inventory required",
+    )
+    root = Path(__file__).resolve().parents[2]
+    init = Path(vllm_hust_ext.__file__)
+    require(
+        init.is_absolute()
+        and init.resolve() == init
+        and not init.is_symlink()
+        and init.name == "__init__.py",
+        "actual imported SDK path is not canonical",
+    )
+    package = init.parent
+    actual = {}
+    for path in sorted(package.rglob("*.py")):
+        require(
+            path.resolve() == path and not path.is_symlink(),
+            "actual SDK source path is not canonical",
+        )
+        key = "runtime-sdk:src/vllm_hust_ext/" + path.relative_to(package).as_posix()
+        actual[key] = path
+    issued_sdk_keys = {
+        k for k in protocol_sources if type(k) is str and k.startswith("runtime-sdk:")
+    }
+    require(
+        actual and set(actual) == issued_sdk_keys,
+        "issued runtime SDK inventory differs from actual complete package",
+    )
+    checkout = root / "src/vllm_hust_ext"
+    checkout_keys = {
+        "runtime-sdk:src/vllm_hust_ext/" + path.relative_to(checkout).as_posix()
+        for path in checkout.rglob("*.py")
+    }
+    require(
+        checkout_keys == set(actual), "checkout/runtime SDK source inventory differs"
+    )
+    resolved, checkout_sources = {}, []
+    for key, expected in protocol_sources.items():
+        require(
+            type(key) is str and type(expected) is str,
+            "protocol source key/digest types differ",
+        )
+        digest = expected.removeprefix("sha256:")
+        require(
+            len(digest) == 64 and all(c in "0123456789abcdef" for c in digest),
+            "protocol source digest is not exact SHA256",
+        )
+        if key.startswith("runtime-sdk:"):
+            relative = key.removeprefix("runtime-sdk:")
+            logical = PurePosixPath(relative)
+            require(
+                str(logical) == relative
+                and not logical.is_absolute()
+                and logical.parts[:2] == ("src", "vllm_hust_ext")
+                and ".." not in logical.parts
+                and "\\" not in relative
+                and logical.suffix == ".py"
+                and key in actual,
+                "runtime SDK logical key escaped exact source namespace",
+            )
+            path = actual[key]
+            original = root / relative
+            require(
+                original.resolve() == original and not original.is_symlink(),
+                "checkout SDK source escaped canonical path",
+            )
+            checkout_sources.append({"path": str(original), "sha256": digest})
+        else:
+            logical = PurePosixPath(key)
+            require(
+                str(logical) == key
+                and not logical.is_absolute()
+                and logical.parts
+                and logical.parts[0] == "experiments"
+                and ".." not in logical.parts
+                and ":" not in key
+                and "\\" not in key
+                and logical.suffix in (".py", ".json"),
+                "repository source key escaped exact protocol namespace",
+            )
+            path = root / key
+            require(
+                path.resolve() == path and not path.is_symlink(),
+                "protocol source path is not canonical",
+            )
+        require(str(path) not in resolved, "protocol source physical path repeated")
+        resolved[str(path)] = digest
+    # Current installed payload AND checkout fingerprint remain independently
+    # checked against every original issuer pin. Only actual paths go on wire.
+    native.source_digests(checkout_sources)
+    result = [
+        {"path": path, "sha256": digest} for path, digest in sorted(resolved.items())
+    ]
+    native.source_digests(result)
+    return result
+
+
 def recheck_scope(scope):
     require(
         type(scope) is ValidatedLiveStart,
         "independently issued live-start scope required",
     )
     receipt = json.loads(check_ref(scope.receipt_ref()).read_bytes())
-    root = Path(__file__).resolve().parents[2]
-    for relative, expected in receipt["protocol_sources"].items():
-        path = root / relative
-        require(
-            native.sha(path.read_bytes()) == expected.removeprefix("sha256:"),
-            "live protocol source changed after independent issuance",
-        )
+    _protocol_source_files(receipt["protocol_sources"])
     native.source_digests(receipt["host_sources"])
     return receipt
 
@@ -150,11 +252,7 @@ class LiveGrants:
             == authority.start["authority"]["command"],
             "controller is not original source-issued complete authority argv",
         )
-        root = Path(__file__).resolve().parents[2]
-        controller_sources = [
-            {"path": str(root / relative), "sha256": sha.removeprefix("sha256:")}
-            for relative, sha in self.receipt["protocol_sources"].items()
-        ]
+        controller_sources = _protocol_source_files(self.receipt["protocol_sources"])
         native.source_digests(controller_sources)
         create_private_directory(self.directory)
         for sender in spec["senders"]:
@@ -350,8 +448,8 @@ class LiveGrants:
             ]
             require(
                 len(set(expected)) == 1 and response["source_sha256"] == expected[0],
-                'actual producer control implementation is '
-                'outside source-admitted Host tuple',
+                "actual producer control implementation is "
+                "outside source-admitted Host tuple",
             )
             endpoint = {**member, "socket_identity": [info.st_dev, info.st_ino]}
             self.endpoints.append(endpoint)
