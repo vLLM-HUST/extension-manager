@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path, PurePosixPath
 
 SCHEMA = "ecpa-h3-actual-runtime-source-closure/v1"
@@ -257,62 +258,79 @@ def _source_members(item, root, revision):
     return {"Python": checked_members, "native_ELF": wheel_elfs}
 
 
+def _probe_role(role, item):
+    result = {}
+    dist = metadata.distribution(item["distribution"])
+    wheel = item["wheel"]
+    require(dist.version == wheel["version"], "actual runtime version differs")
+    payload, roots = {}, set()
+    wheel_raw = checked(wheel)
+    with zipfile.ZipFile(io.BytesIO(wheel_raw)) as archive:
+        names = archive.namelist()
+        require(len(names) == len(set(names)), "wheel has repeated members")
+        for name in names:
+            parts = PurePosixPath(name).parts
+            require(
+                parts and not name.startswith("/") and ".." not in parts,
+                "unsafe wheel member",
+            )
+            if name.endswith("/") or name.endswith(".dist-info/RECORD"):
+                continue
+            relative = name
+            if parts[0].endswith(".data"):
+                require(
+                    len(parts) > 2 and parts[1] in {"purelib", "platlib"},
+                    "unsupported wheel relocation",
+                )
+                relative = str(PurePosixPath(*parts[2:]))
+            path = Path(dist.locate_file(relative))
+            require(
+                path.is_file() and not path.is_symlink() and path.resolve() == path,
+                "actual installed wheel payload path differs: " + name,
+            )
+            installed_raw = path.read_bytes()
+            require(
+                installed_raw == archive.read(name),
+                "actual installed wheel payload differs: " + name,
+            )
+            payload[str(path)] = sha(installed_raw)
+            if not parts[0].endswith(".dist-info"):
+                roots.add(Path(dist.locate_file(PurePosixPath(relative).parts[0])))
+    for root in roots:
+        if root.is_dir():
+            for path in root.rglob("*"):
+                if path.is_file() and (
+                    path.suffix in {".py", ".so", ".o", ".a"}
+                    or path.read_bytes()[:4] == b"\x7fELF"
+                ):
+                    require(str(path) in payload, "unrecorded runtime payload")
+    module = item["module"]
+    require(module.isidentifier(), "probe module must be a top-level package")
+    found = importlib.util.find_spec(module)
+    require(
+        found is not None and found.origin in payload,
+        "actual import origin shadows the admitted installed wheel",
+    )
+    result[role] = {"origin": found.origin, "payload": payload}
+    return result[role]
+
+
+def _probe_roles(items):
+    declarations = list(items.items())
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(_probe_role, role, item) for role, item in declarations
+        ]
+        observations = [future.result() for future in futures]
+    return {
+        role: result
+        for (role, _), result in zip(declarations, observations, strict=True)
+    }
+
+
 def _probe(items):
     """Run under the exact child interpreter/environment, without importing Host."""
-    result = {}
-    for role, item in items.items():
-        dist = metadata.distribution(item["distribution"])
-        wheel = item["wheel"]
-        require(dist.version == wheel["version"], "actual runtime version differs")
-        payload, roots = {}, set()
-        wheel_raw = checked(wheel)
-        with zipfile.ZipFile(io.BytesIO(wheel_raw)) as archive:
-            names = archive.namelist()
-            require(len(names) == len(set(names)), "wheel has repeated members")
-            for name in names:
-                parts = PurePosixPath(name).parts
-                require(
-                    parts and not name.startswith("/") and ".." not in parts,
-                    "unsafe wheel member",
-                )
-                if name.endswith("/") or name.endswith(".dist-info/RECORD"):
-                    continue
-                relative = name
-                if parts[0].endswith(".data"):
-                    require(
-                        len(parts) > 2 and parts[1] in {"purelib", "platlib"},
-                        "unsupported wheel relocation",
-                    )
-                    relative = str(PurePosixPath(*parts[2:]))
-                path = Path(dist.locate_file(relative))
-                require(
-                    path.is_file() and not path.is_symlink() and path.resolve() == path,
-                    "actual installed wheel payload path differs: " + name,
-                )
-                installed_raw = path.read_bytes()
-                require(
-                    installed_raw == archive.read(name),
-                    "actual installed wheel payload differs: " + name,
-                )
-                payload[str(path)] = sha(installed_raw)
-                if not parts[0].endswith(".dist-info"):
-                    roots.add(Path(dist.locate_file(PurePosixPath(relative).parts[0])))
-        for root in roots:
-            if root.is_dir():
-                for path in root.rglob("*"):
-                    if path.is_file() and (
-                        path.suffix in {".py", ".so", ".o", ".a"}
-                        or path.read_bytes()[:4] == b"\x7fELF"
-                    ):
-                        require(str(path) in payload, "unrecorded runtime payload")
-        module = item["module"]
-        require(module.isidentifier(), "probe module must be a top-level package")
-        found = importlib.util.find_spec(module)
-        require(
-            found is not None and found.origin in payload,
-            "actual import origin shadows the admitted installed wheel",
-        )
-        result[role] = {"origin": found.origin, "payload": payload}
+    result = _probe_roles(items)
     return {
         "python": sys.executable,
         "real_python": str(Path(sys.executable).resolve()),
@@ -320,6 +338,40 @@ def _probe(items):
         "cwd": os.getcwd(),
         "sys_path": sys.path,
         "distributions": result,
+    }
+
+
+def _source_role(role, revision, runtime_wheels, repositories, names):
+    sources = {}
+    item = runtime_wheels[role]
+    if role in names:
+        require(
+            (item["distribution"].replace("_", "-").lower(), item["module"])
+            == names[role],
+            "runtime component distribution/module differs",
+        )
+    require(
+        item["wheel"]["revision"] == revision,
+        "runtime wheel and fixed source revision differ",
+    )
+    root = Path(repositories[role]["path"])
+    sources[role] = _source_members(item, root, revision)
+    return sources[role]
+
+
+def _source_roles(expected, runtime_wheels, repositories, names):
+    declarations = list(expected.items())
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(
+                _source_role, role, revision, runtime_wheels, repositories, names
+            )
+            for role, revision in declarations
+        ]
+        observations = [future.result() for future in futures]
+    return {
+        role: result
+        for (role, _), result in zip(declarations, observations, strict=True)
     }
 
 
@@ -345,26 +397,12 @@ def verify_runtime_source_closure(phase, fixed, repositories, runtime_wheels):
         all(environment.get(k) == os.environ.get(k) for k in critical),
         "Host import/loader environment differs from admitted runtime",
     )
-    sources = {}
     names = {
         "manager": ("vllm-hust-ext", "vllm_hust_ext"),
         "host": ("vllm", "vllm"),
         "accelerator": ("vllm-ascend", "vllm_ascend"),
     }
-    for role, revision in expected.items():
-        item = runtime_wheels[role]
-        if role in names:
-            require(
-                (item["distribution"].replace("_", "-").lower(), item["module"])
-                == names[role],
-                "runtime component distribution/module differs",
-            )
-        require(
-            item["wheel"]["revision"] == revision,
-            "runtime wheel and fixed source revision differ",
-        )
-        root = Path(repositories[role]["path"])
-        sources[role] = _source_members(item, root, revision)
+    sources = _source_roles(expected, runtime_wheels, repositories, names)
     process = subprocess.run(
         [phase["argv"][0], str(Path(__file__).resolve()), "--probe"],
         input=json.dumps(runtime_wheels).encode(),
