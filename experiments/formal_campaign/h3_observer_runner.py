@@ -97,6 +97,28 @@ def authority_readiness_deadline(original, *, native, launched_monotonic):
     return launched_monotonic + (original["probe"]["ready_timeout_s"] if native else 10)
 
 
+def _admit_native_start(spec_path, receipt_path, start_id, *, check_remote, live_scope):
+    from experiments.formal_campaign.h3_observer_live_registration import (
+        ValidatedLiveStart,
+    )
+    from experiments.formal_campaign.h3_observer_registration import (
+        validate_receipt_for_start,
+    )
+
+    if live_scope is None:
+        return validate_receipt_for_start(
+            spec_path, receipt_path, start_id, check_remote=check_remote
+        )
+    require(type(live_scope) is ValidatedLiveStart, "unissued live native admission")
+    value = live_scope.value()
+    require(
+        value["base_campaign"]["path"] == str(Path(spec_path).resolve())
+        and value["base_receipt"]["path"] == str(Path(receipt_path).resolve()),
+        "live native admission belongs to another original admission",
+    )
+    return live_scope.native_admission(start_id)
+
+
 def execute(
     spec_path,
     receipt_path,
@@ -112,9 +134,6 @@ def execute(
         from experiments.formal_campaign.h3_observer_carrier import (
             NativeRegisteredAuthority as Authority,
         )
-        from experiments.formal_campaign.h3_observer_registration import (
-            validate_receipt_for_start,
-        )
     else:
         from experiments.formal_campaign.h3_observer_common_registration import (
             validate_receipt,
@@ -123,6 +142,7 @@ def execute(
         Authority = RegisteredAuthority
     require(native, "observer-loss runner requires its distinct native receipt domain")
     live_environment = None
+    live_scope = None
     require(
         bool(live_intent) == bool(live_receipt), "both v2 intent and receipt required"
     )
@@ -134,6 +154,7 @@ def execute(
         scope = validate_for_start(
             live_intent, live_receipt, start_id, check_remote=check_remote
         )
+        live_scope = scope
         require(
             scope.value()["base_campaign"]["path"] == str(Path(spec_path).resolve())
             and scope.value()["base_receipt"]["path"]
@@ -176,8 +197,12 @@ def execute(
     cleanup_ports = []
     try:
         if native:
-            receipt = validate_receipt_for_start(
-                spec_path, receipt_path, start_id, check_remote=check_remote
+            receipt = _admit_native_start(
+                spec_path,
+                receipt_path,
+                start_id,
+                check_remote=check_remote,
+                live_scope=live_scope,
             )
             spec, original, start = receipt.selected(start_id)
         else:

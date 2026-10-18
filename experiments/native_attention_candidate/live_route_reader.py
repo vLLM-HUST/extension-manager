@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from email.parser import BytesParser
 from pathlib import Path, PurePosixPath
+from threading import Lock, get_ident
 from types import MappingProxyType
 
 from experiments.native_attention_candidate import (
@@ -326,13 +327,185 @@ def _installed_payload(wheel, distribution, states):
     return checked
 
 
-def audit_cell_inputs(config_path, recipe_path):
+# Only active invocation ownership: never a prior-call audit/digest cache.
+class _ModelAuditCall:
+    __slots__ = ()
+
+
+_MODEL_AUDIT_CALLS = {}
+_MODEL_AUDIT_CALLS_LOCK = Lock()
+_MODEL_AUDIT_REGISTRY_PID = os.getpid()
+
+
+def _reset_model_audit_calls_after_fork():
+    global _MODEL_AUDIT_CALLS, _MODEL_AUDIT_CALLS_LOCK, _MODEL_AUDIT_REGISTRY_PID
+    # Child must never acquire locks held by vanished parent threads.
+    _MODEL_AUDIT_CALLS = {}
+    _MODEL_AUDIT_CALLS_LOCK = Lock()
+    _MODEL_AUDIT_REGISTRY_PID = os.getpid()
+
+
+os.register_at_fork(after_in_child=_reset_model_audit_calls_after_fork)
+
+
+def _active_model_audit_call(token):
+    registry.require(
+        os.getpid() == _MODEL_AUDIT_REGISTRY_PID,
+        "model registry crossed process before lock",
+    )
+    with _MODEL_AUDIT_CALLS_LOCK:
+        registry.require(
+            type(token) is _ModelAuditCall and token in _MODEL_AUDIT_CALLS,
+            "unissued or closed model audit call",
+        )
+        record = _MODEL_AUDIT_CALLS[token]
+    registry.require(
+        os.getpid() == record[0] and get_ident() == record[1],
+        "model audit call belongs to another process or owner thread",
+    )
+    return record
+
+
+def _model_ancestor_identities(rows):
+    """Fresh fd walk of declared leaves' ancestors, no model-directory census."""
+    result = {}
+    for row in rows:
+        path = _path(row["path"])
+        fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        current = "/"
+        try:
+            for part in (None, *path.parts[1:-1]):
+                if part is not None:
+                    child = os.open(
+                        part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd
+                    )
+                    os.close(fd)
+                    fd = child
+                    current = str(Path(current) / part)
+                meta = os.fstat(fd)
+                identity = {
+                    k: getattr(meta, k)
+                    for k in ("st_dev", "st_ino", "st_uid", "st_mode")
+                }
+                registry.require(
+                    current not in result or result[current] == identity,
+                    "model ancestor changed during namespace capture",
+                )
+                result[current] = identity
+        finally:
+            os.close(fd)
+    return result
+
+
+def _check_model_snapshot(snapshot):
+    _check_file_states(snapshot["file_state"])
+    registry.require(
+        _model_ancestor_identities(snapshot["model_rows"]) == snapshot["ancestors"],
+        "model ancestor identity changed",
+    )
+
+
+class _FreshModelAuditCall:
+    """Owner-bound scope: a foreign exit cannot exhaust its finalizer."""
+
+    __slots__ = ("_token", "_record")
+
+    def __init__(self):
+        self._token = None
+        self._record = None
+
+    def __enter__(self):
+        registry.require(self._record is None, "model scope already entered")
+        registry.require(
+            os.getpid() == _MODEL_AUDIT_REGISTRY_PID,
+            "model registry crossed process before lock",
+        )
+        token = _ModelAuditCall()
+        record = (os.getpid(), get_ident(), Lock(), {})
+        self._token, self._record = token, record
+        with _MODEL_AUDIT_CALLS_LOCK:
+            _MODEL_AUDIT_CALLS[token] = record
+        return token
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        token, record = self._token, self._record
+        registry.require(record is not None, "model scope not entered")
+        # These owner checks precede all locks, including inherited locks.
+        registry.require(os.getpid() == record[0], "model scope crossed process")
+        if get_ident() != record[1]:
+            with _MODEL_AUDIT_CALLS_LOCK:
+                _MODEL_AUDIT_CALLS.pop(token, None)
+            registry.require(False, "model audit close outside owner thread")
+        with record[2]:
+            try:
+                registry.require(
+                    _active_model_audit_call(token) is record,
+                    "model audit call changed before close",
+                )
+                for raw in record[3].values():
+                    _check_model_snapshot(json.loads(raw))
+            finally:
+                with _MODEL_AUDIT_CALLS_LOCK:
+                    _MODEL_AUDIT_CALLS.pop(token, None)
+        return False
+
+
+def _fresh_model_audit_call():
+    return _FreshModelAuditCall()
+
+
+def _model_inventory_in_call(rows, states, token, key):
+    if token is None:
+        return _model_inventory(rows, states)
+    record = _active_model_audit_call(token)
+    with record[2]:
+        registry.require(
+            _active_model_audit_call(token) is record,
+            "model audit call changed before use",
+        )
+        declared = registry.canonical(rows)
+        identity = registry.canonical({"binding": key, "model_rows": rows})
+        if identity not in record[3]:
+            ancestors = _model_ancestor_identities(rows)
+            observed_states = {}
+            models = _model_inventory(rows, observed_states)
+            registry.require(
+                _model_ancestor_identities(rows) == ancestors,
+                "model ancestor changed during first hash",
+            )
+            record[3][identity] = registry.canonical(
+                {
+                    "model_rows": rows,
+                    "models": models,
+                    "file_state": observed_states,
+                    "ancestors": ancestors,
+                }
+            )
+        current = json.loads(record[3][identity])
+        registry.require(
+            registry.canonical(current["model_rows"]) == declared,
+            "model invocation declarations changed",
+        )
+        _check_model_snapshot(current)
+        for path, state in current["file_state"].items():
+            registry.require(
+                path not in states or states[path] == state,
+                "model invocation file state conflicts",
+            )
+            states[path] = state
+        _active_model_audit_call(token)
+        return current["models"]
+
+
+def audit_cell_inputs(config_path, recipe_path, *, _model_call=None):
     """Expensive prelaunch audit, run in the actual pinned runtime interpreter.
 
     Returns observed bytes, not a producer claim.  It proves files and installed
     code at audit time, not model quality or which bytes an accelerator executed.
     The issuer must pin/trust the resulting manifest independently.  No NPU runs.
     """
+    if _model_call is not None:
+        _active_model_audit_call(_model_call)
     config_path, recipe_path = _path(config_path), _path(recipe_path)
     states = {}
     config_raw, recipe_raw = config_path.read_bytes(), recipe_path.read_bytes()
@@ -367,7 +540,15 @@ def audit_cell_inputs(config_path, recipe_path):
             "genuine wheel bytes differ",
         )
         installed[role] = _installed_payload(wheel, DISTRIBUTIONS[role], states)
-    models = _model_inventory(config["model_files"], states)
+    models = _model_inventory_in_call(
+        config["model_files"],
+        states,
+        _model_call,
+        {
+            "config": {"path": str(config_path), "sha256": registry.sha(config_raw)},
+            "recipe": {"path": str(recipe_path), "sha256": registry.sha(recipe_raw)},
+        },
+    )
     # This adapter intentionally supports the current single 7B cell only.
     registry.require(
         len(models) == 14, "single-cell model inventory must contain 14 files"
@@ -438,6 +619,8 @@ def audit_cell_inputs(config_path, recipe_path):
         and recipe_path.read_bytes() == recipe_raw,
         "input documents changed during audit",
     )
+    if _model_call is not None:
+        _active_model_audit_call(_model_call)
     return result
 
 

@@ -278,7 +278,7 @@ def test_ambiguous_original_start_rejected(prepared):
     intent = json.loads(f["intent"].read_bytes())
     intent["base_campaign"] = live.reference(f["path"])
     f["save"](f["intent"], intent)
-    with pytest.raises(GateError, match="ambiguous"):
+    with pytest.raises(GateError, match="exact original Latin nine order required"):
         validate(f)
 
 
@@ -519,3 +519,122 @@ def test_canonical_authority_still_rejects_unissued_live_scope():
     actual_type = authority.NativeAuthority.__new__(authority.NativeAuthority)
     with pytest.raises(GateError, match="independently issued v2 scope"):
         LiveGrants(actual_type, SimpleNamespace(ready=True))
+
+
+def test_live_runner_consumes_exact_minted_native_scope_without_second_audit(
+    prepared, monkeypatch
+):
+    from experiments.formal_campaign import h3_observer_runner as runner
+
+    f = prepared
+    sid = f["spec"]["starts"][0]["start_id"]
+    scope = validate(f, sid)
+    native = scope.native_admission(sid)
+    before = list(f["calls"])
+
+    def duplicate_audit(*args, **kwargs):
+        pytest.fail("same live runner admission must not rebuild native scope")
+
+    monkeypatch.setattr(live.original, "validate_receipt_for_start", duplicate_audit)
+    actual = runner._admit_native_start(
+        f["path"], f["base"], sid, check_remote=True, live_scope=scope
+    )
+    assert actual is native
+    assert f["calls"] == before
+    for kind in ("deployment", "runtime", "plans"):
+        assert [ids for k, ids in before if k == kind] == [(sid,)]
+    with pytest.raises(GateError, match="another start"):
+        scope.native_admission(f["spec"]["starts"][1]["start_id"])
+    with pytest.raises(GateError, match="another original"):
+        runner._admit_native_start(
+            f["path"].with_name("other.json"),
+            f["base"],
+            sid,
+            check_remote=True,
+            live_scope=scope,
+        )
+    with pytest.raises(GateError, match="unissued"):
+        runner._admit_native_start(
+            f["path"],
+            f["base"],
+            sid,
+            check_remote=True,
+            live_scope=SimpleNamespace(native_admission=lambda unused: native),
+        )
+
+
+def test_live_native_scope_is_minted_after_all_live_source_checks(
+    prepared, monkeypatch
+):
+    f = prepared
+    original_validate = live.original.validate_receipt_for_start
+    at_native = []
+
+    def checked_order(*args, **kwargs):
+        # The independent live source observation has already run; no scope is
+        # reused from before those checks. Native remote/epoch guards run now.
+        assert any(kind == "remote" for kind, _ in f["calls"])
+        at_native.append(len(f["calls"]))
+        return original_validate(*args, **kwargs)
+
+    monkeypatch.setattr(live.original, "validate_receipt_for_start", checked_order)
+    first = validate(f)
+    assert len(at_native) == 1
+    validate(f)
+    assert len(at_native) == 2
+    with pytest.raises(AttributeError):
+        first._native_scope = object()
+    with pytest.raises(GateError, match="typed scope"):
+        live.ValidatedLiveStart(
+            first.value(),
+            first.receipt_ref(),
+            _issuer=live._ISSUER,
+            _native_scope=first.native_admission(
+                first.value()["start"]["start_id"]
+            ).selected(first.value()["start"]["start_id"]),
+        )
+
+
+def test_nonlive_runner_retains_fresh_independent_native_validation(prepared):
+    from experiments.formal_campaign import h3_observer_runner as runner
+
+    f = prepared
+    sid = f["spec"]["starts"][0]["start_id"]
+    for _ in range(2):
+        token = runner._admit_native_start(
+            f["path"], f["base"], sid, check_remote=True, live_scope=None
+        )
+        assert token.selected(sid)[2]["start_id"] == sid
+    for kind in ("deployment", "runtime", "plans"):
+        assert [ids for k, ids in f["calls"] if k == kind] == [(sid,), (sid,)]
+    Path(f["epochs"][sid][1]["path"]).write_bytes(b"changed actual epoch source")
+    with pytest.raises(GateError):
+        runner._admit_native_start(
+            f["path"], f["base"], sid, check_remote=True, live_scope=None
+        )
+
+
+def test_live_source_checks_cannot_hide_selected_epoch_mutation(prepared, monkeypatch):
+    f = prepared
+    sid = f["spec"]["starts"][0]["start_id"]
+    original_observe = live.common.source_provenance.observe_sources
+
+    def mutate_before_final_native(*args, **kwargs):
+        Path(f["epochs"][sid][0]["path"]).write_bytes(b"changed before native mint")
+        return original_observe(*args, **kwargs)
+
+    monkeypatch.setattr(
+        live.common.source_provenance, "observe_sources", mutate_before_final_native
+    )
+    with pytest.raises(GateError):
+        validate(f)
+
+
+@pytest.mark.parametrize("which", ["intent", "base", "live", "path"])
+def test_live_native_reuse_rejects_metadata_change_after_mint(prepared, which):
+    f = prepared
+    scope = validate(f)
+    sid = f["spec"]["starts"][0]["start_id"]
+    f[which].write_bytes(f[which].read_bytes() + b" ")
+    with pytest.raises(GateError, match="input bytes changed"):
+        scope.native_admission(sid)
