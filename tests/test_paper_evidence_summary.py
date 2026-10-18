@@ -11,6 +11,7 @@ from jsonschema import ValidationError
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
+    "experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/snapshots/production-stack-provider-source.py.snapshot",
     "experiments/formal_campaign/verify_kv_selected_tensor_observation.py",
     "experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014",
     "experiments/formal_campaign/verify_kv_postack_metadata.py",

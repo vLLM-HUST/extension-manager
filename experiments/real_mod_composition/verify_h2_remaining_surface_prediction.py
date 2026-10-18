@@ -50,7 +50,17 @@ def main() -> int:
         "prediction oracle binding",
     )
     require(prediction["manager"]["base_commit"] == MANAGER_BASE, "Manager base")
-    provider_source = ROOT / prediction["manager"]["provider_source"]
+    # This prediction binds the historical provider, not later opt-in features.
+    # Current legacy behavior is separately replayed below; raw prediction and
+    # its oracle remain unchanged.
+    require(
+        prediction["manager"]["provider_source"]
+        == "src/vllm_hust_ext/providers/production_stack.py",
+        "historical provider path",
+    )
+    provider_source = (
+        ARTIFACT / "snapshots/production-stack-provider-source.py.snapshot"
+    )
     require(provider_source.is_file(), "Manager provider source")
     require(
         sha256(provider_source) == prediction["manager"]["provider_source_sha256"],
