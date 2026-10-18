@@ -2,6 +2,10 @@
 
 import builtins
 import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -9,7 +13,9 @@ from experiments.formal_campaign import h4_sampled_calibration as calibration
 from vllm_hust_ext import activation_profile
 
 
-def test_cpu_child_removes_only_runtime_controls_without_changing_host(monkeypatch):
+def test_cpu_child_removes_only_runtime_controls_without_changing_host(
+    monkeypatch, tmp_path
+):
     phase_environment = {
         key: "product-owned" for key in calibration._TOKENIZER_RUNTIME_ENVIRONMENT
     }
@@ -24,7 +30,9 @@ def test_cpu_child_removes_only_runtime_controls_without_changing_host(monkeypat
     )
     original = dict(phase_environment)
     monkeypatch.setenv("VLLM_ECPA_EVIDENCE_SINK", "parent-owned")
-    child = calibration._tokenizer_environment(phase_environment)
+    child = calibration._tokenizer_environment(
+        phase_environment, cache_directory=tmp_path / "tokenizer-cache"
+    )
     assert phase_environment == original
     assert os.environ["VLLM_ECPA_EVIDENCE_SINK"] == "parent-owned"
     assert not calibration._TOKENIZER_RUNTIME_ENVIRONMENT.intersection(child)
@@ -32,6 +40,36 @@ def test_cpu_child_removes_only_runtime_controls_without_changing_host(monkeypat
         if key not in calibration._TOKENIZER_RUNTIME_ENVIRONMENT:
             assert child[key] == value
     assert child["HF_HUB_OFFLINE"] == child["TRANSFORMERS_OFFLINE"] == "1"
+
+
+def test_tokenizer_cache_side_effect_cannot_claim_or_warm_product_directory(tmp_path):
+    product = tmp_path / "future-run"
+    environment = dict(os.environ, TRITON_CACHE_DIR=str(product / "triton-cache"))
+    original = dict(environment)
+    with tempfile.TemporaryDirectory(prefix="tokenizer-", dir=tmp_path) as isolated:
+        child = calibration._tokenizer_environment(
+            environment, cache_directory=isolated
+        )
+        # Reproduce the actual import side effect with a real stdlib child;
+        # no Host, model, native qualification or device is simulated.
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import os,pathlib; p=pathlib.Path(os.environ['TRITON_CACHE_DIR']); "
+                "p.mkdir(parents=True,exist_ok=True); "
+                "(p/'import-utility').write_bytes(b'cpu-import')",
+            ],
+            env=child,
+            check=True,
+            timeout=10,
+        )
+        assert (Path(isolated) / "import-utility").read_bytes() == b"cpu-import"
+        assert environment == original
+        assert not product.exists()
+        product.mkdir()  # The original exclusive run creation still succeeds.
+        assert list(product.iterdir()) == []
+    assert not Path(isolated).exists()
 
 
 @pytest.mark.parametrize("profile_present", [False, True])
