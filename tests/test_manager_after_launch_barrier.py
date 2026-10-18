@@ -32,9 +32,7 @@ admin = module(ADMIN, "phase_admin")
 @pytest.fixture
 def harness():
     processes = []
-    with tempfile.TemporaryDirectory(
-        prefix="mp-", dir="/root/ecpa-workspace/management"
-    ) as directory:
+    with tempfile.TemporaryDirectory(prefix="mp-") as directory:
         yield Path(directory), processes
         for process in processes:
             if process.poll() is None:
