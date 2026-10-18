@@ -153,10 +153,7 @@ def observe_original_client_barrier(*, output, client_kernel, start_id, enrollme
     )
     require(
         events[0]["detail"]["spec_sha256"]
-        == "sha256:"
-        + hashlib.sha256(
-            (output / "runtime-client-spec.json").read_bytes()
-        ).hexdigest(),
+        == "sha256:" + hashlib.sha256(canonical(spec)).hexdigest(),
         "original client spec lineage differs",
     )
     starts = [e for e in events if e["kind"] == "request.start"]
@@ -174,9 +171,14 @@ def observe_original_client_barrier(*, output, client_kernel, start_id, enrollme
         stream.write(prefix)
         stream.flush()
         os.fsync(stream.fileno())
+    actual.verify()
     return {
         "start_id": start_id,
         "enrollment_sha256": enrollment,
+        "client_spec": {
+            "path": str(output / "runtime-client-spec.json"),
+            "sha256": "sha256:" + hashlib.sha256(actual.spec_raw).hexdigest(),
+        },
         "client_prefix": {
             "path": str(prefix_path),
             "sha256": "sha256:" + hashlib.sha256(prefix).hexdigest(),
@@ -501,6 +503,12 @@ def verify_first_request_prefix(
     events = read_client_trace(checked)
     spec_raw = Path(client_spec_path).read_bytes()
     spec = json.loads(spec_raw)
+    if "client_spec" in barrier:
+        require(
+            barrier["client_spec"]["path"] == str(client_spec_path)
+            and check_ref(barrier["client_spec"]).read_bytes() == spec_raw,
+            "original client spec raw reference differs",
+        )
     starts = [e for e in events if e["kind"] == "request.start"]
     require(
         events
@@ -512,7 +520,7 @@ def verify_first_request_prefix(
         == barrier["enrollment_sha256"]
         == enrollment
         and events[0]["detail"]["spec_sha256"]
-        == "sha256:" + hashlib.sha256(spec_raw).hexdigest()
+        == "sha256:" + hashlib.sha256(canonical(spec)).hexdigest()
         and all(e["client"] == expected_client for e in events),
         "original first-request source/spec/client/enrollment proof differs",
     )
