@@ -311,12 +311,47 @@ def intake(spec_path, receipt_path, start_id, output, *, live_intent, live_recei
             == fault["triggered_ns"] + 30_000_000_000,
             "actual original arm operator action/source/clock differs",
         )
+        from experiments.formal_campaign.h3_observer_live_operator import _reference
+
+        prearm_path = output / "live-operator-prearm.json"
+        require(
+            action["prearm"] == _reference(prearm_path),
+            "operator prearm reference changed",
+        )
+        prearm = load(prearm_path)
+        ready = prearm["ready"]
+        raw_fault = load(output / "observer-fault-raw.json")
+        require(
+            prearm["schema"] == "ecpa-h3-original-operator-prearmed/v1"
+            and prearm["command"] == action["command"]
+            and ready["schema"] == "ecpa-h3-original-operator-qualified-ready/v1"
+            and ready["operator"] == action["operator_kernel"]
+            and ready["operator"]["pid"] == action["operator_pid"]
+            and ready["parent"] == adapter["kernel"]
+            and ready["authority"] == authority["kernel"]
+            and ready["source"] == _reference(Path(declaration["command"][1]), None)
+            and ready["recipe"] == _reference(output / "runtime-recipe.json")
+            and prearm["formal_result"] is False
+            and ready["start_id"] == start_id
+            and ready["live_receipt"] == scope.receipt_ref()
+            and prearm["process_started_ns"]
+            <= ready["qualification_completed_ns"]
+            <= prearm["ready_received_ns"]
+            < raw_fault["client_barrier"]["client_started_ns"]
+            <= fault["triggered_ns"]
+            <= action["started_ns"]
+            <= action["original_deadline_ns"],
+            (
+                "operator qualification/actual invocation crossed "
+                "original clock or actor boundary"
+            ),
+        )
     if accounting is not None:
         require(
             accounting["operator_actions"] == operator_actions
             and accounting["recovery_ns"] == measured_recovery,
-            'carrier operator/recovery summary differs '
-            'from actual invocation/original delivery',
+            "carrier operator/recovery summary differs "
+            "from actual invocation/original delivery",
         )
     objective_result = assess_original_objective(
         original["objective"],
@@ -415,16 +450,16 @@ def intake(spec_path, receipt_path, start_id, output, *, live_intent, live_recei
             and enrolled_transports[0]["detail"]["transport"]
             == publication["transport"]
             and enrolled_transports[0]["monotonic_ns"] <= publication["published_ns"],
-            'independent publication differs from actua'
-            'l authority transport enrollment',
+            "independent publication differs from actua"
+            "l authority transport enrollment",
         )
         require(
             descriptor_path.exists()
             and publication["transport"]["successor_descriptor"]
             == load(descriptor_path)
             and publication["transport"]["live_receipt"] == scope.receipt_ref(),
-            'published continuation receiver differs fr'
-            'om actual immutable successor descriptor',
+            "published continuation receiver differs fr"
+            "om actual immutable successor descriptor",
         )
         if accounting is not None:
             require(
@@ -561,8 +596,7 @@ def intake(spec_path, receipt_path, start_id, output, *, live_intent, live_recei
         "measurements": measurements,
         "delivery_error": delivery_error,
         "source_admission_basis": (
-            'source-registered-actual-observer-fault-pl'
-            'us-original-request-start'
+            "source-registered-actual-observer-fault-plus-original-request-start"
         ),
         "partial_failed_start": not complete.exists(),
         "failure": observations["error"],
