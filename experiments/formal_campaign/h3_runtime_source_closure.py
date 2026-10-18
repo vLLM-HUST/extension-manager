@@ -21,7 +21,7 @@ from pathlib import Path, PurePosixPath
 # The original metadata probe executes this file by absolute filename under the
 # phase's own PYTHONPATH. Keep that search path intact: only this script's sibling
 # helper is needed in direct mode; package imports share the issuer's scope.
-if __package__ in (None, ""):
+if __name__ == "__main__":
     from h3_source_read_call import current as source_read_call
     from h3_source_read_call import run_source_role
 else:
