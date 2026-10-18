@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "schema",
+    "fixed_identity",
+    "repositories",
+    "source_provenance_policy",
+    "python",
+    "build_and_installed_proofs",
+    "original_workload",
+    "unqualified_manager_config",
+    "environment",
+    "port",
+    "served_model",
+    "qualification_run_root",
+    "formal_run_root",
+    "runtime_wheels",
+    "whole_runtime_payloads",
+    "model_files",
+    "prompt_input_ids_sha256",
+    "container_digest"
+  ],
+  "properties": {
+    "fixed_identity": {
+      "type": "object"
+    },
+    "repositories": {
+      "type": "object"
+    },
+    "source_provenance_policy": {
+      "type": "object"
+    },
+    "build_and_installed_proofs": {
+      "type": "object"
+    },
+    "runtime_wheels": {
+      "type": "object"
+    },
+    "whole_runtime_payloads": {
+      "type": "object"
+    },
+    "model_files": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^(sha256:)?[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "original_workload": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^(sha256:)?[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unqualified_manager_config": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^(sha256:)?[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^(sha256:)?[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "python": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "qualification_run_root": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "formal_run_root": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "schema": {
+      "const": "ecpa-h4-conditional-actual-build-inputs/v1"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "served_model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt_input_ids_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "container_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "additionalProperties": false
+}

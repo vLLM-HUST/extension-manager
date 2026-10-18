@@ -696,11 +696,23 @@ def _run_command(args: argparse.Namespace) -> int:
         raise ValueError("semantic launch requires enabled bundles")
     if phase_socket is not None and not bundles:
         raise ValueError("native phase handoff requires enabled bundles")
+    if getattr(args, "conditional_launch_spec", None) is not None and not bundles:
+        raise ValueError("conditional launch requires enabled real bundles")
     if bundles:
         semantic_spec_path = getattr(args, "semantic_launch_spec", None)
-        native_binding = launch_environment(
-            bundles, semantic_launch_spec=semantic_spec_path
-        )
+        conditional_spec_path = getattr(args, "conditional_launch_spec", None)
+        if semantic_spec_path is not None and conditional_spec_path is not None:
+            raise ValueError("semantic and conditional launch domains are distinct")
+        if conditional_spec_path is None:
+            native_binding = launch_environment(
+                bundles, semantic_launch_spec=semantic_spec_path
+            )
+        else:
+            native_binding = launch_environment(
+                bundles,
+                conditional_launch_spec=conditional_spec_path,
+                conditional_command=command,
+            )
         if semantic_spec_path is not None:
             from .semantic_runtime_binding import (
                 semantic_context_environment,
@@ -972,6 +984,14 @@ def build_parser() -> argparse.ArgumentParser:
         "run", help="launch and supervise a host command with enabled extensions"
     )
     run_parser.add_argument("--dry-run", action="store_true")
+    run_parser.add_argument(
+        "--conditional-launch-spec",
+        type=Path,
+        help=(
+            "source-owned registered conditional scheduler pair launch; "
+            "distinct from KV semantics"
+        ),
+    )
     run_parser.add_argument(
         "--semantic-launch-spec",
         help="private frozen semantic Plan and actual installed bundle binding",

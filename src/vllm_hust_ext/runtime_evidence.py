@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 import socket
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from vllm_hust_ext.config import config_path
 from vllm_hust_ext.discovery import InstalledBundle
@@ -79,9 +80,13 @@ def launch_environment(
     bundles: Sequence[InstalledBundle],
     *,
     semantic_launch_spec: str | Path | None = None,
+    conditional_launch_spec: str | Path | None = None,
+    conditional_command: Sequence[str] | None = None,
 ) -> dict[str, str]:
     """Create a fresh binding for one actual Manager-supervised launch."""
 
+    if semantic_launch_spec is not None and conditional_launch_spec is not None:
+        raise ValueError("semantic and conditional launch domains cannot be mixed")
     conflicts = [name for name in _EVIDENCE_ENVIRONMENT if name in os.environ]
     if conflicts:
         raise ValueError(
@@ -105,6 +110,23 @@ def launch_environment(
 
         spec = validate_semantic_launch_spec(semantic_launch_spec, bundles)
         native_plan_id = spec["native_plan_id"]
+    if conditional_launch_spec is not None:
+        validate_launch_spec = cast(
+            Callable[
+                [str | Path, Sequence[InstalledBundle], Sequence[str]],
+                dict[str, str],
+            ],
+            importlib.import_module(
+                "experiments.formal_campaign.conditional_binding"
+            ).validate_launch_spec,
+        )
+
+        if conditional_command is None:
+            raise ValueError("conditional launch requires actual rendered command")
+        conditional = validate_launch_spec(
+            conditional_launch_spec, bundles, conditional_command
+        )
+        native_plan_id = conditional["native_plan_id"]
     return {
         "VLLM_ECPA_EVIDENCE_SINK": _SINK,
         "VLLM_ECPA_EVIDENCE_STRICT": "1",
