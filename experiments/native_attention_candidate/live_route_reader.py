@@ -497,6 +497,44 @@ def _model_inventory_in_call(rows, states, token, key):
         return current["models"]
 
 
+def _audit_wheel_role(role, wheel):
+    # Private observations only: original hash/metadata/archive/payload guards.
+    states = {}
+    installed = {}
+    registry.require(
+        _hash(wheel["path"], states) == wheel["sha256"],
+        "genuine wheel bytes differ",
+    )
+    installed[role] = _installed_payload(wheel, DISTRIBUTIONS[role], states)
+    return installed[role], states
+
+
+def _audit_wheel_roles(wheels, states):
+    declarations = list(wheels.items())
+    # Context exit joins every submitted worker, including on any exception.
+    # No role result or file state is merged/published before that join.
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(_audit_wheel_role, role, wheel)
+            for role, wheel in declarations
+        ]
+        observations = [future.result() for future in futures]
+    merged = dict(states)
+    installed = {}
+    for (role, _), (payload, private_states) in zip(
+        declarations, observations, strict=True
+    ):
+        for path, state in private_states.items():
+            registry.require(
+                path not in merged or merged[path] == state,
+                "input file state conflicts",
+            )
+            merged[path] = state
+        installed[role] = payload
+    states.update(merged)
+    return installed
+
+
 def audit_cell_inputs(config_path, recipe_path, *, _model_call=None):
     """Expensive prelaunch audit, run in the actual pinned runtime interpreter.
 
@@ -533,13 +571,7 @@ def audit_cell_inputs(config_path, recipe_path, *, _model_call=None):
     registry.require(
         set(wheels) == set(DISTRIBUTIONS), "exact seven wheel roles required"
     )
-    installed = {}
-    for role, wheel in wheels.items():
-        registry.require(
-            _hash(wheel["path"], states) == wheel["sha256"],
-            "genuine wheel bytes differ",
-        )
-        installed[role] = _installed_payload(wheel, DISTRIBUTIONS[role], states)
+    installed = _audit_wheel_roles(wheels, states)
     models = _model_inventory_in_call(
         config["model_files"],
         states,
