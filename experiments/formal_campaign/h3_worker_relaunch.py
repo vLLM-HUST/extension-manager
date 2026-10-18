@@ -70,10 +70,16 @@ def members(owner: dict[str, Any]) -> list[dict[str, Any]]:
     return found
 
 
+class OwnershipCaptureOwnerUnavailable(ValueError):
+    """Strict capture requires its original owner to remain live."""
+
+
 def owned_sessions(owner, known=None):
     """Capture nested supervisor sessions while their ancestry is live."""
     if not live(owner):
-        raise ValueError("launcher is not live for ownership capture")
+        raise OwnershipCaptureOwnerUnavailable(
+            "launcher is not live for ownership capture"
+        )
     table = {}
     for entry in Path("/proc").iterdir():
         if not entry.name.isdigit():
