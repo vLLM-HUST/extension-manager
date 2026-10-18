@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -101,11 +102,14 @@ _TOKENIZER_RUNTIME_ENVIRONMENT = frozenset(
 )
 
 
-def _tokenizer_environment(environment):
+def _tokenizer_environment(environment, *, cache_directory):
     child = dict(environment)
     for name in _TOKENIZER_RUNTIME_ENVIRONMENT:
         child.pop(name, None)
     child.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1")
+    # Tokenizer imports can compile Triton utilities.  The product cache lives
+    # beneath an exclusively created future run directory and must stay cold.
+    child["TRITON_CACHE_DIR"] = str(cache_directory)
     return child
 
 
@@ -244,16 +248,19 @@ def replay_tokenizer(phase, payload, fixed, native, output=None):
     # product-launch evidence/bootstrap controls.  No parent/global env mutation.
     command = [phase["argv"][0], str(Path(__file__).resolve()), "--tokenizer-worker"]
     document = dict(host_arguments=_host_arguments(phase), payload=payload)
-    environment = _tokenizer_environment(phase["environment"])
-    child = subprocess.run(
-        command,
-        input=canonical(document),
-        capture_output=True,
-        cwd=phase["cwd"],
-        env=environment,
-        timeout=120,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory(prefix="ecpa-h4-tokenizer-") as cache_directory:
+        environment = _tokenizer_environment(
+            phase["environment"], cache_directory=cache_directory
+        )
+        child = subprocess.run(
+            command,
+            input=canonical(document),
+            capture_output=True,
+            cwd=phase["cwd"],
+            env=environment,
+            timeout=120,
+            check=False,
+        )
     if output is not None:
         output = Path(output)
         private_directory(output)
