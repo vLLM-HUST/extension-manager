@@ -42,8 +42,7 @@ class PartialOriginalClientProofTests(unittest.TestCase):
             "kind": "client.start",
             "detail": {
                 "start_id": "test-only",
-                "spec_sha256": "sha256:"
-                + hashlib.sha256(path.read_bytes()).hexdigest(),
+                "spec_sha256": "sha256:" + hashlib.sha256(canonical(spec)).hexdigest(),
             },
         }
         second = {
