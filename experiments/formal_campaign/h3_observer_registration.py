@@ -448,7 +448,9 @@ def _intent_roots(spec):
     return base, contract_raw
 
 
-def build_plan_guards(spec, original, receipt, start, *, trusted_manager_handoffs):
+def build_plan_guards(
+    spec, original, receipt, start, *, trusted_manager_handoffs, _model_call=None
+):
     """Reobserve actual inputs; root sets never come from per-phase digest claims."""
     from experiments.formal_campaign.h3_native_plan_guard import NativePlanGuard
     from experiments.native_attention_candidate import live_route_reader as routes
@@ -476,7 +478,9 @@ def build_plan_guards(spec, original, receipt, start, *, trusted_manager_handoff
         roots = set()
         for audit in args["input_audits"].values():
             fresh = routes.audit_cell_inputs(
-                audit["config"]["path"], audit["recipe"]["path"]
+                audit["config"]["path"],
+                audit["recipe"]["path"],
+                _model_call=_model_call,
             )
             require(
                 fresh == audit,
@@ -544,11 +548,22 @@ def build_plan_guards(spec, original, receipt, start, *, trusted_manager_handoff
 
 
 def verify_native_plans(spec, original, observation, *, _starts=None):
+    from experiments.native_attention_candidate import live_route_reader as routes
+
     receipt = {"source_observation": observation}
-    for start in spec["starts"] if _starts is None else _starts:
-        build_plan_guards(
-            spec, original, receipt, start, trusted_manager_handoffs=set()
-        )
+    # Only repeated model bytes share this private call lifetime. Every phase
+    # still executes the original complete audit (all wheels/installed payloads,
+    # metadata, tokenizer, sources, calibration) and its independent Plan guard.
+    with routes._fresh_model_audit_call() as model_call:
+        for start in spec["starts"] if _starts is None else _starts:
+            build_plan_guards(
+                spec,
+                original,
+                receipt,
+                start,
+                trusted_manager_handoffs=set(),
+                _model_call=model_call,
+            )
 
 
 def validate_campaign(spec, *, spec_path):

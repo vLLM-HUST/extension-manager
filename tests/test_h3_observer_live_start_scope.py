@@ -278,7 +278,7 @@ def test_ambiguous_original_start_rejected(prepared):
     intent = json.loads(f["intent"].read_bytes())
     intent["base_campaign"] = live.reference(f["path"])
     f["save"](f["intent"], intent)
-    with pytest.raises(GateError, match="ambiguous"):
+    with pytest.raises(GateError, match="exact original Latin nine order required"):
         validate(f)
 
 
