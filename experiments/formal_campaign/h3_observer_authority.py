@@ -803,4 +803,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # CLI execution has its own __main__ namespace. Construct the authority in
+    # the canonical module so exact source-owned class guards retain identity.
+    from experiments.formal_campaign.h3_observer_authority import main as canonical_main
+
+    canonical_main()

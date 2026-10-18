@@ -2,8 +2,10 @@
 
 import copy
 import json
+import runpy
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -425,3 +427,95 @@ def test_output_path_binds_reconstructed_intent_snapshot(
             live.issue(f["intent"], f["live"])
         else:
             validate(f)
+
+
+@pytest.mark.parametrize("entry_mode", ["script", "module"])
+def test_actual_authority_cli_constructs_canonical_typed_grants(
+    prepared, monkeypatch, entry_mode, tmp_path
+):
+    """Run the real CLI through construction, stopping before socket/Host work.
+
+    Existing CPU source-issuer fixture supplies the typed scope. Expensive base
+    Plan construction is isolated; neither an actual native proof nor runtime
+    qualification is claimed by this identity/entrypoint contract.
+    """
+    from experiments.formal_campaign import h3_observer_authority as authority
+    from experiments.formal_campaign import h3_observer_live_launcher as launcher
+    from experiments.formal_campaign import h3_observer_registration as base
+
+    tmp_path.chmod(0o700)
+    scope = validate(prepared)
+    original_start = scope.value()["start"]
+    start = copy.deepcopy(original_start)
+    journal_path = tmp_path / "entry-journal.jsonl"
+    start["authority"]["journal"] = str(journal_path)
+    selected = SimpleNamespace(
+        selected=lambda sid: ({}, {}, start),
+        guard_receipt=lambda sid: {},
+    )
+    monkeypatch.setattr(base, "validate_receipt_for_start", lambda *args: selected)
+    monkeypatch.setattr(base, "build_plan_guards", lambda *args, **kwargs: [])
+    # The fixture uses tiny CPU-only source labels. Verify its original receipt
+    # bytes here; real protocol/Host source reconstruction is covered separately.
+    monkeypatch.setattr(
+        launcher,
+        "recheck_scope",
+        lambda issued: json.loads(live.check_ref(issued.receipt_ref()).read_bytes()),
+    )
+    reached = []
+
+    class ConstructorReached(Exception):
+        pass
+
+    def construct(self, policy, journal, *, plan_guards):
+        try:
+            assert type(self) is authority.NativeAuthority
+            self.start = original_start
+            self.output = Path(scope.value()["declaration"]["grant_directory"]).parent
+            # Original exact authority/scope checks remain enabled, not isinstance.
+            grants = launcher.LiveGrants(self, scope)
+            assert type(grants) is launcher.LiveGrants
+            assert grants.authority is self and grants.scope is scope
+            reached.append(self)
+        finally:
+            journal.close()
+        raise ConstructorReached
+
+    monkeypatch.setattr(authority.NativeAuthority, "__init__", construct)
+    argv = [
+        str(Path(authority.__file__).resolve()),
+        "--policy",
+        start["policy"]["path"],
+        "--policy-sha256",
+        start["policy"]["sha256"],
+        "--journal",
+        str(journal_path),
+        "--socket",
+        str(tmp_path / "never-bound.sock"),
+        "--campaign",
+        str(prepared["path"]),
+        "--receipt",
+        str(prepared["base"]),
+        "--start-id",
+        start["start_id"],
+        "--public-port",
+        "0",
+    ]
+    monkeypatch.setattr(sys, "argv", argv)
+    with pytest.raises(ConstructorReached):
+        if entry_mode == "script":
+            runpy.run_path(argv[0], run_name="__main__")
+        else:
+            with pytest.warns(RuntimeWarning, match="found in sys.modules"):
+                runpy.run_module(authority.__name__, run_name="__main__")
+    assert len(reached) == 1
+    assert not (tmp_path / "never-bound.sock").exists()
+
+
+def test_canonical_authority_still_rejects_unissued_live_scope():
+    from experiments.formal_campaign import h3_observer_authority as authority
+    from experiments.formal_campaign.h3_observer_live_launcher import LiveGrants
+
+    actual_type = authority.NativeAuthority.__new__(authority.NativeAuthority)
+    with pytest.raises(GateError, match="independently issued v2 scope"):
+        LiveGrants(actual_type, SimpleNamespace(ready=True))

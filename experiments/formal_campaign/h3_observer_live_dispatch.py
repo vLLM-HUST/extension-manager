@@ -17,14 +17,13 @@ def run_nine(intent_path, receipt_path):
     from experiments.formal_campaign.h3_observer_runner import execute
 
     for declaration in intent["starts"]:
-        scope = registration.validate_for_start(
-            intent_path, receipt_path, declaration["start_id"], check_remote=True
-        )
-        value = scope.value()
+        # Scheduling data only: execute independently validates this live
+        # intent/receipt/start and checks these original admission paths before
+        # creating output or launching any product. No scope is minted here.
         output = Path(declaration["grant_directory"]).parent
         result = execute(
-            value["base_campaign"]["path"],
-            value["base_receipt"]["path"],
+            intent["base_campaign"]["path"],
+            intent["base_receipt"]["path"],
             declaration["start_id"],
             output,
             native=True,

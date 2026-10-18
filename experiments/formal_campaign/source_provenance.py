@@ -179,6 +179,8 @@ def _observe_remote_component(role, url, commit, definition):
     # Only fetch transport failures retry. Each attempt uses a new empty object
     # store, including re-fetching the exact commit if a later main fetch fails.
     # All SHA/tree/ancestry predicates must pass in the same successful attempt.
+    # Neither predicate consumes file blobs. Fetch all commits/trees, excluding
+    # only blobs: no shallow boundary, alternate object store or prior admission.
     for attempt in range(1, GIT_FETCH_ATTEMPTS + 1):
         with tempfile.TemporaryDirectory(prefix="ecpa-source-fetch-") as temporary:
             quarantine = Path(temporary)
@@ -203,7 +205,15 @@ def _observe_remote_component(role, url, commit, definition):
                     == url,
                     "quarantine Git transport rewrites declared canonical remote",
                 )
-                _git(quarantine, "fetch", "--quiet", "--no-tags", url, commit)
+                _git(
+                    quarantine,
+                    "fetch",
+                    "--quiet",
+                    "--no-tags",
+                    "--filter=blob:none",
+                    url,
+                    commit,
+                )
                 fetched = _git(quarantine, "rev-parse", "FETCH_HEAD").decode().strip()
                 require(
                     fetched == commit, "remote did not serve requested exact source"
@@ -218,6 +228,7 @@ def _observe_remote_component(role, url, commit, definition):
                         "fetch",
                         "--quiet",
                         "--no-tags",
+                        "--filter=blob:none",
                         url,
                         "refs/heads/main",
                     )
