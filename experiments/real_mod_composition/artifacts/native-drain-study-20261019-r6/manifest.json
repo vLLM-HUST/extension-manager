@@ -1,0 +1,989 @@
+{
+  "schema": "ecpa-native-H2-original-byte-packet/v1",
+  "cohort": "native-drain-study-20261019-r6",
+  "files": [
+    {
+      "path": "cohort/campaign.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/campaign.json",
+      "sha256": "953934dda205a55aea9be2aa255d3435f5b512534e18c8884330ad9b5904b38f",
+      "bytes": 1686
+    },
+    {
+      "path": "raw/host-only/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/Popen.json",
+      "sha256": "ae9d2e02d636299c5cef80ccaca93b115ce8e937bf65a70bc1d710f47186729e",
+      "bytes": 140
+    },
+    {
+      "path": "raw/host-only/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/above-request-clock.json",
+      "sha256": "3e13e2d2f8b29fa25f397ac1427fef0d1779c8952273822049c2ad73a7157539",
+      "bytes": 85
+    },
+    {
+      "path": "raw/host-only/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/host-only/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/above-response-clock.json",
+      "sha256": "8cf4a9cc5dca7168c157820d840e965981a2acf7f79e3d6fc830d7647a8ef42b",
+      "bytes": 103
+    },
+    {
+      "path": "raw/host-only/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/above-response.json",
+      "sha256": "683a41b29733ddcb8350bfc6c57c6b5f45f61b78bbb29d041210ab959ab294bb",
+      "bytes": 684
+    },
+    {
+      "path": "raw/host-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/attempt.json",
+      "sha256": "18d95ec6bcac1df825fd3a3899f72b3bdff6db6ebd2d0edb935dbc2b5e818484",
+      "bytes": 8608
+    },
+    {
+      "path": "raw/host-only/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/below-request-clock.json",
+      "sha256": "e636c4d4e2b1fc7445a1fc28986ee9f4826379e24d86d692a3bf195100a67b5d",
+      "bytes": 85
+    },
+    {
+      "path": "raw/host-only/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/host-only/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/below-response-clock.json",
+      "sha256": "956cb760f4181a43d02be7a07c3fa372c34d5372083ba4f928bd4b968c1ad918",
+      "bytes": 103
+    },
+    {
+      "path": "raw/host-only/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/below-response.json",
+      "sha256": "be1dd2f4d05a8e3bfc93c96bed502528f546ffc5dedd12f63bad6b7431b27cb0",
+      "bytes": 694
+    },
+    {
+      "path": "raw/host-only/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/manager-config.json",
+      "sha256": "9cc72b65f5ec15056b1a0b2d7d89210a85f7b35cb1de948e9b1ce85540032455",
+      "bytes": 46
+    },
+    {
+      "path": "raw/host-only/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/npu-after.txt",
+      "sha256": "73f7c1abedc3cc80b449f164b7087fadde152c3346f8fc28d840b2d85f191426",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/host-only/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/npu-before.txt",
+      "sha256": "d9d5197aefc493e94544520280736cad71515d4469628bd5b5e577f21b4fe05f",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/host-only/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/raw-files.json",
+      "sha256": "89c36660790df4417c6498a24aeec94f6890bd360f35737aba64a064c4a443a3",
+      "bytes": 10131
+    },
+    {
+      "path": "raw/host-only/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/stderr.log",
+      "sha256": "57facc411e0ae39917649f3e49e6f349df1c73b041a696fee05e68c61ba7d089",
+      "bytes": 41001
+    },
+    {
+      "path": "raw/host-only/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/stdout.log",
+      "sha256": "aba1ddd3cc11122d95ad7b1c3f4aa8b9db72d2a0fe97aa26a6d0e12321d7005b",
+      "bytes": 25396
+    },
+    {
+      "path": "raw/host-only/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/study-events.jsonl",
+      "sha256": "c9bf64447b895125c8a175287d11632163d9a6b27ed3cb0452a48ddb319fdc20",
+      "bytes": 13201
+    },
+    {
+      "path": "raw/kv-only/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/Popen.json",
+      "sha256": "bdd8d04c982d5a0a9d54b1a77459ce0cf879df979f1d377525bc90c55ace7f9a",
+      "bytes": 140
+    },
+    {
+      "path": "raw/kv-only/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/above-request-clock.json",
+      "sha256": "8c83ed0c560289b2f23d98bfa4fe5809b2139225ba702f78648ee4a056016caa",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-only/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/kv-only/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/above-response-clock.json",
+      "sha256": "62f868ffc4ee6747f72e7d2232026fb2fff26ea2cc5af944bd1782e220052b47",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-only/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/above-response.json",
+      "sha256": "fd93aca40e58b2b816d64981441bde6e08972cdcbc8738a9bb158473f1d77e62",
+      "bytes": 682
+    },
+    {
+      "path": "raw/kv-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/attempt.json",
+      "sha256": "4b02d85ceb2f57dc803076c1da8ee5d51ffa7e451ec475ac977ca24b465eb733",
+      "bytes": 8799
+    },
+    {
+      "path": "raw/kv-only/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/below-request-clock.json",
+      "sha256": "7b0ab96639833b92c7449057ab848e20b98caac1fa96fc747eb86c1ec0ff9247",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-only/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/kv-only/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/below-response-clock.json",
+      "sha256": "39abe12747c616329dbbe50045990a2a21a8266a24326690ffc56c373d2a7b29",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-only/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/below-response.json",
+      "sha256": "2771106670fe78b63bbfefce863fb5406737b44c3f71c7a305f363e8500eed5f",
+      "bytes": 692
+    },
+    {
+      "path": "raw/kv-only/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/manager-config.json",
+      "sha256": "b6dd865dce2d241444a1516c4811e516f74199eeec88f4cd7cacf11990ec74ea",
+      "bytes": 588
+    },
+    {
+      "path": "raw/kv-only/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/npu-after.txt",
+      "sha256": "86f7fbb810c8823f840f61337528bed37a0f044d5f906e122d4b2cdea096d2b6",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-only/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/npu-before.txt",
+      "sha256": "e9d8ee332b418025c5bb6462bc828b7d12922911fb7234c6ea3d7af1399bb40c",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-only/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/raw-files.json",
+      "sha256": "27b79ce98385d780db306c730724ccaab9649c3fc6e893b8395b2eb38f1750a3",
+      "bytes": 13731
+    },
+    {
+      "path": "raw/kv-only/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/runtime-evidence.jsonl",
+      "sha256": "bbc888832dbf5f17c1bd7724e1c11c9ab5e15d720a731b4aaa9ce2e13103e761",
+      "bytes": 106072
+    },
+    {
+      "path": "raw/kv-only/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/stderr.log",
+      "sha256": "a90e440ac29d72f28982fb5192cec682af0f6a0a4a551e5110f35739c1cb2147",
+      "bytes": 51052
+    },
+    {
+      "path": "raw/kv-only/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/stdout.log",
+      "sha256": "19426040c6a880852fd612a1e3ab6920ce02a55b65d1332013b85dd717d7eb2b",
+      "bytes": 30403
+    },
+    {
+      "path": "raw/kv-only/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/study-events.jsonl",
+      "sha256": "5dbe3b26d7c2ca0592f0879fddfa071f58486408adb3ed80bd0af59049b21b49",
+      "bytes": 160756
+    },
+    {
+      "path": "raw/kv-then-profiler/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/Popen.json",
+      "sha256": "ad6735f11b4aa70da8ccc402d3fc62bc8432e99ebde326f4851f38ee6d97e680",
+      "bytes": 140
+    },
+    {
+      "path": "raw/kv-then-profiler/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/above-request-clock.json",
+      "sha256": "3e563d60bdffb6a95adc5d2829429af0a5d27cd8a7342f32198b43ae0a352bf1",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-then-profiler/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/kv-then-profiler/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/above-response-clock.json",
+      "sha256": "2938ce776dcf861565430aea24d15045f68c89f003ce0a0edd4e0d2f034a7707",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-then-profiler/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/above-response.json",
+      "sha256": "5926dc188602626fa12fcd838c941fcfe82af6ae35ea7312418ae7f78f503274",
+      "bytes": 691
+    },
+    {
+      "path": "raw/kv-then-profiler/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/attempt.json",
+      "sha256": "29d989abd7d5a9cd48bd4b590495355d0b7434bf3fb65d7b1dc237a45e9dbd51",
+      "bytes": 9029
+    },
+    {
+      "path": "raw/kv-then-profiler/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/below-request-clock.json",
+      "sha256": "a5f804e66cf705a8d67b8f65143c25f93089b83d74b8e60f9c9abc041f82a582",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-then-profiler/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/kv-then-profiler/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/below-response-clock.json",
+      "sha256": "353e58699ec0b34e9f93ef479abfe427774fcb81bad9acbfe13f150a66c74c55",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-then-profiler/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/below-response.json",
+      "sha256": "218307708b206c5a558f0ea980e30881a8a5eee34182e3e738075deb01181267",
+      "bytes": 701
+    },
+    {
+      "path": "raw/kv-then-profiler/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/manager-config.json",
+      "sha256": "618830973608acd87424607056058d7e5e34c0b01981d67105af4efd41ad8756",
+      "bytes": 667
+    },
+    {
+      "path": "raw/kv-then-profiler/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/npu-after.txt",
+      "sha256": "b39e439863481cc6d7a1a9c49e1933c89b067771be44de44a62b30e301f74741",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-then-profiler/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/npu-before.txt",
+      "sha256": "1cf37684195f90d9072112abf1f1bfc0db4b9c8278dc5939d975040850ff49bf",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.0c9294d11b9948eca5a70ea536d620a2.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.0c9294d11b9948eca5a70ea536d620a2.jsonl",
+      "sha256": "344cafbff4c79b543342dc3b4f9c877554d6ed4739ae617b5448eb658083e646",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.3189b68393904ef494a576c550b01977.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.3189b68393904ef494a576c550b01977.jsonl",
+      "sha256": "ad80d86c8918d99faef2304b538efb463ec8133e19e2a72a039a91ff905d7d62",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.916f5e5488fc4756947079e4674ef556.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.916f5e5488fc4756947079e4674ef556.jsonl",
+      "sha256": "a9c745499da782a57cb4d289b3669b602c5e4f9cadf740c9d182f03aa008e9ea",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.b135dd0434934e69bf2627b6a3e66a4a.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.b135dd0434934e69bf2627b6a3e66a4a.jsonl",
+      "sha256": "f944e39d2b084faf5ee2b6933d5b1aaa6554639315017d420ea2857c4c3b3c71",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.ef898addc669454a9e04b75931ed250c.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.ef898addc669454a9e04b75931ed250c.jsonl",
+      "sha256": "920e99ffa90a8fb2a0fbc797b1e665a8259aa957609e313e1b0bae69690c32e9",
+      "bytes": 4702
+    },
+    {
+      "path": "raw/kv-then-profiler/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/raw-files.json",
+      "sha256": "ecd080cc3597ed634744a683291a418ccd2802abca3be96ad136d4171587f12b",
+      "bytes": 14386
+    },
+    {
+      "path": "raw/kv-then-profiler/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/runtime-evidence.jsonl",
+      "sha256": "2f27cb04102d6da568bc47a87d4f13533d85335229d199b2b37a3ad266a6ebb4",
+      "bytes": 114980
+    },
+    {
+      "path": "raw/kv-then-profiler/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/stderr.log",
+      "sha256": "004fe8d5f9b7d0477f661576fdf11865514a7d2bdc16e94223c2ad0cbb9e2b29",
+      "bytes": 51052
+    },
+    {
+      "path": "raw/kv-then-profiler/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/stdout.log",
+      "sha256": "7a41fbdc50ecd6dc739daff78c840bc7161aef4c360f9c6ffe22d2be75152b4e",
+      "bytes": 31131
+    },
+    {
+      "path": "raw/kv-then-profiler/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/study-events.jsonl",
+      "sha256": "3894f3fdd73c97ba1a724581735213c32be44fe94602bdc1f574ff0b29b6817c",
+      "bytes": 164196
+    },
+    {
+      "path": "cohort/outcome.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/outcome.json",
+      "sha256": "90ce23b0920f74e8b4f9489834b27cfde9db3197c4f38899aec2123c64197a8b",
+      "bytes": 48970
+    },
+    {
+      "path": "raw/profiler-only/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/Popen.json",
+      "sha256": "83b52dd15277c279df995cb800d3e45391518ad07407e5556540948ffedecc14",
+      "bytes": 140
+    },
+    {
+      "path": "raw/profiler-only/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/above-request-clock.json",
+      "sha256": "b38f0b73ff72f0f5da338ceb25ecae39bb4ab3c439ec20f65fad894b9480f4ed",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-only/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/profiler-only/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/above-response-clock.json",
+      "sha256": "4e5396a330de33765f40dce833ad8074f461414629ac95f9ae093ed6e3afadd4",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-only/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/above-response.json",
+      "sha256": "0d1171ff4dd811bd34cd524e6e4cd0360da13b28ae6135440bda340a7259fa8e",
+      "bytes": 688
+    },
+    {
+      "path": "raw/profiler-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/attempt.json",
+      "sha256": "bb6a526f065ee651d997520ac2b9b05f55ab80dc742caddf315e29a4b6545d1f",
+      "bytes": 8994
+    },
+    {
+      "path": "raw/profiler-only/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/below-request-clock.json",
+      "sha256": "2aec46fda0eec77199050f71fc18fe244a3d4e7ff21c768e739b064175944176",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-only/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/profiler-only/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/below-response-clock.json",
+      "sha256": "da6f3406680340d76ac7286b789c5ff6717d5325707cf8195f386511d283bc60",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-only/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/below-response.json",
+      "sha256": "6934825e5795cdc95385d95134a2d169f49a95cd99bea04520579ce70fca329d",
+      "bytes": 698
+    },
+    {
+      "path": "raw/profiler-only/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/manager-config.json",
+      "sha256": "89f521cc79c1d44c6213df5ecb0a94e5b06aa2d14dc501994e640bdf5627383a",
+      "bytes": 127
+    },
+    {
+      "path": "raw/profiler-only/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/npu-after.txt",
+      "sha256": "1cf37684195f90d9072112abf1f1bfc0db4b9c8278dc5939d975040850ff49bf",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-only/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/npu-before.txt",
+      "sha256": "fb97ad7e67eb34b06983958aa351cd0bc66875b05ea33d4ab31c4b004d10678f",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.0cfbcb3331be4f4e98274abf74323129.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.0cfbcb3331be4f4e98274abf74323129.jsonl",
+      "sha256": "0d3dd8b55d62f11a374a8ce11c4a176fad124fd062a019c5eef763ec450e599a",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.4e72354f26df4c9e9b2c938d2a8f2ed7.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.4e72354f26df4c9e9b2c938d2a8f2ed7.jsonl",
+      "sha256": "d1ec5858591156f9af88305a8f641fb09d943c3ddf99cfc1f85b51373b77f785",
+      "bytes": 4692
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.6c9cc3e6111a478099eed0b748a99c53.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.6c9cc3e6111a478099eed0b748a99c53.jsonl",
+      "sha256": "15a147611bd5fd533e4d09631df9f6da323f216c1891d868a35c8f7930d2d238",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.b9bb3d20be794bda898447bbb1b2ec2b.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.b9bb3d20be794bda898447bbb1b2ec2b.jsonl",
+      "sha256": "e0002560abff625ce2b957519634dccf3bd8e42b81c52335381be0a2f5d07b2f",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.f1508433d7754fbb950b6cef2378d01d.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.f1508433d7754fbb950b6cef2378d01d.jsonl",
+      "sha256": "f450f6ed29753ecf638ce8a8080dc1ea729c95182ff84337550ec6586a3002af",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-only/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/raw-files.json",
+      "sha256": "754e9a045ebdff365b3da6906da71f4f06b4307bda52bbfb70174e9d94579afe",
+      "bytes": 10882
+    },
+    {
+      "path": "raw/profiler-only/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/runtime-evidence.jsonl",
+      "sha256": "a6272429037f4410036c83f97bd977a25b2b97ec934cd434657d1209c6a52725",
+      "bytes": 110482
+    },
+    {
+      "path": "raw/profiler-only/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/stderr.log",
+      "sha256": "cd57544ce595cefaa7f9500fa72de43d700ae28bef43966919023ad316cf1d8a",
+      "bytes": 50476
+    },
+    {
+      "path": "raw/profiler-only/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/stdout.log",
+      "sha256": "9225ffd5cd28db6a960b74772049262cb971980bc54f0bf04e0bfcbe2bc38a5f",
+      "bytes": 26911
+    },
+    {
+      "path": "raw/profiler-only/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/study-events.jsonl",
+      "sha256": "69cfc93f74ce5d39c63cd8b215b37fae1b5b398119ad9d820d2e330219c4efb8",
+      "bytes": 158686
+    },
+    {
+      "path": "raw/profiler-then-kv/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/Popen.json",
+      "sha256": "ec8675c37259a2ff1bbc0669547e789c1815e3f313f26d58779143b61fd3deab",
+      "bytes": 140
+    },
+    {
+      "path": "raw/profiler-then-kv/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/above-request-clock.json",
+      "sha256": "7d487513794b79a1c919f9106f3da2a5c1ba937b3b80db6b070410b846fa678e",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-then-kv/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/profiler-then-kv/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/above-response-clock.json",
+      "sha256": "64d2dcf4bffca684da8f5237623a676b191383d2adfcd360b7d16d7f021cbf9f",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-then-kv/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/above-response.json",
+      "sha256": "730db7dfb62227be385380c76ecf89fecd65be00eb00fdbc3fb9be85bb62cdc6",
+      "bytes": 691
+    },
+    {
+      "path": "raw/profiler-then-kv/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/attempt.json",
+      "sha256": "7e2c6eb1ab4227d957d70feadbb33a0e4d7990c3e9faf4491cc78191cd038dc6",
+      "bytes": 9874
+    },
+    {
+      "path": "raw/profiler-then-kv/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/below-request-clock.json",
+      "sha256": "c29b76217b676173774a98ebbdb4ab85516a299b16abf8652f86c69d7a8df815",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-then-kv/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/profiler-then-kv/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/below-response-clock.json",
+      "sha256": "985d9213215cb636890e27fe5e3ced2fdf13719bcb610e8e81a068a5584f0c23",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-then-kv/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/below-response.json",
+      "sha256": "3afe1c1cba55b9c21e4a21eb65ee65f8be2734f168ebb1a78fd9a1eedc836554",
+      "bytes": 701
+    },
+    {
+      "path": "raw/profiler-then-kv/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/manager-config.json",
+      "sha256": "c26e54cfa5ce0eff60dbc8f8055813969bb8c2660e79faa3d2ad4b49f070c1e3",
+      "bytes": 667
+    },
+    {
+      "path": "raw/profiler-then-kv/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/npu-after.txt",
+      "sha256": "b39e439863481cc6d7a1a9c49e1933c89b067771be44de44a62b30e301f74741",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-then-kv/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/npu-before.txt",
+      "sha256": "99ca27be252d433c0b1b478c116f5dc3112273efe6792bd2fe5efe03fbeb840f",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.4b6369287fb04bab8e6075022f1eca11.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.4b6369287fb04bab8e6075022f1eca11.jsonl",
+      "sha256": "4e4e11f4c88c489b23f0b1d31ff487b8bdb09336fa6fa8751d99c014ae9944e6",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.cb085d4c0cfb45b1a4e06921a55aa87f.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.cb085d4c0cfb45b1a4e06921a55aa87f.jsonl",
+      "sha256": "28a0e272b05cecca47d80007695802554bcfda10a976796e782adfd1cd553156",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.dfc197d7a6614dbea665f919803c61c6.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.dfc197d7a6614dbea665f919803c61c6.jsonl",
+      "sha256": "86e4ef2c5aa3cb32d28a0248ad8b9402176b013bb128dd9c7ff83cc4843ab043",
+      "bytes": 4702
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.e6f11cd69fdf48abb8d6eb3406952596.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.e6f11cd69fdf48abb8d6eb3406952596.jsonl",
+      "sha256": "540fb0b3a78affe186dd647adf2bc283f1d45c08a201f5b993380edce9c2b920",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.ef54e33cac764b3ca7bfe93e7e3beaa0.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.ef54e33cac764b3ca7bfe93e7e3beaa0.jsonl",
+      "sha256": "499a6dc6d20096ecb9ffb3ef124ef9422fac32855e6012b4b77206e628250162",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-then-kv/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/raw-files.json",
+      "sha256": "ed79fe0d518b3e07fdb4ce03768c2fdc553fd8987ab347ff5a7172d60848ef95",
+      "bytes": 14386
+    },
+    {
+      "path": "raw/profiler-then-kv/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/runtime-evidence.jsonl",
+      "sha256": "f9020cced28f5722d2508e53b3e495d915a977e211bbc5c25638a2078d205b5e",
+      "bytes": 114984
+    },
+    {
+      "path": "raw/profiler-then-kv/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/stderr.log",
+      "sha256": "7068a4babf97bab91dceefd9a9df08cad09dba4bcea976624c9c318786e56282",
+      "bytes": 51052
+    },
+    {
+      "path": "raw/profiler-then-kv/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/stdout.log",
+      "sha256": "8a78dc64d9e9872d2ace7ad9b70bb334b4d33ab6aa4b0767d2a4db5efa5183dc",
+      "bytes": 31135
+    },
+    {
+      "path": "raw/profiler-then-kv/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/study-events.jsonl",
+      "sha256": "a5493e38b3ef9d310e113ec7b9954012e94eaa023bec97555341c03efb9a5189",
+      "bytes": 164194
+    },
+    {
+      "path": "independent-reader/r6-final/actual-final-npu.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/actual-final-npu.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-final/actual-final-npu.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/actual-final-npu.stdout",
+      "sha256": "ef78c77ab60cf8f3fc609bf186dd554b62bfff1120a6c0dc1b1b167e06b1bc72",
+      "bytes": 2223
+    },
+    {
+      "path": "independent-reader/r6-final/all-profiler-canonical-close-checks.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/all-profiler-canonical-close-checks.json",
+      "sha256": "bda144562fd1636e53d972b19bb107890e2d29fb1085ad5464cc2de9d512843d",
+      "bytes": 35890
+    },
+    {
+      "path": "independent-reader/r6-final/five-group-finite-results.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/five-group-finite-results.json",
+      "sha256": "158860150f579ec57b0fd3a39165b2a99534f2688ecb94642dd6ea1d95b4f633",
+      "bytes": 68146
+    },
+    {
+      "path": "independent-reader/r6-final/independent-terminal-ownership.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/independent-terminal-ownership.json",
+      "sha256": "a8d6cb85d2c741118dd90d148146748e13a41367a2373678d707879e214c9d59",
+      "bytes": 88246
+    },
+    {
+      "path": "independent-reader/r6-final/manifest.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/manifest.json",
+      "sha256": "fbda64a2833fac7b473bf7022effbccfd37c2efc79398a6b23d68d7f996573ce",
+      "bytes": 3758
+    },
+    {
+      "path": "independent-reader/r6-final/preserved-run-ecpa-h2-npu-0-3.lock",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/preserved-run-ecpa-h2-npu-0-3.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/compare_kv_native_raw_v3_2.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/compare_kv_native_raw_v3_2.py",
+      "sha256": "f4c24f33d322d7a607beb6e44c86ed6c322f556836d41f03b87f68a118f762ae",
+      "bytes": 10009
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/manifest.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/manifest.json",
+      "sha256": "6db4e336f85f89c27180bd192efb0f13bc8167f385fe3e338b31d79caf77b081",
+      "bytes": 4596
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-KV-only-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-KV-only-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-KV-only-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-KV-only-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-KV-only-native-raw-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-KV-only-native-raw-attempt-01.json",
+      "sha256": "a7543fddf2d4146a1249ea1122f69e0330db473a3f2b6ea980a58a8233b50cfe",
+      "bytes": 46254
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-KV-then-profiler-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-KV-then-profiler-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-KV-then-profiler-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-KV-then-profiler-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-KV-then-profiler-native-raw-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-KV-then-profiler-native-raw-attempt-01.json",
+      "sha256": "2f6453e8ef094eae219f2a5c41a8fe2badca9f42830f9cad5b8bded4357f42ad",
+      "bytes": 46927
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-host-only-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-host-only-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-host-only-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-host-only-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-host-only-raw-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-host-only-raw-attempt-01.json",
+      "sha256": "7c9619f67b20b0c2a0de92078148b7d5c628827f0071350d739c1ff912343979",
+      "bytes": 28471
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-02.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-02.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-02.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-02.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-03.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-03.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-03.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-03.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-04.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-04.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-04.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-attempt-04.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-01.json",
+      "sha256": "19953cc378804ae5150ac29dbb2767e31c95fd32e40c757615d9996e13f6f8d4",
+      "bytes": 43863
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-02.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-02.json",
+      "sha256": "44869635865605d18d57abb2a941c0273b10dc5f2348314d334912ab1a8715dd",
+      "bytes": 92358
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-03.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-03.json",
+      "sha256": "1a2501ba8ef25106ce70e85e6e1c0983188d6de0e195aabafe28888c7a5b883e",
+      "bytes": 154296
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-04.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-04.json",
+      "sha256": "dd9a70e9340aec4b3b49be370ee1c8bd7cf10c45d0ad166020ad9e64de94fb8b",
+      "bytes": 213575
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-singleton-close-independent-checks-v1.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-singleton-close-independent-checks-v1.json",
+      "sha256": "706ddd4b771ee2a9a3fbed998cb524798fcfd263ad1bd8f46192612ef9c0722c",
+      "bytes": 6034
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-then-KV-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-then-KV-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-then-KV-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-then-KV-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/r6-profiler-then-KV-native-raw-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-then-KV-native-raw-attempt-01.json",
+      "sha256": "0f1213d4f0949878f12d00df18c5b6c35aeb6e1bca3d6c4aed9aae0ac4f94f1e",
+      "bytes": 46927
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/read_native_raw_v1.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_native_raw_v1.py",
+      "sha256": "60a5cc9265045505a608491199a3e2e0b4d71cd562fbe2fa9c002c8691c2b020",
+      "bytes": 10015
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/read_native_raw_v2.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_native_raw_v2.py",
+      "sha256": "07a482ad3cd2c3dde254ad0b4594d5fe4ab2a92cebcbb3ee178e0a19fae80925",
+      "bytes": 7232
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/read_native_raw_v3.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_native_raw_v3.py",
+      "sha256": "561cd834891b2155229522065b830436ea5d00837960b4afe0655a4219285089",
+      "bytes": 13825
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/read_profiler_raw_v3_3.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_profiler_raw_v3_3.py",
+      "sha256": "a7327c276336d497693a9456b1538cb2fab7aec232f240b13f662b9cf6e9ad50",
+      "bytes": 8874
+    },
+    {
+      "path": "independent-reader/r6-drain-new-source-reader/read_zero_mod_bootstrap_raw_v4.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_zero_mod_bootstrap_raw_v4.py",
+      "sha256": "32842472ba3ad1c1981956537856bf7fcf2b202f8f1517c1b3e0caafa7fa39f7",
+      "bytes": 6975
+    },
+    {
+      "path": "study-runner/run_native_h2.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner-r6-drain/run_native_h2.py",
+      "sha256": "e51d24d7c5fe563ac79749ecadd884958f205afcd5818bbc34d426ea6709bea4",
+      "bytes": 11629
+    },
+    {
+      "path": "study-runner/sitecustomize.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner-r6-drain/sitecustomize.py",
+      "sha256": "8d5d14e04d0b54880d1429e493685ff967dedf2f4272ffb30e065108d5739ad7",
+      "bytes": 5749
+    },
+    {
+      "path": "provenance/compatible-oracle-rule-drain-v2.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule-drain-v2.json",
+      "sha256": "3be1ebfd612ae63879c1813ca707cfa17b3f0ef97e0ccfc67d737580833c0c14",
+      "bytes": 6521
+    },
+    {
+      "path": "provenance/actual-installed-source-wheel-match.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/drain-runtime-staging/actual-installed-source-wheel-match.json",
+      "sha256": "6fd3a16dd1e62adde894e742e4103c1f59538e99fe5a1028676da57cbd9d03ed",
+      "bytes": 2203
+    },
+    {
+      "path": "provenance/actual-official-built-tuple.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-candidate/actual-official-built-tuple.json",
+      "sha256": "7634c9670df3f4a759a0aec2d4ecd7fd488e85292965d7e7247891347d1a6468",
+      "bytes": 5366
+    },
+    {
+      "path": "cohort/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6-Popen.json",
+      "sha256": "6e4689b61c3c25b12676bae75e915849d39690a61ac2fd4423fe3bf1904062cf",
+      "bytes": 224
+    },
+    {
+      "path": "provenance/Host-published.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-source-release/Host-published.json",
+      "sha256": "3c74ffb1a21ec64d607915615555549d16eccd9de4eefc16d0a270c99f982247",
+      "bytes": 834
+    },
+    {
+      "path": "provenance/Host-exact-remote-readback.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-source-release/Host-exact-remote-readback.json",
+      "sha256": "1ed33c9a540551a5a1dd99d0cd606cca8d409c91aa06f2c23b0f981981ebec50",
+      "bytes": 1952
+    },
+    {
+      "path": "provenance/Host-main-ancestry.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-mainline-review/actual-PR-CI/Host/actual-main-ancestry-readback.json",
+      "sha256": "df12e7ddf902863c9ac2aeafa1ee12327b076e24a4ac1d58ff6b7b69e0a13581",
+      "bytes": 2405449
+    },
+    {
+      "path": "provenance/Profiler-published.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-source-release/Profiler-published.json",
+      "sha256": "c77f4d08259ba09b7329c8a3986ef5723d10d0ae62ade5208b78d201fea3a98c",
+      "bytes": 582
+    },
+    {
+      "path": "provenance/Profiler-exact-remote-readback.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-source-release/Profiler-exact-remote-readback.json",
+      "sha256": "1fbe13578b08351c72ee5bb010d3c13bbaf97e10756721af51c52b6dc7bbb610",
+      "bytes": 1808
+    },
+    {
+      "path": "provenance/Profiler-main-ancestry.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-mainline-review/actual-PR-CI/Profiler/actual-main-ancestry-readback.json",
+      "sha256": "e3ad26d352e2247d864f137827653691362b7d1d552b44f58da6dfb22d180be4",
+      "bytes": 54218
+    },
+    {
+      "path": "production-source/Host/vllm/v1/events.py.snapshot",
+      "source": "/root/ecpa-workspace/worktrees/ecpa-host-h2-profiler-drain-build/vllm/v1/events.py",
+      "sha256": "7d7041ac9546840d6736c271468ae9d03aaf2df1e6b3ffec2171559d294d68db",
+      "bytes": 7304
+    },
+    {
+      "path": "production-source/Host/vllm/v1/engine/core.py.snapshot",
+      "source": "/root/ecpa-workspace/worktrees/ecpa-host-h2-profiler-drain-build/vllm/v1/engine/core.py",
+      "sha256": "1fb4bc3f893ca21a2116850f46edce279812bd2000b817f6d6f1e499524084d7",
+      "bytes": 116104
+    },
+    {
+      "path": "production-source/Host/vllm/v1/worker/worker_base.py.snapshot",
+      "source": "/root/ecpa-workspace/worktrees/ecpa-host-h2-profiler-drain-build/vllm/v1/worker/worker_base.py",
+      "sha256": "39c83b4c1b52932ef8ecedb9ad2bc1ea26c13bb707351785783f7360cecd8c1f",
+      "bytes": 15266
+    },
+    {
+      "path": "production-source/Profiler/src/vllm_request_lifecycle_profiler/native_event_bus.py.snapshot",
+      "source": "/root/ecpa-workspace/worktrees/ecpa-profiler-h2-drain-build/src/vllm_request_lifecycle_profiler/native_event_bus.py",
+      "sha256": "138928353acde6c63026c31bc958ec44d7c76208a50c6c282099990f0582ce25",
+      "bytes": 6513
+    },
+    {
+      "path": "provenance/Host-official-build-report.json",
+      "source": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/official-host-empty-build-report.json",
+      "sha256": "a6468ebef73e972a80cdf71289faa021691921732abb00f03eb259d7bf759c89",
+      "bytes": 4986
+    },
+    {
+      "path": "provenance/Profiler-official-build-report.json",
+      "source": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Profiler/official-profiler-build-report.json",
+      "sha256": "f7a3074423d2254e6a42cb4c0defd31b95afaff6d39ee015784aa4e7ba7bd5fe",
+      "bytes": 7485
+    }
+  ],
+  "source_paths_preserved_not_rewritten": true,
+  "python_snapshots_not_executable_project_modules": true,
+  "model_wheels_and_compiler_caches_not_bundled": true,
+  "formal_result": false,
+  "historical_score_modified": false
+}

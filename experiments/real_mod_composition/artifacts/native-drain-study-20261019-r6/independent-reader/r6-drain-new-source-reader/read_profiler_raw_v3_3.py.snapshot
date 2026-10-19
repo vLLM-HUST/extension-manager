@@ -1,0 +1,120 @@
+"""Raw-only profiler shard/Host lifecycle join; incomplete closure stays unknown."""
+import argparse
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+V3_SHA = '561cd834891b2155229522065b830436ea5d00837960b4afe0655a4219285089'
+NAMES = {'request_finished_observed': 'RequestFinished', 'request_kv_reclaimed_observed': 'RequestKvReclaimed', 'request_preempted_observed': 'RequestPreempted'}
+META = {'request_finished_observed': ('prompt_tokens', 'output_tokens', 'sequence_tokens', 'kv_blocks', 'kv_reclaim_deferred', 'finished_reason'), 'request_kv_reclaimed_observed': ('kv_blocks',), 'request_preempted_observed': ('num_preemptions', 'kv_blocks', 'kv_reclaim_deferred')}
+
+
+def require(ok, message):
+    if not ok:
+        raise ValueError(message)
+
+
+def sha(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--cohort', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    source = HERE / 'read_native_raw_v3.py'
+    require(sha(source.read_bytes()) == V3_SHA, 'frozen v3 changed')
+    spec = importlib.util.spec_from_file_location('independent_v3', source)
+    v3 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(v3)
+    v2 = v3.load_v2()
+    v1 = v2.source_reader()
+    token_raw = v2.TOKENIZER.read_bytes()
+    require(sha(token_raw) == '59337698f2fb6f5bc89bf4479f63030cf73e5cdc41a02463887a009f150a419e', 'frozen tokenizer input changed')
+    require(sha(v1.RULE.read_bytes()) == '3be1ebfd612ae63879c1813ca707cfa17b3f0ef97e0ccfc67d737580833c0c14', 'frozen rule changed')
+    cases = []
+    for name in v1.ORDERS:
+        if name == 'host-only':
+            cases.append({'case': name, 'status': 'separate-no-Plan-reader-required'})
+            continue
+        result = v3.read_case(v2, v1, args.cohort.resolve(), name, json.loads(token_raw))
+        if result['status'] == 'not-started':
+            cases.append(result)
+            continue
+        case = args.cohort.resolve() / name
+        refs = []
+        study = v1.load(case / 'study-events.jsonl', refs, lines=True) or []
+        host = v1.load(case / 'runtime-evidence.jsonl', refs, lines=True) or []
+        roster = {row['pid']: row for row in result['Host_roster']}
+        requests = {row['runtime_request_id']: row for row in result['requests'] if 'runtime_request_id' in row}
+        shards = []
+        for path in sorted(case.glob('profiler.jsonl.rlp.*.jsonl')):
+            require(not path.is_symlink(), 'profiler shard is symlink')
+            raw = path.read_bytes()
+            require(raw.endswith(b'\n'), 'profiler incomplete JSONL tail')
+            lines = raw.splitlines(keepends=True)
+            rows = [json.loads(line) for line in lines]
+            require(rows and rows[0]['record_type'] == 'process_start', 'profiler missing initial process start')
+            start = rows[0]
+            require(start['runtime_core_commit'] == 'f67ad57c854940a90ddfa82a4a984bb6ce2ff923' and start['profiler_parent_commit'] == 'dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06' and start['device_plugin_commit'] == '153535b32417b3ad8fb10dad2f564ddf4dcab1ef', 'r6 exact new profiler/runtime/device provenance differs')
+            uuid = start['process_uuid']
+            require(path.name == 'profiler.jsonl.rlp.' + uuid + '.jsonl', 'profiler shard name/source uuid differs')
+            require(all(row['process_uuid'] == uuid and row['schema_version'] == 'rlp.trace/v1alpha1' for row in rows), 'profiler schema/process uuid differs')
+            require(sum(row['record_type'] == 'process_start' for row in rows) == 1, 'duplicate profiler process start')
+            joined = []
+            events = [row for row in rows if row['record_type'] == 'event']
+            summaries = [row for row in rows if row['record_type'] == 'process_summary']
+            require(len(summaries) <= 1 and (not summaries or rows[-1] is summaries[0]), 'profiler summary not terminal/unique')
+            for event in events:
+                require(event['event_name'] in NAMES, 'unhandled profiler event; preserve unknown instead of misclassifying')
+                rid = event['metadata']['runtime_request_id']
+                require(rid in requests and start['pid'] in roster, 'profiler event not matched original actual Host/RID')
+                owner = roster[start['pid']]
+                require(owner['slot'] == 'engine-core-scheduler/0', 'lifecycle profiler event not source scheduler')
+                matches = [row for row in study if row.get('kind') == 'host-event' and row.get('event_type') == NAMES[event['event_name']]
+                           and row['pid'] == owner['pid'] and row['start_ticks'] == owner['start_ticks']
+                           and row['fields'].get('request_id') == rid and row['fields'].get('ts_monotonic_ns') == event['timestamp_ns']]
+                require(len(matches) == 1, 'profiler event lacks exact original Host lifecycle fact/clock')
+                original = matches[0]
+                require(all(event['metadata'][key] == original['fields'][key] for key in META[event['event_name']]), 'profiler observed values differ from actual Host event')
+                if event['event_name'] == 'request_kv_reclaimed_observed':
+                    require(event['metadata']['reclaim_path'] == original['fields']['path'], 'profiler reclaim path differs')
+                launch_ids = {row['launch_id'] for row in host if row.get('process', {}).get('pid') == owner['pid']
+                              and row['process'].get('start_identity') == f"pid:{owner['pid']}:start_ticks:{owner['start_ticks']}"
+                              and row['process'].get('assignment_source') == 'host' and row.get('binding_status') == 'bound'}
+                require(len(launch_ids) == 1, 'profiler original Host launch missing/ambiguous')
+                launch = next(iter(launch_ids))
+                trace_id = sha(f'{launch}\0{rid}'.encode())[:32]
+                require(event['trace_id'] == trace_id and event['lifecycle_id'] == trace_id + ':e:0' and event['parent_lifecycle_id'] == trace_id + ':r', 'profiler original launch/RID trace relation differs')
+                joined.append({'event': event, 'original_Host_event': original, 'actual_Host_epoch': owner, 'actual_launch_id': launch})
+            closure = 'unknown-missing-terminal-process-summary'
+            if summaries:
+                summary = summaries[0]
+                require(summary['content_sha256'] == sha(b''.join(lines[:-1])), 'profiler original content digest differs')
+                counts = {kind: sum(row['record_type'] == kind for row in rows) for kind in ('event', 'edge', 'loss_interval')}
+                require(summary['written_event_count'] == counts['event'] and summary['written_edge_count'] == counts['edge'] and summary['written_loss_interval_count'] == counts['loss_interval'], 'profiler original counts differ')
+                data = [row for row in rows if 'record_seq' in row]
+                require([row['record_seq'] for row in data] == list(range(len(data))), 'profiler record sequence has gaps/reordering')
+                closure = ('drained-no-declared-loss-with-matching-original-content' if summary['close_outcome'] == 'drained' and all(summary[key] == 0 for key in ('dropped_control_count', 'dropped_data_count', 'writer_failure_count', 'written_loss_interval_count')) and summary['attempted_data_count'] == len(data) else 'original-summary-reports-incomplete-or-loss')
+            shards.append({'path': str(path), 'sha256': sha(raw), 'bytes': len(raw), 'actual_process_start': start,
+                           'original_process_summary': summaries, 'observed_event_count': len(events),
+                           'original_Host_joins': joined, 'closure_status': closure})
+        result['profiler_shards_independent'] = shards
+        result['additional_Host_raw_refs'] = refs
+        result['profiler_full_effect'] = 'unknown' if 'request_lifecycle_profiler' in v1.ORDERS[name] else 'not-applicable'
+        result['profiler_limit'] = 'Exact observed finished/reclaimed event joins prove bounded delivered facts; absent original process summary cannot prove loss-free close and does not prove event loss or MOD conflict.'
+        cases.append(result)
+    result = {'schema': 'ecpa-H2-independent-profiler-raw-reader/r6-v1', 'formal_result': False,
+              'attempt_or_planner_verdict_consumed': False, 'rule_unchanged': True,
+              'implementation_after_r3_KV_and_r4_profiler_results_seen': True,
+              'cases': cases, 'composition_verdict': 'unknown'}
+    with args.output.open('x') as stream:
+        json.dump(result, stream, indent=2)
+        stream.write('\n')
+
+
+if __name__ == '__main__':
+    main()

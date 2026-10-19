@@ -1,0 +1,173 @@
+{
+  "schema": "ecpa-official-profiler-drain-wheel-build/v1",
+  "repository": "vLLM-HUST/vllm-hust-request-lifecycle-profiler",
+  "repository_id": 1296664162,
+  "source_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+  "source_tree": "f0b8cfd8f06072071b7f4e2b49d34f17df8c4981",
+  "source_parent": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+  "source": "/root/ecpa-workspace/worktrees/ecpa-profiler-h2-drain-build",
+  "source_dirty_after": "",
+  "distribution_name": "vllm-request-lifecycle-profiler-plugin",
+  "version": "0.1.2",
+  "wheel_path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Profiler/dist/vllm_request_lifecycle_profiler_plugin-0.1.2-py3-none-any.whl",
+  "wheel_sha256": "daf5e870ce0ef17c8361a6f50711104bb6d08b8edbc3519ad27ba5e0aa3998cc",
+  "wheel_bytes": 122079,
+  "all_wheel_RECORD_members_verified": true,
+  "complete_declared_package_inventory_matches_Git": true,
+  "python_source_count": 23,
+  "package_member_count": 24,
+  "package_payload": [
+    {
+      "path": "vllm_request_lifecycle_profiler/__init__.py",
+      "git_blob": "f81828cf79c793df2d4fe83f162d7a75e9905777",
+      "sha256": "5719626353b24526d76c71198f69aa22d2507acbed2bd07a481a4a98c8c896fa",
+      "bytes": 2897
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/blind_attribution.py",
+      "git_blob": "03bda0807a782e4b766717a46cd1157b94d1fa4f",
+      "sha256": "ecec440df69937e2cce6c9c8b30d3890fa7e9826d064a5f11dab77d42343c1cf",
+      "bytes": 61538
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/causal_attribution.py",
+      "git_blob": "4e25eb8fd7afc42fe541f12d98ca9f5608811636",
+      "sha256": "7d550a2896ef3451f92b4ef13406f84ff984aa5e7d91b95b5bc8b5d62d9001b6",
+      "bytes": 6231
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/issue19_control.py",
+      "git_blob": "32e4d522b30caf01da40acc3d8f9454fd3120f58",
+      "sha256": "08d09dc9ec746fdd0e6806e0f19f7becc8570938e07840af2e96429e46077429",
+      "bytes": 4621
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/issue19_lifecycle.py",
+      "git_blob": "b4a6f5809959c2eed9c24990fa77ff89d7afb99e",
+      "sha256": "6cbfcfbd21472f498600dc041d363ce900a0d7e3356f80062dd3ef9539a772e6",
+      "bytes": 8809
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/issue19_m0.py",
+      "git_blob": "5a92896079c41208884f6bf8e3bd343dccb195de",
+      "sha256": "e8d9a874e0e9b7c2b2b24eb08a9d37108f368ee241f88767de566468c0e67867",
+      "bytes": 35963
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/issue19_public_artifacts.py",
+      "git_blob": "ad4badc1e1fbb4d732feba4e42ad4cb9a6ddc9e3",
+      "sha256": "6bbbe0fb4feda7dbde1f6e807bc152baf7d726dc900d8491cb583496595cce3c",
+      "bytes": 24068
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/kv_recovery.py",
+      "git_blob": "2bcacc57fce96e909c584a77d85c7d7374d9fd22",
+      "sha256": "9b533e1620d4e282ed33eadcf8f27bb63a71cab5bfe0a6140823d9bb3d6b9849",
+      "bytes": 4728
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/kv_recovery_profile_protocol.py",
+      "git_blob": "9a51e972da3d5ee9d0d1f192c08579ce174e16da",
+      "sha256": "07240639380a6e9b0fbf60de7de10893c6ec37d4b5c36a753dde208b7eebc6bf",
+      "bytes": 29420
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/kv_recovery_runtime.py",
+      "git_blob": "6629b18106166837dad9d62b7a37335645df9a6a",
+      "sha256": "25196ebff9fbb65e0127acb92710b9d8920e46b45dedaccd085a4c1bdd7f381f",
+      "bytes": 117476
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/launcher.py",
+      "git_blob": "78207ce60d36f698a34cfd3aa6dc8dbadee59f34",
+      "sha256": "f112d718e99314b57ed3484057fb1abcb24516e9fcd0f1dccf7e0520e40ed541",
+      "bytes": 599
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/legacy_trace.py",
+      "git_blob": "7b6e2a5c573426d8775f2ce2ad4f1faac506dba9",
+      "sha256": "c3ecb2152cd495b6d86de9be4e771dbaa8c36a2855036c6fc72a2319093c1216",
+      "bytes": 3245
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/m0_evaluation.py",
+      "git_blob": "247ac2e13bd6254fbcfdac0e4bdcb02a99a91350",
+      "sha256": "b195262c317c378500a943caee17adedad9ec2b8e76007391c9c873b42a0c886",
+      "bytes": 9858
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/manifests/__init__.py",
+      "git_blob": "2e031738a77a8ce12fc3c9cbfcdec2c4c042e109",
+      "sha256": "538fb0505ffe89096e4e8dfb113b172cbb286c020e8025422bb50b368a4f3e47",
+      "bytes": 74
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/manifests/vllm-hust-extension-v0.3.json",
+      "git_blob": "5ee2fe11020519730be2a9257a07b899b604835d",
+      "sha256": "fa7d1033919e300062c9f5ade6b9842088a59dde8d7652de2b6a844a85c06a29",
+      "bytes": 1635
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/native_event_bus.py",
+      "git_blob": "5ca7b2480eff411daa9ba0ab281c879eaa4811e6",
+      "sha256": "138928353acde6c63026c31bc958ec44d7c76208a50c6c282099990f0582ce25",
+      "bytes": 6513
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/oasst1_workload.py",
+      "git_blob": "220a8757054d7af293335a216858206d2875791e",
+      "sha256": "a3b18f1785a376ac01fb55d3ba265e2db780c1e8081f59215e649ed350acac3a",
+      "bytes": 16242
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/plugin.py",
+      "git_blob": "aee8c1f52c5bdbcebf54f2b23851e75c1f26e478",
+      "sha256": "eda572aad29bfbeb747e86896456c42e901be1b8355367c4429f85626acee043",
+      "bytes": 5718
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/preblind_calibration.py",
+      "git_blob": "c1b94ecd91831d80404691bfa3f5f0bb804b1d6c",
+      "sha256": "dfd0a79bfaa21b1c4916316decb77d99a2eb9d4685f157dffc2dcf99df331306",
+      "bytes": 13960
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/runtime_hooks.py",
+      "git_blob": "0d1c67f1969f598442574c216958cf0b01445fb5",
+      "sha256": "18ce2df8ef4f062b4b096af54a712e7834e896607513709bf1954830a883140f",
+      "bytes": 108213
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/runtime_protocol.py",
+      "git_blob": "69af6186cf7785bc09b18f40d248e2dfeca78bef",
+      "sha256": "0f987fce5f86cdec906bf6389a70411442abfb1be6fbf078da6fdacc0be17687",
+      "bytes": 38977
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/shared_workloads.py",
+      "git_blob": "60240545ce8333acd69e7e9a96dda85253bcc1b0",
+      "sha256": "4ce409534be3173ad9c9bc071eff5f3a263a6c268bb9f01c31e3fe3c66277ad8",
+      "bytes": 6752
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/trace.py",
+      "git_blob": "f72259aa45dca6d5a428b7e78c8d583bcb217a9d",
+      "sha256": "4260f760a4be22e526a69f6fa9d6ad552786e368b79db5ed2d541a436766431f",
+      "bytes": 10351
+    },
+    {
+      "path": "vllm_request_lifecycle_profiler/traceloom_adapter.py",
+      "git_blob": "b91a83f0715b5badb367959bc43ea26eee3163a3",
+      "sha256": "5378d70d5e31049550fdbfae102566bfd8e4d5cfc0f4f6bccea965e9a31ee4de",
+      "bytes": 15284
+    }
+  ],
+  "sdist": {
+    "path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Profiler/dist/vllm_request_lifecycle_profiler_plugin-0.1.2.tar.gz",
+    "sha256": "881c222768b34649c74f3cee44d39d6404737f763fecfdacc05ad6f348ae0b11",
+    "all_declared_package_members_match_exact_Git": true
+  },
+  "actual_build_execution": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-candidate/actual-build-execution/Profiler",
+  "installed_into_runtime": false,
+  "native_qualification": null
+}

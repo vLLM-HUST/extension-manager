@@ -1,0 +1,211 @@
+"""New real H2 cohort; retain every attempt, never invent formal qualification."""
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import signal
+import socket
+import subprocess
+import time
+import urllib.request
+from pathlib import Path
+
+WORK = Path('/root/ecpa-workspace')
+HERE = Path(__file__).resolve().parent
+PYTHON = WORK / 'environments/ecpa-h2-drain-20261019-r1/bin/python'
+SDK = WORK / 'worktrees/ecpa-manager-h4-cache252-next'
+BOOT = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+CASES = [('host-only', []), ('kv-only', ['ascend_kvcompress']), ('profiler-only', ['request_lifecycle_profiler']), ('kv-then-profiler', ['ascend_kvcompress', 'request_lifecycle_profiler']), ('profiler-then-kv', ['request_lifecycle_profiler', 'ascend_kvcompress'])]
+IDS = {'ascend_kvcompress': 'org.vllm-hust.ascend-kvcompress',
+       'request_lifecycle_profiler': 'org.vllm-hust.request-lifecycle-profiler'}
+
+
+def save(path, value):
+    path.write_text(json.dumps(value, indent=2, default=str) + '\n')
+
+
+def ident(pid):
+    s = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+    return dict(pid=pid, start_ticks=int(s[19]), session=int(s[3]), state=s[0], boot_id=BOOT)
+
+
+def current(item):
+    try:
+        now = ident(item['pid'])
+        return now['start_ticks'] == item['start_ticks'] and now['session'] == item['session'] and now['state'] != 'Z'
+    except FileNotFoundError:
+        return False
+
+
+def capture(pid, seen):
+    try:
+        item = ident(pid)
+        seen[(pid, item['start_ticks'])] = item
+        for child in Path(f'/proc/{pid}/task/{pid}/children').read_text().split():
+            capture(int(child), seen)
+    except (FileNotFoundError, ProcessLookupError):
+        pass
+
+
+def send(item, sig):
+    if not current(item):
+        return
+    fd = os.pidfd_open(item['pid'])
+    try:
+        if current(item):
+            signal.pidfd_send_signal(fd, sig)
+    finally:
+        os.close(fd)
+
+
+def npu(path):
+    p = subprocess.run(['npu-smi', 'info'], capture_output=True, text=True, timeout=30)
+    path.write_text(p.stdout + p.stderr)
+    if p.returncode or p.stdout.count('No running processes found') != 2:
+        raise RuntimeError('allocated NPU process tables are not empty; retained inventory')
+
+
+def execute(root, name, order, base, port):
+    out = root / name
+    out.mkdir(mode=0o700)
+    npu(out / 'npu-before.txt')
+    config = {'schema_version': 2, 'extensions': {IDS[x]: {
+        'enabled': True, **({'configuration': base['kv_config']} if x == 'ascend_kvcompress' else {})} for x in order}}
+    save(out / 'manager-config.json', config)
+    env = dict(base['environment'])
+    # Use the new process's CANN bindings, not stale SDK or semantic/fault context.
+    for k in list(env):
+        if k.startswith(('ECPA_', 'VLLM_ECPA_', 'VLLM_HUST_EXT_', 'VLLMHUST_', 'VLLM_ASCEND_KVCOMPRESS_', 'VLLM_RLP_')):
+            env.pop(k)
+    for k in ('PATH', 'LD_LIBRARY_PATH', 'ASCEND_HOME_PATH', 'ASCEND_TOOLKIT_HOME', 'ASCEND_OPP_PATH', 'ASCEND_AICPU_PATH'):
+        if k in os.environ:
+            env[k] = os.environ[k]
+    env.update(PYTHONPATH=str(HERE) + ':/usr/local/Ascend/cann-9.1.0/python/site-packages:/usr/local/Ascend/cann-9.1.0/opp/built-in/op_impl/ai_core/tbe',
+               PYTHONDONTWRITEBYTECODE='1', PYTHONNOUSERSITE='1', HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
+               ASCEND_RT_VISIBLE_DEVICES='0,1', VLLM_PLUGINS='ascend', ECPA_H2_RAW=str(out), ECPA_H2_ORDER=json.dumps(order),
+               VLLM_HUST_EXT_CONFIG=str(out / 'manager-config.json'), OMP_NUM_THREADS='1',
+               VLLM_WORKER_MULTIPROC_METHOD='spawn', VLLM_WORKER_SHUTDOWN_TIMEOUT_SECONDS='12',
+               TRITON_CACHE_DIR=str(out / 'triton-cache'), XDG_CACHE_HOME=str(out / 'cache'))
+    if 'request_lifecycle_profiler' in order:
+        env.update(VLLM_RLP_TRACE_EXPORT_PATH=str(out / 'profiler.jsonl'),
+                   VLLM_RLP_PROFILER_PARENT_COMMIT=base['sources']['profiler'], VLLM_RLP_RUNTIME_CORE_COMMIT=base['sources']['host'],
+                   VLLM_RLP_DEVICE_PLUGIN_COMMIT=base['sources']['ascend'], VLLM_RLP_COMMUNICATION_MODE='none')
+    host = [str(PYTHON), '-m', 'vllm.entrypoints.cli.main', 'serve', '/models/Qwen2.5-7B-Instruct', '--served-model-name', 'ecpa-h2-real',
+            '--host', '127.0.0.1', '--port', str(port), '--shutdown-timeout', '5', '--tensor-parallel-size', '2', '--enforce-eager',
+            '--max-model-len', '2048', '--max-num-seqs', '1', '--gpu-memory-utilization', '0.6',
+            '--block-size', '128', '--no-enable-prefix-caching', '--enable-chunked-prefill']
+    command = [str(PYTHON.parent / 'vllm-hust-ext'), 'run', '--', *host]
+    result = dict(schema='ecpa-new-real-H2-attempt/v1', case=name, classification='REAL_NATIVE_H2_CANDIDATE',
+                  formal_qualified=False, performance_result=False, expected_order=order, error=None,
+                  start_wall_ns=time.time_ns(), start_monotonic_ns=time.monotonic_ns(), argv=command,
+                  source_commits=base['sources'], campaign_sha256=hashlib.sha256((root / 'campaign.json').read_bytes()).hexdigest())
+    save(out / 'attempt.json', result)
+    seen = {}
+    process = None
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with socket.socket() as s:
+            s.bind(('127.0.0.1', port))
+        with (out / 'stdout.log').open('wb') as stdout, (out / 'stderr.log').open('wb') as stderr:
+            process = subprocess.Popen(command, env=env, cwd=out, stdout=stdout, stderr=stderr,
+                                       stdin=subprocess.DEVNULL, start_new_session=True)
+            result['manager'] = ident(process.pid)
+            save(out / 'Popen.json', result['manager'])
+            deadline = time.monotonic() + 720
+            while time.monotonic() < deadline:
+                capture(process.pid, seen)
+                if process.poll() is not None:
+                    raise RuntimeError(f'Manager/Host exited before health: {process.returncode}')
+                try:
+                    with opener.open(f'http://127.0.0.1:{port}/health', timeout=2) as reply:
+                        if reply.status == 200:
+                            result['health_status'] = 200
+                            break
+                except OSError:
+                    pass
+                time.sleep(1)
+            else:
+                raise TimeoutError('health deadline720s')
+            for kind, prompt in [('below', 'Name a color.'), ('above', 'Evidence-bound compression transaction sentence. ' * 200)]:
+                request = dict(model='ecpa-h2-real', prompt=prompt, max_tokens=32, temperature=0,
+                               seed=20261019, ignore_eos=True)
+                save(out / f'{kind}-request.json', request)
+                raw = json.dumps(request).encode()
+                req = urllib.request.Request(f'http://127.0.0.1:{port}/v1/completions', data=raw,
+                    headers={'Content-Type': 'application/json', 'X-Request-Id': name + '-' + kind})
+                began = time.monotonic_ns()
+                save(out / f'{kind}-request-clock.json', dict(start_monotonic_ns=began, start_wall_ns=time.time_ns()))
+                with opener.open(req, timeout=240) as reply:
+                    response = reply.read()
+                    save(out / f'{kind}-response-clock.json', dict(end_monotonic_ns=time.monotonic_ns(), end_wall_ns=time.time_ns(), http_status=reply.status))
+                    (out / f'{kind}-response.json').write_bytes(response)
+                    result[kind] = dict(http_status=reply.status, elapsed_ns=time.monotonic_ns()-began,
+                                        usage=json.loads(response).get('usage'), response_id=json.loads(response).get('id'))
+                capture(process.pid, seen)
+                save(out / 'attempt.json', result)
+            time.sleep(2)
+    except BaseException as error:
+        result['error'] = repr(error)
+    finally:
+        if process is not None:
+            capture(process.pid, seen)
+            if process.poll() is None:
+                send(result['manager'], signal.SIGINT)
+                try:
+                    process.wait(timeout=25)
+                except subprocess.TimeoutExpired:
+                    pass
+            for sig in (signal.SIGTERM, signal.SIGKILL):
+                for item in reversed(list(seen.values())):
+                    send(item, sig)
+                time.sleep(2)
+            result['manager_returncode'] = process.poll()
+        result['retained_processes'] = list(seen.values())
+        result['owned_survivors'] = [p for p in seen.values() if current(p)]
+        result['finished_wall_ns'] = time.time_ns()
+        try:
+            npu(out / 'npu-after.txt')
+            result['device_process_tables_empty'] = True
+        except Exception as error:
+            result['device_process_tables_empty'] = False
+            result['cleanup_error'] = repr(error)
+        save(out / 'attempt.json', result)
+        save(out / 'raw-files.json', {str(p.relative_to(out)): hashlib.sha256(p.read_bytes()).hexdigest()
+                                    for p in out.rglob('*') if p.is_file() and p.name != 'raw-files.json' and 'cache' not in p.parts})
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root', type=Path, required=True)
+    args = parser.parse_args()
+    os.umask(0o077)
+    args.root.mkdir(mode=0o700, parents=True, exist_ok=False)
+    lock = open('/run/ecpa-h2-npu-0-3.lock', 'a')
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    runtime = json.loads((WORK / 'management/formal-h3-isolated-host-r17-runtime-inputs.json').read_text())
+    pair = json.loads((WORK / 'management/h4-first36-preparation-20261017-r8/inputs/manager-config.json').read_text())
+    base = dict(environment=runtime['environment'], kv_config=pair['extensions'][IDS['ascend_kvcompress']]['configuration'],
+                sources=dict(host='f67ad57c854940a90ddfa82a4a984bb6ce2ff923', ascend='153535b32417b3ad8fb10dad2f564ddf4dcab1ef',
+                             kv='2f49051b101adf63db7e9079fee276451e7a5678', profiler='dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06', manager='05357d6a9c84399785cb47d1d2a1ac5cda10f181'))
+    save(args.root / 'campaign.json', dict(schema='ecpa-real-H2-first-native-cohort/v1', frozen_wall_ns=time.time_ns(),
+        frozen_monotonic_ns=time.monotonic_ns(), cases=CASES, source_commits=base['sources'],
+        runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        oracle_rule_sha256=hashlib.sha256((HERE.parent/'compatible-oracle-rule-drain-v2.json').read_bytes()).hexdigest(),
+        loader_sha256=hashlib.sha256((HERE/'sitecustomize.py').read_bytes()).hexdigest(),
+        required_effects='independent reader must check actual order/threshold/physical KV/Profiler integrity',
+        physical_devices=[0,3], runtime_devices=[0,1], ports=[29901,29902,29903,29904,29905],
+        continuation_of='new exact drain source tuple and common bootstrap; r3/r4/r5 originals remain unchanged, not retroactive repair',
+        repeats_this_initial_block=1, matched_three_arm_population_claim=False, native_result=None))
+    results = []
+    for index, (name, order) in enumerate(CASES):
+        result = execute(args.root, name, order, base, 29901 + index)
+        results.append(result)
+        save(args.root / 'outcome.json', results)
+        if result['owned_survivors'] or not result['device_process_tables_empty']:
+            raise RuntimeError('cleanup incomplete; remaining starts not attempted')
+
+
+if __name__ == '__main__':
+    main()

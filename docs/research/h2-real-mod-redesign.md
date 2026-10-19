@@ -112,3 +112,10 @@ baseline至少包括：原MOD官方原生入口/推荐组合方式；专家manua
 本轮**完整组合判定仍unknown**：Profiler依赖atexit，但Host真实SIGTERM/forcekill绕过drain，scheduler汇总缺失；Host-only没有general-plugin回调，公共观察器未触发，缺少同覆盖Host事件对照。缺记录不补写，不等于已证实丢事件或MOD冲突。源规则/输入先于启动，reader是在见到部分raw后开发，时序披露；本地callback不是认证ACK。原r1/r2运行入口/设备号失败、r3端口预检查失败完整保留，不改判为算法反例。
 
 此轮是首次真实效果与接口边界研究，不替代完整三方法×三重复、heldout、原0.95阈值或性能/数值等价结果。公共显式studyloader318行，未改产品算法/本块未新构建wheel，历史port工时unknown。下一轮修复必须使用新源码/配置/证据身份，真实重跑；不得追认本轮无损。
+
+
+## 11. 新源码 drain 修复后的有限重跑（r6）
+
+[独立原件包](../../experiments/real_mod_composition/artifacts/native-drain-study-20261019-r6/README.md)单列新 Host f67/Profiler dab 官方源码与wheel，不修改上一节 r3/r4 UNKNOWN。同一family五组各两请求，共10个 HTTP200；4/1201-token 输入各输出32 tokens。两加载顺序保留原 Host/RID/epoch、KV 双rank物理 block-table 与 Profiler 事件对应。三个含Profiler组共15个真实 recording shards（包括空事件shard）均有原始 drained summary，canonical bytes/count/seq 与零declared drop/loss/error核对一致；12个目标scheduler事件对应六请求。15shards不是15请求或独立重复。
+
+该块仅支持固定tuple/有限窗的实效保持及正常关闭观察，尚未赋完整独立family oracle label，不计历史四例、legacy正式H2、三方法比较、heldout、性能或数值质量结论。Host-only无Plan-gated NPU receiver，不声称全组同probe物理对照；MOD本地callback不等于认证ACK。修复为3个Host源文件+1个Profiler源文件（生产+51/-1），另计studyloader/bootstrap与reader成本，历史人工时间unknown。规则v2在本块启动前冻结，但已见旧source/结果，reader修订时序保留。原失败、缺失及unknown不回填；下一三方法cohort单独记账。

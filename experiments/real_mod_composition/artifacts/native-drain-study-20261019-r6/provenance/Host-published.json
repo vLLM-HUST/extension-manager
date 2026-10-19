@@ -1,0 +1,30 @@
+{
+  "repository": "vLLM-HUST/vllm-hust",
+  "commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+  "tree": "9c0956bf64ce66686e61503f73a688cf07196dbf",
+  "parent": "772b34583c640f94ebdec7067ed89f08e2db848b",
+  "branch": "experiment/h2-profiler-drain-20261019",
+  "entries": [
+    {
+      "path": "vllm/v1/events.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "06ed1fe42580b203b59374c9d7dc4ce84f5fa1ac"
+    },
+    {
+      "path": "vllm/v1/engine/core.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7703578a38e4d38c447ac73cac46844a44b870bf"
+    },
+    {
+      "path": "vllm/v1/worker/worker_base.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2c363fa8fe4c1ffd30bd69a724aff21642a8b8bc"
+    }
+  ],
+  "wall_ns": 1792372170429109063,
+  "merged_to_main": false,
+  "formal_result": false
+}
