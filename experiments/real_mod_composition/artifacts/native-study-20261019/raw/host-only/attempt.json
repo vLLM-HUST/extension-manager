@@ -1,0 +1,352 @@
+{
+  "schema": "ecpa-new-real-H2-attempt/v1",
+  "case": "host-only",
+  "classification": "REAL_NATIVE_H2_CANDIDATE",
+  "formal_qualified": false,
+  "performance_result": false,
+  "expected_order": [],
+  "error": null,
+  "start_wall_ns": 1792371461564629790,
+  "start_monotonic_ns": 8087165022316220,
+  "argv": [
+    "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm-hust-ext",
+    "run",
+    "--",
+    "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/python",
+    "-m",
+    "vllm.entrypoints.cli.main",
+    "serve",
+    "/models/Qwen2.5-7B-Instruct",
+    "--served-model-name",
+    "ecpa-h2-real",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "29884",
+    "--tensor-parallel-size",
+    "2",
+    "--enforce-eager",
+    "--max-model-len",
+    "2048",
+    "--max-num-seqs",
+    "1",
+    "--gpu-memory-utilization",
+    "0.6",
+    "--block-size",
+    "128",
+    "--no-enable-prefix-caching",
+    "--enable-chunked-prefill"
+  ],
+  "source_commits": {
+    "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+    "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+    "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+    "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+    "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+  },
+  "campaign_sha256": "91e83d64cc2dbe48d1f4e486e8d150f77021d4b5ac10b0ca96b227a455f63f2a",
+  "manager": {
+    "pid": 2026922,
+    "start_ticks": 808716502,
+    "session": 2026922,
+    "state": "R",
+    "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+  },
+  "health_status": 200,
+  "below": {
+    "http_status": 200,
+    "elapsed_ns": 14315924831,
+    "usage": {
+      "prompt_tokens": 4,
+      "total_tokens": 36,
+      "completion_tokens": 32,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    },
+    "response_id": "cmpl-host-only-below"
+  },
+  "above": {
+    "http_status": 200,
+    "elapsed_ns": 2419996187,
+    "usage": {
+      "prompt_tokens": 1201,
+      "total_tokens": 1233,
+      "completion_tokens": 32,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    },
+    "response_id": "cmpl-host-only-above"
+  },
+  "manager_returncode": 130,
+  "retained_processes": [
+    {
+      "pid": 2026922,
+      "start_ticks": 808716502,
+      "session": 2026922,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2026923,
+      "start_ticks": 808716539,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2027335,
+      "start_ticks": 808720665,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2027336,
+      "start_ticks": 808720669,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2027423,
+      "start_ticks": 808722487,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2027665,
+      "start_ticks": 808727215,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2027666,
+      "start_ticks": 808727215,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2027935,
+      "start_ticks": 808731400,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2027936,
+      "start_ticks": 808731400,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028789,
+      "start_ticks": 808738865,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028804,
+      "start_ticks": 808738894,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028817,
+      "start_ticks": 808738903,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028795,
+      "start_ticks": 808738876,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028821,
+      "start_ticks": 808738904,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028834,
+      "start_ticks": 808738913,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028927,
+      "start_ticks": 808739195,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2028928,
+      "start_ticks": 808739198,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029014,
+      "start_ticks": 808739631,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029016,
+      "start_ticks": 808739633,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029013,
+      "start_ticks": 808739630,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029026,
+      "start_ticks": 808739645,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029042,
+      "start_ticks": 808739648,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029024,
+      "start_ticks": 808739644,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029041,
+      "start_ticks": 808739648,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029103,
+      "start_ticks": 808739891,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029122,
+      "start_ticks": 808739895,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029270,
+      "start_ticks": 808740095,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029289,
+      "start_ticks": 808740117,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029325,
+      "start_ticks": 808740123,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029269,
+      "start_ticks": 808740093,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029283,
+      "start_ticks": 808740115,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029324,
+      "start_ticks": 808740122,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029443,
+      "start_ticks": 808740424,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029444,
+      "start_ticks": 808740428,
+      "session": 2026923,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029576,
+      "start_ticks": 808740607,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029575,
+      "start_ticks": 808740607,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029660,
+      "start_ticks": 808740718,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    {
+      "pid": 2029644,
+      "start_ticks": 808740711,
+      "session": 2026923,
+      "state": "S",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    }
+  ],
+  "owned_survivors": [],
+  "finished_wall_ns": 1792371734188175641,
+  "device_process_tables_empty": true
+}

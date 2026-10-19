@@ -56,3 +56,13 @@ the 31 modeled cases, and the negative H1 result retain their original scope.
 The [prospective H2 design](../../research/h2-real-mod-redesign.md) and
 [candidate plan](../../../experiments/real_mod_composition/h2-real-mod-redesign-plan.json)
 add no measured outcomes and do not rewrite historical protocols.
+
+## Expanded discovery beyond the original24
+
+[The expanded source inventory](expanded-population/README.md) distinguishes49
+declared extension/control repository boundaries (33 public,16 restricted) from
+algorithms and runtime qualification. Its old24 intersection is21;28 lie outside
+that frozen cohort. Four additional public source audits and exact portable
+snapshots cover GDN and three StateAxis mechanisms. The fifth internal case and
+private source remain local; no original population label or runtime result is
+changed. Adaptation work estimates are explicitly unmeasured.

@@ -1,0 +1,271 @@
+{
+  "schema": "ecpa-public-new-mod-source-findings/v1",
+  "findings": [
+    {
+      "id": "NEW-01",
+      "repository_id": 1409929452,
+      "title": "GDN codec 是排他式私有算子替换，安装顺序是接口的一部分",
+      "source_facts": "register 默认-off/kill-switch；适配器等待 Ascend patch_qwen3_5 加载后，将 QwenGatedDeltaNetAttention.__init__/_forward_core 替换。先验证原_forward_core.__module__==vllm_ascend.ops.gdn 与三个源码标记，否则拒绝已被其他补丁占用的 Host。",
+      "implicit_dependencies": [
+        "Ascend 自己先完成 patch_qwen3_5",
+        "精确私有_forward_core源/签名和当前Qwen GDN布局",
+        "后续runtime/native codec的设备实现，不由entrypoint安装自动证明"
+      ],
+      "shared_resource": "Python class QwenGatedDeltaNetAttention._forward_core、构造器、每层 recurrent state 与相应native codec内存。",
+      "order_or_conflict": "另一个MOD先替换_forward_core且module改变时，该实际guard将拒绝；后装的替换者仍可覆盖codec。这里只是源级可构造顺序边界，没有新运行oracle。",
+      "adapter_cost": "中到高：源绑定的函数原像/后像所有权、Ascend加载依赖、recurrent-state布局与graph/spec/multi-request边界需要独立证据。",
+      "current_ECPA": "可明确声明同一算子变更资源、固定启用顺序与source refs；不会自动发现monkeypatch所有权或把installed日志变成runtime_effective/精度通过。",
+      "provenance": "这是gdn-state-codec仓原生插件适配，不是上游vLLM公共ABI。README的历史性能/负例只按作者声明记录，未重验原始NPU数据。",
+      "evidence": [
+        {
+          "repository_id": 1409929452,
+          "repository": "vLLM-HUST/gdn-state-codec",
+          "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+          "tree": "397c59c23de1df174a1274fd045b0fce6b700b1b",
+          "repository_relative_path": "src/gdn_state_codec/plugin.py",
+          "line_start": 28,
+          "line_end": 55,
+          "git_blob": "80f732d7b295f0adbd99406d6aad071367aaa7c3",
+          "raw_sha256": "020c794cb53e7f218468f9f130fe9901f41ce8b8421654dbf3517f758001a573",
+          "code": "28: \n29: _runtime_effective_emitted = False\n30: \n31: \n32: def note_runtime_effective() -> None:\n33:     \"\"\"Report the first actual codec dispatch in this process.\"\"\"\n34: \n35:     global _runtime_effective_emitted\n36:     if _runtime_effective_emitted or not _enabled(\"EVIDENCE\"):\n37:         return\n38:     _runtime_effective_emitted = True\n39:     emit_evidence(\"runtime_effective mechanism=gdn_state_codec\")\n40: \n41: \n42: def register() -> None:\n43:     \"\"\"Entry point called by vLLM in API, engine-core, and worker processes.\"\"\"\n44: \n45:     if _enabled(\"KILL_SWITCH\"):\n46:         return\n47:     if not _enabled(\"ENABLE\"):\n48:         return\n49:     from .adapter import install\n50: \n51:     receipt = install()\n52:     if _enabled(\"EVIDENCE\"):\n53:         emit_evidence(\n54:             \"installed mechanism=gdn_state_codec \"\n55:             f\"host={receipt['host']} mode={receipt['mode']}\"",
+          "snapshot": "sources/implementation/1409929452/src/gdn_state_codec/plugin.py.snapshot"
+        },
+        {
+          "repository_id": 1409929452,
+          "repository": "vLLM-HUST/gdn-state-codec",
+          "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+          "tree": "397c59c23de1df174a1274fd045b0fce6b700b1b",
+          "repository_relative_path": "src/gdn_state_codec/adapter.py",
+          "line_start": 24,
+          "line_end": 38,
+          "git_blob": "738deb0a81d01df246e3aa82d1bd6e45e7ec8dff",
+          "raw_sha256": "4b8b14761b5495ef4a9e196e7404df89481ab450618e1d26586cbf4fdbcd32ae",
+          "code": "24: def _guard_host(host_class: Any) -> None:\n25:     original = getattr(host_class, \"_forward_core\", None)\n26:     if original is None:\n27:         raise RuntimeError(\"gdn_state_codec cannot find the host _forward_core\")\n28:     if original.__module__ != _EXPECTED_HOST_MODULE:\n29:         raise RuntimeError(\n30:             \"gdn_state_codec refuses an unsupported or already patched GDN host: \"\n31:             f\"{original.__module__}\"\n32:         )\n33:     source = inspect.getsource(original)\n34:     missing = [marker for marker in _EXPECTED_SOURCE_MARKERS if marker not in source]\n35:     if missing:\n36:         raise RuntimeError(\n37:             \"gdn_state_codec host source guard failed; missing markers: \"\n38:             f\"{missing}\"",
+          "snapshot": "sources/implementation/1409929452/src/gdn_state_codec/adapter.py.snapshot"
+        },
+        {
+          "repository_id": 1409929452,
+          "repository": "vLLM-HUST/gdn-state-codec",
+          "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+          "tree": "397c59c23de1df174a1274fd045b0fce6b700b1b",
+          "repository_relative_path": "src/gdn_state_codec/adapter.py",
+          "line_start": 42,
+          "line_end": 86,
+          "git_blob": "738deb0a81d01df246e3aa82d1bd6e45e7ec8dff",
+          "raw_sha256": "4b8b14761b5495ef4a9e196e7404df89481ab450618e1d26586cbf4fdbcd32ae",
+          "code": "42: def _install_now() -> dict[str, Any]:\n43:     \"\"\"Patch GDN only after vLLM-Ascend has installed its base adapter.\"\"\"\n44: \n45:     from vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn import (\n46:         QwenGatedDeltaNetAttention as host_class,\n47:     )\n48: \n49:     if getattr(host_class, _MARKER, False):\n50:         return {\"host\": host_class.__module__, \"mode\": \"already-installed\"}\n51: \n52:     _guard_host(host_class)\n53: \n54:     from vllm.logger import init_logger\n55: \n56:     from .host_gdn import GdnStateCodecForwardCore\n57:     from .runtime import GdnStateCodecRuntime\n58: \n59:     logger = init_logger(__name__)\n60:     original_init = host_class.__init__\n61: \n62:     def codec_init(\n63:         self: Any,\n64:         config: Any,\n65:         vllm_config: Any,\n66:         prefix: str = \"\",\n67:         gqa_interleaved_layout: bool = False,\n68:     ) -> None:\n69:         original_init(self, config, vllm_config, prefix, gqa_interleaved_layout)\n70:         runtime = GdnStateCodecRuntime.from_vllm_config(vllm_config, prefix)\n71:         self._gdn_state_codec_runtime = runtime\n72:         if runtime is not None:\n73:             experiment = runtime.experiment\n74:             logger.warning(\n75:                 \"GDN State Codec active for %s in %s mode with %s initializer, \"\n76:                 \"%s decode backend, and %d boundary iterations\",\n77:                 prefix,\n78:                 experiment.mode,\n79:                 experiment.initializer,\n80:                 experiment.decode_backend,\n81:                 experiment.boundary_power_iterations,\n82:             )\n83: \n84:     host_class.__init__ = codec_init\n85:     host_class._forward_core = GdnStateCodecForwardCore._forward_core\n86:     setattr(host_class, _MARKER, True)",
+          "snapshot": "sources/implementation/1409929452/src/gdn_state_codec/adapter.py.snapshot"
+        },
+        {
+          "repository_id": 1409929452,
+          "repository": "vLLM-HUST/gdn-state-codec",
+          "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+          "tree": "397c59c23de1df174a1274fd045b0fce6b700b1b",
+          "repository_relative_path": "src/gdn_state_codec/adapter.py",
+          "line_start": 130,
+          "line_end": 137,
+          "git_blob": "738deb0a81d01df246e3aa82d1bd6e45e7ec8dff",
+          "raw_sha256": "4b8b14761b5495ef4a9e196e7404df89481ab450618e1d26586cbf4fdbcd32ae",
+          "code": "130: def install() -> dict[str, Any]:\n131:     \"\"\"Install now or defer until Ascend's Qwen3.5 patch finishes importing.\"\"\"\n132: \n133:     if _TARGET_MODULE in sys.modules:\n134:         return _install_now()\n135:     if not any(getattr(finder, _FINDER_MARKER, False) for finder in sys.meta_path):\n136:         sys.meta_path.insert(0, _AfterAscendFinder())\n137:     return {\"host\": _TARGET_MODULE, \"mode\": \"deferred\"}",
+          "snapshot": "sources/implementation/1409929452/src/gdn_state_codec/adapter.py.snapshot"
+        }
+      ],
+      "adapter_cost_status": "Qualitative integration work estimate only. Actual semantic LOC, person-hours, build/qualification time, retries and runtime cost are unmeasured/unknown. Existing source size or commit dates are not measured adaptation cost."
+    },
+    {
+      "id": "NEW-02",
+      "repository_id": 1411784761,
+      "title": "Automatic prefix cache 的token index不拥有device residency/lease真值",
+      "source_facts": "Python handler只返回ON配置（两entry、128-token block、lease_safe、token验证）；Rust index按namespace/salt/tokens哈希索引，命中后再逐token比较；eviction选择依赖调用者is_leased，lookup依赖is_resident。",
+      "implicit_dependencies": [
+        "StateAxis按ECPA hash-bound additional-config调用该handler；enabled=True是ON配置，不等于import默认启用",
+        "Host持有真实StateKey、lease/residency和device eviction",
+        "模型/tokenizer/tenant隔离语义必须进入namespace/salt与真实state identity"
+      ],
+      "shared_resource": "StateAxis resident-state集合、StateKey对应的KV设备存储、LRU eviction和真实lease。",
+      "order_or_conflict": "与async restore或另一个cache管理器组合时，index自身不原子地证明设备仍resident/未leased；两者必须共享真实Host生命周期权威。此为源依赖，不是已测race/错误命中。",
+      "adapter_cost": "中：保留Rust机制，补Host state/lease/release源证据以及namespace模型绑定；不能只把hash相等当状态可用。",
+      "current_ECPA": "当前StateAxis provider能约束experiment_mode并验证research manifest digest，CLI能组合多个hash-bound stateaxis_mods及拒绝多个进程树owner；这些不会替代每次is_resident/is_leased的设备真值。",
+      "provenance": "独立Rust index属于该MOD；device ownership和执行仍由外部StateAxis实现，不是这个Python轮自带的推理引擎。",
+      "evidence": [
+        {
+          "repository_id": 1411784761,
+          "repository": "vLLM-HUST/stateaxis-automatic-prefix-cache",
+          "commit": "9b0962232c7601f66100c83a3394ad73a2113ce8",
+          "tree": "834c9c38139f2203b8bcc5a071b21fbd0dbebbc3",
+          "repository_relative_path": "src/stateaxis_automatic_prefix_cache/__init__.py",
+          "line_start": 9,
+          "line_end": 39,
+          "git_blob": "1dc4d12f756e7d8dfee6793fb7a784bd81edf6c7",
+          "raw_sha256": "1555200452d2cf9f148a2eed20904fb70cd3708679d3c99f1f9a02b5b4d4a387",
+          "code": "9: \n10: @dataclass(frozen=True, slots=True)\n11: class AutomaticPrefixCacheConfig:\n12:     \"\"\"Only configuration accepted by the hash-bound StateAxis host.\"\"\"\n13: \n14:     enabled: bool = True\n15:     max_entries: int = 2\n16:     block_tokens: int = 128\n17:     lease_safe: bool = True\n18:     verify_tokens_after_hash: bool = True\n19:     fail_closed: bool = True\n20: \n21:     def __post_init__(self) -> None:\n22:         if (\n23:             self.enabled is not True\n24:             or self.max_entries != 2\n25:             or self.block_tokens != 128\n26:             or self.lease_safe is not True\n27:             or self.verify_tokens_after_hash is not True\n28:             or self.fail_closed is not True\n29:         ):\n30:             raise ValueError(\n31:                 \"automatic prefix cache requires the bounded two-entry, \"\n32:                 \"128-token-block, lease-safe, collision-verified contract\"\n33:             )\n34: \n35: \n36: def automatic_prefix_cache() -> AutomaticPrefixCacheConfig:\n37:     \"\"\"Return the default-off candidate's admitted ON configuration.\"\"\"\n38: \n39:     return AutomaticPrefixCacheConfig()",
+          "snapshot": "sources/implementation/1411784761/src/stateaxis_automatic_prefix_cache/__init__.py.snapshot"
+        },
+        {
+          "repository_id": 1411784761,
+          "repository": "vLLM-HUST/stateaxis-automatic-prefix-cache",
+          "commit": "9b0962232c7601f66100c83a3394ad73a2113ce8",
+          "tree": "834c9c38139f2203b8bcc5a071b21fbd0dbebbc3",
+          "repository_relative_path": "native/src/lib.rs",
+          "line_start": 157,
+          "line_end": 185,
+          "git_blob": "a219a0a155e3ab6f9a5ee860cc5118de63416f91",
+          "raw_sha256": "449e2d1ed7239111a8a2cc72001206d44d4f7f1a0eb19b7cf6599a6b5f46a48e",
+          "code": "157:     pub fn insert<F>(\n158:         &mut self,\n159:         namespace_bytes: &[u8],\n160:         salt: Option<&str>,\n161:         tokens: &[u32],\n162:         key: StateKey,\n163:         context_len: usize,\n164:         value: V,\n165:         mut is_leased: F,\n166:     ) -> InsertOutcome<V>\n167:     where\n168:         F: FnMut(StateKey) -> bool,\n169:     {\n170:         if !self.enabled\n171:             || tokens.is_empty()\n172:             || context_len != tokens.len()\n173:             || self.max_entries == 0\n174:         {\n175:             return InsertOutcome::default();\n176:         }\n177:         self.remove(key);\n178:         let evicted = if self.state_keys.len() >= self.max_entries {\n179:             let victim = self.lru.iter().copied().find(|key| !is_leased(*key));\n180:             let Some(victim) = victim else {\n181:                 return InsertOutcome {\n182:                     lease_blocked: true,\n183:                     ..InsertOutcome::default()\n184:                 };\n185:             };",
+          "snapshot": "sources/implementation/1411784761/native/src/lib.rs.snapshot"
+        },
+        {
+          "repository_id": 1411784761,
+          "repository": "vLLM-HUST/stateaxis-automatic-prefix-cache",
+          "commit": "9b0962232c7601f66100c83a3394ad73a2113ce8",
+          "tree": "834c9c38139f2203b8bcc5a071b21fbd0dbebbc3",
+          "repository_relative_path": "native/src/lib.rs",
+          "line_start": 215,
+          "line_end": 257,
+          "git_blob": "a219a0a155e3ab6f9a5ee860cc5118de63416f91",
+          "raw_sha256": "449e2d1ed7239111a8a2cc72001206d44d4f7f1a0eb19b7cf6599a6b5f46a48e",
+          "code": "215:     pub fn lookup<F>(\n216:         &mut self,\n217:         namespace_bytes: &[u8],\n218:         salt: Option<&str>,\n219:         tokens: &[u32],\n220:         mut is_resident: F,\n221:     ) -> LookupOutcome<V>\n222:     where\n223:         F: FnMut(StateKey, &V) -> bool,\n224:     {\n225:         let mut outcome = LookupOutcome::default();\n226:         if !self.enabled {\n227:             return outcome;\n228:         }\n229:         let domain = CacheDomain::new(namespace_bytes, salt);\n230:         let Some(lengths) = self.entries.get(&domain) else {\n231:             return outcome;\n232:         };\n233:         for (&length, roots) in lengths.range(..=tokens.len()).rev() {\n234:             let prefix = &tokens[..length];\n235:             let blocks = self.block_hashes(prefix);\n236:             let root = Self::root(&domain, length, &blocks);\n237:             let Some(bucket) = roots.get(&root) else {\n238:                 continue;\n239:             };\n240:             for entry in bucket {\n241:                 if entry.block_hashes.as_ref() != blocks.as_slice()\n242:                     || entry.tokens.as_ref() != prefix\n243:                 {\n244:                     outcome.hash_collisions += 1;\n245:                     continue;\n246:                 }\n247:                 if is_resident(entry.key, &entry.value) {\n248:                     self.lru.retain(|candidate| *candidate != entry.key);\n249:                     self.lru.push_back(entry.key);\n250:                     outcome.hit = Some(PrefixCacheHit {\n251:                         value: entry.value.clone(),\n252:                         reused_tokens: length,\n253:                     });\n254:                     return outcome;\n255:                 }\n256:                 outcome.stale_entries += 1;\n257:             }",
+          "snapshot": "sources/implementation/1411784761/native/src/lib.rs.snapshot"
+        }
+      ],
+      "adapter_cost_status": "Qualitative integration work estimate only. Actual semantic LOC, person-hours, build/qualification time, retries and runtime cost are unmeasured/unknown. Existing source size or commit dates are not measured adaptation cost."
+    },
+    {
+      "id": "NEW-03",
+      "repository_id": 1411784879,
+      "title": "Async KV transfer coordinator 的commit不是DMA完成证明",
+      "source_facts": "身份为(state_id,generation,snapshot_sha256)，submit拒绝零身份/重复correlation/同key不同hash并有64边界；begin_next签发lease，commit只核lease并返回coalesced correlations；abort按retry预算失败关闭。Python ON配置固定max_retries=0。",
+      "implicit_dependencies": [
+        "Host对snapshot全bytes计算真实SHA并维护generation",
+        "StateAxis拥有DMA stream、pinned snapshot、event completion与 publication",
+        "真实失败/取消必须触发abort及drain，不能把逻辑commit当设备完成"
+      ],
+      "shared_resource": "Host/device KV snapshot生命周期、pending transfer/coalesced waiters及单generation lease。",
+      "order_or_conflict": "自动prefix cache可能同时决定eviction/lease；仅各自config包含lease_safe或transactional_restore不证明共用同一状态锁/epoch。未运行真实交错，不能贴不兼容标签。",
+      "adapter_cost": "高于纯metadata：需要可认证的DMA event→commit→可见性/取消/drain桥，保持零retry与原native resource ownership。",
+      "current_ECPA": "能表达owner/lease/obligation并绑定配置和source；该Rust commit方法本身未读取NPU event，ECPA不能凭其成功就签发native completion。",
+      "provenance": "该仓交付纯协调器与配置契约；README明确历史matched NPU结果不自动资格化当前0.2版本。本审计不继承这些历史结果。",
+      "evidence": [
+        {
+          "repository_id": 1411784879,
+          "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+          "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+          "tree": "e08edcacf7f7ba08c9f78c603ef39c320e51a9e1",
+          "repository_relative_path": "src/stateaxis_async_kv_transfer/__init__.py",
+          "line_start": 9,
+          "line_end": 55,
+          "git_blob": "2376473f084b7a2cd88dbbd4a644afcb5657305e",
+          "raw_sha256": "0d38066ffb8257c3ea2e11e1de8a246037825e498af8a852b8236ac2e58e1bce",
+          "code": "9: \n10: @dataclass(frozen=True, slots=True)\n11: class AsyncKvTransferConfig:\n12:     \"\"\"The only bounded configuration accepted by the StateAxis host.\"\"\"\n13: \n14:     enabled: bool = True\n15:     max_pending_keys: int = 64\n16:     max_correlations: int = 64\n17:     max_retries: int = 0\n18:     generation_bound: bool = True\n19:     snapshot_sha256_required: bool = True\n20:     transactional_restore: bool = True\n21:     serialized_completion: bool = True\n22:     fail_closed: bool = True\n23: \n24:     def __post_init__(self) -> None:\n25:         if self != AsyncKvTransferConfig.__new_default():\n26:             raise ValueError(\"async KV transfer requires the reviewed bounded contract\")\n27: \n28:     @classmethod\n29:     def __new_default(cls) -> AsyncKvTransferConfig:\n30:         instance = object.__new__(cls)\n31:         for field, value in (\n32:             (\"enabled\", True),\n33:             (\"max_pending_keys\", 64),\n34:             (\"max_correlations\", 64),\n35:             (\"max_retries\", 0),\n36:             (\"generation_bound\", True),\n37:             (\"snapshot_sha256_required\", True),\n38:             (\"transactional_restore\", True),\n39:             (\"serialized_completion\", True),\n40:             (\"fail_closed\", True),\n41:         ):\n42:             object.__setattr__(instance, field, value)\n43:         return instance\n44: \n45: \n46: def async_kv_transfer() -> AsyncKvTransferConfig:\n47:     \"\"\"Return the default-off candidate's admitted ON configuration.\"\"\"\n48: \n49:     return AsyncKvTransferConfig()\n50: \n51: \n52: __all__ = [\"MOD_ID\", \"AsyncKvTransferConfig\", \"async_kv_transfer\"]",
+          "snapshot": "sources/implementation/1411784879/src/stateaxis_async_kv_transfer/__init__.py.snapshot"
+        },
+        {
+          "repository_id": 1411784879,
+          "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+          "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+          "tree": "e08edcacf7f7ba08c9f78c603ef39c320e51a9e1",
+          "repository_relative_path": "native/src/lib.rs",
+          "line_start": 134,
+          "line_end": 174,
+          "git_blob": "21db18385b664dda555c1058bed26d429bc7537c",
+          "raw_sha256": "a08924629dfec8fe37a6b63649755762b3167657e82bd5f26666eb3ea3aa4850",
+          "code": "134:     pub fn submit(\n135:         &mut self,\n136:         identity: TransferIdentity,\n137:         correlation_id: u64,\n138:     ) -> Result<Admission, AdmissionError> {\n139:         self.stats.submitted += 1;\n140:         if identity.state_id == 0 || identity.generation == 0 || identity.snapshot_sha256 == [0; 32]\n141:         {\n142:             return Err(AdmissionError::InvalidIdentity);\n143:         }\n144:         if self.correlations.contains_key(&correlation_id) {\n145:             return Err(AdmissionError::DuplicateCorrelation);\n146:         }\n147:         let key = identity.state_key();\n148:         if let Some(work) = self.pending.get_mut(&key) {\n149:             if work.identity != identity {\n150:                 self.stats.identity_conflicts += 1;\n151:                 return Err(AdmissionError::IdentityConflict);\n152:             }\n153:             if self.correlations.len() >= self.config.max_correlations {\n154:                 self.stats.capacity_rejections += 1;\n155:                 return Err(AdmissionError::CapacityExceeded);\n156:             }\n157:             work.correlations.push(correlation_id);\n158:             self.correlations.insert(correlation_id, key);\n159:             self.stats.coalesced += 1;\n160:             return Ok(Admission::Coalesced);\n161:         }\n162:         if self.pending.len() >= self.config.max_pending_keys\n163:             || self.correlations.len() >= self.config.max_correlations\n164:         {\n165:             self.stats.capacity_rejections += 1;\n166:             return Err(AdmissionError::CapacityExceeded);\n167:         }\n168:         self.pending.insert(\n169:             key,\n170:             Pending {\n171:                 identity,\n172:                 correlations: vec![correlation_id],\n173:                 attempt: 0,\n174:                 lease_id: None,",
+          "snapshot": "sources/implementation/1411784879/native/src/lib.rs.snapshot"
+        },
+        {
+          "repository_id": 1411784879,
+          "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+          "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+          "tree": "e08edcacf7f7ba08c9f78c603ef39c320e51a9e1",
+          "repository_relative_path": "native/src/lib.rs",
+          "line_start": 184,
+          "line_end": 217,
+          "git_blob": "21db18385b664dda555c1058bed26d429bc7537c",
+          "raw_sha256": "a08924629dfec8fe37a6b63649755762b3167657e82bd5f26666eb3ea3aa4850",
+          "code": "184:     pub fn begin_next(&mut self) -> Option<TransferLease> {\n185:         let key = self.queue.pop_front()?;\n186:         let work = self.pending.get_mut(&key)?;\n187:         debug_assert!(work.lease_id.is_none());\n188:         let lease_id = self.next_lease_id;\n189:         self.next_lease_id = self.next_lease_id.checked_add(1).unwrap_or(1);\n190:         work.lease_id = Some(lease_id);\n191:         work.attempt += 1;\n192:         self.stats.begun += 1;\n193:         Some(TransferLease {\n194:             lease_id,\n195:             identity: work.identity,\n196:             correlations: work.correlations.clone(),\n197:             attempt: work.attempt,\n198:         })\n199:     }\n200: \n201:     /// Publish successful completion and release every coalesced correlation.\n202:     ///\n203:     /// # Errors\n204:     ///\n205:     /// Rejects unknown, stale, or forged leases without changing admitted work.\n206:     pub fn commit(&mut self, lease: &TransferLease) -> Result<Vec<u64>, CompletionError> {\n207:         let key = self.validate_lease(lease)?;\n208:         let work = self\n209:             .pending\n210:             .remove(&key)\n211:             .ok_or(CompletionError::UnknownLease)?;\n212:         for correlation in &work.correlations {\n213:             self.correlations.remove(correlation);\n214:         }\n215:         self.stats.committed += 1;\n216:         self.stats.completed_correlations += work.correlations.len() as u64;\n217:         Ok(work.correlations)",
+          "snapshot": "sources/implementation/1411784879/native/src/lib.rs.snapshot"
+        },
+        {
+          "repository_id": 1411784879,
+          "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+          "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+          "tree": "e08edcacf7f7ba08c9f78c603ef39c320e51a9e1",
+          "repository_relative_path": "native/src/lib.rs",
+          "line_start": 220,
+          "line_end": 268,
+          "git_blob": "21db18385b664dda555c1058bed26d429bc7537c",
+          "raw_sha256": "a08924629dfec8fe37a6b63649755762b3167657e82bd5f26666eb3ea3aa4850",
+          "code": "220:     /// Abort an active lease, optionally requeueing it within the retry budget.\n221:     ///\n222:     /// # Errors\n223:     ///\n224:     /// Rejects invalid leases. A request to retry beyond the configured budget\n225:     /// fails the work closed and returns [`CompletionError::RetryBudgetExhausted`].\n226:     pub fn abort(\n227:         &mut self,\n228:         lease: &TransferLease,\n229:         retry: bool,\n230:     ) -> Result<Vec<u64>, CompletionError> {\n231:         let key = self.validate_lease(lease)?;\n232:         self.stats.aborted += 1;\n233:         if retry {\n234:             let work = self\n235:                 .pending\n236:                 .get_mut(&key)\n237:                 .ok_or(CompletionError::UnknownLease)?;\n238:             if work.attempt > self.config.max_retries {\n239:                 let correlations = self.fail_key(key);\n240:                 return Err(if correlations.is_empty() {\n241:                     CompletionError::UnknownLease\n242:                 } else {\n243:                     CompletionError::RetryBudgetExhausted\n244:                 });\n245:             }\n246:             work.lease_id = None;\n247:             self.queue.push_back(key);\n248:             self.stats.retried += 1;\n249:             return Ok(Vec::new());\n250:         }\n251:         Ok(self.fail_key(key))\n252:     }\n253: \n254:     fn validate_lease(&self, lease: &TransferLease) -> Result<StateKey, CompletionError> {\n255:         let key = lease.identity.state_key();\n256:         let work = self\n257:             .pending\n258:             .get(&key)\n259:             .ok_or(CompletionError::UnknownLease)?;\n260:         if work.identity != lease.identity\n261:             || work.lease_id != Some(lease.lease_id)\n262:             || work.attempt != lease.attempt\n263:         {\n264:             return Err(CompletionError::LeaseMismatch);\n265:         }\n266:         Ok(key)\n267:     }\n268: ",
+          "snapshot": "sources/implementation/1411784879/native/src/lib.rs.snapshot"
+        }
+      ],
+      "adapter_cost_status": "Qualitative integration work estimate only. Actual semantic LOC, person-hours, build/qualification time, retries and runtime cost are unmeasured/unknown. Existing source size or commit dates are not measured adaptation cost."
+    },
+    {
+      "id": "NEW-04",
+      "repository_id": 1411784982,
+      "title": "Pipelined weight loading 包暴露配置，物理loader仍属StateAxis Host",
+      "source_facts": "handler返回固定Qwen2-only/two64MiB slots/4096 alignment的pinned_double_buffer_async_v1配置，声明incremental SHA、event-guarded slot reuse、execution-artifact/root绑定和transactional Ready。此Python文件没有H2D执行函数。",
+      "implicit_dependencies": [
+        "真正StateAxis worker的plan parser与execution artifact v6/root/geometry检查",
+        "pinned内存、device event、异步H2D实际实现",
+        "实际模型/张量layout和启动cold/warm/cache状态"
+      ],
+      "shared_resource": "两个pinned staging buffers、weight packs、device copy streams和Ready发布权。",
+      "order_or_conflict": "与别的loader或async KV transfer共用copy engine/pinned-memory预算时，存在资源争用假设；不能把它当已发生的冲突或将不同模型的历史结果拼接。",
+      "adapter_cost": "高：必须审计/绑定真正Host loader及其事件/字节验证，不是更改handler布尔flag。",
+      "current_ECPA": "现有provider可绑定research digest、实验启用与组合envelope，进程树单owner检查有效；还需原Host真实slot reuse/pack校验/Ready事实与阶段计时。",
+      "provenance": "Qwen2-only是在此独立MOD的真实配置约束；README另述Qwen3.5 carrier诊断未走ECPA，不能将其直接当本MOD新资格。",
+      "evidence": [
+        {
+          "repository_id": 1411784982,
+          "repository": "vLLM-HUST/stateaxis-pipelined-weight-loading",
+          "commit": "f5f4ffc30c9754d525017aa15191ca9fa3dc4c2e",
+          "tree": "a31c6fca55dca0bfd7fe7cdaee05bed87e6de58e",
+          "repository_relative_path": "src/stateaxis_pipelined_weight_loading/__init__.py",
+          "line_start": 9,
+          "line_end": 53,
+          "git_blob": "0fc33cfcbef0f8e3bf89150fcd7975c1d5b6d0e8",
+          "raw_sha256": "85bda2e66afb1af2898059f0b525c545feb7c467e1ec317f35cae2bbc333c415",
+          "code": "9: class PipelinedWeightLoadingConfig:\n10:     enabled: bool = True\n11:     qwen2_only: bool = True\n12:     candidate_policy: str = \"pinned_double_buffer_async_v1\"\n13:     serial_default_when_disabled: bool = True\n14:     staging_slots: int = 2\n15:     chunk_bytes: int = 64 * 1024 * 1024\n16:     pack_alignment: int = 4096\n17:     incremental_full_byte_sha256: bool = True\n18:     event_guarded_slot_reuse: bool = True\n19:     execution_artifact_plan_digest_bound: bool = True\n20:     packed_weights_root_bound: bool = True\n21:     transactional_ready: bool = True\n22:     fail_closed: bool = True\n23: \n24:     def __post_init__(self) -> None:\n25:         flags = (\n26:             self.enabled,\n27:             self.qwen2_only,\n28:             self.serial_default_when_disabled,\n29:             self.incremental_full_byte_sha256,\n30:             self.event_guarded_slot_reuse,\n31:             self.execution_artifact_plan_digest_bound,\n32:             self.packed_weights_root_bound,\n33:             self.transactional_ready,\n34:             self.fail_closed,\n35:         )\n36:         if (\n37:             not all(flags)\n38:             or self.candidate_policy != \"pinned_double_buffer_async_v1\"\n39:             or self.staging_slots != 2\n40:             or self.chunk_bytes != 64 * 1024 * 1024\n41:             or self.pack_alignment != 4096\n42:         ):\n43:             raise ValueError(\n44:                 \"pipelined-weight-loading 0.2.0 requires the complete \"\n45:                 \"artifact-bound two-slot async contract\"\n46:             )\n47: \n48: \n49: def pipelined_weight_loading() -> PipelinedWeightLoadingConfig:\n50:     return PipelinedWeightLoadingConfig()\n51: \n52: \n53: __all__ = [",
+          "snapshot": "sources/implementation/1411784982/src/stateaxis_pipelined_weight_loading/__init__.py.snapshot"
+        }
+      ],
+      "adapter_cost_status": "Qualitative integration work estimate only. Actual semantic LOC, person-hours, build/qualification time, retries and runtime cost are unmeasured/unknown. Existing source size or commit dates are not measured adaptation cost."
+    }
+  ],
+  "restricted_fifth_case": "One additional source audit remains restricted and is not supplied as public, independently reproducible evidence.",
+  "current_manager_source": [
+    {
+      "repository": "vLLM-HUST/extension-manager",
+      "commit": "b83bb52328bced0cd356b9ab9e644324c307d6dd",
+      "repository_relative_path": "src/vllm_hust_ext/providers/stateaxis.py",
+      "line_start": 81,
+      "line_end": 96,
+      "raw_sha256": "5f013f7682730b97b3a8e152c44054e362c487a277a89fc83c369d7c447c587d",
+      "code": "81:     raw = configuration.get(\"research_manifest_path\")\n82:     if raw is None:\n83:         return (\n84:             None,\n85:             \"research manifest path is unavailable; digest binding is unverified\",\n86:         )\n87:     path = Path(raw)\n88:     if path.is_symlink() or not path.is_file():\n89:         return False, \"research manifest must be a regular non-symlink file\"\n90:     actual = hashlib.sha256(path.read_bytes()).hexdigest()\n91:     if actual != expected:\n92:         return (\n93:             False,\n94:             f\"research manifest digest mismatch: expected {expected}, got {actual}\",\n95:         )\n96:     return True, f\"research manifest digest verified at {path}\"",
+      "git_blob": "546633a9051bc0304df5a079935055f511fb9b48"
+    },
+    {
+      "repository": "vLLM-HUST/extension-manager",
+      "commit": "b83bb52328bced0cd356b9ab9e644324c307d6dd",
+      "repository_relative_path": "src/vllm_hust_ext/providers/stateaxis.py",
+      "line_start": 99,
+      "line_end": 160,
+      "raw_sha256": "5f013f7682730b97b3a8e152c44054e362c487a277a89fc83c369d7c447c587d",
+      "code": "99: class StateAxisProvider:\n100:     name = \"stateaxis\"\n101: \n102:     def supports(self, manifest: BundleManifest) -> bool:\n103:         return manifest.host.provider == self.name and manifest.host.name == \"stateaxis\"\n104: \n105:     def plan(\n106:         self, manifest: BundleManifest, configuration: dict[str, Any], *, enabled: bool\n107:     ) -> ProviderPlan:\n108:         binding = _mod_binding(manifest)\n109:         blocker = activation_blocker(manifest)\n110:         experiment_mode = configuration.get(\"experiment_mode\") is True\n111:         if blocker is not None or (\n112:             not binding[\"performance_qualified\"] and not experiment_mode\n113:         ):\n114:             reasons = [\n115:                 reason\n116:                 for reason in (\n117:                     blocker,\n118:                     None\n119:                     if binding[\"performance_qualified\"]\n120:                     else \"StateAxis mod has no performance qualification\",\n121:                 )\n122:                 if reason\n123:             ]\n124:             return ProviderPlan(\n125:                 manifest.bundle_id,\n126:                 self.name,\n127:                 (\n128:                     PlanAction(\n129:                         \"inspect_only\",\n130:                         binding[\"mod_id\"],\n131:                         manifest.lifecycle_owner,\n132:                         details={\n133:                             \"enabled\": False,\n134:                             \"manifest_sha256\": binding[\"manifest_sha256\"],\n135:                         },\n136:                     ),\n137:                 ),\n138:                 {\"stateaxis_mod\": binding, \"user_config\": configuration},\n139:                 tuple(reasons),\n140:             )\n141:         if experiment_mode and not binding[\"performance_qualified\"]:\n142:             additional = _launch_additional_config(manifest, experiment_mode=True)\n143:             return ProviderPlan(\n144:                 manifest.bundle_id,\n145:                 self.name,\n146:                 (\n147:                     PlanAction(\n148:                         \"configure_experiment_launch\",\n149:                         \"stateaxis\",\n150:                         manifest.lifecycle_owner,\n151:                         details={\"enabled\": enabled, \"performance_qualified\": False},\n152:                     ),\n153:                 ),\n154:                 {\n155:                     \"stateaxis_additional_config\": additional,\n156:                     \"stateaxis_mod\": binding,\n157:                     \"user_config\": configuration,\n158:                 },\n159:                 (\n160:                     \"experimental launch is not performance qualification; \"",
+      "git_blob": "546633a9051bc0304df5a079935055f511fb9b48"
+    },
+    {
+      "repository": "vLLM-HUST/extension-manager",
+      "commit": "b83bb52328bced0cd356b9ab9e644324c307d6dd",
+      "repository_relative_path": "src/vllm_hust_ext/cli.py",
+      "line_start": 273,
+      "line_end": 307,
+      "raw_sha256": "1fbd144d3afa5b72140ddeb75ff2e1751100ba20116ee3c887020e484eb77d8a",
+      "code": "273:     if len(bindings) == 1:\n274:         only = next(iter(bindings.values()))\n275:         assert isinstance(only, dict)\n276:         mode = only[\"experiment_mode\"]\n277:         existing[\"experiment_mode\"] = mode\n278:         existing[\"stateaxis_mod\"] = {\n279:             key: value for key, value in only.items() if key != \"experiment_mode\"\n280:         }\n281:     else:\n282:         existing[\"stateaxis_mods\"] = bindings\n283: \n284:     encoded = json.dumps(existing, separators=(\",\", \":\"), sort_keys=True)\n285:     if option_index is None:\n286:         result.extend((\"--additional-config\", encoded))\n287:     elif result[option_index] == \"--additional-config\":\n288:         result[option_index + 1] = encoded\n289:     else:\n290:         result[option_index] = f\"--additional-config={encoded}\"\n291:     return result\n292: \n293: \n294: def _validate_process_ownership(bundles: Sequence[InstalledBundle]) -> None:\n295:     \"\"\"Permit only one ECPA carrier to own a StateAxis process tree.\"\"\"\n296: \n297:     owners = [\n298:         bundle.bundle_id\n299:         for bundle in bundles\n300:         if bundle.manifest.host.provider == \"stateaxis\"\n301:         and bundle.manifest.runtime.process_scope == \"stateaxis_processes\"\n302:         and bundle.manifest.runtime.isolation == \"trusted_in_process\"\n303:     ]\n304:     if len(owners) > 1:\n305:         raise ValueError(\n306:             \"only one StateAxis ECPA carrier may own a process tree; \"\n307:             f\"disable all but one of: {sorted(owners)}\"",
+      "git_blob": "28a7de563169e2515db4ddf807144d6e23e2b6c3"
+    }
+  ],
+  "no_new_runtime_oracle": true
+}

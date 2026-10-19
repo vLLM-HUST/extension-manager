@@ -1,0 +1,12 @@
+{
+  "schema": "ecpa-independent-H2-reader-increment-freeze/v3.3",
+  "source_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_profiler_raw_v3_3.py",
+  "sha256": "bd42e4c3d2754468891eae3707d6f8315c798822863ed0c876e1b189337621ea",
+  "bytes": 8416,
+  "frozen_wall_ns": 1792371098732764178,
+  "frozen_monotonic_ns": 8086802190452438,
+  "implementation_after_r3_KV_and_r4_profiler_results_seen": true,
+  "pre_result_implementation_freeze_claim": false,
+  "oracle_rule_unchanged": true,
+  "source_only_no_product_import": true
+}

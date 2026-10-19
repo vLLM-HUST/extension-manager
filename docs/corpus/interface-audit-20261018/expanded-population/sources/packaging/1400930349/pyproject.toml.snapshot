@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-hust-ascend-attention-boundary"
+dynamic = ["version"]
+description = "Ascend attention boundary search optimization"
+requires-python = ">=3.11"
+
+[project.entry-points."vllm.general_plugins"]
+ascend_attention_boundary = "vllm_hust_ascend_attention_boundary.plugin:register"
+
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.ascend-attention-boundary" = "vllm_hust_ascend_attention_boundary.manifests"
+
+[tool.setuptools.dynamic]
+version = {attr = "vllm_hust_ascend_attention_boundary._version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+vllm_hust_ascend_attention_boundary = ["manifests/*.json"]

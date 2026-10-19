@@ -1,0 +1,119 @@
+{
+  "schema": "ecpa-real-H2-compatible-independent-oracle-rule/v1",
+  "case": "KVCompress-profiler-singletons-and-both-real-load-orders",
+  "frozen_wall_ns": 1792369288560655890,
+  "frozen_monotonic_ns": 8084992018343880,
+  "scope": "prospective rules, not a preregistered compatibility label or native qualification",
+  "sources": {
+    "Host": "772b34583c",
+    "Ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+    "KVCompress": "2f49051b101adf63db7e9079fee276451e7a5678",
+    "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+    "binding_requirement": "Actual full commit/tree/wheel/installed/source subjects and immutable config must be retained by runner; short Host label is not a qualification pin"
+  },
+  "groups": [
+    "host-only",
+    "kv-only",
+    "profiler-only",
+    "kv-then-profiler",
+    "profiler-then-kv"
+  ],
+  "independence": {
+    "development_sources_and_prior_experiments_seen": true,
+    "heldout": false,
+    "prediction_outputs_read_for_this_rule": false,
+    "postlaunch_rule_is_not_claimed_prelaunch": "Runner must independently join these freeze clocks/bytes to each actual Popen; any group already started before this freeze is prior-rule/unregistered and cannot be retroactively promoted",
+    "oracle_consumes_no_ECPA_verdict_or_passed_summary": true
+  },
+  "matched_inputs": {
+    "same_exact_model_tokenizer_prompt_bytes_and_token_ids_all_groups": true,
+    "prompt_target_tokens": 1201,
+    "actual_tokenizer_length_required": true,
+    "decode_tokens": 32,
+    "compression_threshold_tokens": 1152,
+    "KV_physical_budget_tokens": 1024,
+    "same_seed_sampling_topology_memory_and_other_MOD_settings": true,
+    "same_studyloader_and_passive_EventBus_observer_all_groups": true
+  },
+  "rules": {
+    "functional_support": {
+      "required": [
+        "exact served-model and unique original RID joined to original request and HTTP response",
+        "on-time successful HTTP response with nonempty output; actual usage and actual decode length retained",
+        "actual Host/API/Engine/TP0/TP1 epochs and terminal cleanup independently captured"
+      ],
+      "failure": "known HTTP/model/RID/deadline/cleanup errors are failures, never hidden by successful metadata"
+    },
+    "loading": {
+      "required": [
+        "studyloader records actual metadata target and exact callable invocation order",
+        "all groups use same source-owned studyloader; no duplicated automatic entrypoint invocation",
+        "singletons actually activate their own native paths; observed load is distinct from effect"
+      ],
+      "not_proof": "entrypoint returns, configuration, health200, and MOD enabled/log text are not effect proofs"
+    },
+    "KV_effect": {
+      "required_when_KV_present": [
+        "actual input crosses frozen 1152-token threshold",
+        "raw scheduler transaction binds original RID and semantic anchor to 1024 physical anchor",
+        "two distinct original TP ranks ACK the same actual transaction/anchors",
+        "independent original Host EventBus RequestFinished.kv_blocks joined to original RID/epoch/HTTP usage, with field semantics and observation timing established from pinned Host source",
+        "independent physical allocation/block-table or native runtime result supports the claimed physical quantity; do not relabel semantic/logical counters as physical storage",
+        "same observation point and source-defined accounting in host-only/profiler-only/KV-only/pair controls; derive expected blocks from actual block size and actual post-anchor decoding, not a hard-coded count"
+      ],
+      "unknown_if": [
+        "threshold not reached or no actual transaction",
+        "ACK-only or MOD-log-only evidence",
+        "RequestFinished.kv_blocks missing, timing/meaning unproven, or lacking independent physical result",
+        "physical counter compared at different lifecycle points"
+      ],
+      "known_failure": [
+        "different/missing rank at an asserted completed transaction",
+        "mismatched RID/epoch/anchors",
+        "independent physical result contradicts asserted transaction"
+      ]
+    },
+    "profiler_effect": {
+      "required_when_profiler_present": [
+        "actual process-owned trace request_finished and reclaimed/lifecycle closure joined to the original Host event/RID/HTTP request",
+        "relevant original process scope covered",
+        "no loss/error/dropped records in the declared finite window"
+      ],
+      "unknown_if": [
+        "event never triggered or raw trace/Host correlation absent"
+      ],
+      "failure_if": [
+        "known trace loss/error",
+        "substituted epoch/RID or duplicate coverage represented as complete"
+      ]
+    },
+    "composition": {
+      "pass_requires": [
+        "both appropriate singletons establish the intended bounded effects",
+        "each of the two actual load orders preserves both independently established effects under matched inputs",
+        "functional support and independently verified cleanup pass for all evaluated groups"
+      ],
+      "unknown_if": "either required effect untriggered/unknown or common tuple/singletons not established",
+      "failure_if": "a known valid singleton effect is lost or contradicted in pair, or a known functional/ownership/cleanup violation occurs",
+      "not_proved": [
+        "full numerical/model quality equivalence",
+        "performance improvement",
+        "untested source/version/model/topology support",
+        "device/native execution from CPU/source logs alone"
+      ]
+    }
+  },
+  "adaptation_cost": {
+    "record_separately": [
+      "studyloader source/LOC and actual call bookkeeping",
+      "shared passive EventBus observer source/LOC",
+      "MOD/Host algorithm changes, if any",
+      "per-group configuration, actual human effort or unknown, builds, installs, all failed attempts"
+    ],
+    "same_loader_observer_all_groups": true,
+    "native_algorithms_must_not_be_silently_changed": true
+  },
+  "verdict": null,
+  "new_native_result": null,
+  "formal_H2_score_eligible": false
+}

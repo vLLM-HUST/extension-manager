@@ -103,3 +103,12 @@ baseline至少包括：原MOD官方原生入口/推荐组合方式；专家manua
 ## 本轮执行状态
 
 本设计为 prospective draft，未签发 preregistration，未封存 heldout，未采集新 H2 实验结果。已读过源码或历史标签的组合只能进入 development/legacy controls；真正的 heldout 需要在方法冻结后另外选定和封存。当前主体是源码审计，不再把故障启动作为主线。
+
+## 10. 首轮真实设备执行（2026-10-19）
+
+[原始证据包](../../experiments/real_mod_composition/artifacts/native-study-20261019/README.md)
+记录固定官方wheel的Qwen2.5-7B TP2：KV单独、Profiler单独、组合两种实际加载顺序、Host-only五组，共10个HTTP200请求，输入4/1201tokens，各输出32tokens。每组所属进程清理与设备空闲记录保留。两种实际顺序在API、scheduler、两TP进程分别核实；KV长请求有原scheduler/双TP提交日志以及独立NPU block-table前10后9（8目标块+1decode追加块）回读。Profiler原finished/reclaimed事件与Host/RID/原时间戳对应。
+
+本轮**完整组合判定仍unknown**：Profiler依赖atexit，但Host真实SIGTERM/forcekill绕过drain，scheduler汇总缺失；Host-only没有general-plugin回调，公共观察器未触发，缺少同覆盖Host事件对照。缺记录不补写，不等于已证实丢事件或MOD冲突。源规则/输入先于启动，reader是在见到部分raw后开发，时序披露；本地callback不是认证ACK。原r1/r2运行入口/设备号失败、r3端口预检查失败完整保留，不改判为算法反例。
+
+此轮是首次真实效果与接口边界研究，不替代完整三方法×三重复、heldout、原0.95阈值或性能/数值等价结果。公共显式studyloader318行，未改产品算法/本块未新构建wheel，历史port工时unknown。下一轮修复必须使用新源码/配置/证据身份，真实重跑；不得追认本轮无损。

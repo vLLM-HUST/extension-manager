@@ -1,0 +1,173 @@
+{
+  "schema": "ecpa-H2-independent-raw-reader/v1",
+  "formal_result": false,
+  "planner_outputs_consumed": false,
+  "summary_outputs_consumed": false,
+  "oracle_rule": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule.json",
+    "sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a"
+  },
+  "cases": [
+    {
+      "case": "host-only",
+      "status": "not-started",
+      "raw_refs": []
+    },
+    {
+      "case": "kv-only",
+      "status": "raw-observations-only",
+      "raw_refs": [
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/kv-only/study-events.jsonl",
+          "sha256": "a0528f2b89f853d19709ba48879310111f5646c49f5968bae00a1cdc4e096bbd",
+          "bytes": 1446
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/kv-only/runtime-evidence.jsonl",
+          "sha256": "48f82202cb0bda2dadf61dc2adaf153e44e498c2748ec4106d180160e8c2aa6a",
+          "bytes": 63637
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/kv-only/Popen.json",
+          "sha256": "27df9bc1c19895e2ca0f8ad54ea6bd0986d6f72b729e893d32d733ab25f24a28",
+          "bytes": 140
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/kv-only/stderr.log",
+          "sha256": "8b6040719fa19a12d74440d6c27af7bea91ac9ba9ff775839021a245193dc612",
+          "bytes": 41446
+        }
+      ],
+      "actual_Popen": {
+        "pid": 2008191,
+        "start_ticks": 808505891,
+        "session": 2008191,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "loading": {
+        "status": "failure",
+        "actual_slots": {
+          "api-server/0": {
+            "pid": 2008949,
+            "start_ticks": 808520349,
+            "order": [
+              "ascend_kvcompress"
+            ]
+          }
+        },
+        "pending_count": 0,
+        "failures": [
+          "multiple actual epochs for required Host slot"
+        ],
+        "required_slots": [
+          "api-server/0",
+          "engine-core-scheduler/0",
+          "worker/0",
+          "worker/1"
+        ]
+      },
+      "Host_roster": [
+        {
+          "pid": 2008366,
+          "start_ticks": 808509608,
+          "slot": "api-server/0"
+        },
+        {
+          "pid": 2008949,
+          "start_ticks": 808520349,
+          "slot": "api-server/0"
+        }
+      ],
+      "requests": [
+        {
+          "kind": "below",
+          "functional_status": "unknown"
+        },
+        {
+          "kind": "above",
+          "functional_status": "unknown"
+        }
+      ],
+      "known_startup_failure_from_original_stderr": true,
+      "KV_effect": "unknown",
+      "KV_unknown_reason": "Requires original transaction/rank ACKs plus independent physical evidence; release-event counts alone do not discharge full rule.",
+      "profiler_effect": "not-applicable",
+      "profiler_raw_record_count": null,
+      "profiler_unknown_reason": "Requires original trace/event/RID/epoch/lifecycle closure and no-loss evidence, not mere file presence.",
+      "cleanup": "unknown-no-independent-root-cleanup-consumed",
+      "formal_result": false,
+      "composition_verdict": null
+    },
+    {
+      "case": "profiler-only",
+      "status": "raw-observations-only",
+      "raw_refs": [
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/profiler-only/Popen.json",
+          "sha256": "fd1a44293390f524bf0b73aae148b8fa60e1ee2680b9b957a2cafcf5d3de498b",
+          "bytes": 140
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/profiler-only/stderr.log",
+          "sha256": "5b1ffc60d3cb4021c1317b8756d5ff95021ad03d74eaef13f65577b44e376366",
+          "bytes": 22319
+        }
+      ],
+      "actual_Popen": {
+        "pid": 2009369,
+        "start_ticks": 808526921,
+        "session": 2009369,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "loading": {
+        "status": "unknown",
+        "actual_slots": {},
+        "pending_count": 0,
+        "failures": [],
+        "required_slots": [
+          "api-server/0",
+          "engine-core-scheduler/0",
+          "worker/0",
+          "worker/1"
+        ]
+      },
+      "Host_roster": [],
+      "requests": [
+        {
+          "kind": "below",
+          "functional_status": "unknown"
+        },
+        {
+          "kind": "above",
+          "functional_status": "unknown"
+        }
+      ],
+      "known_startup_failure_from_original_stderr": false,
+      "KV_effect": "not-applicable",
+      "KV_unknown_reason": "Requires original transaction/rank ACKs plus independent physical evidence; release-event counts alone do not discharge full rule.",
+      "profiler_effect": "unknown",
+      "profiler_raw_record_count": null,
+      "profiler_unknown_reason": "Requires original trace/event/RID/epoch/lifecycle closure and no-loss evidence, not mere file presence.",
+      "cleanup": "unknown-no-independent-root-cleanup-consumed",
+      "formal_result": false,
+      "composition_verdict": null
+    },
+    {
+      "case": "kv-then-profiler",
+      "status": "not-started",
+      "raw_refs": []
+    },
+    {
+      "case": "profiler-then-kv",
+      "status": "not-started",
+      "raw_refs": []
+    }
+  ],
+  "composition_verdict": null,
+  "limitations": [
+    "Unknown does not mean compatible or incompatible.",
+    "This first reader projects source-owned raw facts and cannot mint a full rule verdict from missing HTTP/physical/root-cleanup evidence."
+  ]
+}

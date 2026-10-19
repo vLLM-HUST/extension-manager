@@ -1,0 +1,366 @@
+{
+  "schema": "ecpa-public-mod-source-index/v1",
+  "files": [
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1207997895/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-kv-materialization-arrival-control",
+      "commit": "e343fc5ce6b4c64611a79df5d797b3db12cd6dac",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "28fe1aaacd4a9f5079a73eb88caf625abc5ff6be97c9597eb9779152d5e4d8fd",
+      "git_blob": "182f5c0bd73172491b96de9c19565d89b5825b0a",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1240350965/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-bidkv",
+      "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "e33afb63fbac384a72698b9b3f07e2908b14c00dd265e0bfa2cf2ac4baa95c0c",
+      "git_blob": "d2b2b0e1d5a4632ee5213fb99db0d83fb3716432",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1280285673/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-hust-bidkv",
+      "commit": "5ee80256d263d58b1e512d9d436d47e9bac564ba",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "4666152e47e6d423084e55b1a38090f0f41760959296dce479a2629454523e4c",
+      "git_blob": "eef48ea7b13517657d5dce8236a9f805ceee8fe9",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1296664162/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-request-lifecycle-profiler",
+      "commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "b7eb14572ec3432dd1784feee29b54d12482d84765dcb8f8d1ce84abbdeec253",
+      "git_blob": "2297fe06bf0c17af6ea275c2427b1de23e2d6e2b",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1308319970/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-hust-diffspec",
+      "commit": "9d9ddc9bfae2b93d03f9e66715e288b229c75e07",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "c268975d0652af29be6030b4c99f107b88c3cda885bdb2652745245eada9334f",
+      "git_blob": "d0fc37c7bc49a190a4c8bbb3d400a2f6d4f3ddf1",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1349304370/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-kvcompress-hust",
+      "commit": "0dbc8c8137caa1d33fdacbc8d1763662fd73f479",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "6d90eaddb57ba441d47ce78a2e31a1bc863f904c066aab4f8197cedc8b2f188d",
+      "git_blob": "9b1f41c4fac8dc9b88e898f4ba733362016c71e2",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1352499736/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-adaptive-quantized-kv-hust",
+      "commit": "9f9844ec7d73bdd627edf3930f3ec6cb5ef5f325",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "5409cb029afdc26696ae764302a88d0d41c5bbf66565e906e50c41be53159b66",
+      "git_blob": "bd06dc256ea25812cd1090bad384e3b245dff79c",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353152986/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-prefix-router",
+      "commit": "04142b28e4962321c23b0228331745e3297a5378",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "ed265309c09078fa7ba13c4b33920e158e47c37110b3f63467e6377d8dd0c1e2",
+      "git_blob": "82b88b508cd62b1e9d3da9991f197da969f82f56",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353153014/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-kv-tiering",
+      "commit": "9c204c0dcb531fa36c1e01a495769c0a052f25fd",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "f7beeca45b512732b81a353a24bb63d94d66d7d0a5f3c196890d3e169b25f5ee",
+      "git_blob": "0d580d0ff0141b38187668a18d632065921393d1",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353153054/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-knorm",
+      "commit": "c490cfbfd2372635e8e874c8d7ba866ca5c476fb",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "c0d31fb8767f6fc3d581041222ec0aebb84337e95eabcdafda6bbde7655be6e3",
+      "git_blob": "eef55f902d003e214347932902c8f6b243848f1e",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353153104/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-pyramidkv-hust",
+      "commit": "50a09697ddf6b510369588f3fd2d54b0dd214cee",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "f8f892ad9f9347d7bad152d1ea287e3f0d5d37a6b51582f31eb7769e1532bee2",
+      "git_blob": "7b98c2b82790b82a386c81fc7f752ebc7006f54a",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353188555/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-mapped-kv-offload-hust",
+      "commit": "ad14216f138b5409b19467011d585519747d6cd5",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "3e2bcd17f00e7a6cc0311f1bf592d36ca0668a34bce68d46083f2cc3fb859988",
+      "git_blob": "696f83c6f769e65324d41a477218489b905a29d4",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353209778/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-quantized-kv-cache-hust",
+      "commit": "2f0b37b63dc1aba25f035a0dbf620f4abb73b2b3",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "5450b3ee661c97c7f4c929b290ab57315a9558c8a8cdebb5fb5b35c98d2f0433",
+      "git_blob": "dd4644b3b9c1f4460a1c3f379f2606de2665b547",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353209850/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-simllm-hust",
+      "commit": "1069cbec6fbc199ab6e087dfa24d1c4a8e644765",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "642ea244b5365c3b212671956ab6e007e6e6ff627c127f73f60adf7bdb15964e",
+      "git_blob": "2f556fb56033ec92f23c4d2350f0b054e5bff721",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353209920/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-unified-comm",
+      "commit": "8015b3dd17d26fa4606911f53cd81efd469bedd0",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "73c7e27ea353f8e4ca6d2ea4498a5be6476363fba723ac5de1874b4a38f6be63",
+      "git_blob": "360d3ebd733799d3fb77a2b5d8567c2378116885",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353209990/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-split-batch-hust",
+      "commit": "183f98c360595f038611c455e4990a79d888e8d3",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "97d1677bfd699384a35d2ef543186d37800dc89cfa245d7a5ba2360c6893d7e1",
+      "git_blob": "d5443badc026d9e989e3613e5de16bf9753f04d0",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353210072/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-kv-transfer-observability",
+      "commit": "05fcf5cdd3a6b689e106ed3c2843d43dbcba7dc7",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "7f20cb5a50a637fbb8461e35feae9ab3c9650b9e5360c65e3fa2705607c9d61a",
+      "git_blob": "e2df46bb3b76937031a5544f38bab58a995ae538",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353210144/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-ascend-layered-prefill-hust",
+      "commit": "9f3f3ec39ed17287dbdff49e8832a8f670011fde",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "2a24657301daddab5efece005cb5b41fec9e405f3fe8407f900e2406e5c63dcd",
+      "git_blob": "36354986fd77982aebe24cb129c9da3f7a66b53c",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353210213/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-activation-sparsity",
+      "commit": "c02a775062fa969245671730fbbc89e5c30e4af3",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "fcc57301d75edbf11000e3eda14ccfc516ef7bd8c489924145dac8c34d6871d3",
+      "git_blob": "a7453d08a264682f563fec119b2ac14b6e67e455",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353210272/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-pipeline-microbatch",
+      "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "eae2d31910e1f2875c81f083b775739bc521bd465c437855c5a54ba1bc6373db",
+      "git_blob": "0dda3c3ef5989215dc0b1e255ff5349176f90da3",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353210361/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-qos-scheduler",
+      "commit": "5bc063db6d866b4d92f19436e76966dcae76e6e7",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "1c0639ebcff9ebe4533f810e1406d5802243e7c5c149b39201887890917df71a",
+      "git_blob": "9addb9f999e8d4af4df007cb232931a712ba82bb",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1353210446/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-scheduler-policy-lab",
+      "commit": "215bdab44fb572f125e1426f78103e4d4ac7b833",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "2b6ff7e456fde29d5027ff0e76e2caa8bdf77010244ea0539894e825cc0e1cfa",
+      "git_blob": "c6b66c11c50bfe4704bd2cf8bb91c0010b60f62c",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1369166618/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-vSpec",
+      "commit": "bdd919d24669f09e6eb1987157dfdb5561460f45",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "2b42c1303f6cb8625dcc953024114a8a0375ec58b9a302246f8d020ab3373c02",
+      "git_blob": "ef225d59e1226d32d4e5860378de53aeb6b02551",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1372804102/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-opset",
+      "commit": "e6f805044f13a1c059d08d6805829e3e322125c1",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "638aabe97bb08df68ce7c1f369e7cfab5ce2a88d41c9faf7ec39129f85114153",
+      "git_blob": "4a7bbf631b20f8edb618dff417122cc88502cca5",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1385796124/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/ascend-distributed-metadata",
+      "commit": "d474436327d0516a8809d12ceb971ebb0c7b05cd",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "3a842c1048b78f4d7de0054e2f4b4bbe8f3490ccfbbd7712fd3ca3d0e4f7a216",
+      "git_blob": "db654f30d8812ae07f058479ce4a87d53d84a730",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1400930349/pyproject.toml.snapshot",
+      "repository": "xmdhb/vllm-hust-ascend-attention-boundary",
+      "commit": "3572713e7944ea877b22f2a8a6bb053f348bfd25",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "62255cd8edf3935f6aff94112d770f46d3cc31c13247621acbf0260ab4ced6ae",
+      "git_blob": "ce4cd9861c0ee57fb1f95eba807a208bd1709e15",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1400932770/pyproject.toml.snapshot",
+      "repository": "xmdhb/vllm-hust-core-attention-boundary",
+      "commit": "b5bc92a513a4ad043e39c7e2e3d6c4f4351114ff",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "da7763e43124b1cbcf5c545fcaa202db0db4a2c4a64881e7b9c3980a3fd0b8f7",
+      "git_blob": "1a1770ee2dd55a773e29d133db5847676623b5dc",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1409929452/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/gdn-state-codec",
+      "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "1c3fae35660a56c71a734373d16829c7ffb9b237ce9a13a7061fdee71c1ee6a5",
+      "git_blob": "08688a5c340def8312b21504d1261e56001a289f",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1411784761/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/stateaxis-automatic-prefix-cache",
+      "commit": "9b0962232c7601f66100c83a3394ad73a2113ce8",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "c4f7c2bc240f8e53448433aa48a65f550b7b97b113767dbbddc484078b69a647",
+      "git_blob": "3c13cf451ce3b0f6a0fd631a81db2736282069c0",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1411784879/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+      "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "2b5327d2934c1f9071f2f38a5f247bdd495a9e6ddd06a98ac84c336a3d09cef3",
+      "git_blob": "5879f351bc6b78bff7e5ff2fc7fd760b708a9d12",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1411784982/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/stateaxis-pipelined-weight-loading",
+      "commit": "f5f4ffc30c9754d525017aa15191ca9fa3dc4c2e",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "4b8b479fe00198362b6f0b047f727c03c6c43319d89b468a01b790541c7bfbe8",
+      "git_blob": "043e3305d87143e2b86a8dfd2811581f2ddaac80",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1421102477/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/stateaxis-prefix-cache-policy",
+      "commit": "ed84fa14623d7eaa64f3ba59ade19cff49b50af7",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "4db5127312d2a7da9e5a87376b7cea7ae6524b1e95fbff84241d7ca4e14b3d60",
+      "git_blob": "48fff4f4ee9f6b97bd901637c3a0ff0b609dfa97",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/packaging/1424125240/pyproject.toml.snapshot",
+      "repository": "vLLM-HUST/vllm-hust-prefill-microflow",
+      "commit": "12ac7b9dc33bd3bf1095caeda725d99038332e3c",
+      "repository_relative_path": "pyproject.toml",
+      "sha256": "5cf6b12b777c62565fb2ee15a147313b32975cce699f71f095d0cd3e69ad2d1e",
+      "git_blob": "126a0d9f1697e414f14227b2bbe7217a5d9324d9",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/implementation/1409929452/src/gdn_state_codec/plugin.py.snapshot",
+      "repository": "vLLM-HUST/gdn-state-codec",
+      "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+      "repository_relative_path": "src/gdn_state_codec/plugin.py",
+      "sha256": "020c794cb53e7f218468f9f130fe9901f41ce8b8421654dbf3517f758001a573",
+      "git_blob": "80f732d7b295f0adbd99406d6aad071367aaa7c3",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/implementation/1409929452/src/gdn_state_codec/adapter.py.snapshot",
+      "repository": "vLLM-HUST/gdn-state-codec",
+      "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+      "repository_relative_path": "src/gdn_state_codec/adapter.py",
+      "sha256": "4b8b14761b5495ef4a9e196e7404df89481ab450618e1d26586cbf4fdbcd32ae",
+      "git_blob": "738deb0a81d01df246e3aa82d1bd6e45e7ec8dff",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/implementation/1411784761/src/stateaxis_automatic_prefix_cache/__init__.py.snapshot",
+      "repository": "vLLM-HUST/stateaxis-automatic-prefix-cache",
+      "commit": "9b0962232c7601f66100c83a3394ad73a2113ce8",
+      "repository_relative_path": "src/stateaxis_automatic_prefix_cache/__init__.py",
+      "sha256": "1555200452d2cf9f148a2eed20904fb70cd3708679d3c99f1f9a02b5b4d4a387",
+      "git_blob": "1dc4d12f756e7d8dfee6793fb7a784bd81edf6c7",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/implementation/1411784761/native/src/lib.rs.snapshot",
+      "repository": "vLLM-HUST/stateaxis-automatic-prefix-cache",
+      "commit": "9b0962232c7601f66100c83a3394ad73a2113ce8",
+      "repository_relative_path": "native/src/lib.rs",
+      "sha256": "449e2d1ed7239111a8a2cc72001206d44d4f7f1a0eb19b7cf6599a6b5f46a48e",
+      "git_blob": "a219a0a155e3ab6f9a5ee860cc5118de63416f91",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/implementation/1411784879/src/stateaxis_async_kv_transfer/__init__.py.snapshot",
+      "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+      "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+      "repository_relative_path": "src/stateaxis_async_kv_transfer/__init__.py",
+      "sha256": "0d38066ffb8257c3ea2e11e1de8a246037825e498af8a852b8236ac2e58e1bce",
+      "git_blob": "2376473f084b7a2cd88dbbd4a644afcb5657305e",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/implementation/1411784879/native/src/lib.rs.snapshot",
+      "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+      "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+      "repository_relative_path": "native/src/lib.rs",
+      "sha256": "a08924629dfec8fe37a6b63649755762b3167657e82bd5f26666eb3ea3aa4850",
+      "git_blob": "21db18385b664dda555c1058bed26d429bc7537c",
+      "public_at_source_acquisition": true
+    },
+    {
+      "path": "docs/corpus/interface-audit-20261018/expanded-population/sources/implementation/1411784982/src/stateaxis_pipelined_weight_loading/__init__.py.snapshot",
+      "repository": "vLLM-HUST/stateaxis-pipelined-weight-loading",
+      "commit": "f5f4ffc30c9754d525017aa15191ca9fa3dc4c2e",
+      "repository_relative_path": "src/stateaxis_pipelined_weight_loading/__init__.py",
+      "sha256": "85bda2e66afb1af2898059f0b525c545feb7c467e1ec317f35cae2bbc333c415",
+      "git_blob": "0fc33cfcbef0f8e3bf89150fcd7975c1d5b6d0e8",
+      "public_at_source_acquisition": true
+    }
+  ],
+  "method": "Every snapshot SHA256 and Git blob SHA1 recomputed from exact retained bytes and compared with successful fixed-commit GitHub contents response. No new network read or main qualification."
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "ecpa-new-real-H2-attempt/v1",
+  "case": "profiler-only",
+  "classification": "REAL_NATIVE_H2_CANDIDATE",
+  "formal_qualified": false,
+  "performance_result": false,
+  "expected_order": [
+    "request_lifecycle_profiler"
+  ],
+  "error": null,
+  "start_wall_ns": 1792369943944683865,
+  "start_monotonic_ns": 8085647402370385,
+  "argv": [
+    "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm-hust-ext",
+    "run",
+    "--",
+    "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/python",
+    "-m",
+    "vllm.entrypoints.cli.main",
+    "serve",
+    "/models/Qwen2.5-7B-Instruct",
+    "--served-model-name",
+    "ecpa-h2-real",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "29872",
+    "--tensor-parallel-size",
+    "2",
+    "--enforce-eager",
+    "--max-model-len",
+    "2048",
+    "--max-num-seqs",
+    "1",
+    "--gpu-memory-utilization",
+    "0.6",
+    "--block-size",
+    "128",
+    "--no-enable-prefix-caching",
+    "--enable-chunked-prefill"
+  ],
+  "source_commits": {
+    "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+    "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+    "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+    "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+    "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+  },
+  "campaign_sha256": "999e40440469dd17630a73e98189eb008924510ee6addffd27af69fcddd4a810"
+}

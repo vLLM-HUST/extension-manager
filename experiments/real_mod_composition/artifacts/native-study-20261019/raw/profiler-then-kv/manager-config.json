@@ -1,0 +1,23 @@
+{
+  "schema_version": 2,
+  "extensions": {
+    "org.vllm-hust.request-lifecycle-profiler": {
+      "enabled": true
+    },
+    "org.vllm-hust.ascend-kvcompress": {
+      "enabled": true,
+      "configuration": {
+        "method": "triattention",
+        "method_config": {
+          "auto_calibrate": false,
+          "kv_budget": 1024,
+          "min_output_tokens_for_compression": 16,
+          "recompute_window": 128,
+          "stats_path": "/root/ecpa-workspace/evidence/ecpa-current-model-calibration-20261016-r1/qwen2.5-7b-current-model-global-head-stats.pt"
+        },
+        "provider": "ascend_kvcompress",
+        "schema_version": 1
+      }
+    }
+  }
+}

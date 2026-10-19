@@ -1,0 +1,60 @@
+{
+  "classification": "EXACT_INSTALLED_WHEEL_SOURCE_BINDING_NOT_DEVICE_RESULT",
+  "checked_wall_ns": 1792369415949435907,
+  "files": [
+    {
+      "component": "host",
+      "source_commit": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-h4-sampled-host63-20261018-r1/wheels/vllm-0.31.1.post1.dev18+g772b34583.empty-cp312-cp312-linux_aarch64.whl",
+      "wheel_sha256": "85fcfef6abfef8d67547876cd3539f9520b05cae1ef4b3ba128f659287a91c52",
+      "matched_installed_package_files": 3354
+    },
+    {
+      "component": "ascend",
+      "source_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/ascend-host47-compat-wheels/vllm_ascend-0.25.1rc2.dev869+hust.20260903.4.g153535b32-cp312-cp312-linux_aarch64.whl",
+      "wheel_sha256": "a674e9826ce6a19c75062312229e742ab386a47686ad3fd083e993fe4a1726e6",
+      "matched_installed_package_files": 1690
+    },
+    {
+      "component": "mod",
+      "source_commit": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-h4-sampled-kv22-20261018-r1/wheels-packaging/vllm_ascend_kvcompress_hust-0.9.0-py3-none-any.whl",
+      "wheel_sha256": "3fd2ecf03fe8f880f15aabad02c6e17df94d9e78e9bc3a7631b326f78c2c6acd",
+      "matched_installed_package_files": 24
+    },
+    {
+      "component": "profiler",
+      "source_commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/profiler/r2/vllm_request_lifecycle_profiler_plugin-0.1.2-py3-none-any.whl",
+      "wheel_sha256": "59a076511a5141e0d3c193b3747c56dc75daa12f9382e3ecf9c9774628937f99",
+      "matched_installed_package_files": 24
+    },
+    {
+      "component": "manager",
+      "source_commit": "05357d6a9c84399785cb47d1d2a1ac5cda10f181",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/manager/r41/vllm_hust_ext-0.3.0-py3-none-any.whl",
+      "wheel_sha256": "84a250f77e0645e9d685bcbd2a35cffd23362746a89de8e491c4032ea15a976e",
+      "matched_installed_package_files": 42
+    }
+  ],
+  "unchanged_existing_runtime": true,
+  "new_builds": 0,
+  "new_algorithm_ports": 0,
+  "shared_study_instrumentation": [
+    {
+      "file": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/run_native_h2.py",
+      "sha256": "841e9e77806465bc70791fbc0e1c49cd2a790ccf2368e9bc27e13f0c141fbae8",
+      "physical_lines": 208
+    },
+    {
+      "file": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/sitecustomize.py",
+      "sha256": "b26088796616634b536decc1af84276ac3a55146486beefaa632815e7862f8f7",
+      "physical_lines": 87
+    }
+  ],
+  "historical_adapter_labor_hours": null,
+  "actual_human_hours": null,
+  "new_H2_MOD_code_edits": 0,
+  "new_study_instrumentation_cost_separate_from_existing_host_ports": true
+}

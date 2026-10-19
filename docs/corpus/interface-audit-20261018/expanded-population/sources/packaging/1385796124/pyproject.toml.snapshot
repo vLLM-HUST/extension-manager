@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ascend-distributed-metadata"
+version = "0.2.0"
+description = "Opt-in DP2/DP4 word metadata synchronization for vLLM Ascend"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[project.entry-points."vllm.general_plugins"]
+adm_packed_sync = "ascend_distributed_metadata.packed_sync:register"
+
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.ascend-distributed-metadata" = "ascend_distributed_metadata"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ascend_distributed_metadata = ["vllm-hust-extension-v0.3.json"]

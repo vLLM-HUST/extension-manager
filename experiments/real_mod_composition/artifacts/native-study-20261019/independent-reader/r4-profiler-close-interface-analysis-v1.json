@@ -1,0 +1,142 @@
+{
+  "schema": "ecpa-H2-real-profiler-close-interface-analysis/v1",
+  "observed_wall_ns": 1792371136370088129,
+  "formal_result": false,
+  "product_source_changed": false,
+  "runtime_or_loader_changed": false,
+  "actual_case": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only",
+  "source_refs": [
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/lib/python3.12/site-packages/vllm_request_lifecycle_profiler/runtime_hooks.py",
+      "sha256": "18ce2df8ef4f062b4b096af54a712e7834e896607513709bf1954830a883140f",
+      "bytes": 108213,
+      "lines": [
+        338,
+        339,
+        648,
+        712,
+        1331,
+        1363,
+        2658,
+        2670
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/lib/python3.12/site-packages/vllm_request_lifecycle_profiler/plugin.py",
+      "sha256": "eda572aad29bfbeb747e86896456c42e901be1b8355367c4429f85626acee043",
+      "bytes": 5718,
+      "lines": [
+        135,
+        147,
+        150,
+        156,
+        163,
+        170
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/lib/python3.12/site-packages/vllm_request_lifecycle_profiler/native_event_bus.py",
+      "sha256": "0809b985bba576722a1f87f31c9cc4e92c433c2f9cd56533fdf42da7d821ad0b",
+      "bytes": 6102,
+      "lines": [
+        26,
+        48,
+        75,
+        125,
+        140
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-host-h4-sampled-next/vllm/v1/events.py",
+      "sha256": "26d011faa5395090cab2a9ab27086c088b75ae1cee1f419b019b7eee8d52e640",
+      "bytes": 6464,
+      "lines": [
+        123,
+        126,
+        137,
+        150
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-host-h4-sampled-next/vllm/v1/core/sched/scheduler.py",
+      "sha256": "95498e485a78e711dda733b9c0c7161749aa3dd85e9a18916652042a5dcbcc25",
+      "bytes": 175345,
+      "lines": [
+        3288,
+        3300
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-host-h4-sampled-next/vllm/v1/engine/core_client.py",
+      "sha256": "386b528a69029507f80a2df4d6df2a4fa6ba2ba811501dc3449ceea58b5cd90a",
+      "bytes": 85131,
+      "lines": [
+        766,
+        777
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-host-h4-sampled-next/vllm/v1/utils.py",
+      "sha256": "f9f5b3f1d0c5483dc742cba066cf232dfde053970221a52627716d18420ab638",
+      "bytes": 31370,
+      "lines": [
+        604,
+        658
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/run_native_h2.py",
+      "sha256": "417eb9fa81669f423441701a429914b69590616a065155a75f43099b3454f7c8",
+      "bytes": 11554,
+      "lines": [
+        150,
+        169
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/stdout.log",
+      "sha256": "bb03fe7fed1820d90d435db36b16b5f73e7df761bcb0e200c9428b4756bf4855",
+      "bytes": 26564,
+      "lines": [
+        144,
+        163
+      ]
+    }
+  ],
+  "observed_scheduler_shard": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.4cdbaa5d26d547d78acf3e4e010fb36b.jsonl",
+    "sha256": "933b61d2c9cfd8a3bada35d67a08972222d095947d255b6ff2d2e8728039113c",
+    "bytes": 4193,
+    "lines": [
+      1,
+      5
+    ]
+  },
+  "observed": {
+    "actual_scheduler_pid": 2017776,
+    "delivered_finished_events": 2,
+    "delivered_reclaimed_events": 2,
+    "exact_Host_RID_clock_value_joins": 4,
+    "scheduler_process_summary_present": false,
+    "API_summary_drained_and_zero_declared_loss": true,
+    "Host_actual_shutdown_timeout_seconds": 0,
+    "actual_log_process_manager_force_killed_scheduler": true,
+    "actual_log_force_killed_both_workers": true
+  },
+  "interface_finding": "Profiler normal-mode exporter registers atexit.close; its public RuntimeLifecycleHooks.close performs real bounded drain, but the plugin exposes no normal public facade to close its saved hooks. close_native_event_sink only unregisters EventBus and does not flush. Host EventSink has emit only, Scheduler.shutdown does not close sinks, and MPClient forwards timeout=0 to subprocess shutdown, which can force-kill before EngineCore close/atexit completes.",
+  "causal_strength": "Actual raw shutdown logs and missing summary support an incompatible shutdown/flush lifecycle boundary. They do not prove exactly how many records were lost, nor prove an algorithm or MOD-pair conflict.",
+  "next_minimal_real_fix_candidate": {
+    "public_profiler_boundary": "Expose process-local close/drain on the registered NativeLifecycleEventSink (delegating to its existing RuntimeLifecycleHooks.close and returning the real CloseResult), or an equivalent public plugin facade that uses only the already registered hooks without auto-registering a new exporter.",
+    "Host_actual_callsite": "Invoke the registered observer drain after final real scheduler lifecycle emissions and before terminating its process, using a public opt-in shutdown callback; do not make core Host import a particular MOD or generate a summary itself.",
+    "parent_lifecycle_budget": "The actual parent must wait long enough for the exporter existing 2-second bounded close plus real acknowledgement/exit; immediate timeout=0 force-kill cannot guarantee this. Preserve a hard finite upper bound and fail/unknown on timeout, not synthetic success.",
+    "lower_scope_followup": "A new matched cohort may first measure whether an explicitly nonzero supported Host shutdown timeout allows existing atexit to complete. It is an execution-configuration change requiring a new freeze and does not repair or relabel current r4.",
+    "prohibited": "No sidecar-crafted summary, no inferring zero drops from the four present events, no mutation/rewrite of this cohort or loader."
+  },
+  "current_verdict": {
+    "functional": "bounded actual HTTP and Host relations supported",
+    "observed_profiler_event_delivery": "four source-matched records supported",
+    "loss_free_close": "unknown",
+    "full_profiler_effect": "unknown",
+    "composition": "unknown"
+  }
+}

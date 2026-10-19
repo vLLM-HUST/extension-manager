@@ -1,0 +1,15 @@
+{
+  "schema": "ecpa-H2-independent-reader-freeze/v2",
+  "frozen_wall_ns": 1792369864996429375,
+  "frozen_monotonic_ns": 8085568454117375,
+  "reader_sha256": "d492f122bc1a09c79a375925a9cf23c1b8eeef163b791c4bb7ee79265ee9e8a5",
+  "reader_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v2.py",
+  "prior_v1_unchanged": "44539d9e44d3006ff17e2568729e3dcc905c969a0a98b9185f5b0fb42f43cbd4",
+  "rule_sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+  "tokenizer_sha256": "59337698f2fb6f5bc89bf4479f63030cf73e5cdc41a02463887a009f150a419e",
+  "cohort": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2",
+  "changed_after_r2_start_disclosed": true,
+  "new_clock_projection": "Only below/above actual http_status,elapsed_ns,usage,response_id from external runner; no verdict/error/formal/planner fields",
+  "AST_parsed": true,
+  "product_imports_or_device_execution": false
+}

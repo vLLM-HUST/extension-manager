@@ -1,0 +1,50 @@
+{
+  "schema": "ecpa-real-H2-first-native-cohort/v1",
+  "frozen_wall_ns": 1792369354930478839,
+  "frozen_monotonic_ns": 8085058388167069,
+  "cases": [
+    [
+      "kv-only",
+      [
+        "ascend_kvcompress"
+      ]
+    ],
+    [
+      "profiler-only",
+      [
+        "request_lifecycle_profiler"
+      ]
+    ],
+    [
+      "kv-then-profiler",
+      [
+        "ascend_kvcompress",
+        "request_lifecycle_profiler"
+      ]
+    ],
+    [
+      "profiler-then-kv",
+      [
+        "request_lifecycle_profiler",
+        "ascend_kvcompress"
+      ]
+    ],
+    [
+      "host-only",
+      []
+    ]
+  ],
+  "source_commits": {
+    "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+    "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+    "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+    "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+    "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+  },
+  "runner_sha256": "841e9e77806465bc70791fbc0e1c49cd2a790ccf2368e9bc27e13f0c141fbae8",
+  "loader_sha256": "b26088796616634b536decc1af84276ac3a55146486beefaa632815e7862f8f7",
+  "required_effects": "independent reader must check actual order/threshold/physical KV/Profiler integrity",
+  "repeats_this_initial_block": 1,
+  "matched_three_arm_population_claim": false,
+  "native_result": null
+}

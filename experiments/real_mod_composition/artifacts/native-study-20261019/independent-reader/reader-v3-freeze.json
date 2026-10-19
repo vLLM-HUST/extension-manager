@@ -1,0 +1,23 @@
+{
+  "schema": "ecpa-H2-independent-reader-freeze/v3",
+  "frozen_wall_ns": 1792370519138568806,
+  "frozen_monotonic_ns": 8086222596256966,
+  "reader_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v3.py",
+  "reader_sha256": "62b9bc66cffde32b2c46249cc94f73b99a36c4503ed6a72781320e42e40c0f17",
+  "rule_sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+  "tokenizer_sha256": "59337698f2fb6f5bc89bf4479f63030cf73e5cdc41a02463887a009f150a419e",
+  "v1_v2_preserved": true,
+  "cohort": "actual-first-native-block-20261019-r3",
+  "implementation_after_Popen_disclosed": true,
+  "prior_raw_seen_before_implementation_freeze": [
+    "r1/r2 administrative failures",
+    "r3 callback records",
+    "r3 below RequestFinished/Reclaimed raw and above actualmapping/native schema keys"
+  ],
+  "pre_result_freeze_not_claimed": true,
+  "rule_not_changed": true,
+  "AST_parsed": true,
+  "reader_executed": false,
+  "product_or_devices_modified": false,
+  "scope": "Actual API mapping/tokenIDs, direct HTTP raw clocks, process/rank/source-scoped native block-table barrier/readback+projection hashes; local callback None is not ACK; missing full effect/trace/cleanup staysunknown"
+}
