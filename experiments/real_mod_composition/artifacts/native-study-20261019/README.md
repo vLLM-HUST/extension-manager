@@ -66,3 +66,8 @@ original absolute source locations; they are not claimed to be a portable
 standalone artifact. manifest.json hashes every copied original byte. New
 lifecycle fixes require new source/wheel/cohort identity and a real rerun; they
 cannot repair these original records retroactively.
+
+Byte-preserved Python sources use `.py.snapshot`, following the source-audit
+convention, so archival reader revisions are not treated as maintained project
+modules by lint/import discovery. Restore the `.py` suffix when inspecting or
+reconstructing their original environment; hashes bind the original bytes.

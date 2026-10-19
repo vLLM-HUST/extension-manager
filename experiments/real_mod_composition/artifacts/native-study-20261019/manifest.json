@@ -746,13 +746,13 @@
       "bytes": 943
     },
     {
-      "path": "study-runner/sitecustomize.py",
+      "path": "study-runner/sitecustomize.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/sitecustomize.py",
       "sha256": "f74f28fd0c67b95961e76ef15bdcf9b2a5d43b2b3d109e4fdea3ea4a7b944c41",
       "bytes": 3772
     },
     {
-      "path": "study-runner/run_native_h2.py",
+      "path": "study-runner/run_native_h2.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/run_native_h2.py",
       "sha256": "417eb9fa81669f423441701a429914b69590616a065155a75f43099b3454f7c8",
       "bytes": 11554
@@ -818,7 +818,7 @@
       "bytes": 0
     },
     {
-      "path": "independent-reader/read_profiler_raw_v3_3.py",
+      "path": "independent-reader/read_profiler_raw_v3_3.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_profiler_raw_v3_3.py",
       "sha256": "bd42e4c3d2754468891eae3707d6f8315c798822863ed0c876e1b189337621ea",
       "bytes": 8416
@@ -866,7 +866,7 @@
       "bytes": 996
     },
     {
-      "path": "independent-reader/compare_kv_native_raw_v3_2.py",
+      "path": "independent-reader/compare_kv_native_raw_v3_2.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_2.py",
       "sha256": "71da64176c08a3c07acfa617a6c31968f8ede3a03812f509dbeb24d7758870d4",
       "bytes": 10008
@@ -878,7 +878,7 @@
       "bytes": 0
     },
     {
-      "path": "independent-reader/compare_kv_native_raw_v3_1.py",
+      "path": "independent-reader/compare_kv_native_raw_v3_1.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py",
       "sha256": "fa101a746b310d8fe2fee8b497dd21c239bac0c03851bcab3b094fccd31fd1af",
       "bytes": 10009
@@ -920,13 +920,13 @@
       "bytes": 0
     },
     {
-      "path": "independent-reader/read_native_raw_v2.py",
+      "path": "independent-reader/read_native_raw_v2.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v2.py",
       "sha256": "d492f122bc1a09c79a375925a9cf23c1b8eeef163b791c4bb7ee79265ee9e8a5",
       "bytes": 7180
     },
     {
-      "path": "independent-reader/read_native_raw_v3.py",
+      "path": "independent-reader/read_native_raw_v3.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v3.py",
       "sha256": "62b9bc66cffde32b2c46249cc94f73b99a36c4503ed6a72781320e42e40c0f17",
       "bytes": 13822
@@ -938,7 +938,7 @@
       "bytes": 169373
     },
     {
-      "path": "independent-reader/read_native_raw_v1.py",
+      "path": "independent-reader/read_native_raw_v1.py.snapshot",
       "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v1.py",
       "sha256": "44539d9e44d3006ff17e2568729e3dcc905c969a0a98b9185f5b0fb42f43cbd4",
       "bytes": 10006
