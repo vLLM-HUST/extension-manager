@@ -44,6 +44,7 @@ PROTOCOL_FILES = (
     "h3_dynamic_bindings.py",
     "h3_dynamic_host.py",
     "h3_runtime_source_closure.py",
+    "h3_source_read_call.py",
     "h3-owned-worker-recipe.schema.json",
     "h3-dynamic-policy.schema.json",
     "h3-dynamic-campaign.schema.json",
@@ -461,6 +462,13 @@ def issue(spec_path, output):
 
 
 def _issue(spec_path, output, *, profile=None):
+    from experiments.formal_campaign.h3_source_read_call import fresh_source_read_call
+
+    with fresh_source_read_call():
+        return _issue_in_source_call(spec_path, output, profile=profile)
+
+
+def _issue_in_source_call(spec_path, output, *, profile=None):
     spec_path, output = Path(spec_path).resolve(), Path(output).resolve()
     spec = load(spec_path)
     original = _validate_campaign(spec, profile=profile, spec_path=spec_path)
@@ -504,6 +512,9 @@ def _issue(spec_path, output, *, profile=None):
                 "recipe_template": start["recipe_template"],
             }
         )
+    from experiments.formal_campaign.h3_source_read_call import source_read_barrier
+
+    source_read_barrier()
     save_new(output, receipt)
     return receipt
 
@@ -513,6 +524,26 @@ def validate_receipt(spec_path, receipt_path, *, check_remote=False):
 
 
 def _validate_receipt(
+    spec_path,
+    receipt_path,
+    *,
+    check_remote=False,
+    profile=None,
+    _selected_start_id=None,
+):
+    from experiments.formal_campaign.h3_source_read_call import fresh_source_read_call
+
+    with fresh_source_read_call():
+        return _validate_receipt_in_source_call(
+            spec_path,
+            receipt_path,
+            check_remote=check_remote,
+            profile=profile,
+            _selected_start_id=_selected_start_id,
+        )
+
+
+def _validate_receipt_in_source_call(
     spec_path,
     receipt_path,
     *,

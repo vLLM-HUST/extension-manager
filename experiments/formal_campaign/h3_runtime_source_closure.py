@@ -18,6 +18,20 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path, PurePosixPath
 
+# The original metadata probe executes this file by absolute filename under the
+# phase's own PYTHONPATH. Keep that search path intact: only this script's sibling
+# helper is needed in direct mode; package imports share the issuer's scope.
+if __name__ == "__main__":
+    from h3_source_read_call import current as source_read_call
+    from h3_source_read_call import run_source_role
+else:
+    from experiments.formal_campaign.h3_source_read_call import (
+        current as source_read_call,
+    )
+    from experiments.formal_campaign.h3_source_read_call import (
+        run_source_role,
+    )
+
 SCHEMA = "ecpa-h3-actual-runtime-source-closure/v1"
 NATIVE_INPUTS = (
     "csrc",
@@ -50,6 +64,9 @@ def checked(ref):
         path.is_absolute() and path.is_file() and not path.is_symlink(),
         "runtime proof reference is not a regular absolute file",
     )
+    scope = source_read_call()
+    if scope is not None:
+        return scope.read(ref)
     raw = path.read_bytes()
     require(
         sha(raw) == ref["sha256"].removeprefix("sha256:"),
@@ -65,6 +82,13 @@ def git(root, *args):
 
 
 def _elfs(path):
+    scope = source_read_call()
+    if type(path) is bytes and scope is not None:
+        return scope.elves(path, _observe_elfs)
+    return _observe_elfs(path)
+
+
+def _observe_elfs(path):
     result = {}
     raw_wheel = path if type(path) is bytes else Path(path).read_bytes()
     with zipfile.ZipFile(io.BytesIO(raw_wheel)) as archive:
@@ -355,20 +379,42 @@ def _source_role(role, revision, runtime_wheels, repositories, names):
         "runtime wheel and fixed source revision differ",
     )
     root = Path(repositories[role]["path"])
-    sources[role] = _source_members(item, root, revision)
+    scope = source_read_call()
+    if scope is None:
+        sources[role] = _source_members(item, root, revision)
+    else:
+        sources[role] = scope.source_role(
+            {"role": role, "item": item, "root": str(root), "revision": revision},
+            root,
+            revision,
+            git,
+            lambda: _source_members(item, root, revision),
+        )
     return sources[role]
 
 
 def _source_roles(expected, runtime_wheels, repositories, names):
     declarations = list(expected.items())
+    scope = source_read_call()
+    if scope is not None:
+        scope.check_refs()
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
             executor.submit(
-                _source_role, role, revision, runtime_wheels, repositories, names
+                run_source_role,
+                scope,
+                _source_role,
+                role,
+                revision,
+                runtime_wheels,
+                repositories,
+                names,
             )
             for role, revision in declarations
         ]
         observations = [future.result() for future in futures]
+    if scope is not None:
+        observations = scope.accept_roles(observations)
     return {
         role: result
         for (role, _), result in zip(declarations, observations, strict=True)

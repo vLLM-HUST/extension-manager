@@ -536,6 +536,76 @@ def _audit_wheel_roles(wheels, states):
 
 
 def audit_cell_inputs(config_path, recipe_path, *, _model_call=None):
+    # Public evidence/schema stays byte-identical. The private sibling may also
+    # consume the same independently observed payload instead of reading it twice.
+    return _audit_cell_inputs_with_payloads(
+        config_path, recipe_path, _model_call=_model_call
+    )[0]
+
+
+def _check_captured_payloads(wheels, installed, states):
+    """Recheck current namespaces/metadata/leaves; reuse no previous-call result."""
+    registry.require(
+        set(wheels) == set(installed) == set(DISTRIBUTIONS),
+        "captured exact seven roles differ",
+    )
+    for role, wheel in wheels.items():
+        dist = metadata.distribution(DISTRIBUTIONS[role])
+        registry.require(
+            dist.version == wheel["version"],
+            "installed wheel version differs after capture",
+        )
+        roots = set()
+        with zipfile.ZipFile(wheel["path"]) as archive:
+            names = archive.namelist()
+            metadata_names = [n for n in names if n.endswith(".dist-info/METADATA")]
+            registry.require(
+                len(metadata_names) == 1,
+                "wheel metadata missing or ambiguous after capture",
+            )
+            metadata_path = _path(dist.locate_file(metadata_names[0]))
+            registry.require(
+                str(metadata_path) in installed[role],
+                "installed distribution origin changed after capture",
+            )
+            registry.require(len(names) == len(set(names)), "wheel repeats a member")
+            for name in names:
+                parts = PurePosixPath(name).parts
+                registry.require(
+                    parts and ".." not in parts and not name.startswith("/"),
+                    "wheel path is unsafe",
+                )
+                if parts[0].endswith(".dist-info") or name.endswith("/"):
+                    continue
+                relative = name
+                if parts[0].endswith(".data"):
+                    registry.require(
+                        len(parts) >= 3 and parts[1] in {"purelib", "platlib"},
+                        "unsupported runtime wheel relocation",
+                    )
+                    relative = str(PurePosixPath(*parts[2:]))
+                path = Path(dist.locate_file(relative))
+                if str(path) in installed[role]:
+                    _path(path)
+                    package = Path(dist.locate_file(PurePosixPath(relative).parts[0]))
+                    if package.is_dir():
+                        roots.add(package)
+        # Identical original namespace predicate, including extensionless ELF.
+        for root in roots:
+            for path in root.rglob("*"):
+                if not path.is_file():
+                    continue
+                with path.open("rb") as stream:
+                    is_elf = stream.read(4) == b"\x7fELF"
+                if _payload(path.name) or is_elf:
+                    registry.require(
+                        str(path) in installed[role],
+                        "unrecorded installed runtime payload",
+                    )
+    _check_file_states(states)
+
+
+def _audit_cell_inputs_with_payloads(config_path, recipe_path, *, _model_call=None):
     """Expensive prelaunch audit, run in the actual pinned runtime interpreter.
 
     Returns observed bytes, not a producer claim.  It proves files and installed
@@ -653,7 +723,7 @@ def audit_cell_inputs(config_path, recipe_path, *, _model_call=None):
     )
     if _model_call is not None:
         _active_model_audit_call(_model_call)
-    return result
+    return result, installed
 
 
 def controller_cell_binding(issuer, permit, handoff, inputs, *, trusted_input_audits):
