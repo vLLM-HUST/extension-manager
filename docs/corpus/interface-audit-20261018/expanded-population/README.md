@@ -39,3 +39,8 @@ unknown until prospectively recorded. Existing ECPA StateAxis functionality is
 acknowledged; the missing work is the real Host/device/patch bridge, not another
 ready flag. These source constraints and possible interactions create no new
 compatibility oracle and do not relabel the original H2 cohort.
+
+Original public project snapshots retain their already-public dependency URLs,
+including URLs naming access-restricted repositories. Restricted source contents
+and the restricted inventory are not copied. Source snapshots remain exact Git
+blob bytes; the source excerpt for async-KV ends at its actual line52.
