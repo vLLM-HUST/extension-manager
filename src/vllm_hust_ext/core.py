@@ -163,7 +163,11 @@ def render_plan(
     return provider.render(plan)
 
 
-def reject_conflicting_plans(plans: tuple[ProviderPlan, ...]) -> None:
+def reject_conflicting_plans(
+    plans: tuple[ProviderPlan, ...],
+    *,
+    configuration_values: dict[tuple[str, ...], int] | None = None,
+) -> None:
     resources: dict[tuple[str, str], tuple[str, str]] = {}
     for plan in plans:
         for claim in plan.resource_claims:
@@ -217,6 +221,65 @@ def reject_conflicting_plans(plans: tuple[ProviderPlan, ...]) -> None:
                 )
             claims[config_key] = (plan.extension_id, config_claim.value)
 
+    reject_configuration_requirements(plans, configuration_values=configuration_values)
+
+
+def reject_configuration_requirements(
+    plans: tuple[ProviderPlan, ...],
+    *,
+    configuration_values: dict[tuple[str, ...], int] | None = None,
+) -> None:
+    """Intersect declared read predicates without rewriting launch configuration."""
+    grouped: dict[tuple[str, ...], list[tuple[str, int, int | None]]] = {}
+    for plan in plans:
+        for requirement in plan.configuration_requirements:
+            low, high = requirement.minimum, requirement.maximum
+            if (
+                type(requirement.path) is not tuple
+                or not requirement.path
+                or any(type(part) is not str or not part for part in requirement.path)
+                or type(low) is not int
+                or low < 1
+                or (high is not None and (type(high) is not int or high < low))
+            ):
+                raise ValueError(
+                    "INVALID_CONFIGURATION_REQUIREMENT: "
+                    "positive integer interval required"
+                )
+            key = (plan.provider, *requirement.path)
+            grouped.setdefault(key, []).append((plan.extension_id, low, high))
+    for key in sorted(grouped):
+        rows = grouped[key]
+        low = max(row[1] for row in rows)
+        bounded = [row[2] for row in rows if row[2] is not None]
+        high = min(bounded) if bounded else None
+        details = "; ".join(
+            f"{owner} requires [{lower}, {upper if upper is not None else 'unbounded'}]"
+            for owner, lower, upper in sorted(
+                rows, key=lambda row: (row[0], row[1], row[2] is None, row[2] or 0)
+            )
+        )
+        if high is not None and low > high:
+            raise ValueError(
+                "CONFIGURATION_CONSTRAINT_CONFLICT on " + ".".join(key) + ": " + details
+            )
+        if configuration_values is not None:
+            value = configuration_values.get(key)
+            if (
+                type(value) is not int
+                or value < low
+                or (high is not None and value > high)
+            ):
+                raise ValueError(
+                    "CONFIGURATION_REQUIREMENT_UNMET on "
+                    + ".".join(key)
+                    + f": actual={value!r}; "
+                    + details
+                )
+
 
 def plan_dict(plan: ProviderPlan) -> dict[str, Any]:
-    return asdict(plan)
+    result = asdict(plan)
+    if not plan.configuration_requirements:
+        result.pop("configuration_requirements")
+    return result

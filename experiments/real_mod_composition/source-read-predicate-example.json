@@ -1,0 +1,62 @@
+{
+  "schema": "ecpa-explicit-source-read-predicates/v1",
+  "classification": "explicit-new-ECPA-source-adapter-not-original-manifest-or-auto-source-discovery",
+  "profiles": [
+    {
+      "owner": "org.vllm-hust.pipeline-microbatch",
+      "version": "0.2.1.dev1",
+      "manifest": {
+        "path": "pipeline/src/vllm_hust_pipeline_microbatch/vllm-hust-extension-v0.2.json",
+        "sha256": "84899a29a89e9f23d700b084dc645e312a8947965c84453a3cbb311b02c5d2f8"
+      },
+      "source": {
+        "path": "pipeline/src/vllm_hust_pipeline_microbatch/policy.py",
+        "sha256": "194da88d7363a00daba25a3b3accc6aee89a96c14de56e1c7d7083d842822ebf",
+        "git_blob": "df8a9ba1f51aaa5629a82527406d8699a5f00340",
+        "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510"
+      },
+      "configuration_requirements": [
+        {
+          "path": [
+            "parallel_config",
+            "pipeline_parallel_size"
+          ],
+          "minimum": 2,
+          "maximum": null
+        }
+      ],
+      "basis_lines": [
+        50,
+        54
+      ]
+    },
+    {
+      "owner": "org.vllm-hust.ascend-kvcompress",
+      "version": "0.9.0",
+      "manifest": {
+        "path": "kv/src/vllm_ascend_kvcompress/manifests/vllm-hust-extension-v0.3.json",
+        "sha256": "ad0a3e62602108e54503bb81c8fda162a730e1a422fe940d09a2463ee2d0eb54"
+      },
+      "source": {
+        "path": "kv/src/vllm_ascend_kvcompress/stateful.py",
+        "sha256": "2539041fb51c14ad86dd197d0e2ccd8b047dbff341ddbfd44d25e0c977731e44",
+        "git_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+        "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f"
+      },
+      "configuration_requirements": [
+        {
+          "path": [
+            "parallel_config",
+            "pipeline_parallel_size"
+          ],
+          "minimum": 1,
+          "maximum": 1
+        }
+      ],
+      "basis_lines": [
+        221,
+        230
+      ]
+    }
+  ]
+}
