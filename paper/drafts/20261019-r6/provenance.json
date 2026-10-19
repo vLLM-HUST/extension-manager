@@ -1,0 +1,15 @@
+{
+  "schema": "ecpa-tectonic-versioned-draft/v1",
+  "source_commit": "0fe8e6f82a470e628947366e9e7e245caed3cf12",
+  "source_main_tex_sha256": "4b2024f8153c94dd698cc51f5b1d4e011b851f19f173406ccdf185fee545103e",
+  "pdf_sha256": "f6a924b758a639a9ad3112f38b95005f8ed8e7da8a366df867316830ae388ef5",
+  "pdf_bytes": 108365,
+  "compiler": "Tectonic",
+  "compiler_returncode": 0,
+  "original_render_receipt": "paper/artifacts/h2-r6-publication/render-receipt.json",
+  "body_pages": 12,
+  "total_pages": 14,
+  "anonymous": false,
+  "submission_ready": false,
+  "publication_boundary": "Paper drafts belong to ECPA/extension-manager; inference-engine-project receives experiment data, conclusions and evidence only."
+}
