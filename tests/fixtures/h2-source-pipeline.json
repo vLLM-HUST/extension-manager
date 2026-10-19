@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.3-experimental",
+  "extension_id": "org.vllm-hust.pipeline-microbatch",
+  "extension_version": "0.2.1.dev1",
+  "kind": "scheduler_policy",
+  "host": {
+    "provider": "vllm",
+    "name": "vllm",
+    "version_range": ">=0.31.1.post1.dev19,<0.31.1.post1.dev20",
+    "api_range": "==1.0"
+  },
+  "runtime": {
+    "type": "python",
+    "process_scope": "scheduler",
+    "isolation": "trusted_in_process"
+  },
+  "lifecycle_owner": "vllm",
+  "protocols": [
+    {
+      "name": "vllm.batch-admission-policy",
+      "version_range": "==1.1"
+    }
+  ],
+  "components": [
+    {
+      "component_id": "batch-admission-policy",
+      "implementation_ref": "vllm_hust_pipeline_microbatch.policy:PipelineMicrobatchPolicy",
+      "contracts": [
+        "vllm.batch-admission-policy.v1"
+      ],
+      "execution_planes": [
+        "scheduler"
+      ],
+      "isolation": "trusted_in_process",
+      "permissions": []
+    }
+  ],
+  "implementation": [
+    {
+      "type": "python_module",
+      "module": "vllm_hust_pipeline_microbatch.policy",
+      "object": "PipelineMicrobatchPolicy",
+      "status": "active"
+    }
+  ],
+  "requires_services": [],
+  "activation": {
+    "entry_points": [],
+    "environment": {},
+    "additional_config": {
+      "_manager_runtime_qualification": {
+        "domain": "new-H4-conditional-scheduler-PP2-TP1",
+        "host_commit": "f7bc2a5eebc505f28abfbf318734225e4c30c64c",
+        "host_tree": "9ee4ce4dbcb4f685df8713fb1c33a53d7221ba27",
+        "model": "/models/Qwen2.5-7B-Instruct",
+        "pipeline_parallel_size": 2,
+        "tensor_parallel_size": 1,
+        "max_num_seqs": 1,
+        "warmup_requests": 16,
+        "measured_requests": 256,
+        "selected_requests": 32
+      }
+    }
+  },
+  "resource_claims": [
+    {
+      "resource": "vllm.scheduler.batch-admission-policy",
+      "scope": "vllm-process",
+      "mode": "exclusive"
+    }
+  ]
+}

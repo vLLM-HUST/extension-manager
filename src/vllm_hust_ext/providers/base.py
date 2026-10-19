@@ -29,6 +29,15 @@ class ConfigClaim:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfigurationRequirement:
+    """A positive-integer host setting read by an implementation, not a writer."""
+
+    path: tuple[str, ...]
+    minimum: int = 1
+    maximum: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderPlan:
     extension_id: str
     provider: str
@@ -39,6 +48,7 @@ class ProviderPlan:
     # None preserves the legacy whole-field comparison for other providers.
     # An explicit projection follows the provider's actual launch merge rules.
     config_claims: tuple[ConfigClaim, ...] | None = None
+    configuration_requirements: tuple[ConfigurationRequirement, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
