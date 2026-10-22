@@ -1,0 +1,154 @@
+(APIServer pid=2039995) INFO 10-19 01:16:45 [api_utils.py:418] 
+(APIServer pid=2039995) INFO 10-19 01:16:45 [api_utils.py:418]        █     █     █▄   ▄█
+(APIServer pid=2039995) INFO 10-19 01:16:45 [api_utils.py:418]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.31.1.post1.dev19+gf67ad57c8
+(APIServer pid=2039995) INFO 10-19 01:16:45 [api_utils.py:418]   █▄█▀ █     █     █     █  model   /models/Qwen2.5-7B-Instruct
+(APIServer pid=2039995) INFO 10-19 01:16:45 [api_utils.py:418]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+(APIServer pid=2039995) INFO 10-19 01:16:45 [api_utils.py:418] 
+(APIServer pid=2039995) INFO 10-19 01:16:45 [api_utils.py:357] non-default args: {'model_tag': '/models/Qwen2.5-7B-Instruct', 'host': '127.0.0.1', 'port': 29901, 'model': '/models/Qwen2.5-7B-Instruct', 'max_model_len': 2048, 'enforce_eager': True, 'served_model_name': ['ecpa-h2-real'], 'tensor_parallel_size': 2, 'block_size': 128, 'gpu_memory_utilization': 0.6, 'enable_prefix_caching': False, 'max_num_seqs': 1, 'enable_chunked_prefill': True, 'shutdown_timeout': 5}
+(APIServer pid=2039995) WARNING 10-19 01:16:45 [interface.py:1466] Unknown vLLM environment variable detected: VLLM_HUST_EXT_CONFIG
+(APIServer pid=2039995) INFO 10-19 01:17:25 [model.py:733] Resolved architecture: Qwen2ForCausalLM
+(APIServer pid=2039995) INFO 10-19 01:17:25 [model.py:2148] Using max model len 2048
+(APIServer pid=2039995) WARNING 10-19 01:17:26 [vllm.py:1716] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(APIServer pid=2039995) WARNING 10-19 01:17:26 [vllm.py:1740] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(APIServer pid=2039995) INFO 10-19 01:17:26 [kernel.py:473] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['native'])
+(APIServer pid=2039995) INFO 10-19 01:17:26 [vllm.py:1942] Cudagraph is disabled under eager mode
+(APIServer pid=2039995) INFO 10-19 01:17:26 [utils.py:225] No quantization signature detected from model files for "/models/Qwen2.5-7B-Instruct". The model will be loaded as float. To force a quantization method, pass "--quantization <method>" explicitly.
+(APIServer pid=2039995) WARNING 10-19 01:17:26 [platform.py:730] GPU-specific parameter is not supported on Ascend. parameter=disable_cascade_attn, value=True, action: resetting to False.
+(APIServer pid=2039995) INFO 10-19 01:17:26 [platform.py:944] The timeout interval of the HCCL operator is 1836s. Timeout in seconds for execute_model RPC calls in multiprocessing must be greater than 1836s, Set VLLM_EXECUTE_MODEL_TIMEOUT_SECONDS=3000
+(APIServer pid=2039995) INFO 10-19 01:17:26 [ascend_config.py:334] Dynamic EPLB is False
+(APIServer pid=2039995) INFO 10-19 01:17:26 [ascend_config.py:335] The number of redundant experts is 0
+(APIServer pid=2039995) INFO 10-19 01:17:26 [ascend_config.py:762] FlashComm1 is disabled. Using flashinfer_all2allv as the all2all backend.
+(APIServer pid=2039995) INFO 10-19 01:17:26 [platform.py:1211] Compilation disabled, using eager mode by default
+(APIServer pid=2039995) INFO 10-19 01:17:26 [platform.py:1455] Set PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
+(APIServer pid=2039995) INFO 10-19 01:17:26 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(EngineCore pid=2040565) INFO 10-19 01:18:13 [core.py:134] Initializing a V1 LLM engine (v0.31.1.post1.dev19+gf67ad57c8) with config: model='/models/Qwen2.5-7B-Instruct', speculative_config=None, tokenizer='/models/Qwen2.5-7B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=2048, download_dir=None, load_format=auto, tensor_parallel_size=2, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=True, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=npu, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=ecpa-h2-real, enable_prefix_caching=False, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'vllm_ascend.compilation.compiler_interface.AscendCompiler', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, monokernel=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=2040565) INFO 10-19 01:18:13 [multiproc_executor.py:153] DP group leader: node_rank=0, node_rank_within_dp=0, master_addr=127.0.0.1, mq_connect_ip=10.244.1.84 (local), world_size=2, local_world_size=2
+(VllmWorker-1 pid=2040775) WARNING 10-19 01:19:04 [patch_triton.py:332] NPU Triton causal_conv1d_update is unavailable (cannot import name 'causal_conv1d_update_npu' from 'vllm_ascend.ops.triton.mamba.causal_conv1d' (/root/ecpa-workspace/environments/ecpa-h2-drain-20261019-r1/lib/python3.12/site-packages/vllm_ascend/ops/triton/mamba/causal_conv1d.py)); falling back to the PyTorch implementation, which syncs per request and therefore stalls ACL graph capture at decode-FULL.
+(VllmWorker-0 pid=2040774) WARNING 10-19 01:19:05 [patch_triton.py:332] NPU Triton causal_conv1d_update is unavailable (cannot import name 'causal_conv1d_update_npu' from 'vllm_ascend.ops.triton.mamba.causal_conv1d' (/root/ecpa-workspace/environments/ecpa-h2-drain-20261019-r1/lib/python3.12/site-packages/vllm_ascend/ops/triton/mamba/causal_conv1d.py)); falling back to the PyTorch implementation, which syncs per request and therefore stalls ACL graph capture at decode-FULL.
+(VllmWorker-1 pid=2040775) INFO 10-19 01:19:06 [ascend_config.py:334] Dynamic EPLB is False
+(VllmWorker-1 pid=2040775) INFO 10-19 01:19:06 [ascend_config.py:335] The number of redundant experts is 0
+(VllmWorker-1 pid=2040775) INFO 10-19 01:19:06 [ascend_config.py:762] FlashComm1 is disabled. Using flashinfer_all2allv as the all2all backend.
+(VllmWorker-0 pid=2040774) INFO 10-19 01:19:06 [ascend_config.py:334] Dynamic EPLB is False
+(VllmWorker-0 pid=2040774) INFO 10-19 01:19:06 [ascend_config.py:335] The number of redundant experts is 0
+(VllmWorker-0 pid=2040774) INFO 10-19 01:19:06 [ascend_config.py:762] FlashComm1 is disabled. Using flashinfer_all2allv as the all2all backend.
+(Worker pid=2040775) INFO 10-19 01:19:08 [parallel_state.py:1906] world_size=2 rank=1 local_rank=1 distributed_init_method=file:///tmp/vllm_dist_65ccbed1693f40e6aff36e5838b7acf9 backend=hccl
+(Worker pid=2040774) INFO 10-19 01:19:08 [parallel_state.py:1906] world_size=2 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_65ccbed1693f40e6aff36e5838b7acf9 backend=hccl
+(Worker pid=2040774) INFO 10-19 01:19:08 [parallel_state.py:2350] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(Worker pid=2040774) INFO 10-19 01:19:09 [platform.py:1478] FA3 will not be enabled when rl_config.enable_training_consistency is false. Note that Ascend NPU will use its registered plugin backend instead.
+(Worker pid=2040775) INFO 10-19 01:19:09 [platform.py:1478] FA3 will not be enabled when rl_config.enable_training_consistency is false. Note that Ascend NPU will use its registered plugin backend instead.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:09 [model_runner_v1.py:4397] Starting to load model /models/Qwen2.5-7B-Instruct...
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:09 [model_runner_v1.py:4397] Starting to load model /models/Qwen2.5-7B-Instruct...
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:09 [platform.py:1478] FA3 will not be enabled when rl_config.enable_training_consistency is false. Note that Ascend NPU will use its registered plugin backend instead.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:10 [platform.py:1478] FA3 will not be enabled when rl_config.enable_training_consistency is false. Note that Ascend NPU will use its registered plugin backend instead.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:10 [base_loader.py:82] Initializing model took 0.566418 seconds
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:10 [weight_utils.py:1112] Filesystem type for checkpoints: EXT4. Checkpoint size: 14.19 GiB. Available RAM: 1.60 GiB.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:10 [weight_utils.py:1142] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre) and the checkpoint size (14.19 GiB) exceeds 90% of available RAM (1.60 GiB).
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:19 [model_runner_v1.py:4484] Loading model weights took 7.1164 GB
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:19 [model_runner_v1.py:4571] Model runner load_model total time: 9.56 seconds
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:26 [default_loader.py:501] Loading weights took 16.24 seconds
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:28 [model_runner_v1.py:4484] Loading model weights took 7.1164 GB
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:28 [model_runner_v1.py:4571] Model runner load_model total time: 19.36 seconds
+(EngineCore pid=2040565) INFO 10-19 01:19:28 [utils.py:347] Using LHBNC KV cache layout.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:37 [worker.py:650] Available KV cache memory: 28.82 GiB
+(EngineCore pid=2040565) INFO 10-19 01:19:37 [kv_cache_utils.py:1093] NPU KV cache size: 1,079,296 tokens, Maximum concurrency for 2,048 tokens per request: 527.00x
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:38 [kernel_warmup.py:44] Starting Triton kernel warmup.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:38 [kernel_warmup.py:44] Starting Triton kernel warmup.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:38 [kernel_warmup.py:36] rejection_sampler Triton warmup complete in 0.000s.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:38 [kernel_warmup.py:36] rejection_sampler Triton warmup complete in 0.000s.
+[WARNING] AutoBlockify disabled for kernel 'token_bin_counts_and_mask_kernel'. Unsafe ops: atomic operations. Enabling may cause correctness issues. The compiler keeps AutoBlockify disabled for this kernel.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:48 [kernel_warmup.py:36] penalties Triton warmup complete in 9.583s.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:48 [kernel_warmup.py:36] rms Triton warmup complete in 0.000s.
+[WARNING] AutoBlockify disabled for kernel 'token_bin_counts_and_mask_kernel'. Unsafe ops: atomic operations. Enabling may cause correctness issues. The compiler keeps AutoBlockify disabled for this kernel.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:48 [kernel_warmup.py:36] penalties Triton warmup complete in 9.584s.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:48 [kernel_warmup.py:36] indexer Triton warmup complete in 0.000s.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:48 [kernel_warmup.py:53] Triton kernel warmup finished in 9.584s.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:48 [kernel_warmup.py:36] rms Triton warmup complete in 0.000s.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:48 [kernel_warmup.py:36] indexer Triton warmup complete in 0.000s.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:48 [kernel_warmup.py:53] Triton kernel warmup finished in 9.585s.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:48 [worker.py:929] Free memory on device (60.6/60.96 GiB) on startup. Desired GPU memory utilization is (0.6, 36.57 GiB). Actual usage: 7.12 GiB for weights, 0.2 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=30788564480` (28.67 GiB) to fit into requested memory, or `--kv-cache-memory=56582997504` (52.7 GiB) to fully utilize NPU free memory. Current KV cache memory: 28.82 GiB. After warmup: torch reserved memory 35.96 GiB, torch allocated memory 35.95 GiB.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:48 [worker.py:929] Free memory on device (60.52/60.96 GiB) on startup. Desired GPU memory utilization is (0.6, 36.57 GiB). Actual usage: 7.12 GiB for weights, 0.2 GiB for peak activation, 0.44 GiB for non-torch memory, 0.0 GiB for NPU graph memory. Replace gpu_memory_utilization with `--kv-cache-memory=30788572672` (28.67 GiB) to fit into requested memory, or `--kv-cache-memory=56505181696` (52.62 GiB) to fully utilize NPU free memory. Current KV cache memory: 28.82 GiB. After warmup: torch reserved memory 35.96 GiB, torch allocated memory 35.95 GiB.
+(Worker_TP1 pid=2040775) INFO 10-19 01:19:49 [cpu_binding.py:539] [cpu_bind_mode] mode=topo_affinity rank=1 visible_npus=[0, 1]
+(Worker_TP1 pid=2040775) WARNING 10-19 01:19:49 [worker.py:950] Bind cpus failed in rank1: CPUs available in 'Cpus_allowed_list' conflict with NUMA affinity. Skip binding cpu.
+(Worker_TP0 pid=2040774) INFO 10-19 01:19:49 [cpu_binding.py:539] [cpu_bind_mode] mode=topo_affinity rank=0 visible_npus=[0, 1]
+(Worker_TP0 pid=2040774) WARNING 10-19 01:19:49 [worker.py:950] Bind cpus failed in rank0: CPUs available in 'Cpus_allowed_list' conflict with NUMA affinity. Skip binding cpu.
+(EngineCore pid=2040565) INFO 10-19 01:19:49 [core.py:411] init engine (profile, create kv cache, warmup model) took 21.17 s
+(EngineCore pid=2040565) INFO 10-19 01:19:50 [preemption.py:175] Preemption policy initialized: policy=builtin enabled=False
+(EngineCore pid=2040565) INFO 10-19 01:19:50 [batch_admission.py:144] Batch admission policy initialized: policy=builtin configured=False enabled=False
+(EngineCore pid=2040565) WARNING 10-19 01:19:51 [vllm.py:1716] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=2040565) WARNING 10-19 01:19:51 [vllm.py:1740] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=2040565) INFO 10-19 01:19:51 [kernel.py:473] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['native'])
+(EngineCore pid=2040565) INFO 10-19 01:19:51 [vllm.py:1942] Cudagraph is disabled under eager mode
+(EngineCore pid=2040565) INFO 10-19 01:19:52 [utils.py:225] No quantization signature detected from model files for "/models/Qwen2.5-7B-Instruct". The model will be loaded as float. To force a quantization method, pass "--quantization <method>" explicitly.
+(EngineCore pid=2040565) INFO 10-19 01:19:52 [platform.py:944] The timeout interval of the HCCL operator is 1836s. Timeout in seconds for execute_model RPC calls in multiprocessing must be greater than 1836s, Set VLLM_EXECUTE_MODEL_TIMEOUT_SECONDS=3000
+(EngineCore pid=2040565) INFO 10-19 01:19:52 [platform.py:1211] Compilation disabled, using eager mode by default
+(EngineCore pid=2040565) INFO 10-19 01:19:52 [platform.py:1455] Set PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
+(EngineCore pid=2040565) INFO 10-19 01:19:52 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(APIServer pid=2039995) INFO 10-19 01:19:52 [entry.py:136] Supported tasks: ['generate']
+(APIServer pid=2039995) INFO 10-19 01:19:52 [factories.py:89] Scale-out endpoints are disabled. Restart vllm serve with --enable-scale-out to enable them.
+(APIServer pid=2039995) INFO 10-19 01:19:53 [hf.py:647] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+(APIServer pid=2039995) WARNING 10-19 01:19:53 [model.py:1893] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'repetition_penalty': 1.05, 'temperature': 0.7, 'top_k': 20, 'top_p': 0.8}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+(APIServer pid=2039995) INFO 10-19 01:19:53 [entry.py:140] Starting vLLM server on http://127.0.0.1:29901
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:186] Available routes are:
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /openapi.json, Methods: HEAD, GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /docs, Methods: HEAD, GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /docs/oauth2-redirect, Methods: HEAD, GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /redoc, Methods: HEAD, GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /load, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /version, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /kv_event_sources, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /health, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /metrics, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /tokenize, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /detokenize, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/models, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/systemone, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/decisions, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /ping, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /ping, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /invocations, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/chat/completions, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/chat/completions/batch, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/responses, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/responses/{response_id}, Methods: GET
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/responses/{response_id}/cancel, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/completions, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/messages, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/messages/count_tokens, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /generative_scoring, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /scale_elastic_ep, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /is_scaling_elastic_ep, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/chat/completions/render, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/messages/render, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/completions/render, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/responses/render, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/chat/completions/derender, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /v1/completions/derender, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /inference/v1/generate, Methods: POST
+(APIServer pid=2039995) INFO 10-19 01:19:53 [launcher.py:195] Route: /inference/v1/abort_requests, Methods: POST
+INFO:     127.0.0.1:57192 - "GET /health HTTP/1.1" 200 OK
+(APIServer pid=2039995) INFO 10-19 01:20:04 [loggers.py:335] Engine 000: Avg prompt throughput: 0.3 tokens/s, Avg generation throughput: 0.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, NPU KV cache usage: 0.0%
+INFO:     127.0.0.1:57194 - "POST /v1/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57196 - "POST /v1/completions HTTP/1.1" 200 OK
+(APIServer pid=2039995) INFO 10-19 01:20:13 [launcher.py:254] [shutdown] API server: shutdown triggered
+(APIServer pid=2039995) INFO 10-19 01:20:13 [launcher.py:270] [shutdown] API server: stopping engine client mode=drain timeout=5s
+(APIServer pid=2039995) INFO 10-19 01:20:13 [core_client.py:770] [shutdown] MPClient: start timeout=5s
+(APIServer pid=2039995) INFO 10-19 01:20:13 [core_client.py:772] [shutdown] MPClient: stopping engine manager
+(APIServer pid=2039995) INFO 10-19 01:20:13 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=2040565) INFO 10-19 01:20:13 [core.py:1511] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=2040565) INFO 10-19 01:20:13 [core.py:1692] [shutdown] EngineCore: start mode=drain timeout=5s
+(EngineCore pid=2040565) INFO 10-19 01:20:13 [core.py:1723] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=2040565) INFO 10-19 01:20:13 [core.py:1556] [shutdown] EngineCore: exiting busy loop
+(Worker_TP0 pid=2040774) INFO 10-19 01:20:13 [multiproc_executor.py:843] Parent process exited, terminating worker queues
+(EngineCore pid=2040565) INFO 10-19 01:20:13 [multiproc_executor.py:479] [shutdown] Executor: waiting for worker exit count=2
+(APIServer pid=2039995) INFO 10-19 01:20:14 [loggers.py:335] Engine 000: Avg prompt throughput: 120.1 tokens/s, Avg generation throughput: 6.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, NPU KV cache usage: 0.0%
+(APIServer pid=2039995) WARNING 10-19 01:20:18 [utils.py:648] [shutdown] Process manager: force killing remaining processes count=1
+(APIServer pid=2039995) WARNING 10-19 01:20:18 [utils.py:653] [shutdown] Process manager: force killing remaining process EngineCore pid 2040565
+(APIServer pid=2039995) WARNING 10-19 01:20:18 [system_utils.py:225] [shutdown] force killing sub process VLLM::Worker_TP0 pid 2040774
+(APIServer pid=2039995) WARNING 10-19 01:20:18 [system_utils.py:225] [shutdown] force killing sub process VLLM::Worker_TP1 pid 2040775
+(APIServer pid=2039995) INFO 10-19 01:20:18 [core_client.py:774] [shutdown] MPClient: engine manager stopped
+(APIServer pid=2039995) INFO 10-19 01:20:18 [core_client.py:775] [shutdown] MPClient: cleaning up background resources
+(APIServer pid=2039995) INFO 10-19 01:20:18 [core_client.py:777] [shutdown] MPClient: complete
+(APIServer pid=2039995) INFO 10-19 01:20:18 [async_llm.py:917] [shutdown] AsyncLLM output handler stopped after EngineCore exit
+(APIServer pid=2039995) INFO 10-19 01:20:18 [launcher.py:279] [shutdown] API server: engine client stopped
+(APIServer pid=2039995) INFO 10-19 01:20:18 [launcher.py:282] [shutdown] API server: signalling HTTP server shutdown
+(APIServer pid=2039995) INFO 10-19 01:20:18 [launcher.py:304] [shutdown] API server: shutting down FastAPI HTTP server

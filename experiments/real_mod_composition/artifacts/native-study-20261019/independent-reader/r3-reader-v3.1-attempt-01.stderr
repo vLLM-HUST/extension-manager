@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py", line 152, in <module>
+    main()
+  File "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py", line 61, in main
+    require(matched, 'native process/Plan/launch absent from original host-assigned event chain')
+  File "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py", line 22, in require
+    raise ValueError(message)
+ValueError: native process/Plan/launch absent from original host-assigned event chain

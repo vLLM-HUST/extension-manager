@@ -1,0 +1,75 @@
+{
+  "schema": "ecpa-H2-r6-independent-new-source-reader-freeze/v1",
+  "frozen_wall_ns": 1792372758927863420,
+  "frozen_monotonic_ns": 8088462385552100,
+  "implementation_after_r6_Popen": true,
+  "r6_result_read_before_freeze": false,
+  "prior_cohort_results_seen": true,
+  "formal_result": false,
+  "new_subjects": {
+    "rule": {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule-drain-v2.json",
+      "sha256": "3be1ebfd612ae63879c1813ca707cfa17b3f0ef97e0ccfc67d737580833c0c14",
+      "bytes": 6521
+    },
+    "campaign": {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/campaign.json",
+      "sha256": "953934dda205a55aea9be2aa255d3435f5b512534e18c8884330ad9b5904b38f",
+      "bytes": 1686
+    },
+    "root_actual_full5134_installed_source_wheel_match": {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/drain-runtime-staging/actual-installed-source-wheel-match.json",
+      "sha256": "6fd3a16dd1e62adde894e742e4103c1f59538e99fe5a1028676da57cbd9d03ed",
+      "bytes": 2203
+    }
+  },
+  "files": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_native_raw_v1.py",
+      "sha256": "60a5cc9265045505a608491199a3e2e0b4d71cd562fbe2fa9c002c8691c2b020",
+      "preimage_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v1.py",
+      "preimage_sha256": "44539d9e44d3006ff17e2568729e3dcc905c969a0a98b9185f5b0fb42f43cbd4"
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_native_raw_v2.py",
+      "sha256": "07a482ad3cd2c3dde254ad0b4594d5fe4ab2a92cebcbb3ee178e0a19fae80925",
+      "preimage_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v2.py",
+      "preimage_sha256": "d492f122bc1a09c79a375925a9cf23c1b8eeef163b791c4bb7ee79265ee9e8a5"
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_native_raw_v3.py",
+      "sha256": "561cd834891b2155229522065b830436ea5d00837960b4afe0655a4219285089",
+      "preimage_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v3.py",
+      "preimage_sha256": "62b9bc66cffde32b2c46249cc94f73b99a36c4503ed6a72781320e42e40c0f17"
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/compare_kv_native_raw_v3_2.py",
+      "sha256": "f4c24f33d322d7a607beb6e44c86ed6c322f556836d41f03b87f68a118f762ae",
+      "preimage_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_2.py",
+      "preimage_sha256": "71da64176c08a3c07acfa617a6c31968f8ede3a03812f509dbeb24d7758870d4"
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_profiler_raw_v3_3.py",
+      "sha256": "a7327c276336d497693a9456b1538cb2fab7aec232f240b13f662b9cf6e9ad50",
+      "preimage_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_profiler_raw_v3_3.py",
+      "preimage_sha256": "bd42e4c3d2754468891eae3707d6f8315c798822863ed0c876e1b189337621ea"
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/read_zero_mod_bootstrap_raw_v4.py",
+      "sha256": "32842472ba3ad1c1981956537856bf7fcf2b202f8f1517c1b3e0caafa7fa39f7",
+      "preimage_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_zero_mod_bootstrap_raw_v4.py",
+      "preimage_sha256": "d026c755efd7b4e0ede0e5102269f72206626ab9066d72b3a10ffd923b2c7c55"
+    }
+  ],
+  "changes": [
+    "New physical source tuple Host f67/Profiler dab provenance checked for every actual shard.",
+    "New separately frozen v2 rule SHA and path, old readers unchanged.",
+    "Host-only actual no-Plan bootstrap uses separate bounded observer reader; no authenticated Host7 invented.",
+    "Original native mapping/readback/projection/ACK and trace hashes/count/Host joins unchanged."
+  ],
+  "not_claimed": [
+    "No old receipt or source qualification reused.",
+    "Root ownership report is source provenance evidence, not oracle effect verdict.",
+    "No complete composition/cleanup result minted by this reader."
+  ]
+}

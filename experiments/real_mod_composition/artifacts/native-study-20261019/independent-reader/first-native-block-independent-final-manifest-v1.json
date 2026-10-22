@@ -1,0 +1,46 @@
+{
+  "schema": "ecpa-H2-independent-final-reader-results-manifest/v1",
+  "frozen_wall_ns": 1792371882134875967,
+  "original_rule_unchanged": true,
+  "original_source_raw_runtime_unmodified": true,
+  "implementation_freeze_timing_disclosed": true,
+  "files": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-table-v1.json",
+      "sha256": "8eca2414f4c01b45069b986393ecbdf3938bc7c9156e47a956de1aa1c9183dbc",
+      "bytes": 54456
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-ownership.json",
+      "sha256": "6e459156327b3dc70f7e964db0a977c693d6b187be7cf0a01732b3a50fc93534",
+      "bytes": 86025
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-npu.stdout",
+      "sha256": "6a481fe2473124c5d783d39f435ad1ce25a78cb06dfa9e7e340c289a727c4cb4",
+      "bytes": 2223
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-raw-projection-v3.3-final.json",
+      "sha256": "865b35dc52ebefc05308bad4260227d32e019c494a62a07de9e97944f00c975d",
+      "bytes": 172868
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-host-only-common-observer-coverage-gap-v1.json",
+      "sha256": "27f75c804bae5ea5859162182cee55aa4c00a222ab07f73182bb6815d84bc764",
+      "bytes": 2607
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-close-interface-analysis-v1.json",
+      "sha256": "5905c3d79546f999f36d945faa943049ff8b2aacdc8e72876cbc52afcce700da",
+      "bytes": 6343
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/v3-native-reader-increments-manifest-01.json",
+      "sha256": "1e47e22303f72e89b0c38f0423b1aa7a76d1c4faacc53693cb13a6cf5a99d959",
+      "bytes": 4085
+    }
+  ],
+  "formal_result": false,
+  "full_compatibility_verdict": "unknown"
+}

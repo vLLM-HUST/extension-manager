@@ -1,0 +1,96 @@
+{
+  "schema": "ecpa-independent-H2-raw-reader-v3-increments-manifest/v1",
+  "frozen_wall_ns": 1792371158621283220,
+  "rule_unchanged": true,
+  "source_only_reading_of_originals": true,
+  "product_imports_tests_devices_signals": false,
+  "pre_result_implementation_freeze_claim": false,
+  "implementation_timing_disclosed_in_freezes": true,
+  "files": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v3.py",
+      "sha256": "62b9bc66cffde32b2c46249cc94f73b99a36c4503ed6a72781320e42e40c0f17",
+      "bytes": 13822
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3-freeze.json",
+      "sha256": "1d7d12652ab64dca9bdcdd06839eb15a94b5ebacefb93a64f79482dfa5f648dd",
+      "bytes": 1245
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-raw-projection-v3-attempt-01.json",
+      "sha256": "84cfdc064d75c6d57d6f5d674860f3d2bc88755384c1439baf3bdd73ae717fae",
+      "bytes": 46371
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py",
+      "sha256": "fa101a746b310d8fe2fee8b497dd21c239bac0c03851bcab3b094fccd31fd1af",
+      "bytes": 10009
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3.1-freeze.json",
+      "sha256": "b5fb670a2c2d1cf49a5dc4e78950dbed2e2219bdd54377a6f24d55fbdd1906cb",
+      "bytes": 774
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-reader-v3.1-attempt-01.stderr",
+      "sha256": "444510fd1b6c43ef5791c8493a41129e0955f354b600a367a0e7a126683de00d",
+      "bytes": 676
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_2.py",
+      "sha256": "71da64176c08a3c07acfa617a6c31968f8ede3a03812f509dbeb24d7758870d4",
+      "bytes": 10008
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3.2-freeze.json",
+      "sha256": "fa8fecf9d3724956518fec87f1494f8a7e5ebf90cc5ee78a6fda911afb58418c",
+      "bytes": 893
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-KV-native-comparison-v3.2-attempt-01.json",
+      "sha256": "7902625318afdf7964ce5a12f338e65fae3f51253697d843ad0971b5ed167bba",
+      "bytes": 46302
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_profiler_raw_v3_3.py",
+      "sha256": "bd42e4c3d2754468891eae3707d6f8315c798822863ed0c876e1b189337621ea",
+      "bytes": 8416
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3.3-freeze.json",
+      "sha256": "cabd35e24b63533f1926117fd0f6b7b3a29c4751680c76b24012fb8e925cfdfe",
+      "bytes": 565
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-raw-projection-v3.3-attempt-01.json",
+      "sha256": "c3f6f4e778e7e59272ce1f2dfe0961d6091a9c8a6f3c011b561fd34852297b4a",
+      "bytes": 62921
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-close-interface-analysis-v1.json",
+      "sha256": "5905c3d79546f999f36d945faa943049ff8b2aacdc8e72876cbc52afcce700da",
+      "bytes": 6343
+    }
+  ],
+  "execution_results": {
+    "v3_r3": {
+      "exit_code": 0,
+      "tool_wall_seconds": 2.488e-05
+    },
+    "v3_1_r3": {
+      "exit_code": 1,
+      "reason": "Reader incorrect Host enum host-assigned; actual source launch-bound. Failed stdout/stderr retained."
+    },
+    "v3_2_r3": {
+      "exit_code": 0,
+      "tool_wall_seconds": 0.073525547
+    },
+    "v3_3_r4": {
+      "exit_code": 0,
+      "tool_wall_seconds": 0.081412518
+    }
+  },
+  "formal_result": false,
+  "KV_full_rule_and_profiler_lossfree_and_composition_verdict": "unknown"
+}

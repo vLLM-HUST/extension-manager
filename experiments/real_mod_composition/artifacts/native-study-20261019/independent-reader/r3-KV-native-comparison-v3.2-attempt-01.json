@@ -1,0 +1,1166 @@
+{
+  "schema": "ecpa-H2-independent-native-KV-comparison/v3.2",
+  "implementation_freeze_after_result_observation": true,
+  "formal_result": false,
+  "planner_or_attempt_verdict_consumed": false,
+  "rule": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule.json",
+    "sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a"
+  },
+  "case": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only",
+  "original_v3_projection": {
+    "case": "kv-only",
+    "status": "raw-observations-only",
+    "raw_refs": [
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/study-events.jsonl",
+        "sha256": "0fa73710e3d5ba41b918482c31d833329048bc20b5f83e66e2fc5626bf320b9e",
+        "bytes": 157720
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/runtime-evidence.jsonl",
+        "sha256": "373a0e4afc77618c0aab9f167ad712fdd77fad95cbdaf42f57dbc4e2c5faed17",
+        "bytes": 106164
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/Popen.json",
+        "sha256": "a867927cf0c075c30db0093491b0be6c84fa01ad97deef658efa1e202e302ad8",
+        "bytes": 140
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-request.json",
+        "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+        "bytes": 141
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-response.json",
+        "sha256": "a0b67cea5d087068f33eb0983f4d0ef0271fa4de79fa3e88af63ab61d7e0063d",
+        "bytes": 692
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-request.json",
+        "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+        "bytes": 9928
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-response.json",
+        "sha256": "483909551256e77be3940ef653e41ff8f1538586c53e36c5ee6394ce5f34a373",
+        "bytes": 682
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/stderr.log",
+        "sha256": "f2e1bf1696cddfede20c229f62e8313e8bf6bacd86e55239501cfa8da469403b",
+        "bytes": 52329
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/study-events.jsonl",
+        "sha256": "0fa73710e3d5ba41b918482c31d833329048bc20b5f83e66e2fc5626bf320b9e",
+        "bytes": 157720
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-request.json",
+        "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+        "bytes": 141
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-response.json",
+        "sha256": "a0b67cea5d087068f33eb0983f4d0ef0271fa4de79fa3e88af63ab61d7e0063d",
+        "bytes": 692
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-request-clock.json",
+        "sha256": "f43e891de4ae09b564bb6247c911aac30e513b458086820bbf2eaa1f14fe55ef",
+        "bytes": 85
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-response-clock.json",
+        "sha256": "00bdb5fb375e0c896d2aecb0cbeb9fee7022da68d0c38bfcd5c93e4a37ff3c56",
+        "bytes": 103
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-request.json",
+        "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+        "bytes": 9928
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-response.json",
+        "sha256": "483909551256e77be3940ef653e41ff8f1538586c53e36c5ee6394ce5f34a373",
+        "bytes": 682
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-request-clock.json",
+        "sha256": "f04ed938ed7245d489c02610c82088810fdfc7ab8c67451a7f64f3efd34de256",
+        "bytes": 85
+      },
+      {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-response-clock.json",
+        "sha256": "e0e87ece2335f20810c49630352a05ebcacd7f078d07b1680eec0b76abe46431",
+        "bytes": 103
+      }
+    ],
+    "actual_Popen": {
+      "pid": 2012896,
+      "start_ticks": 808582627,
+      "session": 2012896,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    "loading": {
+      "status": "supported",
+      "actual_slots": {
+        "api-server/0": {
+          "pid": 2013183,
+          "start_ticks": 808586332,
+          "order": [
+            "ascend_kvcompress"
+          ]
+        },
+        "engine-core-scheduler/0": {
+          "pid": 2013680,
+          "start_ticks": 808596991,
+          "order": [
+            "ascend_kvcompress"
+          ]
+        },
+        "worker/1": {
+          "pid": 2014005,
+          "start_ticks": 808601181,
+          "order": [
+            "ascend_kvcompress"
+          ]
+        },
+        "worker/0": {
+          "pid": 2014004,
+          "start_ticks": 808601181,
+          "order": [
+            "ascend_kvcompress"
+          ]
+        }
+      },
+      "pending_count": 0,
+      "failures": [],
+      "required_slots": [
+        "api-server/0",
+        "engine-core-scheduler/0",
+        "worker/0",
+        "worker/1"
+      ]
+    },
+    "Host_roster": [
+      {
+        "pid": 2013183,
+        "start_ticks": 808586332,
+        "slot": "api-server/0"
+      },
+      {
+        "pid": 2013680,
+        "start_ticks": 808596991,
+        "slot": "engine-core-scheduler/0"
+      },
+      {
+        "pid": 2014005,
+        "start_ticks": 808601181,
+        "slot": "worker/1"
+      },
+      {
+        "pid": 2014004,
+        "start_ticks": 808601181,
+        "slot": "worker/0"
+      }
+    ],
+    "requests": [
+      {
+        "kind": "below",
+        "functional_status": "supported",
+        "KV_physical_evidence": "bounded-two-rank-NPU-prefix-observed",
+        "external_request_id": "cmpl-kv-only-below-0",
+        "runtime_request_id": "cmpl-kv-only-below-0-97197b16",
+        "actual_API_epoch": [
+          2013183,
+          808586332
+        ],
+        "actual_token_ids_match": true,
+        "actual_prompt_tokens": 4,
+        "usage": {
+          "prompt_tokens": 4,
+          "total_tokens": 36,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "raw_HTTP_elapsed_ns": 14413671029,
+        "original_Host_finished": [
+          {
+            "event_type": "RequestFinished",
+            "fields": {
+              "finished_reason": "length",
+              "kv_blocks": 1,
+              "kv_reclaim_deferred": false,
+              "output_tokens": 32,
+              "prompt_tokens": 4,
+              "request_id": "cmpl-kv-only-below-0-97197b16",
+              "sequence_tokens": 36,
+              "session_id": null,
+              "ts_monotonic_ns": 8086127100718899
+            },
+            "kind": "host-event",
+            "monotonic_ns": 8086127100976872,
+            "pid": 2013680,
+            "start_ticks": 808596991
+          }
+        ],
+        "original_Host_reclaimed": [
+          {
+            "event_type": "RequestKvReclaimed",
+            "fields": {
+              "kv_blocks": 1,
+              "path": "immediate",
+              "request_id": "cmpl-kv-only-below-0-97197b16",
+              "session_id": null,
+              "ts_monotonic_ns": 8086127099038389
+            },
+            "kind": "host-event",
+            "monotonic_ns": 8086127099860849,
+            "pid": 2013680,
+            "start_ticks": 808596991
+          }
+        ],
+        "independent_NPU_rank_evidence": [
+          {
+            "rank": 0,
+            "original_NPU_readback_count": 32,
+            "projection_transactions": [],
+            "first_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:0",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086112762161648,
+              "observed_after_barrier_monotonic_ns": 8086112762792365,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2014004,
+                "process_epoch": 172185229273360,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014004:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-below-0-97197b16",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "998a56ba83047f7785c6cea34941cc1e108d312ca0571cdce236a48f0122238f"
+            },
+            "last_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:0",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086127017434216,
+              "observed_after_barrier_monotonic_ns": 8086127020041726,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2014004,
+                "process_epoch": 172185229273360,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014004:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-below-0-97197b16",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "998a56ba83047f7785c6cea34941cc1e108d312ca0571cdce236a48f0122238f"
+            }
+          },
+          {
+            "rank": 1,
+            "original_NPU_readback_count": 32,
+            "projection_transactions": [],
+            "first_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:1",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086112762159298,
+              "observed_after_barrier_monotonic_ns": 8086112762782125,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2014005,
+                "process_epoch": 238623601207874,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014005:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-below-0-97197b16",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "998a56ba83047f7785c6cea34941cc1e108d312ca0571cdce236a48f0122238f"
+            },
+            "last_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:1",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086127021717035,
+              "observed_after_barrier_monotonic_ns": 8086127022014799,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2014005,
+                "process_epoch": 238623601207874,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014005:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-below-0-97197b16",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "998a56ba83047f7785c6cea34941cc1e108d312ca0571cdce236a48f0122238f"
+            }
+          }
+        ],
+        "native_callback_authenticated_ACK_claim": false,
+        "KV_tensor_or_attention_equivalence_claim": false,
+        "physical_timing_limit": "Compare original per-step readback and actual projection times; no implicit substitution of release count for live occupancy."
+      },
+      {
+        "kind": "above",
+        "functional_status": "supported",
+        "KV_physical_evidence": "bounded-two-rank-NPU-prefix-observed",
+        "external_request_id": "cmpl-kv-only-above-0",
+        "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+        "actual_API_epoch": [
+          2013183,
+          808586332
+        ],
+        "actual_token_ids_match": true,
+        "actual_prompt_tokens": 1201,
+        "usage": {
+          "prompt_tokens": 1201,
+          "total_tokens": 1233,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "raw_HTTP_elapsed_ns": 14615343081,
+        "original_Host_finished": [
+          {
+            "event_type": "RequestFinished",
+            "fields": {
+              "finished_reason": "length",
+              "kv_blocks": 9,
+              "kv_reclaim_deferred": false,
+              "output_tokens": 32,
+              "prompt_tokens": 1201,
+              "request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "sequence_tokens": 1233,
+              "session_id": null,
+              "ts_monotonic_ns": 8086141719115595
+            },
+            "kind": "host-event",
+            "monotonic_ns": 8086141719279407,
+            "pid": 2013680,
+            "start_ticks": 808596991
+          }
+        ],
+        "original_Host_reclaimed": [
+          {
+            "event_type": "RequestKvReclaimed",
+            "fields": {
+              "kv_blocks": 9,
+              "path": "immediate",
+              "request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "session_id": null,
+              "ts_monotonic_ns": 8086141718379716
+            },
+            "kind": "host-event",
+            "monotonic_ns": 8086141718800401,
+            "pid": 2013680,
+            "start_ticks": 808596991
+          }
+        ],
+        "independent_NPU_rank_evidence": [
+          {
+            "rank": 0,
+            "original_NPU_readback_count": 32,
+            "projection_transactions": [
+              {
+                "allocation_block_size": 128,
+                "attention_consumed_observed_tensor": null,
+                "attention_group": 0,
+                "compression_threshold_tokens": 1152,
+                "destination_block_ids": [
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  16,
+                  17,
+                  18
+                ],
+                "full_generation_quality": null,
+                "host_cpu_block_ids": [
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "host_mapping": "identity-host-block-id-projection-with-scheduled-append",
+                "kv_tensor_equivalence": null,
+                "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+                "metadata_effect_monotonic_ns": 8086139225699846,
+                "metadata_row": 0,
+                "monotonic_ns": 8086139227756440,
+                "operation": "KVCompress-worker-host-blocktable-projection-applied",
+                "physical_anchor": 1024,
+                "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+                "process": {
+                  "assignment_source": "host",
+                  "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                  "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                  "ordinal": 0,
+                  "pid": 2014004,
+                  "process_epoch": 172185229273360,
+                  "role": "worker",
+                  "session": 2013183,
+                  "start_identity": "pid:2014004:start_ticks:808601181",
+                  "start_ticks": 808601181
+                },
+                "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+                "scheduled_appended_block_ids": [
+                  19
+                ],
+                "schema": "ecpa-native-kv-blocktable-projection/v2",
+                "scope": "compression-host-metadata-and-uploaded-destination-binding-only",
+                "semantic_anchor": 1201,
+                "transaction_id": "95002dbf4aa5a87e44d3c632ed5052058f45747aeb4488fe0dedf6cb947ea43a"
+              }
+            ],
+            "first_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:0",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086127121650371,
+              "observed_after_barrier_monotonic_ns": 8086127121971404,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2014004,
+                "process_epoch": 172185229273360,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014004:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "bfb18a6a2f049e139480942e8af63a6db55277c56c28501dd634194cc731b2e2"
+            },
+            "last_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:0",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086141639135430,
+              "observed_after_barrier_monotonic_ns": 8086141639441494,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2014004,
+                "process_epoch": 172185229273360,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014004:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "797745c222b4521f9e923428bd2bbf380a13cddd2603ea520c20de62a0db8829"
+            },
+            "last_pre_apply_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:0",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086127121650371,
+              "observed_after_barrier_monotonic_ns": 8086127121971404,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2014004,
+                "process_epoch": 172185229273360,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014004:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "bfb18a6a2f049e139480942e8af63a6db55277c56c28501dd634194cc731b2e2"
+            },
+            "first_post_apply_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:0",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086139228809032,
+              "observed_after_barrier_monotonic_ns": 8086139229147486,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2014004,
+                "process_epoch": 172185229273360,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014004:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "797745c222b4521f9e923428bd2bbf380a13cddd2603ea520c20de62a0db8829"
+            },
+            "actual_projection_NPU_prefix_match": true
+          },
+          {
+            "rank": 1,
+            "original_NPU_readback_count": 32,
+            "projection_transactions": [
+              {
+                "allocation_block_size": 128,
+                "attention_consumed_observed_tensor": null,
+                "attention_group": 0,
+                "compression_threshold_tokens": 1152,
+                "destination_block_ids": [
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  16,
+                  17,
+                  18
+                ],
+                "full_generation_quality": null,
+                "host_cpu_block_ids": [
+                  11,
+                  12,
+                  13,
+                  14,
+                  15,
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "host_mapping": "identity-host-block-id-projection-with-scheduled-append",
+                "kv_tensor_equivalence": null,
+                "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+                "metadata_effect_monotonic_ns": 8086139227427236,
+                "metadata_row": 0,
+                "monotonic_ns": 8086139229254267,
+                "operation": "KVCompress-worker-host-blocktable-projection-applied",
+                "physical_anchor": 1024,
+                "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+                "process": {
+                  "assignment_source": "host",
+                  "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                  "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                  "ordinal": 1,
+                  "pid": 2014005,
+                  "process_epoch": 238623601207874,
+                  "role": "worker",
+                  "session": 2013183,
+                  "start_identity": "pid:2014005:start_ticks:808601181",
+                  "start_ticks": 808601181
+                },
+                "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+                "scheduled_appended_block_ids": [
+                  19
+                ],
+                "schema": "ecpa-native-kv-blocktable-projection/v2",
+                "scope": "compression-host-metadata-and-uploaded-destination-binding-only",
+                "semantic_anchor": 1201,
+                "transaction_id": "6a5a637196cd9724266679937fd49551fa14c51eb4a92a8f94a5922b2d904f89"
+              }
+            ],
+            "first_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:1",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086127121627110,
+              "observed_after_barrier_monotonic_ns": 8086127121977034,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2014005,
+                "process_epoch": 238623601207874,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014005:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "bfb18a6a2f049e139480942e8af63a6db55277c56c28501dd634194cc731b2e2"
+            },
+            "last_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:1",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086141636571680,
+              "observed_after_barrier_monotonic_ns": 8086141637013595,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2014005,
+                "process_epoch": 238623601207874,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014005:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "797745c222b4521f9e923428bd2bbf380a13cddd2603ea520c20de62a0db8829"
+            },
+            "last_pre_apply_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:1",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086127121627110,
+              "observed_after_barrier_monotonic_ns": 8086127121977034,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2014005,
+                "process_epoch": 238623601207874,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014005:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "bfb18a6a2f049e139480942e8af63a6db55277c56c28501dd634194cc731b2e2"
+            },
+            "first_post_apply_NPU_readback": {
+              "attention_consumed_observed_tensor": null,
+              "device": "npu:1",
+              "full_generation_quality": null,
+              "kv_tensor_equivalence": null,
+              "launch_id": "d42a9c5c-e5a3-472f-8b35-f389f6c56762",
+              "monotonic_ns": 8086139230221448,
+              "observed_after_barrier_monotonic_ns": 8086139230526042,
+              "plan_id": "93677eadc6228e090bba7d014d8e5573ac7aae88659b74e4cf459f9e51ffa162",
+              "process": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2014005,
+                "process_epoch": 238623601207874,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014005:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+              "schema": "ecpa-native-block-table-upload/v1",
+              "scope": "NPU-block-table-prefix-readback-only",
+              "uploaded_rows": [
+                {
+                  "blocks": [
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18,
+                    19
+                  ],
+                  "group": 0,
+                  "row": 0
+                }
+              ],
+              "uploaded_rows_sha256": "797745c222b4521f9e923428bd2bbf380a13cddd2603ea520c20de62a0db8829"
+            },
+            "actual_projection_NPU_prefix_match": true
+          }
+        ],
+        "native_callback_authenticated_ACK_claim": false,
+        "KV_tensor_or_attention_equivalence_claim": false,
+        "physical_timing_limit": "Compare original per-step readback and actual projection times; no implicit substitution of release count for live occupancy."
+      }
+    ],
+    "known_startup_failure_from_original_stderr": false,
+    "KV_effect": "unknown-until-complete-rule-transaction-and-matched-controls",
+    "KV_unknown_reason": "Requires original transaction/rank ACKs plus independent physical evidence; release-event counts alone do not discharge full rule.",
+    "profiler_effect": "not-applicable",
+    "profiler_raw_record_count": null,
+    "profiler_unknown_reason": "Requires original trace/event/RID/epoch/lifecycle closure and no-loss evidence, not mere file presence.",
+    "cleanup": "unknown-no-independent-root-cleanup-consumed",
+    "formal_result": false,
+    "composition_verdict": "unknown",
+    "raw_native_schema_counts": {
+      "ecpa-native-request-id-mapping/v1": 2,
+      "ecpa-native-block-table-upload/v1": 128,
+      "ecpa-native-kv-blocktable-projection/v2": 2
+    },
+    "native_fact_transport": "source-owned local receiver; no authenticated ACK or phase-drain proof"
+  },
+  "native_Host7_and_actual_Plan_launch_join": "supported",
+  "requests": [
+    {
+      "kind": "below",
+      "runtime_request_id": "cmpl-kv-only-below-0-97197b16",
+      "functional_status": "supported",
+      "scheduler_original_log": [],
+      "MOD_worker_original_log_ACKs": [],
+      "authenticated_native_ACK_claim": false,
+      "Host_finished": [
+        {
+          "event_type": "RequestFinished",
+          "fields": {
+            "finished_reason": "length",
+            "kv_blocks": 1,
+            "kv_reclaim_deferred": false,
+            "output_tokens": 32,
+            "prompt_tokens": 4,
+            "request_id": "cmpl-kv-only-below-0-97197b16",
+            "sequence_tokens": 36,
+            "session_id": null,
+            "ts_monotonic_ns": 8086127100718899
+          },
+          "kind": "host-event",
+          "monotonic_ns": 8086127100976872,
+          "pid": 2013680,
+          "start_ticks": 808596991
+        }
+      ],
+      "Host_reclaimed": [
+        {
+          "event_type": "RequestKvReclaimed",
+          "fields": {
+            "kv_blocks": 1,
+            "path": "immediate",
+            "request_id": "cmpl-kv-only-below-0-97197b16",
+            "session_id": null,
+            "ts_monotonic_ns": 8086127099038389
+          },
+          "kind": "host-event",
+          "monotonic_ns": 8086127099860849,
+          "pid": 2013680,
+          "start_ticks": 808596991
+        }
+      ],
+      "bounded_transaction_evidence": "unknown",
+      "no_commit_observed": true
+    },
+    {
+      "kind": "above",
+      "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+      "functional_status": "supported",
+      "scheduler_original_log": [
+        {
+          "pid": 2013680,
+          "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+          "semantic": 1201,
+          "physical": 1024,
+          "source_blocks": 10,
+          "destination_blocks": 8,
+          "released_blocks": 10,
+          "original_line": 160,
+          "raw_line": "(EngineCore pid=2013680) INFO 10-19 00:40:35 [stateful.py:349] KV compression scheduler commit request_id=cmpl-kv-only-above-0-8dc273ea semantic_tokens=1201 physical_tokens=1024 source_blocks=10 destination_blocks=8 released_blocks=10"
+        }
+      ],
+      "MOD_worker_original_log_ACKs": [
+        {
+          "rank": 0,
+          "pid": 2014004,
+          "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+          "semantic": 1201,
+          "physical": 1024,
+          "destination_blocks": 8,
+          "original_line": 161,
+          "raw_line": "(Worker_TP0 pid=2014004) INFO 10-19 00:40:35 [provider.py:374] KV compression worker commit acknowledged request_id=cmpl-kv-only-above-0-8dc273ea semantic_tokens=1201 physical_tokens=1024 destination_blocks=8"
+        },
+        {
+          "rank": 1,
+          "pid": 2014005,
+          "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+          "semantic": 1201,
+          "physical": 1024,
+          "destination_blocks": 8,
+          "original_line": 162,
+          "raw_line": "(Worker_TP1 pid=2014005) INFO 10-19 00:40:35 [provider.py:374] KV compression worker commit acknowledged request_id=cmpl-kv-only-above-0-8dc273ea semantic_tokens=1201 physical_tokens=1024 destination_blocks=8"
+        }
+      ],
+      "authenticated_native_ACK_claim": false,
+      "Host_finished": [
+        {
+          "event_type": "RequestFinished",
+          "fields": {
+            "finished_reason": "length",
+            "kv_blocks": 9,
+            "kv_reclaim_deferred": false,
+            "output_tokens": 32,
+            "prompt_tokens": 1201,
+            "request_id": "cmpl-kv-only-above-0-8dc273ea",
+            "sequence_tokens": 1233,
+            "session_id": null,
+            "ts_monotonic_ns": 8086141719115595
+          },
+          "kind": "host-event",
+          "monotonic_ns": 8086141719279407,
+          "pid": 2013680,
+          "start_ticks": 808596991
+        }
+      ],
+      "Host_reclaimed": [
+        {
+          "event_type": "RequestKvReclaimed",
+          "fields": {
+            "kv_blocks": 9,
+            "path": "immediate",
+            "request_id": "cmpl-kv-only-above-0-8dc273ea",
+            "session_id": null,
+            "ts_monotonic_ns": 8086141718379716
+          },
+          "kind": "host-event",
+          "monotonic_ns": 8086141718800401,
+          "pid": 2013680,
+          "start_ticks": 808596991
+        }
+      ],
+      "bounded_transaction_evidence": "supported-original-scheduler-and-two-rank-MOD-log-plus-independent-NPU-prefix-transition",
+      "rank_comparisons": [
+        {
+          "rank": 0,
+          "actual_kernel": {
+            "assignment_source": "host",
+            "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+            "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+            "ordinal": 0,
+            "pid": 2014004,
+            "process_epoch": 172185229273360,
+            "role": "worker",
+            "session": 2013183,
+            "start_identity": "pid:2014004:start_ticks:808601181",
+            "start_ticks": 808601181
+          },
+          "rank_local_transaction_id": "95002dbf4aa5a87e44d3c632ed5052058f45747aeb4488fe0dedf6cb947ea43a",
+          "semantic_anchor": 1201,
+          "physical_anchor": 1024,
+          "destination_block_ids": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "scheduled_appended_block_ids": [
+            19
+          ],
+          "last_pre_apply_width": 10,
+          "first_post_apply_width": 9,
+          "last_pre_apply_clock": 8086127121971404,
+          "metadata_effect_clock": 8086139225699846,
+          "first_post_apply_clock": 8086139229147486
+        },
+        {
+          "rank": 1,
+          "actual_kernel": {
+            "assignment_source": "host",
+            "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+            "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+            "ordinal": 1,
+            "pid": 2014005,
+            "process_epoch": 238623601207874,
+            "role": "worker",
+            "session": 2013183,
+            "start_identity": "pid:2014005:start_ticks:808601181",
+            "start_ticks": 808601181
+          },
+          "rank_local_transaction_id": "6a5a637196cd9724266679937fd49551fa14c51eb4a92a8f94a5922b2d904f89",
+          "semantic_anchor": 1201,
+          "physical_anchor": 1024,
+          "destination_block_ids": [
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18
+          ],
+          "scheduled_appended_block_ids": [
+            19
+          ],
+          "last_pre_apply_width": 10,
+          "first_post_apply_width": 9,
+          "last_pre_apply_clock": 8086127121977034,
+          "metadata_effect_clock": 8086139227427236,
+          "first_post_apply_clock": 8086139230526042
+        }
+      ]
+    }
+  ],
+  "additional_raw_refs": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/runtime-evidence.jsonl",
+      "sha256": "373a0e4afc77618c0aab9f167ad712fdd77fad95cbdaf42f57dbc4e2c5faed17",
+      "bytes": 106164
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/study-events.jsonl",
+      "sha256": "0fa73710e3d5ba41b918482c31d833329048bc20b5f83e66e2fc5626bf320b9e",
+      "bytes": 157720
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/stdout.log",
+      "sha256": "c79716900866631e9367c70618011822b76d0ab10c71a960a1d4a03a1be5cd66",
+      "bytes": 30394
+    }
+  ],
+  "counter_semantics": "Host RequestFinished kv_blocks is original pre-release allocated-block count across cache groups, not TP-rank sum; immediate RequestKvReclaimed reuses that count and is not a second independent physical measurement.",
+  "scope_limits": [
+    "Rank-local projection transaction hashes include each rank metadata clock and need not equal each other.",
+    "MOD worker log ACK is distinct from source native callback transport; callback None is not an authenticated ACK.",
+    "NPU block-table prefix readback does not prove KV tensor equivalence, attention consumption, model quality, or performance.",
+    "Complete frozen-rule KV/composition verdict remains unknown pending matched controls, profiler evidence and independent cleanup."
+  ],
+  "KV_full_rule_verdict": "unknown",
+  "composition_verdict": "unknown"
+}

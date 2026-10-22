@@ -1,0 +1,18 @@
+{
+  "repository": "vLLM-HUST/vllm-hust-request-lifecycle-profiler",
+  "commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+  "tree": "f0b8cfd8f06072071b7f4e2b49d34f17df8c4981",
+  "parent": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+  "branch": "experiment/h2-profiler-drain-20261019",
+  "entries": [
+    {
+      "path": "src/vllm_request_lifecycle_profiler/native_event_bus.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ca7b2480eff411daa9ba0ab281c879eaa4811e6"
+    }
+  ],
+  "wall_ns": 1792372194180583329,
+  "merged_to_main": false,
+  "formal_result": false
+}

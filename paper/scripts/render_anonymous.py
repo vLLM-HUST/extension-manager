@@ -19,7 +19,8 @@ from pathlib import Path
 
 PAPER = Path(__file__).resolve().parents[1]
 PUBLIC_TITLE = (
-    "From Enabled to Effective: Evidence-Bound Activation for LLM Inference Extensions"
+    "Making LLM Inference Extensions Compose: Contracts for Interfaces, "
+    "Dependencies, and Runtime Effects"
 )
 SAFE_ALIAS = re.compile(r"[A-Za-z][A-Za-z0-9]{3,31}\Z")
 SAFE_TITLE = re.compile(r"[A-Za-z0-9 ,:;!?()'\-]{12,180}\Z")

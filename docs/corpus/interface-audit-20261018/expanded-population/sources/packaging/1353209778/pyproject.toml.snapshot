@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vllm-ascend-quantized-kv-cache"
+description = "Runtime-loadable INT8 and INT4 (KIVI) KV-cache attention backends for vLLM-Ascend-HUST"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = []
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8",
+  "ruff>=0.12",
+  "tomli>=2; python_version < '3.11'",
+  # The CPU numerical references for the device kernels need torch. The
+  # 3.14 lane has no torch wheel yet, so those modules skip there instead
+  # of erroring (pytest -rs makes every skip visible in the CI log).
+  "torch>=2.4; python_version < '3.14'",
+]
+
+# Runtime plugin hook. It registers the backends; --kv-cache-dtype int8 or
+# kivi_int4 is the explicit activation switch.
+[project.entry-points."vllm.general_plugins"]
+"vllm-ascend-quantized-kv-cache" = "vllm_ascend_quantized_kv_cache.bootstrap:register_plugins"
+
+# Extension-manager discovery hook: makes the bundle visible to
+# `vllm-hust-ext extension list` by reading the Manager manifest without
+# importing this package. Runtime registration stays on the
+# `vllm.general_plugins` hook above, so discovery alone activates nothing.
+# One table only -- a second declaration makes the file invalid TOML.
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.ascend-quantized-kv-cache" = "vllm_ascend_quantized_kv_cache.extension_manager_manifest"
+
+[tool.hatch.version]
+path = "src/vllm_ascend_quantized_kv_cache/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vllm_ascend_quantized_kv_cache"]
+
+[tool.hatch.build]
+exclude = [
+  ".venv/",
+  "venv/",
+  ".release-venv/",
+  ".release-smoke/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.format]
+# Docs align inline comments in code blocks on purpose; ruff >=0.13 reflows
+# markdown code blocks, and the pinned local toolchain (0.12) does not -- that
+# version skew is what made CI red on docs/layers.md. Keep prose free-form.
+exclude = ["**/*.md"]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP"]
+
+[tool.ruff.lint.per-file-ignores]

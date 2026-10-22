@@ -1,0 +1,33 @@
+{
+  "schema": "ecpa-independent-H2-input-freeze-manifest/v1",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "13879a48cb137960c872fd42f812adacc822980073836341a7a0f457352d68f1",
+      "bytes": 612
+    },
+    {
+      "path": "actual-tokenizer-inputs.json",
+      "sha256": "59337698f2fb6f5bc89bf4479f63030cf73e5cdc41a02463887a009f150a419e",
+      "bytes": 52461
+    },
+    {
+      "path": "postprocessing-source-note.json",
+      "sha256": "43bba37053ac55357f7e7a44ce2ca3359d9c701ae71f121d132e0015722a8a0d",
+      "bytes": 6459
+    },
+    {
+      "path": "tokenizer.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "tokenizer.stdout",
+      "sha256": "89c89c7327664c8886e5b6fa6ef20853ff1895232d357aa17d3068b15d74638f",
+      "bytes": 165
+    }
+  ],
+  "qualification": false,
+  "runner_or_raw_changed": false,
+  "GPU_or_Torch_import": false
+}

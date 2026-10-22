@@ -1,0 +1,49 @@
+{
+  "schema": "ecpa-new-private-runtime-CPU-ABI-observation/v1",
+  "python": "/root/ecpa-workspace/environments/h3-r3/bin/python",
+  "native_qualification": false,
+  "device_execution": false,
+  "rows": [
+    {
+      "manifest": "/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_ascend_kvcompress/manifests/vllm-hust-extension-v0.3.json",
+      "target_version": "0.25.1rc2.dev869+hust.20260903.4.g153535b32",
+      "version_range": ">=0.23.0.post1,<0.26,!=0.24.*,!=0.25.0.*",
+      "contains_prereleases_true": true
+    },
+    {
+      "manifest": "/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_request_lifecycle_profiler/manifests/vllm-hust-extension-v0.3.json",
+      "target_version": "0.31.1.post1.dev414+g0a11b22e2.empty",
+      "version_range": ">=0.31.1,<0.32",
+      "contains_prereleases_true": true
+    },
+    {
+      "import": "vllm.plugins.native_semantic_collector",
+      "origin": "/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm/plugins/native_semantic_collector.py"
+    },
+    {
+      "import": "vllm.plugins.native_observer_rebind",
+      "origin": "/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm/plugins/native_observer_rebind.py"
+    },
+    {
+      "import": "vllm_ascend",
+      "origin": "/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_ascend/__init__.py"
+    },
+    {
+      "import": "vllm_ascend_kvcompress.plugin",
+      "origin": "/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_ascend_kvcompress/plugin.py"
+    },
+    {
+      "import": "vllm_request_lifecycle_profiler.plugin",
+      "origin": "/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_request_lifecycle_profiler/plugin.py"
+    }
+  ],
+  "error": "ModuleNotFoundError: No module named 'vllm.transformers_utils.configs.deepseek_v4'",
+  "versions": {
+    "vllm": "0.31.1.post1.dev414+g0a11b22e2.empty",
+    "vllm-ascend": "0.25.1rc2.dev869+hust.20260903.4.g153535b32",
+    "vllm-hust-ext": "0.3.0",
+    "vllm-ascend-kvcompress-hust": "0.9.0",
+    "vllm-request-lifecycle-profiler-plugin": "0.1.2"
+  },
+  "traceback": "Traceback (most recent call last):\n  File \"/root/ecpa-workspace/management/h3-new-host66-private-runtime-next-20261018-r1/probe_cpu_abi.py\", line 26, in main\n    module=importlib.import_module(name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/python3.12.13/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1331, in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 935, in _load_unlocked\n  File \"<frozen importlib._bootstrap_external>\", line 999, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_ascend/worker/model_runner_v1.py\", line 132, in <module>\n    from vllm_ascend.attention.context_parallel.dsa_cp import AscendDSACPMetadataBuilder\n  File \"/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_ascend/attention/context_parallel/dsa_cp.py\", line 17, in <module>\n    from vllm_ascend.attention import dsa_v1\n  File \"/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_ascend/attention/dsa_v1.py\", line 44, in <module>\n    from vllm_ascend.models.deepseek_v4.compressor import AscendCompressorMetadata\n  File \"/root/ecpa-workspace/environments/h3-r3/lib/python3.12/site-packages/vllm_ascend/models/deepseek_v4/compressor.py\", line 37, in <module>\n    from vllm.transformers_utils.configs.deepseek_v4 import DeepseekV4Config\nModuleNotFoundError: No module named 'vllm.transformers_utils.configs.deepseek_v4'\n"
+}

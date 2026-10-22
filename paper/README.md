@@ -12,6 +12,17 @@ system name for a project already public under this name, so the final review
 PDF must be produced from a private, untracked anonymity overlay and audited
 for textual and metadata leaks.
 
+## Current composition-centered draft (2026-10-18)
+
+The title, abstract, introduction, source challenge, H2 design, and conclusion
+now center on real MOD interfaces, implicit dependencies, and composition.
+See `../docs/corpus/interface-audit-20261018/` and
+`../docs/research/h2-real-mod-redesign.md`. Static contract acceptance is not
+claimed to infer arbitrary MOD semantics or prove native compatibility. The
+new H2 plan is prospective; no historical result or threshold is changed.
+The old `outputs/ecpa-paper-public-current.pdf` was built on October 15 and
+is not this new draft. The new build has its own output and provenance.
+
 ## Current evidence snapshot
 
 The draft now reflects ECPA 0.3.0 and stable Manifest 0.3. The checked release

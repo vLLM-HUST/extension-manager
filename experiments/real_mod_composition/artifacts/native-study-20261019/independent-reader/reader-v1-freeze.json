@@ -1,0 +1,29 @@
+{
+  "schema": "ecpa-H2-independent-reader-freeze/v1",
+  "frozen_wall_ns": 1792369680513265790,
+  "frozen_monotonic_ns": 8085383970954240,
+  "scope": "Raw projection, no planner/verdict/attempt/outcome input; missing full-effect/HTTP/deadline/cleanup evidence remains unknown.",
+  "rule": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule.json",
+    "sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a"
+  },
+  "reader": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v1.py",
+    "sha256": "44539d9e44d3006ff17e2568729e3dcc905c969a0a98b9185f5b0fb42f43cbd4"
+  },
+  "AST_parsed": true,
+  "reader_executed": false,
+  "product_changed": false,
+  "new_native_claim": false,
+  "command": [
+    "/usr/bin/python3",
+    "-B",
+    "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v1.py",
+    "--cohort",
+    "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1",
+    "--rule-sha256",
+    "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+    "--output",
+    "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-block-raw-projection.json"
+  ]
+}

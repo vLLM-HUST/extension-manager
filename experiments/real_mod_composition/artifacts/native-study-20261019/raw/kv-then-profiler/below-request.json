@@ -1,0 +1,8 @@
+{
+  "model": "ecpa-h2-real",
+  "prompt": "Name a color.",
+  "max_tokens": 32,
+  "temperature": 0,
+  "seed": 20261019,
+  "ignore_eos": true
+}

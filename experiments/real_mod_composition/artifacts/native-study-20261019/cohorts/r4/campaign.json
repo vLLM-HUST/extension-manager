@@ -1,0 +1,60 @@
+{
+  "schema": "ecpa-real-H2-first-native-cohort/v1",
+  "frozen_wall_ns": 1792370495306803866,
+  "frozen_monotonic_ns": 8086198764491656,
+  "cases": [
+    [
+      "profiler-only",
+      [
+        "request_lifecycle_profiler"
+      ]
+    ],
+    [
+      "kv-then-profiler",
+      [
+        "ascend_kvcompress",
+        "request_lifecycle_profiler"
+      ]
+    ],
+    [
+      "profiler-then-kv",
+      [
+        "request_lifecycle_profiler",
+        "ascend_kvcompress"
+      ]
+    ],
+    [
+      "host-only",
+      []
+    ]
+  ],
+  "source_commits": {
+    "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+    "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+    "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+    "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+    "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+  },
+  "runner_sha256": "417eb9fa81669f423441701a429914b69590616a065155a75f43099b3454f7c8",
+  "oracle_rule_sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+  "loader_sha256": "f74f28fd0c67b95961e76ef15bdcf9b2a5d43b2b3d109e4fdea3ea4a7b944c41",
+  "required_effects": "independent reader must check actual order/threshold/physical KV/Profiler integrity",
+  "physical_devices": [
+    0,
+    3
+  ],
+  "runtime_devices": [
+    0,
+    1
+  ],
+  "ports": [
+    29881,
+    29882,
+    29883,
+    29884
+  ],
+  "continuation_of": "r3 KV-only succeeded; four admin prebind failures retained, no original rows overwritten",
+  "repeats_this_initial_block": 1,
+  "matched_three_arm_population_claim": false,
+  "native_result": null
+}

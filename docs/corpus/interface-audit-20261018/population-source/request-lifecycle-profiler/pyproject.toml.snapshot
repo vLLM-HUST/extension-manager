@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=77.0.3,<81.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-request-lifecycle-profiler-plugin"
+version = "0.1.0"
+description = "Causal request lifecycle tracing and bottleneck attribution for LLM serving"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+authors = [{name = "Shifeng Liu"}]
+maintainers = [{name = "Shifeng Liu"}]
+
+[project.urls]
+Repository = "https://github.com/vLLM-HUST/vllm-hust-request-lifecycle-profiler"
+Issues = "https://github.com/vLLM-HUST/vllm-hust-request-lifecycle-profiler/issues"
+
+[project.scripts]
+vllm-request-lifecycle-profiler-serve = "vllm_request_lifecycle_profiler.launcher:main"
+vllm-request-lifecycle-profiler-shared-workloads-smoke = "vllm_request_lifecycle_profiler.shared_workloads:main"
+vllm-request-lifecycle-profiler-materialize-oasst1 = "vllm_request_lifecycle_profiler.oasst1_workload:main"
+vllm-request-lifecycle-profiler-issue19-preflight = "vllm_request_lifecycle_profiler.issue19_m0:main"
+vllm-request-lifecycle-profiler-sanitize-issue19 = "vllm_request_lifecycle_profiler.issue19_public_artifacts:main"
+
+[project.entry-points."vllm.general_plugins"]
+request_lifecycle_profiler = "vllm_request_lifecycle_profiler.plugin:register_plugin"
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "pytest>=8.0",
+    "regex",
+    "ruff>=0.11",
+    "starlette>=0.37",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,39 @@
+{
+  "schema": "ecpa-independent-H2-observed-runtime-failure/v1",
+  "observed_wall_ns": 1792370041129060509,
+  "cohort": "actual-first-native-block-20261019-r2",
+  "case": "kv-only",
+  "raw_stdout": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2/kv-only/stdout.log",
+    "sha256": "45e854cf978cea2a14455ce3d50985ff52d3557f602c4dced1b42f5d7c4ece47",
+    "bytes": 19672
+  },
+  "raw_stderr": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2/kv-only/stderr.log",
+    "sha256": "ee3bfe45d3ed3307c7318eaff2b9ab46f9f99819f8ab33a4574df3e595c5c785",
+    "bytes": 56644
+  },
+  "exact_failure_lines": [
+    {
+      "line": 67,
+      "text": "(Worker pid=2011037) ERROR 10-19 00:31:51 [multiproc_executor.py:962]   File \"/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/lib/python3.12/site-packages/vllm_ascend/worker/worker.py\", line 426, in _init_device"
+    },
+    {
+      "line": 70,
+      "text": "(Worker pid=2011037) ERROR 10-19 00:31:51 [multiproc_executor.py:962] AssertionError: DP adjusted local rank 1 is out of bounds for 1 devices."
+    }
+  ],
+  "frozen_campaign": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2/campaign.json",
+    "sha256": "999e40440469dd17630a73e98189eb008924510ee6addffd27af69fcddd4a810",
+    "bytes": 1396
+  },
+  "root_cause_observed": "TP1 local_rank1 assertion against actual visible_device_count1 in Ascend worker._init_device",
+  "native_algorithm_conflict_inferred": false,
+  "oracle_compatibility_verdict": "unknown",
+  "functional_start_observation": "failed-before-health",
+  "new_HTTP_or_KV_effect_claim": false,
+  "future_admin_configuration_hint": "Frozen runner selected ASCEND_RT_VISIBLE_DEVICES=0,3; earlier actual two-NPU runtime uses runtime logical0,1 for physical0,3. Root must verify mapping; no live env mutation or device probe by independent reader.",
+  "changes_to_runner_or_runtime": false,
+  "signals_sent": false
+}

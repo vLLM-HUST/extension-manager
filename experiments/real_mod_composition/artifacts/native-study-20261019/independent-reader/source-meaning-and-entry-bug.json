@@ -1,0 +1,91 @@
+{
+  "schema": "ecpa-H2-independent-source-meaning-and-first-raw-review/v1",
+  "observed_wall_ns": 1792369752810620866,
+  "native_result_or_qualification_minted": false,
+  "planner_decisions_read": false,
+  "rule": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule.json",
+    "sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+    "bytes": 6056
+  },
+  "reader_freeze": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v1-freeze.json",
+    "sha256": "a68b10411caddbfcc58829e7f98157d25f810456bb556f48982260d09292477b",
+    "bytes": 1312
+  },
+  "executed_raw_projection": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-block-raw-projection.json",
+    "sha256": "f37a308f364d6ebe7fde4685e858e22efc1f3f9c71312d678cf17a5a1f4bfe77",
+    "bytes": 5918
+  },
+  "reader_implementation_frozen_after_initial_launch_not_claimed_prelaunch": true,
+  "runner_entry_bug": {
+    "raw": {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/kv-only/stderr.log",
+      "sha256": "8b6040719fa19a12d74440d6c27af7bea91ac9ba9ff775839021a245193dc612",
+      "bytes": 41446
+    },
+    "raw_lines": [
+      {
+        "line": 187,
+        "text": "  File \"/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm\", line 3, in <module>"
+      },
+      {
+        "line": 271,
+        "text": "        current process has finished its bootstrapping phase."
+      },
+      {
+        "line": 288,
+        "text": "  File \"/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm\", line 3, in <module>"
+      },
+      {
+        "line": 351,
+        "text": "RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}"
+      }
+    ],
+    "generated_host_entry": {
+      "path": "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm",
+      "sha256": "b95bef44a3ed6c9e3d870f76b68d3dbf845cc149b0dbceea054f60eb717975c3",
+      "bytes": 151
+    },
+    "native_algorithm_incompatibility_inferred": false,
+    "minimal_future_runner_host_argv": [
+      "str(PYTHON)",
+      "-m",
+      "vllm.entrypoints.cli.main",
+      "serve",
+      "<same existing Host arguments>"
+    ],
+    "preserve_originals_and_do_not_modify_installed_script": true
+  },
+  "RequestFinished_kv_blocks": {
+    "source": {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-host-h4-sampled-next/vllm/v1/core/sched/scheduler.py",
+      "sha256": "95498e485a78e711dda733b9c0c7161749aa3dd85e9a18916652042a5dcbcc25",
+      "bytes": 175345
+    },
+    "source_lines": [
+      2950,
+      2954,
+      2963,
+      2973,
+      3001,
+      3017,
+      3019,
+      3030,
+      3045,
+      3046,
+      3050,
+      3058,
+      3069,
+      3093,
+      3101
+    ],
+    "definition": "The pre-release count is sum(len(group_block_ids) for group_block_ids in actual kv_cache_manager.get_block_ids(actual_request_id)). Groups are cache groups, not TP ranks.",
+    "timing": "_free_request calls _free_blocks before emitting RequestFinished. Immediate RequestKvReclaimed is emitted after actual free; deferred path reports reclamation only at fence drain. Finished kv_blocks is not post-finish live occupancy.",
+    "nonindependence": "Immediate Finished and Reclaimed reuse the same captured count; they are not two independent physical measurements.",
+    "missing_for_full_frozen_KV_rule": "Independently bound actual transaction/rank ACK and physical allocation/block-table/native result at matched lifecycle point; derive block expectation from real block size, anchors, and actual post-anchor decoding, not fixed9/10.",
+    "semantic_versus_physical_anchor": "Do not replace semantic prompt/output usage with physical compacted anchor or infer physical storage from a token total."
+  },
+  "current_scope": "Native callback activation/source discovery and actual failed startup are observed. KV and profiler effects, matched loading-order composition and quality/performance remain unknown; no new H2 compatibility/admit label or original scoring update."
+}

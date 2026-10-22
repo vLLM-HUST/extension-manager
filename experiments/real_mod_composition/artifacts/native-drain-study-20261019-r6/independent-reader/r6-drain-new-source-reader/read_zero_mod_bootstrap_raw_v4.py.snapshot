@@ -1,0 +1,92 @@
+"""Read new zero-MOD bootstrap raw observations; no ECPA/Plan qualification."""
+import argparse
+import hashlib
+import json
+import re
+from pathlib import Path
+
+BASE = Path('/root/ecpa-workspace/management/real-mod-H2-native-20261018')
+ROLES = {'api-server/0': r'\(APIServer pid=(\d+)\)', 'engine-core-scheduler/0': r'\(EngineCore pid=(\d+)\)', 'worker/0': r'\(Worker_TP0 pid=(\d+)\)', 'worker/1': r'\(Worker_TP1 pid=(\d+)\)'}
+
+
+def require(value, message):
+    if not value:
+        raise ValueError(message)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--case', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    case = args.case.resolve()
+    refs = []
+
+    def read(path, lines=False):
+        raw = path.read_bytes()
+        refs.append({'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)})
+        if lines:
+            require(raw.endswith(b'\n'), 'incomplete raw journal tail')
+            return [json.loads(line) for line in raw.splitlines()]
+        return json.loads(raw)
+
+    rule = BASE / 'compatible-oracle-rule-drain-v2.json'
+    require(hashlib.sha256(rule.read_bytes()).hexdigest() == '3be1ebfd612ae63879c1813ca707cfa17b3f0ef97e0ccfc67d737580833c0c14', 'original rule changed')
+    token_path = BASE / 'independent-inputs/actual-tokenizer-inputs.json'
+    require(hashlib.sha256(token_path.read_bytes()).hexdigest() == '59337698f2fb6f5bc89bf4479f63030cf73e5cdc41a02463887a009f150a419e', 'original input subject changed')
+    tokens = {row['id']: row for row in read(token_path)['inputs']}
+    study = read(case / 'study-events.jsonl', lines=True)
+    raw_stdout = (case / 'stdout.log').read_bytes()
+    refs.append({'path': str(case / 'stdout.log'), 'sha256': hashlib.sha256(raw_stdout).hexdigest(), 'bytes': len(raw_stdout)})
+    stdout = raw_stdout.decode()
+    roles = []
+    for slot, pattern in ROLES.items():
+        pids = set(map(int, re.findall(pattern, stdout)))
+        require(len(pids) <= 1, 'ambiguous original stdout role PID')
+        if not pids:
+            roles.append({'slot': slot, 'status': 'unknown-missing-original-role-log'})
+            continue
+        pid = next(iter(pids))
+        installed = [row for row in study if row['kind'] == 'study-observer-installed' and row['pid'] == pid]
+        hooks = [row for row in study if row['kind'] == 'general-load-complete-observer-installed' and row['pid'] == pid]
+        require(len(installed) <= 1, 'duplicate process-local study observer')
+        if not installed or not hooks:
+            roles.append({'slot': slot, 'pid': pid, 'status': 'unknown-missing-original-bootstrap'})
+            continue
+        ticks = installed[0]['start_ticks']
+        require(all(row['start_ticks'] == ticks and row['original_module'] == 'vllm.plugins' and row['original_qualname'] == 'load_general_plugins' for row in hooks), 'mixed bootstrap source/epoch')
+        roles.append({'slot': slot, 'pid': pid, 'start_ticks': ticks, 'status': 'observed-original-load-completed-and-common-observer-installed', 'raw_install': installed[0], 'original_load_boundary_count': len(hooks)})
+    requests = []
+    for kind in ('below', 'above'):
+        expected = 'cmpl-host-only-' + kind
+        request = read(case / (kind + '-request.json'))
+        response = read(case / (kind + '-response.json'))
+        start = read(case / (kind + '-request-clock.json'))
+        end = read(case / (kind + '-response-clock.json'))
+        maps = [row for row in study if row['kind'] == 'actual-request-mapping' and row['external_request_id'] == expected + '-0']
+        require(len(maps) == 1, 'missing/ambiguous original actual opaque mapping')
+        mapping = maps[0]
+        api = next(row for row in roles if row['slot'] == 'api-server/0')
+        require(mapping['pid'] == api['pid'] and mapping['start_ticks'] == api['start_ticks'], 'opaque mapping not actual observed API epoch')
+        require(mapping['prompt_token_ids'] == tokens[kind]['token_ids'] and request['prompt'] == tokens[kind]['prompt'], 'actual Host token IDs/frozen prompt differ')
+        elapsed = end['end_monotonic_ns'] - start['start_monotonic_ns']
+        usage = response['usage']
+        require(response['id'] == expected and response['model'] == request['model'] and end['http_status'] == 200 and response.get('error') is None and 0 <= elapsed <= 240000000000, 'raw HTTP identity/status/clock differs')
+        require(usage['prompt_tokens'] == len(tokens[kind]['token_ids']) and usage['completion_tokens'] == request['max_tokens'] == 32 and usage['total_tokens'] == usage['prompt_tokens'] + usage['completion_tokens'] and response['choices'] and all(isinstance(row.get('text'),str) and row['text'] for row in response['choices']), 'raw HTTP usage/text differs')
+        events = [row for row in study if row['kind'] == 'host-event' and row['fields']['request_id'] == mapping['runtime_request_id']]
+        finished = [row for row in events if row['event_type'] == 'RequestFinished']
+        reclaimed = [row for row in events if row['event_type'] == 'RequestKvReclaimed']
+        require(len(finished) == len(reclaimed) == 1, 'missing/ambiguous original Host terminal counters')
+        scheduler = next(row for row in roles if row['slot'] == 'engine-core-scheduler/0')
+        require(all(row['pid'] == scheduler['pid'] and row['start_ticks'] == scheduler['start_ticks'] for row in events), 'Host counters not observed scheduler epoch')
+        fields = finished[0]['fields']
+        require((fields['prompt_tokens'], fields['output_tokens'], fields['sequence_tokens']) == (usage['prompt_tokens'],usage['completion_tokens'],usage['total_tokens']), 'Host terminal token counts differ')
+        requests.append({'kind':kind,'raw_HTTP_and_original_mapping_Host_counters':'supported-bounded-observation','opaque_mapping':mapping,'HTTP_usage':usage,'HTTP_elapsed_ns':elapsed,'original_Host_finished':finished[0],'original_Host_reclaimed':reclaimed[0]})
+    result = {'schema':'ecpa-H2-zero-MOD-bootstrap-raw-reader/r6-v1','formal_result':False,'Plan_or_native_authenticated_scope_claim':False,'original_rule_unchanged':True,'attempt_or_planner_verdict_consumed':False,'implementation_timing':'after r5 Popen/first API bootstrap observed; no pre-result implementation freeze claim','case':str(case),'roles':roles,'requests':requests,'raw_refs':refs,'scope_limits':['stdout actual role + study actual /proc writer epoch is a bounded research source join, not an ECPA authenticated Host7/Plan enrollment.','Host finished/reclaimed count is pre-release allocation across cache groups, not independent NPU tensor readback.','New bootstrap cohort must not retroactively repair r4 missing instrumentation.'],'composition_verdict':'unknown'}
+    with args.output.open('x') as stream:
+        json.dump(result,stream,indent=2)
+        stream.write('\n')
+
+
+if __name__ == '__main__':
+    main()

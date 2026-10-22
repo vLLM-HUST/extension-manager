@@ -1,0 +1,42 @@
+{
+  "wall_ns": 1792372503422105233,
+  "files": [
+    {
+      "component": "host",
+      "source_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/wheels/vllm-0.31.1.post1.dev19+gf67ad57c8.empty-cp312-cp312-linux_aarch64.whl",
+      "wheel_sha256": "a9e20a79c6b4b8695091efa90f8ecf6c486a524855b333e51442fcdfd9ddac07",
+      "matched_installed_package_files": 3354
+    },
+    {
+      "component": "ascend",
+      "source_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/ascend-host47-compat-wheels/vllm_ascend-0.25.1rc2.dev869+hust.20260903.4.g153535b32-cp312-cp312-linux_aarch64.whl",
+      "wheel_sha256": "a674e9826ce6a19c75062312229e742ab386a47686ad3fd083e993fe4a1726e6",
+      "matched_installed_package_files": 1690
+    },
+    {
+      "component": "mod",
+      "source_commit": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-h4-sampled-kv22-20261018-r1/wheels-packaging/vllm_ascend_kvcompress_hust-0.9.0-py3-none-any.whl",
+      "wheel_sha256": "3fd2ecf03fe8f880f15aabad02c6e17df94d9e78e9bc3a7631b326f78c2c6acd",
+      "matched_installed_package_files": 24
+    },
+    {
+      "component": "profiler",
+      "source_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Profiler/dist/vllm_request_lifecycle_profiler_plugin-0.1.2-py3-none-any.whl",
+      "wheel_sha256": "daf5e870ce0ef17c8361a6f50711104bb6d08b8edbc3519ad27ba5e0aa3998cc",
+      "matched_installed_package_files": 24
+    },
+    {
+      "component": "manager",
+      "source_commit": "05357d6a9c84399785cb47d1d2a1ac5cda10f181",
+      "wheel": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/manager/r41/vllm_hust_ext-0.3.0-py3-none-any.whl",
+      "wheel_sha256": "84a250f77e0645e9d685bcbd2a35cffd23362746a89de8e491c4032ea15a976e",
+      "matched_installed_package_files": 42
+    }
+  ],
+  "formal_qualified": false,
+  "source_policy": "published exact experimental commits; Host/Profiler not merged main"
+}

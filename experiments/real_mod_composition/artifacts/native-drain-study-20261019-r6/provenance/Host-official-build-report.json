@@ -1,0 +1,100 @@
+{
+  "schema": "ecpa-official-empty-host-wheel-build/v1",
+  "classification": "BUILD_ONLY_NOT_DEVICE_QUALIFICATION",
+  "commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+  "official_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+  "tree": "9c0956bf64ce66686e61503f73a688cf07196dbf",
+  "source": "/root/ecpa-workspace/worktrees/ecpa-host-h2-profiler-drain-build",
+  "official_Git_object_byte_verified": true,
+  "source_dirty_before": "",
+  "SCM_repository_shallow": true,
+  "SCM_history_scope": "Actual existing source-owned SCM parser; bounded shallow history may invoke its explicit fallback distance; full commit identity independently pinned",
+  "original_build_recipe": "/root/ecpa-workspace/builds/ecpa-attention-runtime-wheel-build-20261014-r4/host/build-inputs.json",
+  "original_build_recipe_sha256": "5b614f4e0fa647ca351c42237f97e893a6c628fc134ce157895563992d0849fb",
+  "environment": {
+    "HOME": "/root",
+    "PATH": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/bin:/usr/local/Ascend/cann-9.1.0/bin:/usr/local/Ascend/cann-9.1.0/tools/ccec_compiler/bin:/root/ecpa-dev-venv/bin:/usr/bin:/bin",
+    "LANG": "C.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "ASCEND_HOME_PATH": "/usr/local/Ascend/cann-9.1.0",
+    "ASCEND_TOOLKIT_HOME": "/usr/local/Ascend/cann-9.1.0",
+    "ASCEND_AICPU_PATH": "/usr/local/Ascend/cann-9.1.0",
+    "ASCEND_OPP_PATH": "/usr/local/Ascend/cann-9.1.0/opp",
+    "PYTHONPATH": "/usr/local/Ascend/cann-9.1.0/python/site-packages:/usr/local/Ascend/cann-9.1.0/opp/built-in/op_impl/ai_core/tbe",
+    "LD_LIBRARY_PATH": "/usr/local/Ascend/cann-9.1.0/lib64:/usr/local/Ascend/cann-9.1.0/lib64/plugin/opskernel:/usr/local/Ascend/cann-9.1.0/lib64/plugin/nnengine:/usr/local/Ascend/driver/lib64:/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver",
+    "SOC_VERSION": "ascend910b2",
+    "MAX_JOBS": "4",
+    "OMP_NUM_THREADS": "1",
+    "UV_CACHE_DIR": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/uv-cache",
+    "TMPDIR": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/tmp",
+    "UV_PYTHON_DOWNLOADS": "never",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "VLLM_TARGET_DEVICE": "empty"
+  },
+  "allowed_environment_keys_preserved": [
+    "ASCEND_AICPU_PATH",
+    "ASCEND_HOME_PATH",
+    "ASCEND_OPP_PATH",
+    "ASCEND_TOOLKIT_HOME",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "LD_LIBRARY_PATH",
+    "MAX_JOBS",
+    "OMP_NUM_THREADS",
+    "PATH",
+    "PIP_DISABLE_PIP_VERSION_CHECK",
+    "PYTHONPATH",
+    "SOC_VERSION",
+    "TMPDIR",
+    "UV_CACHE_DIR",
+    "UV_PYTHON_DOWNLOADS",
+    "VLLM_TARGET_DEVICE"
+  ],
+  "allowed_environment_changes": {
+    "PATH": {
+      "before": "/root/ecpa-selected-kv-attention-candidate-venv-20261014-r4/bin:/usr/local/Ascend/cann-9.1.0/bin:/usr/local/Ascend/cann-9.1.0/tools/ccec_compiler/bin:/root/ecpa-dev-venv/bin:/usr/bin:/bin",
+      "after": "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/bin:/usr/local/Ascend/cann-9.1.0/bin:/usr/local/Ascend/cann-9.1.0/tools/ccec_compiler/bin:/root/ecpa-dev-venv/bin:/usr/bin:/bin"
+    },
+    "UV_CACHE_DIR": {
+      "before": "/root/ecpa-attention-runtime-wheel-build-20261014-r4/host/uv-cache",
+      "after": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/uv-cache"
+    },
+    "TMPDIR": {
+      "before": "/root/ecpa-attention-runtime-wheel-build-20261014-r4/host/tmp",
+      "after": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/tmp"
+    }
+  },
+  "native_cache_reused": false,
+  "VLLM_TARGET_DEVICE": "empty",
+  "device_execution": false,
+  "installed_into_runtime": false,
+  "started_wall_ns": 1792372289127638661,
+  "wheels": [
+    {
+      "path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/wheels/vllm-0.31.1.post1.dev19+gf67ad57c8.empty-cp312-cp312-linux_aarch64.whl",
+      "sha256": "a9e20a79c6b4b8695091efa90f8ecf6c486a524855b333e51442fcdfd9ddac07",
+      "bytes": 11393154,
+      "version": "0.31.1.post1.dev19+gf67ad57c8.empty"
+    }
+  ],
+  "exit_code": 0,
+  "payload_audit_pass": true,
+  "argv": [
+    "/root/ecpa-dev-venv/bin/uv",
+    "build",
+    "--wheel",
+    "--no-build-isolation",
+    "--python",
+    "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/bin/python",
+    "--out-dir",
+    "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/wheels",
+    "/root/ecpa-workspace/worktrees/ecpa-host-h2-profiler-drain-build"
+  ],
+  "build_exit_code": 0,
+  "wheel_path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/wheels/vllm-0.31.1.post1.dev19+gf67ad57c8.empty-cp312-cp312-linux_aarch64.whl",
+  "wheel_sha256": "a9e20a79c6b4b8695091efa90f8ecf6c486a524855b333e51442fcdfd9ddac07",
+  "version": "0.31.1.post1.dev19+gf67ad57c8.empty",
+  "source_dirty_after": "",
+  "finished_wall_ns": 1792372331916895655
+}

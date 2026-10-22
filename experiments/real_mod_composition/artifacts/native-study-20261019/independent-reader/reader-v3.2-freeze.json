@@ -1,0 +1,12 @@
+{
+  "schema": "ecpa-independent-H2-reader-increment-freeze/v3.2",
+  "source_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_2.py",
+  "sha256": "71da64176c08a3c07acfa617a6c31968f8ede3a03812f509dbeb24d7758870d4",
+  "frozen_wall_ns": 1792370873034904714,
+  "frozen_monotonic_ns": 8086576492593454,
+  "previous_frozen_source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py",
+  "previous_SHA": "fa101a746b310d8fe2fee8b497dd21c239bac0c03851bcab3b094fccd31fd1af",
+  "change": "Use actual Host evidence.py:416-420 identity_status launch-bound; host assignment remains exact process.assignment_source host + full original Host7 + Plan/launch equality. Prior v3.1 erroneous enum failure retained.",
+  "rule_unchanged": true,
+  "implementation_after_raw_results_seen": true
+}

@@ -1,0 +1,158 @@
+{
+  "schema": "ecpa-original-byte-import/v1",
+  "captured_at": "2026-10-19T10:14:08.325809+08:00",
+  "note": "Immutable input/source/build/ancestry and research-runner subjects. Runner source is archived for audit; importing it does not authorize launching devices. Wheels/calibration/model assets remain controlled, indexed by hash and original location.",
+  "archive_sha256": "91adcc0fcadbdd9c28844316de0a8b83431b706285074b45c6eaa2e534e949b0",
+  "files": [
+    {
+      "archive_path": "actual-installed-source-and-adaptation-cost.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-installed-source-and-adaptation-cost.json",
+      "sha256": "a62dd384f0c30575a9af3df8406a64cd06e0052b7114a230fe0f267a806ba0bc",
+      "bytes": 2900
+    },
+    {
+      "archive_path": "actual-r3-r4-study-adaptation-cost.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-r3-r4-study-adaptation-cost.json",
+      "sha256": "90398332b948b029980ee739f758781d7bea037fb230146f5f2e099641bdde48",
+      "bytes": 4569
+    },
+    {
+      "archive_path": "baseline-native-h2-wiring/kv-provider-intent.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/baseline-native-h2-wiring/kv-provider-intent.json",
+      "sha256": "80f663252814a41e7f3bb320d3ff85899b3680a825493e9dd60d8c6c9f976188",
+      "bytes": 380
+    },
+    {
+      "archive_path": "compatible-oracle-rule-drain-v2.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule-drain-v2.json",
+      "sha256": "3be1ebfd612ae63879c1813ca707cfa17b3f0ef97e0ccfc67d737580833c0c14",
+      "bytes": 6521
+    },
+    {
+      "archive_path": "drain-runtime-staging/actual-installed-source-wheel-match.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/drain-runtime-staging/actual-installed-source-wheel-match.json",
+      "sha256": "6fd3a16dd1e62adde894e742e4103c1f59538e99fe5a1028676da57cbd9d03ed",
+      "bytes": 2203
+    },
+    {
+      "archive_path": "independent-inputs/actual-tokenizer-inputs.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-inputs/actual-tokenizer-inputs.json",
+      "sha256": "59337698f2fb6f5bc89bf4479f63030cf73e5cdc41a02463887a009f150a419e",
+      "bytes": 52461
+    },
+    {
+      "archive_path": "next-manager259-source-ancestry/Manager-selected-to-current-main.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/next-manager259-source-ancestry/Manager-selected-to-current-main.json",
+      "sha256": "77fd6766659b4263eca68541e7e4bf45d8b44505857072a584849515f063e99a",
+      "bytes": 21821
+    },
+    {
+      "archive_path": "profiler-drain-mainline-review/actual-PR-CI/Host/actual-main-ancestry-readback.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-mainline-review/actual-PR-CI/Host/actual-main-ancestry-readback.json",
+      "sha256": "df12e7ddf902863c9ac2aeafa1ee12327b076e24a4ac1d58ff6b7b69e0a13581",
+      "bytes": 2405449
+    },
+    {
+      "archive_path": "profiler-drain-mainline-review/actual-PR-CI/Profiler/actual-main-ancestry-readback.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-mainline-review/actual-PR-CI/Profiler/actual-main-ancestry-readback.json",
+      "sha256": "e3ad26d352e2247d864f137827653691362b7d1d552b44f58da6dfb22d180be4",
+      "bytes": 54218
+    },
+    {
+      "archive_path": "three-method-execution-20261019-r1/prelaunch-installed-rehash.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-execution-20261019-r1/prelaunch-installed-rehash.json",
+      "sha256": "c1d121eab19a9e62a1ccaa7921b958883317e4b76fa9a239f34621672f4d430a",
+      "bytes": 294
+    },
+    {
+      "archive_path": "three-method-execution-20261019-r1/runtime-inputs.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-execution-20261019-r1/runtime-inputs.json",
+      "sha256": "702c62f86c35724119bf89392e003282da1bb1f518191537bc677ff2ce8b6f7e",
+      "bytes": 4153
+    },
+    {
+      "archive_path": "three-method-finite-confirmation-oracle-bound-20261019-r1/manifest.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-finite-confirmation-oracle-bound-20261019-r1/manifest.json",
+      "sha256": "3ff9ffda67585abcc0bbb70f3ef680b1c60e22fd32b0eebad75f6481f5fc1a88",
+      "bytes": 1482
+    },
+    {
+      "archive_path": "three-method-finite-confirmation-oracle-bound-20261019-r1/oracle-rule.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-finite-confirmation-oracle-bound-20261019-r1/oracle-rule.json",
+      "sha256": "f044c2614dfa4d4c42f06ff19787f93d3f658da396cc955d2137f7c5c1990406",
+      "bytes": 20968
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/README.md",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/README.md",
+      "sha256": "f1482772ebc206b945c3ba8901220264ae35691686707ac3741ed2e78bc86b6d",
+      "bytes": 8786
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/manifest.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/manifest.json",
+      "sha256": "8c42252d72e7c736e4790af52663699b2278ee63dea62e4286d5ea8bf8a9f41b",
+      "bytes": 2257
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/neutral_npu_probe.py",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/neutral_npu_probe.py",
+      "sha256": "6a25518515546d88c722392f3f2071129fda68422c927f1eb4844b44909cb5e6",
+      "bytes": 8752
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/ownership-AST-proof.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/ownership-AST-proof.json",
+      "sha256": "968cb766a62938e06f99db08a180783f0b071e9a6957467ee93c41f99b040843",
+      "bytes": 320
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/ownership.py",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/ownership.py",
+      "sha256": "7c0e62be26f80bf5286f9936163dd4d9b5b7fc2614b7175e357628c1ed8f3aa0",
+      "bytes": 1369
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/r2.diff",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/r2.diff",
+      "sha256": "d87bf66294b013a80547b893f0ecf330e0b57bd3ad946c662f8ead1b93b99077",
+      "bytes": 9386
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/run_full_45.py",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/run_full_45.py",
+      "sha256": "628c01d1b96c57e4f82ae4194f2a28bbe70a9fe3316d799087c24918316118a2",
+      "bytes": 3491
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/run_three_methods.py",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/run_three_methods.py",
+      "sha256": "ed847e8ae1bc2c8a32d77490ee18121064d454fd13445b8e550cdaa6c1ba71fd",
+      "bytes": 22861
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/sitecustomize.py",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/sitecustomize.py",
+      "sha256": "486987f6c5e566f12cef284fae960a04a122dead1b27370fe84cbd30918a75d5",
+      "bytes": 6144
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/test_three_methods.py",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/test_three_methods.py",
+      "sha256": "dcd96e67f88290b15502c480907969ef46bd184a6619a68c42a7acb8825df375",
+      "bytes": 4800
+    },
+    {
+      "archive_path": "three-method-neutral-runner-candidate-r2/verify_neutral_probe.py",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-neutral-runner-candidate-r2/verify_neutral_probe.py",
+      "sha256": "5b06a1dd4a584ab0e06872e6c9f52931d11b16f4542b9ba042f3f1f52a7eb2d8",
+      "bytes": 4151
+    },
+    {
+      "archive_path": "three-method-runtime-staging/actual-installed-source-wheel-match.json",
+      "original_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/three-method-runtime-staging/actual-installed-source-wheel-match.json",
+      "sha256": "c8851641b568e2db4547e4ab9ab42145441848969f873cb567f0d360bcd210b9",
+      "bytes": 2132286
+    }
+  ]
+}

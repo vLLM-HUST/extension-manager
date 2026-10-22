@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vllm-ascend-mapped-kv-offload-hust"
+version = "0.1.0.dev0"
+description = "Import-only migration descriptor for Ascend mapped-host KV offload"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{name = "Jingyuan Tian"}]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8", "ruff>=0.12"]
+
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.ascend-mapped-kv-offload" = "vllm_ascend_mapped_kv_offload_hust"
+
+[project.urls]
+Repository = "https://github.com/vLLM-HUST/vllm-ascend-mapped-kv-offload-hust"
+Issues = "https://github.com/vLLM-HUST/vllm-ascend-mapped-kv-offload-hust/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vllm_ascend_mapped_kv_offload_hust"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "SIM", "UP"]

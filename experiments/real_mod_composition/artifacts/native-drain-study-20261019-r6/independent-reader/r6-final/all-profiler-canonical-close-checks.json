@@ -1,0 +1,849 @@
+{
+  "schema": "ecpa-H2-r6-all-profiler-canonical-closes/v1",
+  "shards": [
+    {
+      "group": "profiler-only",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.0cfbcb3331be4f4e98274abf74323129.jsonl",
+        "sha256": "0d3dd8b55d62f11a374a8ce11c4a176fad124fd062a019c5eef763ec450e599a",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2047674,
+        "process_uuid": "0cfbcb3331be4f4e98274abf74323129",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089091275032923
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2047674,
+        "start_ticks": 808905223,
+        "slot": "worker/1"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "e1b66813f25afd590e2cc3d50c53b21cd7eb90b5e3d16e7eb90abac586af4ef6",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089167911529230,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "0cfbcb3331be4f4e98274abf74323129",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "profiler-only",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.4e72354f26df4c9e9b2c938d2a8f2ed7.jsonl",
+        "sha256": "d1ec5858591156f9af88305a8f641fb09d943c3ddf99cfc1f85b51373b77f785",
+        "bytes": 4692
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2047373,
+        "process_uuid": "4e72354f26df4c9e9b2c938d2a8f2ed7",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089052198341466
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2047373,
+        "start_ticks": 808900976,
+        "slot": "engine-core-scheduler/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 4,
+        "close_outcome": "drained",
+        "content_sha256": "b82f2e57d7a0e37e4bf58453f818fcacd286fbb072f35dc64e99a521d039d57e",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089167909051182,
+        "first_data_record_seq": 0,
+        "last_data_record_seq": 3,
+        "process_uuid": "4e72354f26df4c9e9b2c938d2a8f2ed7",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 4,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 4
+    },
+    {
+      "group": "profiler-only",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.6c9cc3e6111a478099eed0b748a99c53.jsonl",
+        "sha256": "15a147611bd5fd533e4d09631df9f6da323f216c1891d868a35c8f7930d2d238",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2047114,
+        "process_uuid": "6c9cc3e6111a478099eed0b748a99c53",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8088996038099216
+      },
+      "actual_Host_role_epoch": null,
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "8e34b429ed27ba9e7feff265de9b441226b905663af602aba959549a21c65b17",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089001438774268,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "6c9cc3e6111a478099eed0b748a99c53",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "profiler-only",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.b9bb3d20be794bda898447bbb1b2ec2b.jsonl",
+        "sha256": "e0002560abff625ce2b957519634dccf3bd8e42b81c52335381be0a2f5d07b2f",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2047673,
+        "process_uuid": "b9bb3d20be794bda898447bbb1b2ec2b",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089090955569509
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2047673,
+        "start_ticks": 808905222,
+        "slot": "worker/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "53d160bb02d0194ed3b1410e118523293a108619c11c275d57be764267bcf881",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089167911960735,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "b9bb3d20be794bda898447bbb1b2ec2b",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "profiler-only",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.f1508433d7754fbb950b6cef2378d01d.jsonl",
+        "sha256": "f450f6ed29753ecf638ce8a8080dc1ea729c95182ff84337550ec6586a3002af",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2046808,
+        "process_uuid": "f1508433d7754fbb950b6cef2378d01d",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8088942865075378
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2046808,
+        "start_ticks": 808890227,
+        "slot": "api-server/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "48feb155cde795dba98aff8a37a08e59cbbdb2cdef43513012e46c65e7adf343",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089173036502316,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "f1508433d7754fbb950b6cef2378d01d",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "kv-then-profiler",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.0c9294d11b9948eca5a70ea536d620a2.jsonl",
+        "sha256": "344cafbff4c79b543342dc3b4f9c877554d6ed4739ae617b5448eb658083e646",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2050778,
+        "process_uuid": "0c9294d11b9948eca5a70ea536d620a2",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089411548323674
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2050778,
+        "start_ticks": 808937124,
+        "slot": "worker/1"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "b6272ffdd58d800d704b37bba2c62b333a72cf24dc1d2ed5ce5da05ef28edb37",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089503767500764,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "0c9294d11b9948eca5a70ea536d620a2",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "kv-then-profiler",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.3189b68393904ef494a576c550b01977.jsonl",
+        "sha256": "ad80d86c8918d99faef2304b538efb463ec8133e19e2a72a039a91ff905d7d62",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2050240,
+        "process_uuid": "3189b68393904ef494a576c550b01977",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089319025826467
+      },
+      "actual_Host_role_epoch": null,
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "09ea146e6035a582baa1c5a0b536d76db71cb2a81809870d854c0259a8090f20",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089320753116450,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "3189b68393904ef494a576c550b01977",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "kv-then-profiler",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.916f5e5488fc4756947079e4674ef556.jsonl",
+        "sha256": "a9c745499da782a57cb4d289b3669b602c5e4f9cadf740c9d182f03aa008e9ea",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2050777,
+        "process_uuid": "916f5e5488fc4756947079e4674ef556",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089410425138445
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2050777,
+        "start_ticks": 808937124,
+        "slot": "worker/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "0701fe20ce8b6d57a5a09074def542ab6c92ac24e547d10817a96ced88cf3730",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089503767333372,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "916f5e5488fc4756947079e4674ef556",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "kv-then-profiler",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.b135dd0434934e69bf2627b6a3e66a4a.jsonl",
+        "sha256": "f944e39d2b084faf5ee2b6933d5b1aaa6554639315017d420ea2857c4c3b3c71",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2049927,
+        "process_uuid": "b135dd0434934e69bf2627b6a3e66a4a",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089262291293991
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2049927,
+        "start_ticks": 808922141,
+        "slot": "api-server/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "224cd46c508a69c1b51181be789a15b4f93df5d2675428779e6852a9dc2292cf",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089508890053482,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "b135dd0434934e69bf2627b6a3e66a4a",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "kv-then-profiler",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/profiler.jsonl.rlp.ef898addc669454a9e04b75931ed250c.jsonl",
+        "sha256": "920e99ffa90a8fb2a0fbc797b1e665a8259aa957609e313e1b0bae69690c32e9",
+        "bytes": 4702
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2050502,
+        "process_uuid": "ef898addc669454a9e04b75931ed250c",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089371216490734
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2050502,
+        "start_ticks": 808932906,
+        "slot": "engine-core-scheduler/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 4,
+        "close_outcome": "drained",
+        "content_sha256": "9ac22884971a628a0a8cd9d69a53a19a4cf1a5961ab97848489d6289ce0d182d",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089503764982185,
+        "first_data_record_seq": 0,
+        "last_data_record_seq": 3,
+        "process_uuid": "ef898addc669454a9e04b75931ed250c",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 4,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 4
+    },
+    {
+      "group": "profiler-then-kv",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.4b6369287fb04bab8e6075022f1eca11.jsonl",
+        "sha256": "4e4e11f4c88c489b23f0b1d31ff487b8bdb09336fa6fa8751d99c014ae9944e6",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2054041,
+        "process_uuid": "4b6369287fb04bab8e6075022f1eca11",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089651894877629
+      },
+      "actual_Host_role_epoch": null,
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "7436e1c51b5c10fafa2c448e0aa297fd261685205632bae84c626d1497af477f",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089657459784244,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "4b6369287fb04bab8e6075022f1eca11",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "profiler-then-kv",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.cb085d4c0cfb45b1a4e06921a55aa87f.jsonl",
+        "sha256": "28a0e272b05cecca47d80007695802554bcfda10a976796e782adfd1cd553156",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2054694,
+        "process_uuid": "cb085d4c0cfb45b1a4e06921a55aa87f",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089747319512160
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2054694,
+        "start_ticks": 808970790,
+        "slot": "worker/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "b889961b51fd57f0540b50ea0d8441077c392b91ca60d296f0837e217a69b85d",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089843327545909,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "cb085d4c0cfb45b1a4e06921a55aa87f",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "profiler-then-kv",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.dfc197d7a6614dbea665f919803c61c6.jsonl",
+        "sha256": "86e4ef2c5aa3cb32d28a0248ad8b9402176b013bb128dd9c7ff83cc4843ab043",
+        "bytes": 4702
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2054341,
+        "process_uuid": "dfc197d7a6614dbea665f919803c61c6",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089707859426089
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2054341,
+        "start_ticks": 808966579,
+        "slot": "engine-core-scheduler/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 4,
+        "close_outcome": "drained",
+        "content_sha256": "c8ffb8facd095b78bcdb66fc9cda4976d5f03cf61aefda56de7299fcd5841545",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089843324599005,
+        "first_data_record_seq": 0,
+        "last_data_record_seq": 3,
+        "process_uuid": "dfc197d7a6614dbea665f919803c61c6",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 4,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 4
+    },
+    {
+      "group": "profiler-then-kv",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.e6f11cd69fdf48abb8d6eb3406952596.jsonl",
+        "sha256": "540fb0b3a78affe186dd647adf2bc283f1d45c08a201f5b993380edce9c2b920",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2053731,
+        "process_uuid": "e6f11cd69fdf48abb8d6eb3406952596",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089598739855396
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2053731,
+        "start_ticks": 808955771,
+        "slot": "api-server/0"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "54f98e7dd0bbf84b8a34ccf7a3f446956c86eb39ed2b2cf1cd7f1e370490d3af",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089848452475178,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "e6f11cd69fdf48abb8d6eb3406952596",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    },
+    {
+      "group": "profiler-then-kv",
+      "original_raw_ref": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/profiler.jsonl.rlp.ef54e33cac764b3ca7bfe93e7e3beaa0.jsonl",
+        "sha256": "499a6dc6d20096ecb9ffb3ef124ef9422fac32855e6012b4b77206e628250162",
+        "bytes": 1259
+      },
+      "actual_process_start": {
+        "clock_domain_id": "b6e48bd48991c08844e939f51040d72c",
+        "clock_source": "CLOCK_MONOTONIC",
+        "device_plugin_commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+        "limits": {
+          "close_timeout_ms": 2000,
+          "data_capacity_records": 4096,
+          "max_batch_bytes": 262144,
+          "max_batch_records": 128,
+          "max_queued_bytes": 17039360,
+          "max_record_bytes": 4096,
+          "reserved_capacity_records": 64,
+          "shard_ownership": "one_process_one_append_only_shard",
+          "write_interval_ms": 100
+        },
+        "parent_api_major": 1,
+        "pid": 2054695,
+        "process_uuid": "ef54e33cac764b3ca7bfe93e7e3beaa0",
+        "profiler_parent_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+        "record_type": "process_start",
+        "runtime_core_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+        "schema_version": "rlp.trace/v1alpha1",
+        "started_timestamp_ns": 8089747617386851
+      },
+      "actual_Host_role_epoch": {
+        "pid": 2054695,
+        "start_ticks": 808970790,
+        "slot": "worker/1"
+      },
+      "original_summary": {
+        "attempted_data_count": 0,
+        "close_outcome": "drained",
+        "content_sha256": "ebd2097ddac5b18d6f30aa21dcdd9028c9ae7223a7c25764ea44dbf3b57c0e47",
+        "dropped_control_count": 0,
+        "dropped_data_count": 0,
+        "ended_timestamp_ns": 8089843326873821,
+        "first_data_record_seq": null,
+        "last_data_record_seq": null,
+        "process_uuid": "ef54e33cac764b3ca7bfe93e7e3beaa0",
+        "record_type": "process_summary",
+        "schema_version": "rlp.trace/v1alpha1",
+        "writer_failure_count": 0,
+        "written_edge_count": 0,
+        "written_event_count": 0,
+        "written_loss_interval_count": 0
+      },
+      "canonical_bytes_and_record_bound_match": true,
+      "original_prefix_SHA_count_seq_clock_checks_match": true,
+      "exact_original_Host_RID_clock_metadata_joins": 0
+    }
+  ],
+  "formal_result": false
+}

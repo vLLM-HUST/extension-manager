@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-diffspec"
+version = "0.3.0"
+description = "Differential speculative decoding for long-sequence generation on vLLM Ascend"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    "vllm>=0.28.1rc1.dev319,<0.28.2",
+    "vllm-ascend>=0.25.1rc1,<0.25.2",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.entry-points."vllm.general_plugins"]
+diffspec = "diffspec.plugin:register"
+
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.diffspec" = "diffspec.manifests"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["diffspec*"]
+
+[tool.setuptools.package-data]
+diffspec = ["manifests/*.json"]
+
+[tool.ruff]
+line-length = 100
