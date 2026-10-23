@@ -36,7 +36,7 @@ to Git. Fixed benchmark originals and unchanged source Git history preserve reco
 
 ## Additional experiment consumers
 
-[Experimental archive manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/6007296ac8705e2a8feb6b211bd352ad613aa352/archive/mod-targeted-20261023/manager-experiments/manifest.json) preserves 208 members from the
+[Experimental archive manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/manifest.json) preserves 208 members from the
 exposure-gate, false-effective, real-MOD-composition and transaction-model collections.
 This source change migrates only 38 verified originals: six exposure qualification/preflight
 files and 32 compression-transaction members. Other archived inputs still have legacy

@@ -167,7 +167,7 @@ precision/recall target; H3 and H4 are unaffected.
 
 ## Real compression-transaction qualification
 
-[Archived compression transaction](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/6007296ac8705e2a8feb6b211bd352ad613aa352/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013/) strengthens the same
+[Archived compression transaction](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013/) strengthens the same
 compatible pair beyond the 2048-token activation record. The immutable runner
 reads and validates the exact campaign, runner digest, and
 planner/runtime-blind source oracle before spawning each server. The
