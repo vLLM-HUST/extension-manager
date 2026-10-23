@@ -60,6 +60,7 @@ def test_directory_checks_members_hashes_and_escape(tmp_path, monkeypatch):
         inputs.resolve_original(checkout / "packet")
     extra.unlink()
     (package / "input.txt").write_bytes(raw + b"corrupt")
+    (checkout / "packet").symlink_to(package, target_is_directory=True)
     with pytest.raises(ValueError, match="checksum"):
         inputs.resolve_original(checkout / "packet")
     (package / "input.txt").unlink()

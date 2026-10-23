@@ -46,7 +46,9 @@ def original_path(root: Path, relative: str) -> Path:
 
 def resolve_original(path: Path) -> Path:
     """Resolve read-only repository inputs, leaving caller-owned fixtures alone."""
-    absolute = path.resolve()
+    # Classify the requested source path before following symlinks. A local
+    # symlink must not bypass the canonical external hash check.
+    absolute = Path(os.path.abspath(path))
     if ROOT not in absolute.parents:
         return path
     return original_path(ROOT, absolute.relative_to(ROOT).as_posix())
