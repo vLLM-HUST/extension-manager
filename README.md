@@ -15,6 +15,7 @@ multi-process loading, heterogeneous providers, composition conflicts, lifecycle
 drift, and runtime effects that cannot be proved statically.
 
 - [Research charter](docs/research-charter.md)
+- [Archived process-supervision originals](docs/benchmark-originals.md)
 - [Falsifiable evaluation plan](docs/evaluation-plan.md)
 - [Executable ECPA architecture](docs/design/ecpa-architecture.md)
 - [Protocol state machine](docs/design/protocol-state-machine.md)

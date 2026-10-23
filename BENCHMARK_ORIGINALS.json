@@ -1,0 +1,13 @@
+{
+  "source_repository": "vLLM-HUST/extension-manager",
+  "capsules": [
+    {
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/b36edbc7698e3ca188904d0e20495ed2924a8525/archive/mod-targeted-20261023/manager/manifest.json",
+      "manifest_sha256": "e03aac4827bd2865486e9f5143eed3d85970ede03e2b92cd6b8773d8d5cb7d93"
+    }
+  ],
+  "migrated_paths": [
+    "docs/evidence/process-supervision-qwen35-ascend-2026-09-27.json",
+    "docs/evidence/process-supervision-qwen35-ascend-2026-09-27.md"
+  ]
+}
