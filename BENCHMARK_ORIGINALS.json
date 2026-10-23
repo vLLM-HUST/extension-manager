@@ -4,10 +4,30 @@
     {
       "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/b36edbc7698e3ca188904d0e20495ed2924a8525/archive/mod-targeted-20261023/manager/manifest.json",
       "manifest_sha256": "e03aac4827bd2865486e9f5143eed3d85970ede03e2b92cd6b8773d8d5cb7d93"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/aa041953616fa170014a0c7f43fb06bf1c59b846/archive/mod-targeted-20261023/manager-paper/manifest.json",
+      "manifest_sha256": "7083ec8c09f03f95fca2c68930e7fc479b4e857325dae7c2fc18810ca0a2010d"
     }
   ],
   "migrated_paths": [
     "docs/evidence/process-supervision-qwen35-ascend-2026-09-27.json",
-    "docs/evidence/process-supervision-qwen35-ascend-2026-09-27.md"
-  ]
+    "docs/evidence/process-supervision-qwen35-ascend-2026-09-27.md",
+    "experiments/contract_planner/results/decisions.jsonl",
+    "experiments/contract_planner/results/metrics.json",
+    "paper/artifacts/h1-r5/formal-aggregate-summary.json",
+    "paper/artifacts/h1-r5/formal-aggregate.json",
+    "paper/artifacts/h1-r5/paper-results.jsonl",
+    "paper/artifacts/h1-r5/paper-table.csv",
+    "paper/artifacts/h1-r5/source-binding.json"
+  ],
+  "migrated_sha256": {
+    "experiments/contract_planner/results/decisions.jsonl": "d3c77c0aaf36f93f98e13de1b1d08c2d7aeb926a6be1b953018d9c642d5abef9",
+    "experiments/contract_planner/results/metrics.json": "495d2644ac64bfe50656f2133a4c7ecc0064253e4ed4dbc02f7a3bfce07b61fb",
+    "paper/artifacts/h1-r5/formal-aggregate-summary.json": "a4a7dc3506df54d4fd63edcb6f4687d2e3e43aff60b88e0c4cfc60d390934414",
+    "paper/artifacts/h1-r5/formal-aggregate.json": "35fff94ee5d144126f89727026fd999ffb8e3bd40b6cd84b8858c196573d9778",
+    "paper/artifacts/h1-r5/paper-results.jsonl": "bff7110da0cc2e1b876859adca50a857cd151e51ee694486ddb9e596aa74be54",
+    "paper/artifacts/h1-r5/paper-table.csv": "3a3c59c5f0e26255fc252b9c17690608cc8e4b6d24867624e6a8a2c02887963f",
+    "paper/artifacts/h1-r5/source-binding.json": "7d059be9bd1bb52b1346156ea0f85d90df0bdadbc522baba898ee8755edd2a03"
+  }
 }

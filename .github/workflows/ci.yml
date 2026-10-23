@@ -11,6 +11,8 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      VLLM_HUST_BENCHMARK_ORIGINALS: /tmp/benchmark-originals
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +25,7 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[test]'
+      - run: python scripts/fetch_benchmark_originals.py "$VLLM_HUST_BENCHMARK_ORIGINALS"
       - run: python -m pytest -q
       - run: python -m ruff check .
       - run: python -m mypy

@@ -14,6 +14,7 @@ import jsonschema
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts.benchmark_inputs import original_path  # noqa: E402
 
 CLAIMS_PATH = "docs/research/claims-to-experiment-matrix.json"
 CLAIMS_SCHEMA_PATH = "docs/research/claims-to-experiment-matrix.schema.json"
@@ -60,7 +61,7 @@ REGISTRATION_DESIGN_BASE = {
 
 
 def load(root: Path, relative: str) -> dict[str, Any]:
-    value = json.loads((root / relative).read_text())
+    value = json.loads(original_path(root, relative).read_text())
     if not isinstance(value, dict):
         raise ValueError(f"{relative} must contain one JSON object")
     return value
@@ -155,7 +156,7 @@ def adapter_profiles(root: Path) -> dict[str, dict[str, Any]]:
 
 
 def file_sha256(root: Path, relative: str) -> str:
-    return hashlib.sha256((root / relative).read_bytes()).hexdigest()
+    return hashlib.sha256(original_path(root, relative).read_bytes()).hexdigest()
 
 
 def object_sha256(value: Any) -> str:

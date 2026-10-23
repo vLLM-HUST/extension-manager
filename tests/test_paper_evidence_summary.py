@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 from jsonschema import ValidationError
 
+from scripts.benchmark_inputs import original_path
+
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
 INPUTS = (
@@ -105,7 +107,7 @@ def copy_inputs(destination: Path) -> None:
     for relative in INPUTS:
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        source = ROOT / relative
+        source = original_path(ROOT, relative)
         if source.is_dir():
             shutil.copytree(source, target)
         else:
@@ -114,7 +116,7 @@ def copy_inputs(destination: Path) -> None:
     for relative in {path for gate in readiness["gates"] for path in gate["evidence"]}:
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / relative, target)
+        shutil.copy2(original_path(ROOT, relative), target)
 
 
 def rewrite_json(path: Path, update) -> None:
