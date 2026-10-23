@@ -21,6 +21,8 @@ import jsonschema
 ROOT = Path(__file__).resolve().parents[2]
 # Support direct invocation from paper/ as well as installed-package CI.
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
+from scripts.benchmark_inputs import original_path  # noqa: E402
+
 OUTPUT = ROOT / "paper/generated/evidence-summary.tex"
 WORKSHOP_SOURCE_IDENTITY = {
     "repository": "vLLM-HUST/vllm-hust-website",
@@ -59,7 +61,7 @@ REGISTERED_NULLABLE_IDENTITIES = frozenset({"container_digest"})
 
 
 def load_json(root: Path, relative: str) -> dict[str, Any]:
-    value = json.loads((root / relative).read_text())
+    value = json.loads(original_path(root, relative).read_text())
     if not isinstance(value, dict):
         raise ValueError(f"{relative} must contain one JSON object")
     return value
@@ -77,7 +79,7 @@ def require_count(value: Any, label: str) -> int:
 
 
 def digest(root: Path, relative: str) -> str:
-    return hashlib.sha256((root / relative).read_bytes()).hexdigest()
+    return hashlib.sha256(original_path(root, relative).read_bytes()).hexdigest()
 
 
 def canonical_digest(value: Any) -> str:
@@ -111,7 +113,9 @@ def validate_schema(root: Path, artifact: dict[str, Any], relative: str) -> None
 
 def load_jsonl(root: Path, relative: str) -> list[dict[str, Any]]:
     records = []
-    for line_number, line in enumerate((root / relative).read_text().splitlines(), 1):
+    for line_number, line in enumerate(
+        original_path(root, relative).read_text().splitlines(), 1
+    ):
         value = json.loads(line)
         if not isinstance(value, dict):
             raise ValueError(f"{relative}:{line_number} must be one JSON object")
@@ -130,7 +134,7 @@ def validate_h1_r5(root: Path) -> dict[str, int | str]:
     aggregate = load_json(root, f"{prefix}/formal-aggregate.json")
     summary = load_json(root, f"{prefix}/formal-aggregate-summary.json")
     results = load_jsonl(root, f"{prefix}/paper-results.jsonl")
-    with (root / f"{prefix}/paper-table.csv").open(newline="") as stream:
+    with original_path(root, f"{prefix}/paper-table.csv").open(newline="") as stream:
         table_rows = list(csv.DictReader(stream))
     result_schema = load_json(root, "paper/artifacts/results.schema.json")
     validator = jsonschema.Draft7Validator(result_schema)
@@ -999,8 +1003,7 @@ def validate_kv_metadata(root: Path) -> dict[str, int]:
         != "source-fact-in-http-final-prefix-ack-v1"
         or observed["ACK_time_contract"][
             "recorded_client_authentication_window_verified"
-        ]
-        is not True
+        ] is not True
         or observed["formal_result"] is not False
         or observed["performance_result"] is not False
         or observed["formal_H3_starts"] != 0
@@ -1069,7 +1072,8 @@ def validate_selected_kv_tensor(root: Path) -> dict[str, int]:
         != "source-fact-in-http-final-prefix-ack-v1"
         or observed["ACK_time_contract"][
             "recorded_client_authentication_window_verified"
-        ] is not True
+        ]
+        is not True
         or observed["formal_result"] is not False
         or observed["performance_result"] is not False
         or observed["formal_H3_starts"] != 0

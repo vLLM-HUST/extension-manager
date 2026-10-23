@@ -1,5 +1,23 @@
 # Benchmark originals
 
+## Planner and paper consumers
+
+[Planner/H1-r5 manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/aa041953616fa170014a0c7f43fb06bf1c59b846/archive/mod-targeted-20261023/manager-paper/manifest.json)
+preserves the two contract-planner results and five H1-r5 paper records. For paper generation,
+research validation and the full test suite, download first and export the external directory:
+
+```bash
+python scripts/fetch_benchmark_originals.py /absolute/external/originals
+export VLLM_HUST_BENCHMARK_ORIGINALS=/absolute/external/originals
+python paper/scripts/generate_evidence_summary.py --check
+python scripts/validate_research_matrix.py
+```
+
+The resolver checks original SHA256 and rejects missing inputs or an in-checkout directory.
+Negative tests still mutate isolated fixture copies and exercise all original semantic assertions.
+Schemas and the planner evaluator remain unchanged; use its explicit external `--output-dir` for
+new derived results. Other experiment archives remain a separate migration queue.
+
 This bounded collection is preserved by the benchmark repository. Original versions, failures,
 negative results and diagnostic scope remain unchanged; migration is not new runtime acceptance.
 Other historical collections are not declared migrated by this change.

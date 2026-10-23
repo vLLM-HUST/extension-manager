@@ -1,5 +1,9 @@
 # Paper build and evidence contract
 
+Before building or checking the paper, follow the [external benchmark input setup](../docs/benchmark-originals.md).
+Set `VLLM_HUST_BENCHMARK_ORIGINALS` to the verified download directory; planner and H1-r5 originals
+are no longer stored in this checkout. Missing inputs remain errors, not skipped validation.
+
 Paper lead and accountable owner: `ShuhaoZhangTony` (张书豪). Research,
 artifact, and submission decisions are PI-led/self-driven; student
 contributions are optional and non-blocking.

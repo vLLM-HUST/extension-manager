@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 from jsonschema import ValidationError
 
+from scripts.benchmark_inputs import original_path
+
 ROOT = Path(__file__).resolve().parents[1]
 VALIDATOR_PATH = ROOT / "scripts/validate_research_matrix.py"
 INPUTS = (
@@ -58,7 +60,7 @@ def copy_inputs(destination: Path) -> None:
     for relative in INPUTS:
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / relative, target)
+        shutil.copy2(original_path(ROOT, relative), target)
 
 
 def rewrite_json(path: Path, update) -> None:

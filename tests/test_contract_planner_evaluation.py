@@ -22,6 +22,7 @@ from experiments.contract_planner.evaluate import (
     decision_bytes,
     evaluate,
 )
+from scripts.benchmark_inputs import original_path
 from vllm_hust_ext.ecpa_model import canonical_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,12 +96,12 @@ def test_checked_in_results_are_exactly_reproducible() -> None:
     records, metrics = evaluate(
         DEFAULT_CASES, DEFAULT_ORACLE, DEFAULT_TAXONOMY, DEFAULT_CORPUS
     )
-    assert (EXPERIMENT / "results/decisions.jsonl").read_bytes() == decision_bytes(
-        records
-    )
-    assert (EXPERIMENT / "results/metrics.json").read_bytes() == (
-        canonical_bytes(metrics) + b"\n"
-    )
+    assert original_path(
+        ROOT, "experiments/contract_planner/results/decisions.jsonl"
+    ).read_bytes() == decision_bytes(records)
+    assert original_path(
+        ROOT, "experiments/contract_planner/results/metrics.json"
+    ).read_bytes() == (canonical_bytes(metrics) + b"\n")
 
 
 def test_evaluator_rejects_oracle_with_unbound_input(tmp_path: Path) -> None:
