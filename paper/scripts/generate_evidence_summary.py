@@ -687,7 +687,7 @@ def validate_h2_compression_transaction(root: Path) -> dict[str, int | str]:
     sys.modules[spec.name] = module
     try:
         spec.loader.exec_module(module)
-        recomputed = module.verify(root / prefix)
+        recomputed = module.verify(original_path(root, prefix))
     finally:
         sys.modules.pop(spec.name, None)
     admission = load_json(root, f"{prefix}/admission.json")
@@ -740,7 +740,7 @@ def validate_real_invocation_gate(root: Path) -> dict[str, int | str]:
         "experiments/exposure_gate/artifacts/"
         "real-invocation-gate-qualification-20261013"
     )
-    package = root / prefix
+    package = original_path(root, prefix)
     with tempfile.TemporaryDirectory() as directory:
         retained = Path(directory)
         unpack_qualification(package, retained)

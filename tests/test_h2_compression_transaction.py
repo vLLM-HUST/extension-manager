@@ -8,14 +8,12 @@ from pathlib import Path
 import pytest
 
 from experiments.real_mod_composition.verify_h2_compression_transaction import verify
+from scripts.benchmark_inputs import original_path
 
 ROOT = Path(__file__).parents[1]
-ARTIFACT = (
-    ROOT
-    / "experiments"
-    / "real_mod_composition"
-    / "artifacts"
-    / "h2-compression-transaction-20261013"
+ARTIFACT = original_path(
+    ROOT,
+    "experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013",
 )
 
 

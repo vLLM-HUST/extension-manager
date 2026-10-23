@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from experiments.exposure_gate.semantic_obligation_gap import PACKAGE, verify_gap
+from scripts.benchmark_inputs import original_path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,7 +32,7 @@ def test_actual_sealed_invocation_is_not_semantic_admission():
 )
 def test_summary_cannot_promote_invocation_archive(tmp_path, field):
     package = tmp_path / "qualification"
-    shutil.copytree(ROOT / PACKAGE, package)
+    shutil.copytree(original_path(ROOT, PACKAGE), package)
     path = package / "manifest.json"
     manifest = json.loads(path.read_text())
     manifest[field] = True
@@ -42,7 +43,7 @@ def test_summary_cannot_promote_invocation_archive(tmp_path, field):
 
 def test_gap_refuses_changed_raw_archive(tmp_path):
     package = tmp_path / "qualification"
-    shutil.copytree(ROOT / PACKAGE, package)
+    shutil.copytree(original_path(ROOT, PACKAGE), package)
     path = package / "retained.tar.gz"
     path.write_bytes(path.read_bytes() + b"unbound")
     with pytest.raises(ValueError, match="retained archive changed"):

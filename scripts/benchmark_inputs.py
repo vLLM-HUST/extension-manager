@@ -12,8 +12,13 @@ def original_path(root: Path, relative: str) -> Path:
     if root.resolve() != ROOT:
         return root / relative
     config = json.loads((ROOT / "BENCHMARK_ORIGINALS.json").read_text())
-    expected = config.get("migrated_sha256", {}).get(relative)
-    if expected is None:
+    hashes = config.get("migrated_sha256", {})
+    selected = {
+        name: sha
+        for name, sha in hashes.items()
+        if name == relative or name.startswith(relative.rstrip("/") + "/")
+    }
+    if not selected:
         return root / relative
     value = os.environ.get("VLLM_HUST_BENCHMARK_ORIGINALS")
     if not value:
@@ -24,6 +29,33 @@ def original_path(root: Path, relative: str) -> Path:
     path = (external / relative).resolve()
     if external not in path.parents:
         raise ValueError("Unsafe original input path")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
-        raise ValueError("Original input checksum mismatch")
+    for name, expected in selected.items():
+        member = (external / name).resolve()
+        if external not in member.parents:
+            raise ValueError("Unsafe original input path")
+        if hashlib.sha256(member.read_bytes()).hexdigest() != expected:
+            raise ValueError("Original input checksum mismatch")
+    if relative not in selected:
+        actual = {
+            p.relative_to(external).as_posix() for p in path.rglob("*") if p.is_file()
+        }
+        if actual != set(selected):
+            raise ValueError("Unexpected original directory member")
     return path
+
+
+def resolve_original(path: Path) -> Path:
+    """Resolve read-only repository inputs, leaving caller-owned fixtures alone."""
+    # Classify the requested source path before following symlinks. A local
+    # symlink must not bypass the canonical external hash check.
+    absolute = Path(os.path.abspath(path))
+    if ROOT not in absolute.parents:
+        return path
+    return original_path(ROOT, absolute.relative_to(ROOT).as_posix())
+
+
+if __name__ == "__main__":
+    config = json.loads((ROOT / "BENCHMARK_ORIGINALS.json").read_text())
+    for relative in config["migrated_sha256"]:
+        original_path(ROOT, relative)
+    print(f"Verified {len(config['migrated_sha256'])} migrated inputs")

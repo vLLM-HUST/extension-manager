@@ -15,9 +15,13 @@ from typing import Any
 
 from jsonschema import Draft7Validator
 
+from scripts.benchmark_inputs import resolve_original
+
 HERE = Path(__file__).resolve().parent
 SCHEMA_PATH = HERE / "host-parent-registration-candidate.schema.json"
-CANDIDATE_PATH = HERE / "artifacts/host-parent-registration-candidate-20261013.json"
+CANDIDATE_PATH = resolve_original(
+    HERE / "artifacts/host-parent-registration-candidate-20261013.json"
+)
 SCHEMA = "ecpa-host-parent-identity-producer-candidate/v1"
 REQUIRED_BLOCKERS = [
     "host-candidate-commit-not-repository-reachable",
@@ -146,7 +150,9 @@ def verify_local_inputs(
         "tree"
     ]:
         raise ValueError("Manager review tree drifted")
-    artifact_path = manager_repo / candidate["functional_preflight"]["artifact_path"]
+    artifact_path = resolve_original(
+        manager_repo / candidate["functional_preflight"]["artifact_path"]
+    )
     if digest_bytes(artifact_path.read_bytes()) != candidate["functional_preflight"][
         "artifact_sha256"
     ]:

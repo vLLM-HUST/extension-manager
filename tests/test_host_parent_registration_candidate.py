@@ -42,7 +42,9 @@ def test_checked_candidate_is_source_bound_and_blocked() -> None:
 
 def test_committed_preflight_bytes_are_exactly_bound() -> None:
     value = registration.load_candidate()
-    path = ROOT / value["functional_preflight"]["artifact_path"]
+    path = registration.resolve_original(
+        ROOT / value["functional_preflight"]["artifact_path"]
+    )
     assert registration.digest_bytes(path.read_bytes()) == value[
         "functional_preflight"
     ]["artifact_sha256"]

@@ -33,3 +33,17 @@ python scripts/fetch_benchmark_originals.py /absolute/external/originals
 The downloader checks the pinned manifest and each file's length and SHA256, rejects unsafe paths
 and never executes archived code. CI repeats the readback and rejects the migrated paths returning
 to Git. Fixed benchmark originals and unchanged source Git history preserve recoverability.
+
+## Additional experiment consumers
+
+[Experimental archive manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/manifest.json) preserves 208 members from the
+exposure-gate, false-effective, real-MOD-composition and transaction-model collections.
+This source change migrates only 38 verified originals: six exposure qualification/preflight
+files and 32 compression-transaction members. Other archived inputs still have legacy
+consumers; synthetic/reference fixtures stay local and are not serving measurements.
+
+The same setup above serves the paper generator, invocation/semantic-gap audit, host-parent
+registration reader and compression negative tests. Directory inputs verify every member and
+reject unexpected files or escaping symlinks. Makefile generation explicitly verifies inputs
+before rebuilding; no frozen input is executed. Missing upstream registration/semantic
+producers and the inaccurate historical freeze timestamp keep their original failure boundaries.

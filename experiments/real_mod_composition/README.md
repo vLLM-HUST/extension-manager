@@ -167,7 +167,7 @@ precision/recall target; H3 and H4 are unaffected.
 
 ## Real compression-transaction qualification
 
-`artifacts/h2-compression-transaction-20261013/` strengthens the same
+[Archived compression transaction](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013/) strengthens the same
 compatible pair beyond the 2048-token activation record. The immutable runner
 reads and validates the exact campaign, runner digest, and
 planner/runtime-blind source oracle before spawning each server. The
@@ -182,11 +182,12 @@ same request ID is present in an EngineCore-owned profiler epoch and in the
 HTTP response. Both shutdowns left the port closed, no owned process alive,
 and both allocated NPU process tables empty.
 
+Download and export the originals using [the setup guide](../../docs/benchmark-originals.md).
 Recompute the portable admission with:
 
 ```bash
 python experiments/real_mod_composition/verify_h2_compression_transaction.py \
-  experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013
+  "$VLLM_HUST_BENCHMARK_ORIGINALS/experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013"
 ```
 
 The verifier rehashes every raw artifact and independently parses the request,
