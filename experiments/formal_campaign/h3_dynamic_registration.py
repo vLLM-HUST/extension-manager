@@ -99,10 +99,13 @@ def _validate_campaign(spec, *, profile=None, spec_path=None):
     ).validate(spec)
     original = load(checked_reference(spec["original_campaign"]))
     Draft7Validator(load(HERE / "h3-campaign.schema.json")).validate(original)
-    require(
-        cell_policy(original["cell_id"]) == "worker-recovery",
-        "new domain implements original worker cells only",
-    )
+    if profile is not None and hasattr(profile, "validate_original_cell"):
+        profile.validate_original_cell(original)
+    else:
+        require(
+            cell_policy(original["cell_id"]) == "worker-recovery",
+            "new domain implements original worker cells only",
+        )
     require(
         original["campaign_id"] == "H3-transactional-recovery-v1",
         "original H3 campaign identity differs",
@@ -110,8 +113,13 @@ def _validate_campaign(spec, *, profile=None, spec_path=None):
     source_provenance.validate_policy(spec["source_policy"], original["fixed_identity"])
     probe = original["probe"]
     require(
-        original["fault"]["target_role"] == "worker",
-        "original fault must target the actual worker",
+        original["fault"]["target_role"]
+        == (
+            profile.FAULT_ROLE
+            if profile and hasattr(profile, "FAULT_ROLE")
+            else "worker"
+        ),
+        "original fault must target this domain's actual role",
     )
     require(
         original["fault"]["signal"] in ("SIGKILL", "SIGTERM")

@@ -519,8 +519,13 @@ def wait_file(path, deadline):
     raise TimeoutError("native runner handshake deadline: " + path.name)
 
 
-def launch_phase(phase, arm, output, index, timeout):
+def launch_phase(phase, arm, output, index, timeout, *, after_native_binding=None):
     """Launch the real pinned Host; bind events to actual native origin."""
+    if after_native_binding is not None:
+        require(
+            arm == "ecpa" and phase["origin"] == "manager-native-handoff",
+            "Manager phase callback is unsupported without actual Manager handoff",
+        )
     environment = dict(phase["environment"])
     argv = list(phase["argv"])
     listener = None
@@ -591,6 +596,8 @@ def launch_phase(phase, arm, output, index, timeout):
                 output / f"phase{index}.handoff-unvalidated.json",
             )
             save_new(output / f"phase{index}.native-binding.json", bound)
+            if after_native_binding is not None:
+                after_native_binding(process, bound, owned)
             env = bound["environment"]
             evidence_path = Path(env["VLLM_HUST_EXT_EVIDENCE_PATH"])
             plan_id, launch_id = env["VLLM_ECPA_PLAN_ID"], env["VLLM_ECPA_LAUNCH_ID"]
@@ -730,9 +737,21 @@ def launch_phase(phase, arm, output, index, timeout):
                         return process, owner, owned, observed
             time.sleep(0.02)
         raise TimeoutError("real Host process evidence readiness deadline")
-    except Exception:
+    except Exception as launch_error:
         if owner is not None:
-            cleanup(process, owner, 10, owned)
+            try:
+                cleanup(process, owner, 10, owned)
+            except Exception as cleanup_error:
+                if after_native_binding is None:
+                    raise
+                # Preserve the actual source phase fault and the secondary
+                # cleanup error. The distinct runner must stop recovery and
+                # independently clean the captured actual sessions.
+                cleanup_type = type(cleanup_error)
+                cleanup_name = f"{cleanup_type.__module__}.{cleanup_type.__qualname__}"
+                launch_error.manager_phase_cleanup_error = (
+                    f"{cleanup_name}: {cleanup_error}"
+                )
         else:
             process.wait(timeout=10)
         raise
