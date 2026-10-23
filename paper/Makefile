@@ -86,10 +86,10 @@ EVIDENCE_INPUTS := \
 	../experiments/real_mod_composition/verify_h2_scheduler_pair.py \
 	$(shell find ../experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013 -type f | sort) \
 	../experiments/real_mod_composition/verify_h2_compression_transaction.py \
-	$(shell find ../experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013 -type f | sort) \
+	$(shell find "$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013" -type f | sort) \
 	../experiments/exposure_gate/qualification_verify.py \
 	../experiments/exposure_gate/loopback_traffic.py \
-	$(shell find ../experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013 -type f | sort) \
+	$(shell find "$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013" -type f | sort) \
 	../experiments/transaction_model/explore.py \
 	../experiments/transaction_model/artifacts/result-summary.json \
 	../experiments/transaction_model/result-summary.schema.json \
@@ -104,7 +104,11 @@ EVIDENCE_INPUTS := \
 .PHONY: all clean evidence-summary check-evidence-summary check-attention-source-summary check-research-matrix tectonic audit-pdf validate-results
 all: main.pdf
 
-$(EVIDENCE_SUMMARY): scripts/generate_evidence_summary.py $(EVIDENCE_INPUTS)
+.PHONY: check-benchmark-originals
+check-benchmark-originals:
+	$(PYTHON) ../scripts/benchmark_inputs.py
+
+$(EVIDENCE_SUMMARY): scripts/generate_evidence_summary.py $(EVIDENCE_INPUTS) check-benchmark-originals
 	$(PYTHON) scripts/generate_evidence_summary.py
 
 evidence-summary: $(EVIDENCE_SUMMARY)

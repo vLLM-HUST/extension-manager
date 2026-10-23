@@ -16,6 +16,7 @@ from experiments.exposure_gate.qualification_verify import (
     unpack_qualification,
     verify_qualification,
 )
+from scripts.benchmark_inputs import resolve_original
 from vllm_hust_ext.plan_artifact import read_plan_artifact
 
 PACKAGE = (
@@ -24,6 +25,7 @@ PACKAGE = (
 
 
 def verify_gap(package: Path) -> dict:
+    package = resolve_original(package)
     manifest = json.loads((package / "manifest.json").read_bytes())
     if (
         manifest.get("schema") != "ecpa-real-invocation-gate-retention/v1"

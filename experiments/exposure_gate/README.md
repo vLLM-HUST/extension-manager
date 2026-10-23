@@ -1,5 +1,9 @@
 # Loopback traffic authority integration slice
 
+Sealed invocation/preflight originals now live in benchmark; follow
+[the external-input setup](../../docs/benchmark-originals.md) before running
+readers or tests. Synthetic reference fixtures remain local.
+
 `loopback_traffic.py` is a bounded research adapter for the reference
 ExposureGate. It runs in a process separate from the gate, owns one loopback
 HTTP port, and forwards each admitted request to a predecessor or candidate
@@ -116,13 +120,13 @@ and the exact backend-port/proxy commands still need upstream qualification and
 deployment registration before any run can enter the formal aggregate.
 
 The source-bound
-[`proxy-parent-membership-preflight-20261013.json`](artifacts/proxy-parent-membership-preflight-20261013.json)
+[`proxy-parent-membership-preflight-20261013.json`](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/6007296ac8705e2a8feb6b211bd352ad613aa352/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/exposure_gate/artifacts/proxy-parent-membership-preflight-20261013.json)
 records the first real TP2 functional preflight in which the Host emitted all
 three host-assigned process layers. It is explicitly unregistered and does not
 count as a formal traffic-boundary or performance result.
 
 The content-addressed
-[`host-parent-registration-candidate-20261013.json`](artifacts/host-parent-registration-candidate-20261013.json)
+[`host-parent-registration-candidate-20261013.json`](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/6007296ac8705e2a8feb6b211bd352ad613aa352/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/exposure_gate/artifacts/host-parent-registration-candidate-20261013.json)
 binds that preflight to Host candidate `379a0ad35`, its two changed source
 blobs, wheel `a850a238...d551`, and the Manager review context at `32cebf7`.
 The Host commit is present only in the local checkout: `git ls-remote` found no

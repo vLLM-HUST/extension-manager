@@ -15,6 +15,7 @@ from experiments.exposure_gate.loopback_traffic import (
     frozen_target_set_sha256,
     read_traffic_journal,
 )
+from scripts.benchmark_inputs import resolve_original
 from vllm_hust_ext.exposure_gate import GateError
 from vllm_hust_ext.host_evidence import parse_host_event
 from vllm_hust_ext.host_observer import parse_linux_start_ticks
@@ -343,6 +344,7 @@ def verify_qualification(root: Path) -> dict[str, Any]:
 
 def unpack_qualification(package: Path, target: Path) -> None:
     """Check the sealed raw archive before extracting ordinary relative files."""
+    package = resolve_original(package)
     manifest = _json(package, "manifest.json")
     raw = (package / "retained.tar.gz").read_bytes()
     _require(_sha(raw) == manifest["archive_sha256"], "retained archive changed")
