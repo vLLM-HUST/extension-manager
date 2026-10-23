@@ -5,6 +5,7 @@ import base64
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 
 import jsonschema
@@ -12,6 +13,9 @@ import jsonschema
 from vllm_hust_ext.host_evidence import parse_host_event
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.benchmark_inputs import original_path  # noqa: E402
 
 
 def load(path: Path):
@@ -88,14 +92,18 @@ def main() -> int:
         planner_oracle["source_snapshots_sha256"]
         == hashlib.sha256(source_snapshots_path.read_bytes()).hexdigest()
     )
-    decisions_path = planner / "results/decisions.jsonl"
+    decisions_path = original_path(
+        ROOT, "experiments/contract_planner/results/decisions.jsonl"
+    )
     decisions = [json.loads(line) for line in decisions_path.read_text().splitlines()]
     decision_validator = jsonschema.Draft7Validator(
         load(planner / "decision.schema.json")
     )
     for decision in decisions:
         decision_validator.validate(decision)
-    planner_metrics = load(planner / "results/metrics.json")
+    planner_metrics = load(
+        original_path(ROOT, "experiments/contract_planner/results/metrics.json")
+    )
     jsonschema.Draft7Validator(load(planner / "metrics.schema.json")).validate(
         planner_metrics
     )
