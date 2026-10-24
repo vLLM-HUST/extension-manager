@@ -11,24 +11,35 @@ import argparse
 import hashlib
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any, cast
 from zipfile import ZipFile
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_CAMPAIGN = HERE / "runtime_campaign.json"
 
 
 def _load(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(resolve_original(path).read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return cast(dict[str, Any], value)
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def validate_campaign(campaign: dict[str, Any]) -> None:
@@ -94,7 +105,10 @@ def validate_campaign(campaign: dict[str, Any]) -> None:
 
 
 def _wheel_metadata(wheel: Path, member: dict[str, Any]) -> None:
-    if not wheel.is_file() or _sha256(wheel) != member["wheel_sha256"]:
+    if (
+        not resolve_original(wheel).is_file()
+        or _sha256(wheel) != member["wheel_sha256"]
+    ):
         raise ValueError(f"wheel digest mismatch: {member['id']}")
     entry_point = member["entry_point"]
     expected_line = f"{entry_point['name']} = {entry_point['value']}"
@@ -113,7 +127,7 @@ def _wheel_metadata(wheel: Path, member: dict[str, Any]) -> None:
         if f"[{entry_point['group']}]" not in text or expected_line not in text:
             raise ValueError(f"entry point mismatch: {member['id']}")
         expected_manifest = (
-            HERE / "source_manifests" / f"{member['id']}.json"
+            resolve_original(HERE / "source_manifests" / f"{member['id']}.json")
         ).read_bytes()
         if archive.read(manifests[0]) != expected_manifest:
             raise ValueError(f"embedded manifest mismatch: {member['id']}")
@@ -216,10 +230,16 @@ def main() -> int:
     parser.add_argument("--wheel-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.output:
+        from scripts.benchmark_inputs import new_output
+
+        args.output = new_output(args.output)
     result = run_probe(args.campaign, args.wheel_dir)
     payload = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if args.output:
-        args.output.write_text(payload, encoding="utf-8")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        with args.output.open("x", encoding="utf-8") as stream:
+            stream.write(payload)
     else:
         print(payload, end="")
     return 0

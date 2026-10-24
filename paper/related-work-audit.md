@@ -125,7 +125,7 @@ H1--H4 supply that evidence.
   prevention outcomes.
 - HTTP authority: PR #144 and `experiments/exposure_gate/loopback_traffic.py`; formal semantic
   observation remains rejected in `loopback_traffic._observation_sha`.
-- H2: `experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013/`;
+- H2: [experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013/);
   PR #160 excludes the prediagnosed-report consumer; PR #192 corrects the stale
   five-case detection claim.
 - Selected tensor bytes: PR #193,

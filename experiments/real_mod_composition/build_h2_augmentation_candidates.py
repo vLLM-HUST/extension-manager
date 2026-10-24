@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +16,20 @@ from vllm_hust_ext.core import plan_dict, plan_for, reject_conflicting_plans
 from vllm_hust_ext.discovery import InstalledBundle
 from vllm_hust_ext.manifest import load_manifest
 
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
+
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
 OUT = ROOT / "artifacts/h2-real-source-augmentation-20261013"
+SNAPSHOT_PREFIX = OUT.relative_to(REPO)
 CONTRACT_CASES = REPO / "experiments/contract_planner/cases.json"
 CONTRACT_ORACLE = REPO / "experiments/contract_planner/oracle.json"
 SOURCE_SNAPSHOTS = REPO / "docs/corpus/source-snapshots.json"
@@ -88,7 +100,7 @@ def sha256(value: bytes) -> str:
 
 
 def file_sha(path: Path) -> str:
-    return sha256(path.read_bytes())
+    return sha256(resolve_original(path).read_bytes())
 
 
 def git(repo: Path, *args: str) -> str:
@@ -96,13 +108,13 @@ def git(repo: Path, *args: str) -> str:
 
 
 def static_prediction(
-    member_ids: list[str], records: dict[str, dict[str, Any]]
+    member_ids: list[str], records: dict[str, dict[str, Any]], snapshot_root: Path
 ) -> dict[str, Any]:
     plans = []
     for member_id in member_ids:
         record = records[member_id]
-        path = REPO / record["snapshot_path"]
-        manifest = load_manifest(path)
+        path = snapshot_root / Path(record["snapshot_path"]).name
+        manifest = load_manifest(resolve_original(path))
         bundle = InstalledBundle(
             manifest.bundle_id,
             f"frozen-source:{record['repository']}",
@@ -133,7 +145,9 @@ def static_prediction(
 
 
 def main() -> int:
-    OUT.mkdir(parents=True, exist_ok=True)
+    from scripts.benchmark_inputs import output_argument
+
+    OUT = output_argument(directory=True)
     records: dict[str, dict[str, Any]] = {}
     for source_id, spec in SOURCES.items():
         actual_tree = git(spec["repo"], "rev-parse", f"{spec['commit']}^{{tree}}")
@@ -160,10 +174,10 @@ def main() -> int:
             ],
             "process_scope": manifest["runtime"]["process_scope"],
             "lifecycle_owner": manifest["lifecycle_owner"],
-            "snapshot_path": str(snapshot.relative_to(REPO)),
+            "snapshot_path": str(SNAPSHOT_PREFIX / snapshot.name),
         }
 
-    contract_oracle = json.loads(CONTRACT_ORACLE.read_text())
+    contract_oracle = json.loads(resolve_original(CONTRACT_ORACLE).read_text())
     oracle_labels = {label["case_id"]: label for label in contract_oracle["labels"]}
     augmentation = {
         "schema": "ecpa-h2-real-source-augmentation/v1",
@@ -189,7 +203,7 @@ def main() -> int:
                 "oracle": oracle_labels["case.pair-bidkv-mooncake"],
                 "oracle_frozen_before_this_prediction": True,
                 "prediction": static_prediction(
-                    ["bidkv-corpus-v02", "mooncake-provider"], records
+                    ["bidkv-corpus-v02", "mooncake-provider"], records, OUT
                 ),
                 "score_eligible": False,
             },
@@ -200,7 +214,9 @@ def main() -> int:
                 "oracle_source_case": "case.single-production",
                 "oracle": oracle_labels["case.single-production"],
                 "oracle_frozen_before_this_prediction": True,
-                "prediction": static_prediction(["production-stack-provider"], records),
+                "prediction": static_prediction(
+                    ["production-stack-provider"], records, OUT
+                ),
                 "score_eligible": False,
             },
         ],

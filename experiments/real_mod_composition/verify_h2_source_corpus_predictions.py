@@ -5,7 +5,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
@@ -27,13 +38,15 @@ def verify_command(record: dict[str, object]) -> None:
 
 
 def main() -> int:
-    artifact = json.loads(ARTIFACT.read_text())
-    campaign = json.loads((CORPUS / "campaign.json").read_text())
-    oracle = json.loads((CORPUS / "oracle.json").read_text())
+    artifact = json.loads(resolve_original(ARTIFACT).read_text())
+    campaign = json.loads((resolve_original(CORPUS / "campaign.json")).read_text())
+    oracle = json.loads((resolve_original(CORPUS / "oracle.json")).read_text())
     assert artifact["campaign_sha256"] == digest(
-        (CORPUS / "campaign.json").read_bytes()
+        (resolve_original(CORPUS / "campaign.json")).read_bytes()
     )
-    assert artifact["oracle_sha256"] == digest((CORPUS / "oracle.json").read_bytes())
+    assert artifact["oracle_sha256"] == digest(
+        (resolve_original(CORPUS / "oracle.json")).read_bytes()
+    )
     assert oracle["campaign_sha256"] == artifact["campaign_sha256"]
     assert artifact["manager"] == {
         "commit": "08ab570fb00c4206b8d2c6c296ac9580b0f892bc",
@@ -54,7 +67,9 @@ def main() -> int:
         assert record["manifest_read"]["stdout_sha256"] == expected["manifest_sha256"]
         assert not Path(record["snapshot_path"]).is_absolute()
         snapshot = REPO / record["snapshot_path"]
-        assert digest(snapshot.read_bytes()) == record["snapshot_sha256"]
+        assert (
+            digest(resolve_original(snapshot).read_bytes()) == record["snapshot_sha256"]
+        )
         assert record["snapshot_sha256"] == expected["manifest_sha256"]
 
     expected = {
@@ -89,7 +104,7 @@ def main() -> int:
         )
 
     existing = artifact["existing_incompatible_pair"]
-    assert existing["sha256"] == digest(EXISTING.read_bytes())
+    assert existing["sha256"] == digest(resolve_original(EXISTING).read_bytes())
     assert existing["manager_decision"] == existing["oracle_decision"] == "reject"
     assert artifact["confusion_matrix"] == {
         "abstained_definite_cases": ["pair-profiler-kvcompress-vllm-0233"],
@@ -112,7 +127,7 @@ def main() -> int:
     assert artifact["process_boundary"]["all_npu_snapshots_empty"] is True
     assert artifact["process_boundary"]["host_process_started"] is False
     assert artifact["h2_acceptance_complete"] is False
-    print(digest(ARTIFACT.read_bytes()))
+    print(digest(resolve_original(ARTIFACT).read_bytes()))
     return 0
 
 

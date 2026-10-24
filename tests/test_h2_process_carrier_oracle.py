@@ -14,8 +14,15 @@ def test_process_carrier_oracle_and_predictions_are_portable() -> None:
         / "experiments/real_mod_composition/verify_h2_process_carrier_predictions.py",
     )
     for script in scripts:
+        command = [sys.executable, str(script)]
+        if script.name == "verify_h2_process_carrier_oracle.py":
+            command = [
+                sys.executable,
+                str(ROOT / "scripts/verify_composition_originals.py"),
+                "process-carrier",
+            ]
         completed = subprocess.run(
-            [sys.executable, str(script)],
+            command,
             cwd=ROOT,
             check=False,
             capture_output=True,

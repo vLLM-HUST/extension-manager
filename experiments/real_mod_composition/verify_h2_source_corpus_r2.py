@@ -5,8 +5,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
@@ -20,11 +31,11 @@ AUGMENTATION = ARTIFACTS / "h2-real-source-augmentation-20261013/augmentation.js
 
 
 def digest(path: Path) -> str:
-    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    return "sha256:" + hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def read(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text())
+    return json.loads(resolve_original(path).read_text())
 
 
 def git_blob_id(value: bytes) -> str:
@@ -80,7 +91,7 @@ def main() -> int:
         for member in case["members"]:
             assert not Path(member["snapshot_path"]).is_absolute()
             snapshot = REPO / member["snapshot_path"]
-            raw = snapshot.read_bytes()
+            raw = resolve_original(snapshot).read_bytes()
             assert digest(snapshot) == member["manifest_sha256"]
             assert git_blob_id(raw) == member["manifest_blob"]
             assert json.loads(raw)["schema_version"] == member["manifest_schema"]

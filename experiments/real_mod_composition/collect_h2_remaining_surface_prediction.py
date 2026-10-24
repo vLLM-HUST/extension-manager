@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,16 @@ from vllm_hust_ext.core import plan_dict, plan_for
 from vllm_hust_ext.discovery import InstalledBundle
 from vllm_hust_ext.manifest import load_manifest
 from vllm_hust_ext.providers.production_stack import ProductionStackProvider
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT = (
@@ -29,7 +40,7 @@ ORACLE_COMMIT = "dfc533d33582f80fae0ee172e17aa47406d98e48"
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def host_processes() -> list[int]:
@@ -39,7 +50,12 @@ def host_processes() -> list[int]:
         if not item.name.isdigit():
             continue
         try:
-            cmdline = (item / "cmdline").read_bytes().replace(b"\0", b" ").decode()
+            cmdline = (
+                (resolve_original(item / "cmdline"))
+                .read_bytes()
+                .replace(b"\0", b" ")
+                .decode()
+            )
         except (OSError, UnicodeDecodeError):
             continue
         if any(marker in cmdline for marker in markers):
@@ -63,8 +79,16 @@ def npu_probe() -> dict[str, object]:
     }
 
 
+def write_new_output(path: Path, text: str, **kwargs) -> None:
+    with path.open("x", **kwargs) as stream:
+        stream.write(text)
+
+
 def main() -> int:
-    receipt = json.loads(RECEIPT.read_text(encoding="utf-8"))
+    from scripts.benchmark_inputs import output_argument
+
+    OUTPUT = output_argument(directory=False)
+    receipt = json.loads(resolve_original(RECEIPT).read_text(encoding="utf-8"))
     if receipt["oracle_sha256"] != sha256(ORACLE):
         raise ValueError("oracle digest mismatch")
     if receipt["planner_seen_or_run_before_oracle_freeze"]:
@@ -80,7 +104,7 @@ def main() -> int:
     )
 
     manifest_path = ARTIFACT / "snapshots/production-stack-provider-manifest.json"
-    manifest = load_manifest(manifest_path)
+    manifest = load_manifest(resolve_original(manifest_path))
     bundle = InstalledBundle(
         manifest.bundle_id,
         "frozen-source:vLLM-HUST/extension-manager",
@@ -114,7 +138,7 @@ def main() -> int:
     after_pids = host_processes()
     decision = "reject" if check.compatible is False else "admit"
 
-    oracle = json.loads(ORACLE.read_text(encoding="utf-8"))
+    oracle = json.loads(resolve_original(ORACLE).read_text(encoding="utf-8"))
     oracle_case = next(
         case
         for case in oracle["cases"]
@@ -180,8 +204,8 @@ def main() -> int:
             "does not close H2",
         ],
     }
-    OUTPUT.write_text(
-        json.dumps(artifact, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    write_new_output(
+        OUTPUT, json.dumps(artifact, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     print(
         f"prediction={decision} match={artifact['decision_match']} "

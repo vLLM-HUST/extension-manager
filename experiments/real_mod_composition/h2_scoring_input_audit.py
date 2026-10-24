@@ -5,11 +5,22 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from dataclasses import asdict
 from pathlib import Path
 
 from vllm_hust_ext.manifest import load_manifest
 from vllm_hust_ext.providers.production_stack import ProductionStackProvider
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 AUDIT = (
     "experiments/real_mod_composition/artifacts/"
@@ -19,13 +30,13 @@ CASE = "external-authority-production-stack-keda"
 
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def verify(root: Path) -> dict:
-    audit = json.loads((root / AUDIT).read_text())
+    audit = json.loads((resolve_original(root / AUDIT)).read_text())
     paths = audit["historical_paths"]
-    prediction = json.loads((root / paths["prediction"]).read_text())
+    prediction = json.loads((resolve_original(root / paths["prediction"])).read_text())
     if (
         audit.get("schema") != "ecpa-h2-prediction-input-audit/v1"
         or audit.get("case_id") != CASE
@@ -50,7 +61,7 @@ def verify(root: Path) -> dict:
         or without != {k: v for k, v in supplied.items() if k != "ownership_conflicts"}
     ):
         raise ValueError("H2 counterfactual changes more than the supplied verdict")
-    manifest = load_manifest(root / paths["manifest"])
+    manifest = load_manifest(resolve_original(root / paths["manifest"]))
     actual = json.loads(
         json.dumps(
             {

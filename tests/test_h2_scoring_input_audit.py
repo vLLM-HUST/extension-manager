@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from experiments.real_mod_composition.h2_scoring_input_audit import AUDIT, verify
+from scripts.benchmark_inputs import resolve_original
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,11 +27,11 @@ def test_report_consumption_is_excluded_from_conflict_detection_score():
 
 @pytest.mark.parametrize("mutation", ["promote", "change_counterfactual", "rescore"])
 def test_input_audit_rejects_promotion_or_nonisolated_comparison(tmp_path, mutation):
-    audit = json.loads((ROOT / AUDIT).read_text())
+    audit = json.loads(resolve_original(ROOT / AUDIT).read_text())
     for path in [AUDIT, *audit["historical_paths"].values()]:
         target = tmp_path / path
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT / path, target)
+        shutil.copyfile(resolve_original(ROOT / path), target)
     if mutation == "promote":
         audit["score_eligible"] = True
     elif mutation == "change_counterfactual":

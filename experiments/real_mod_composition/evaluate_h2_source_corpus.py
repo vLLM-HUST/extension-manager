@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,16 @@ from vllm_hust_ext.core import plan_dict, plan_for, reject_conflicting_plans
 from vllm_hust_ext.discovery import InstalledBundle
 from vllm_hust_ext.manifest import activation_blocker, load_manifest
 from vllm_hust_ext.providers.base import assess_compatibility
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parent
 CORPUS = ROOT / "artifacts/h2-minimal-real-source-corpus-20261013"
@@ -41,9 +52,9 @@ def main() -> int:
     parser.add_argument("case_id")
     args = parser.parse_args()
 
-    campaign_bytes = (CORPUS / "campaign.json").read_bytes()
+    campaign_bytes = (resolve_original(CORPUS / "campaign.json")).read_bytes()
     campaign = json.loads(campaign_bytes)
-    oracle = json.loads((CORPUS / "oracle.json").read_text())
+    oracle = json.loads((resolve_original(CORPUS / "oracle.json")).read_text())
     if oracle["campaign_sha256"] != digest(campaign_bytes):
         raise ValueError("frozen oracle does not bind the frozen campaign")
     try:
@@ -57,10 +68,10 @@ def main() -> int:
     plans = []
     for member in case["members"]:
         path = MANIFESTS / f"{member['id']}.json"
-        raw = path.read_bytes()
+        raw = resolve_original(path).read_bytes()
         if digest(raw) != member["manifest_sha256"]:
             raise ValueError(f"snapshot digest mismatch for {member['id']}")
-        manifest = load_manifest(path)
+        manifest = load_manifest(resolve_original(path))
         version = host_version(case, manifest.host.name)
         compatible, evidence = assess_compatibility(
             manifest,

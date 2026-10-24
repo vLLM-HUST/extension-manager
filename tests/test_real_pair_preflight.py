@@ -5,13 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from scripts.benchmark_inputs import resolve_original
+
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = (
-    ROOT
-    / "experiments"
-    / "real_mod_composition"
-    / "verify_real_pair_preflight.py"
-)
+SCRIPT = ROOT / "experiments" / "real_mod_composition" / "verify_real_pair_preflight.py"
 SPEC = importlib.util.spec_from_file_location("verify_real_pair_preflight", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 verifier = importlib.util.module_from_spec(SPEC)
@@ -19,15 +16,15 @@ SPEC.loader.exec_module(verifier)
 
 
 def _artifact() -> dict:
-    return json.loads(verifier.ARTIFACT.read_text(encoding="utf-8"))
+    return json.loads(resolve_original(verifier.ARTIFACT).read_text(encoding="utf-8"))
 
 
 def test_checked_in_real_pair_preflight_is_exact_and_non_scoreable() -> None:
     verifier.verify()
     artifact = _artifact()
-    assert hashlib.sha256(verifier.ARTIFACT.read_bytes()).hexdigest() == (
-        verifier.ARTIFACT_SHA256
-    )
+    assert hashlib.sha256(
+        resolve_original(verifier.ARTIFACT).read_bytes()
+    ).hexdigest() == (verifier.ARTIFACT_SHA256)
     assert {order["order"] for order in artifact["orders"]} == (
         verifier.EXPECTED_ORDERS
     )

@@ -7,8 +7,19 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parent
 ARTIFACTS = ROOT / "artifacts"
@@ -17,11 +28,12 @@ PREDICTIONS = ARTIFACTS / "h2-source-corpus-manager-predictions-20261013.json"
 REJECT = ARTIFACTS / "h2-knorm-prelaunch-reject-20261013.json"
 CURRENT = ARTIFACTS / "h2-profiler-kvcompress-formal-r2-20261013"
 OUTPUT = ARTIFACTS / "h2-minimal-real-source-corpus-r2-20261013"
+SNAPSHOT_PREFIX = OUTPUT.relative_to(ROOT.parent.parent)
 AUGMENTATION = ARTIFACTS / "h2-real-source-augmentation-20261013/augmentation.json"
 
 
 def digest(path: Path) -> str:
-    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    return "sha256:" + hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def digest_bytes(value: bytes) -> str:
@@ -29,7 +41,7 @@ def digest_bytes(value: bytes) -> str:
 
 
 def read(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text())
+    return json.loads(resolve_original(path).read_text())
 
 
 def write(path: Path, value: dict[str, Any]) -> None:
@@ -37,7 +49,9 @@ def write(path: Path, value: dict[str, Any]) -> None:
 
 
 def main() -> int:
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+    from scripts.benchmark_inputs import output_argument
+
+    OUTPUT = output_argument(directory=True)
     v1_campaign = read(V1 / "campaign.json")
     old_predictions = read(PREDICTIONS)
     current_campaign = read(CURRENT / "campaign.json")
@@ -162,9 +176,7 @@ def main() -> int:
                 "manifest_sha256": "sha256:fa7d1033919e300062c9f5ade6b9842088a59dde8d7652de2b6a844a85c06a29",
                 "manifest_schema": "0.3-experimental",
                 "snapshot_path": str(
-                    current_snapshots["lifecycle_profiler"].relative_to(
-                        ROOT.parent.parent
-                    )
+                    SNAPSHOT_PREFIX / current_snapshots["lifecycle_profiler"].name
                 ),
             },
             {
@@ -174,7 +186,7 @@ def main() -> int:
                 "manifest_sha256": "sha256:ad0a3e62602108e54503bb81c8fda162a730e1a422fe940d09a2463ee2d0eb54",
                 "manifest_schema": "0.3-experimental",
                 "snapshot_path": str(
-                    current_snapshots["kvcompress"].relative_to(ROOT.parent.parent)
+                    SNAPSHOT_PREFIX / current_snapshots["kvcompress"].name
                 ),
             },
         ],
