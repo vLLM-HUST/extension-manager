@@ -1,6 +1,6 @@
 TECTONIC ?= tectonic
 PYTHON ?= python3
-.PHONY: all clean evidence-summary check-evidence-summary check-attention-source-summary check-research-matrix tectonic audit-pdf validate-results
+.PHONY: all main.pdf clean evidence-summary check-evidence-summary check-attention-source-summary check-research-matrix tectonic audit-pdf validate-results
 all: tectonic
 
 .PHONY: check-benchmark-originals
