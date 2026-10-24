@@ -1,117 +1,15 @@
 TECTONIC ?= tectonic
 PYTHON ?= python3
-EVIDENCE_SUMMARY := generated/evidence-summary.tex
-EVIDENCE_INPUTS := \
-	../experiments/formal_campaign/verify_kv_selected_tensor_observation.py \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014 -type f | sort) \
-	../experiments/formal_campaign/verify_kv_postack_metadata.py \
-	../experiments/formal_campaign/verify_kv_strict_pair_partial.py \
-	../experiments/formal_campaign/verify_kv_disabled_diagnostic.py \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/kv-postack-metadata-20261014 -type f | sort) \
-	../experiments/formal_campaign/verify_native_interface.py \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/native-interface-20261013 -type f | sort) \
-	../experiments/real_mod_composition/h2_scoring_input_audit.py \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013 -type f | sort) \
-	../experiments/formal_campaign/h3_model_client_window.py \
-	../experiments/formal_campaign/h3_client_trace.py \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/h3-model-client-window-20261013 -type f | sort) \
-	../experiments/formal_campaign/h3_model_qualification.py \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/h3-model-qualification-20261013 -type f | sort) \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013 -type f | sort) \
-	../docs/corpus/plugin-workshop-metadata.snapshot.json \
-	../docs/corpus/workshop-mods.json \
-	../docs/corpus/workshop-mods.schema.json \
-	../docs/corpus/plugins.json \
-	../docs/corpus/plugins.schema.json \
-	../docs/corpus/source-snapshots.json \
-	../docs/corpus/source-snapshots.schema.json \
-	../docs/research/claims-to-experiment-matrix.json \
-	../docs/research/claims-to-experiment-matrix.schema.json \
-	../docs/release-readiness.json \
-	../docs/release-readiness.schema.json \
-	../docs/evidence/native-current-npu-qualification-2026-10-11.md \
-	../.github/workflows/ci.yml \
-	../docs/acceptance-gates.md \
-	../docs/design/failure-semantics.md \
-	../docs/design/host-plugin-evidence-0.1.md \
-	../docs/evaluation-plan.md \
-	../docs/evidence/host-contract-maintainer-acceptance-2026-10-10.md \
-	../docs/failure-permission-matrix.json \
-	../docs/kv-materialization-runbook.md \
-	../docs/manifest-0.3.md \
-	../docs/qualification-policy.md \
-	../docs/support-matrix.md \
-	../src/vllm_hust_ext/catalog.py \
-	../src/vllm_hust_ext/providers/production_stack.py \
-	../tests/test_catalog.py \
-	../tests/test_failure_permission_matrix.py \
-	../experiments/contract_planner/cases.json \
-	../experiments/contract_planner/cases.schema.json \
-	../experiments/contract_planner/decision.schema.json \
-	../experiments/contract_planner/oracle.json \
-	../experiments/contract_planner/oracle.schema.json \
-	../experiments/contract_planner/evaluate.py \
-	../experiments/contract_planner/metrics.schema.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/contract_planner/results/decisions.jsonl \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/contract_planner/results/metrics.json \
-	../experiments/false_effective/artifacts/formal-aggregate-summary.json \
-	../experiments/false_effective/artifacts/reference-summary.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/paper/artifacts/h1-r5/formal-aggregate.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/paper/artifacts/h1-r5/formal-aggregate-summary.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/paper/artifacts/h1-r5/paper-results.jsonl \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/paper/artifacts/h1-r5/paper-table.csv \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/paper/artifacts/h1-r5/source-binding.json \
-	artifacts/results.schema.json \
-	../experiments/false_effective/first-formal-real-study.json \
-	../experiments/false_effective/first-formal-real-study.schema.json \
-	../experiments/false_effective/first-formal-real-deployment.json \
-	../experiments/false_effective/first-formal-real-deployment.schema.json \
-	../experiments/false_effective/harness.py \
-	../experiments/false_effective/scenarios.json \
-	../experiments/false_effective/protocol.json \
-	../experiments/false_effective/verified-adapters.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-knorm-prelaunch-reject-20261013.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-source-corpus-manager-predictions-20261013.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/score-admission.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/planner/planner-receipt.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/campaign.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/oracle-index.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/status.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-real-source-augmentation-20261013/augmentation.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/oracle.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/manager-predictions.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/oracle.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/review-receipt.json \
-	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/manager-prediction.json \
-	../experiments/real_mod_composition/verify_h2_scheduler_pair.py \
-	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013 -type f | sort) \
-	../experiments/real_mod_composition/verify_h2_compression_transaction.py \
-	$(shell find "$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013" -type f | sort) \
-	../experiments/exposure_gate/qualification_verify.py \
-	../experiments/exposure_gate/loopback_traffic.py \
-	$(shell find "$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/exposure_gate/artifacts/real-invocation-gate-qualification-20261013" -type f | sort) \
-	../experiments/transaction_model/explore.py \
-	../experiments/transaction_model/artifacts/result-summary.json \
-	../experiments/transaction_model/result-summary.schema.json \
-	../spec/0.1/contract-taxonomy.json \
-	../spec/0.1/contract-taxonomy.schema.json \
-	../spec/manifest-0.3/manifest.schema.json \
-	../spec/manifest-0.3/conformance-vectors.json \
-	../spec/manifest-0.3/migration-vectors.json \
-	../src/vllm_hust_ext/contract_compiler.py \
-	../src/vllm_hust_ext/formal_lifecycle_source.py
-
-.PHONY: all clean evidence-summary check-evidence-summary check-attention-source-summary check-research-matrix tectonic audit-pdf validate-results
+.PHONY: all main.pdf clean evidence-summary check-evidence-summary check-attention-source-summary check-research-matrix tectonic audit-pdf validate-results
 all: main.pdf
 
 .PHONY: check-benchmark-originals
 check-benchmark-originals:
 	$(PYTHON) ../scripts/benchmark_inputs.py
 
-$(EVIDENCE_SUMMARY): scripts/generate_evidence_summary.py $(EVIDENCE_INPUTS) check-benchmark-originals
-	$(PYTHON) scripts/generate_evidence_summary.py
-
-evidence-summary: $(EVIDENCE_SUMMARY)
+evidence-summary: check-benchmark-originals
+	@test -n "$(OUTPUT)" || (echo 'Set OUTPUT to a fresh external file'; exit 1)
+	$(PYTHON) scripts/generate_evidence_summary.py --output "$(OUTPUT)"
 
 check-evidence-summary:
 	$(PYTHON) scripts/generate_evidence_summary.py --check
@@ -119,21 +17,18 @@ check-evidence-summary:
 check-research-matrix:
 	$(PYTHON) ../scripts/validate_research_matrix.py
 
-ATTENTION_SUMMARY := generated/attention-source-summary.tex
-
-$(ATTENTION_SUMMARY): scripts/generate_attention_source_summary.py ../experiments/formal_campaign/verify_attention_source_drained_observation.py $(wildcard $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/*) check-benchmark-originals
-	$(PYTHON) scripts/generate_attention_source_summary.py
-
 check-attention-source-summary:
 	$(PYTHON) scripts/generate_attention_source_summary.py --check
 
-main.pdf: main.tex references.bib $(EVIDENCE_SUMMARY) $(ATTENTION_SUMMARY) check-research-matrix
-	$(TECTONIC) --keep-logs main.tex
+main.pdf: main.tex references.bib
+	@test -n "$(OUTPUT)" || (echo 'Set OUTPUT to a fresh external build directory'; exit 1)
+	$(PYTHON) scripts/build_paper.py --output "$(OUTPUT)" --tectonic "$(TECTONIC)"
 
 tectonic: main.pdf
 
-audit-pdf: main.pdf
-	$(PYTHON) scripts/audit_pdf.py main.pdf
+audit-pdf:
+	@test -n "$(OUTPUT)" || (echo 'Set OUTPUT to an existing external build directory'; exit 1)
+	$(PYTHON) scripts/audit_pdf.py "$(OUTPUT)/main.pdf"
 
 validate-results: check-evidence-summary check-research-matrix
 	$(PYTHON) scripts/validate_results.py artifacts/results.example.json

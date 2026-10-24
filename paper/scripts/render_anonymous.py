@@ -18,6 +18,9 @@ import sys
 from pathlib import Path
 
 PAPER = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PAPER.parent))
+from scripts.benchmark_inputs import new_output, resolve_original  # noqa: E402
+
 PUBLIC_TITLE = (
     "From Enabled to Effective: Evidence-Bound Activation for LLM Inference Extensions"
 )
@@ -34,11 +37,14 @@ def prepare(output: Path, *, alias: str, title: str) -> Path:
         for name in ("ecpa", "vllm-hust", PUBLIC_TITLE.casefold())
     ):
         raise ValueError("title must be a new plain-text title")
+    if output.is_symlink():
+        raise ValueError("private output must not be a symbolic link")
     output = output.resolve()
     if any((ancestor / ".git").exists() for ancestor in (output, *output.parents)):
         raise ValueError("private output must be outside every Git repository")
     if output.exists():
         raise FileExistsError(output)
+    output = new_output(output)
 
     source = (PAPER / "main.tex").read_text(encoding="utf-8")
     old_title = rf"\title{{\Large \bf {PUBLIC_TITLE}}}"
@@ -77,7 +83,7 @@ def prepare(output: Path, *, alias: str, title: str) -> Path:
         path = Path(relative)
         if path.is_absolute() or ".." in path.parts:
             raise ValueError("generated input path must stay inside the paper")
-        generated = (PAPER / path).read_text(encoding="utf-8")
+        generated = resolve_original(PAPER / path).read_text(encoding="utf-8")
         (output / path).parent.mkdir(parents=True, exist_ok=True)
         (output / path).write_text(
             generated.replace("ECPA", "ReviewData"), encoding="utf-8"
@@ -102,17 +108,16 @@ def main() -> int:
         ],
         check=True,
     )
-    if (PAPER / "generated/attention-source-summary.tex").exists():
-        subprocess.run(
-            [
-                "make",
-                "-C",
-                str(PAPER),
-                f"PYTHON={sys.executable}",
-                "check-attention-source-summary",
-            ],
-            check=True,
-        )
+    subprocess.run(
+        [
+            "make",
+            "-C",
+            str(PAPER),
+            f"PYTHON={sys.executable}",
+            "check-attention-source-summary",
+        ],
+        check=True,
+    )
     try:
         main_tex = prepare(
             arguments.output, alias=arguments.alias, title=arguments.title

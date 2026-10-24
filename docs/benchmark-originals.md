@@ -93,3 +93,12 @@ The quantized-KV CPU and Pipeline/BidKV source-oracle consumers also use checked
 external originals. The Pipeline/BidKV collector requires a new `--output` path
 outside both the checkout and the originals directory. This is not permission
 to rerun hardware checks or overwrite a historical prediction.
+
+## Paper projection inputs
+
+The [paper projection manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/manager-projections/manifest.json) preserves
+the historical R4 source binding and both derived TeX summaries unchanged. Paper checks recompute
+them from the original corpus and compare the archived bytes; public and anonymous builds copy
+verified inputs into a fresh external directory. New generator outputs require explicit external
+paths and cannot replace source or originals. Finite nonformal scope and negative results remain
+unchanged; no model quality or performance acceptance is added.

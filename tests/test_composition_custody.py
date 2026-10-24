@@ -28,7 +28,11 @@ def test_no_composition_artifacts_remain_tracked():
     )
     assert tracked == ""
     config = json.loads((inputs.ROOT / "BENCHMARK_ORIGINALS.json").read_text())
-    assert len(config["migrated_sha256"]) == 283
+    assert len(config["migrated_sha256"]) == 286
+    tracked_all = subprocess.check_output(
+        ["git", "ls-files"], cwd=inputs.ROOT, text=True
+    ).splitlines()
+    assert not set(config["migrated_sha256"]).intersection(tracked_all)
 
 
 @pytest.mark.parametrize("kind", frozen.PACKAGES)
