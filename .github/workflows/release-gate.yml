@@ -40,6 +40,7 @@ jobs:
       - run: python -m ruff check .
       - run: python -m mypy
       - run: python -m build
+      - run: python scripts/check_distribution.py dist
       - name: Verify clean wheel installation
         run: |
           python -m venv /tmp/vllm-hust-ext-release-wheel
