@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from jsonschema import ValidationError
 
-from scripts.benchmark_inputs import original_path
+from scripts.benchmark_inputs import original_path, resolve_original
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
@@ -666,7 +666,7 @@ def test_h3_native_support_rejects_source_and_oracle_tampering(tmp_path):
         "experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013"
     )
     target = tmp_path / prefix
-    shutil.copytree(ROOT / prefix, target)
+    shutil.copytree(resolve_original(ROOT / prefix), target)
     assert generator.validate_h3_native_support(tmp_path) == {
         "h3_native_sources": 5,
         "h3_prepare_na_baselines": 2,
@@ -675,7 +675,7 @@ def test_h3_native_support_rejects_source_and_oracle_tampering(tmp_path):
     source.write_bytes(source.read_bytes() + b"\n# changed\n")
     with pytest.raises(ValueError, match="source bytes changed"):
         generator.validate_h3_native_support(tmp_path)
-    shutil.copyfile(ROOT / prefix / source.name, source)
+    shutil.copyfile(resolve_original(ROOT / prefix / source.name), source)
     oracle = target / "oracle.json"
     data = json.loads(oracle.read_text())
     data["original_cell"]["completion"] = "complete"
@@ -699,7 +699,7 @@ def test_h3_model_paper_rejects_promotion(tmp_path, field, value):
         "experiments/formal_campaign/artifacts/h3-model-qualification-20261013"
     )
     package = tmp_path / prefix
-    shutil.copytree(ROOT / prefix, package)
+    shutil.copytree(resolve_original(ROOT / prefix), package)
     rewrite_json(package / "manifest.json", lambda row: row.update({field: value}))
     with pytest.raises(ValueError, match="nonformal boundary changed"):
         generator.validate_h3_model_qualification(tmp_path)
@@ -711,7 +711,7 @@ def test_h3_model_paper_rejects_changed_failed_archive(tmp_path):
         "experiments/formal_campaign/artifacts/h3-model-qualification-20261013"
     )
     package = tmp_path / prefix
-    shutil.copytree(ROOT / prefix, package)
+    shutil.copytree(resolve_original(ROOT / prefix), package)
     archive = package / "failed-hccl-port-conflict.tar.gz"
     archive.write_bytes(archive.read_bytes() + b"changed")
     with pytest.raises(ValueError, match="archive changed"):
@@ -736,7 +736,7 @@ def test_h3_window_paper_rejects_qualification_promotion(tmp_path, field, value)
         "experiments/formal_campaign/artifacts/h3-model-client-window-20261013"
     )
     package = tmp_path / prefix
-    shutil.copytree(ROOT / prefix, package)
+    shutil.copytree(resolve_original(ROOT / prefix), package)
     manifest = json.loads((package / "manifest.json").read_text())
     for name in manifest["portable_verifier_sha256"]:
         target = tmp_path / name
@@ -753,7 +753,7 @@ def test_h3_window_paper_rejects_failed_cpu_archive_tampering(tmp_path):
         "experiments/formal_campaign/artifacts/h3-model-client-window-20261013"
     )
     package = tmp_path / prefix
-    shutil.copytree(ROOT / prefix, package)
+    shutil.copytree(resolve_original(ROOT / prefix), package)
     archive = package / "failed-chat-cpu-preflight.tar.gz"
     archive.write_bytes(archive.read_bytes() + b"changed")
     with pytest.raises(ValueError, match="archive changed"):
@@ -785,7 +785,7 @@ def test_native_transport_paper_rejects_changed_source(tmp_path):
 def test_native_transport_paper_rejects_changed_archive(tmp_path):
     copy_inputs(tmp_path)
     root = tmp_path
-    path = (
+    path = resolve_original(
         root
         / "experiments/formal_campaign/artifacts/native-interface-20261013/raw.tar.gz"
     )

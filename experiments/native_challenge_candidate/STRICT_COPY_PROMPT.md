@@ -47,7 +47,7 @@ receipts, durable post-request publication, and cleanup remain independently
 required for any finite native evidence classification.
 
 The retained local CPU CLI records are under
-`artifacts/strict-copy-cpu-20261014/`: the first attempt rejected its inherited
+[artifacts/strict-copy-cpu-20261014/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/b3d2ed2692b5575b5ae77b93fc82e32c9119be8e/archive/mod-targeted-20261023/manager-formal/snapshot/experiments/native_challenge_candidate/artifacts/strict-copy-cpu-20261014): the first attempt rejected its inherited
 2700 output parent; a fresh owned 0700 second attempt exited 0 with actual
 padding count 1013, 1201 prompt IDs, and 74 expected output IDs. Both attempts
 retain their command, stdout, and stderr. The successful input recipe and

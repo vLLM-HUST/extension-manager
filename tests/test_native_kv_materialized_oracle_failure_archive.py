@@ -11,8 +11,9 @@ from test_native_kv_materialized_partial_archive import rechain
 
 from experiments.formal_campaign import verify_kv_materialized_oracle_failure as r3
 from experiments.formal_campaign import verify_kv_materialized_partial as common
+from scripts.benchmark_inputs import resolve_original
 
-ARTIFACT = (
+ARTIFACT = resolve_original(
     Path(__file__).parents[1]
     / "experiments/formal_campaign/artifacts"
     / "native-kv-materialized-oracle-failure-r3-20261014"

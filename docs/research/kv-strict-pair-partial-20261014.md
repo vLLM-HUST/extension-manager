@@ -10,8 +10,8 @@ Default CPU-only replay separates these facts:
 
 ```sh
 python -m experiments.formal_campaign.verify_kv_strict_pair_partial \
-  --manifest experiments/formal_campaign/artifacts/kv-strict-pair-partial-20261014/manifest.json \
-  --archive experiments/formal_campaign/artifacts/kv-strict-pair-partial-20261014/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-strict-pair-partial-20261014/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-strict-pair-partial-20261014/raw.tar.gz
 ```
 
 It checks both original model tasks and paired inputs, source-assigned API/worker identities, the genuine enabled Manager handoff, fixed baseline identities, actual watchdogs and terminal closure. It then reconstructs five byte-exact original stdlib modules in an isolated Python interpreter, verifies the original after-ACK prefix and metadata matcher, and requires the original HTTP-window rejection. Reading a verified durable intake prefix does not qualify the failed HTTP window. This is recorded metadata partial evidence, not formal qualification; KV tensor equivalence, attention consumption, full quality, lost/duplicate counts and the full objective remain unknown. Formal H3/H4 starts remain zero. The prospective source-clock policy is a separate version and cannot upgrade this archive.

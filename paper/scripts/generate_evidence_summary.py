@@ -21,7 +21,7 @@ import jsonschema
 ROOT = Path(__file__).resolve().parents[2]
 # Support direct invocation from paper/ as well as installed-package CI.
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
-from scripts.benchmark_inputs import original_path  # noqa: E402
+from scripts.benchmark_inputs import original_path, resolve_original  # noqa: E402
 
 OUTPUT = ROOT / "paper/generated/evidence-summary.tex"
 WORKSHOP_SOURCE_IDENTITY = {
@@ -839,7 +839,7 @@ def validate_h3_model_qualification(root: Path) -> dict[str, int]:
     from experiments.formal_campaign.h3_model_qualification import verify_archive
 
     prefix = "experiments/formal_campaign/artifacts/h3-model-qualification-20261013"
-    package = root / prefix
+    package = original_path(root, prefix)
     manifest = load_json(package, "manifest.json")
     archives = manifest["archives"]
     if set(archives) != {
@@ -921,7 +921,9 @@ def validate_native_interface(root: Path) -> dict[str, int]:
         != "092a86cd3a0de66531a798f0a9d850496ff0969bbde9bb0d183b96c60126b828"
     ):
         raise ValueError("native transport analysis source changed")
-    package = root / "experiments/formal_campaign/artifacts/native-interface-20261013"
+    package = resolve_original(
+        root / "experiments/formal_campaign/artifacts/native-interface-20261013"
+    )
     manifest = load_json(package, "manifest.json")
     if (
         manifest["archive_sha256"]
@@ -975,7 +977,7 @@ def validate_kv_metadata(root: Path) -> dict[str, int]:
         "59e383e206f9ec32cb62892c53d00092fc2bb4ea067f4d65fc5d43289bd417bd"
     ):
         raise ValueError("KV metadata analysis source changed")
-    package = (
+    package = resolve_original(
         root / "experiments/formal_campaign/artifacts/kv-postack-metadata-20261014"
     )
     manifest = load_json(package, "manifest.json")
@@ -1045,8 +1047,11 @@ def validate_selected_kv_tensor(root: Path) -> dict[str, int]:
         "841e009511a4d2417be480123eb3960399d5ba4a46fd26119bd69724bcac83cc"
     ):
         raise ValueError("selected KV analysis source changed")
-    package = root / (
-        "experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014"
+    package = resolve_original(
+        root
+        / (
+            "experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014"
+        )
     )
     manifest = load_json(package, "manifest.json")
     if manifest["archive_sha256"] != (
@@ -1102,7 +1107,7 @@ def validate_h3_client_window(root: Path) -> dict[str, int]:
 
     from experiments.formal_campaign.h3_model_client_window import verify_archive
 
-    package = (
+    package = resolve_original(
         root / "experiments/formal_campaign/artifacts/h3-model-client-window-20261013"
     )
     manifest = load_json(package, "manifest.json")

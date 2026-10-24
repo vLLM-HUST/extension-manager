@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 
 from experiments.formal_campaign import verify_h3_worker_real as verifier
+from scripts.benchmark_inputs import resolve_original
 
-ROOT = (
+ROOT = resolve_original(
     Path(__file__).parents[1]
     / "experiments/formal_campaign/artifacts/h3-worker-real-20261013"
 )

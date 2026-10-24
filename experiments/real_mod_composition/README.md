@@ -286,7 +286,8 @@ PYTHONPATH=src python experiments/real_mod_composition/h2_scoring_input_audit.py
 
 ## Source-bound conditional scheduler pair
 
-`artifacts/h2-pipeline-bidkv-oracle-20261013/` adds an independently scoreable case from
+[The frozen Pipeline/BidKV source oracle](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013/)
+adds an independently scoreable case from
 two independently developed active bundles.  The independent oracle was
 committed before the Manager collector existed.  It binds Pipeline
 Microbatch, BidKV, and vLLM-HUST `3e57b2f75c…`; that exact Host source exports
@@ -310,3 +311,9 @@ Run the portable check with:
 ```bash
 python experiments/real_mod_composition/verify_h2_scheduler_pair.py
 ```
+
+First download the fixed originals and export `VLLM_HUST_BENCHMARK_ORIGINALS`
+as described in [original custody](../../docs/benchmark-originals.md).
+The collector requires `--output /absolute/path/to/new-prediction.json`, outside
+the checkout and the original archive. A new prediction never overwrites the
+historical one and needs its own execution authorization.

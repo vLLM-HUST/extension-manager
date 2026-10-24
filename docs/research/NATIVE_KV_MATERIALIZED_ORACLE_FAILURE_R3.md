@@ -45,6 +45,6 @@ oracle. No paper formal counts change.
 
 ```sh
 python -m experiments.formal_campaign.verify_kv_materialized_oracle_failure \
-  --manifest experiments/formal_campaign/artifacts/native-kv-materialized-oracle-failure-r3-20261014/manifest.json \
-  --archive experiments/formal_campaign/artifacts/native-kv-materialized-oracle-failure-r3-20261014/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/native-kv-materialized-oracle-failure-r3-20261014/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/native-kv-materialized-oracle-failure-r3-20261014/raw.tar.gz
 ```

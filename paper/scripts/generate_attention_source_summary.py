@@ -15,10 +15,14 @@ def derive(root):
     from experiments.formal_campaign import (
         verify_attention_source_drained_observation as verifier,
     )
+    from scripts.benchmark_inputs import resolve_original
 
-    package = root / (
-        "experiments/formal_campaign/artifacts/"
-        "attention-source-drained-observation-20261014-r4"
+    package = resolve_original(
+        root
+        / (
+            "experiments/formal_campaign/artifacts/"
+            "attention-source-drained-observation-20261014-r4"
+        )
     )
     manifest = json.loads((package / "manifest.json").read_bytes())
     source = root / manifest["late_packaging"]["portable_verifier_path"]

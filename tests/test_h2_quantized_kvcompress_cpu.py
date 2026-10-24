@@ -9,8 +9,9 @@ from pathlib import Path
 import pytest
 
 from experiments.real_mod_composition import verify_h2_quantized_kvcompress_cpu as audit
+from scripts.benchmark_inputs import resolve_original
 
-ARTIFACT = (
+ARTIFACT = resolve_original(
     Path(__file__).resolve().parents[1]
     / "experiments/real_mod_composition/artifacts/h2-quantized-kvcompress-cpu-20261013"
 )

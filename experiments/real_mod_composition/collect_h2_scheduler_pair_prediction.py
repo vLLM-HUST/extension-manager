@@ -8,9 +8,12 @@ implementation or starts the host.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
+import os
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -23,6 +26,9 @@ from vllm_hust_ext.providers.base import assess_compatibility
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
+sys.path.insert(0, str(REPO))
+from scripts.benchmark_inputs import resolve_original  # noqa: E402
+
 ARTIFACT = ROOT / "artifacts/h2-pipeline-bidkv-oracle-20261013"
 MANAGER_BASE = "8651f1d629575709264c6ad7ed8eb93c6c296fc7"
 
@@ -69,9 +75,21 @@ def host_processes() -> list[dict[str, Any]]:
 
 
 def main() -> int:
-    campaign_bytes = (ARTIFACT / "campaign.json").read_bytes()
-    oracle_bytes = (ARTIFACT / "oracle.json").read_bytes()
-    freeze = json.loads((ARTIFACT / "oracle-freeze-receipt.json").read_text())
+    artifact = ARTIFACT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    output = args.output.resolve()
+    originals = os.environ.get("VLLM_HUST_BENCHMARK_ORIGINALS")
+    protected = [REPO.resolve()]
+    if originals:
+        protected.append(Path(originals).resolve())
+    if output.exists() or any(p == output or p in output.parents for p in protected):
+        raise ValueError("Use a new output outside source and original archives")
+    artifact = resolve_original(artifact)
+    campaign_bytes = (artifact / "campaign.json").read_bytes()
+    oracle_bytes = (artifact / "oracle.json").read_bytes()
+    freeze = json.loads((artifact / "oracle-freeze-receipt.json").read_text())
     campaign = json.loads(campaign_bytes)
     oracle = json.loads(oracle_bytes)
     if freeze["campaign_sha256"] != digest(campaign_bytes):
@@ -90,7 +108,7 @@ def main() -> int:
     plans = []
     for member in campaign["members"]:
         source = campaign["sources"][member["manifest_source"]]
-        path = REPO / source["snapshot"]
+        path = resolve_original(REPO / source["snapshot"])
         raw = path.read_bytes()
         if digest(raw) != source["sha256"]:
             raise ValueError(f"manifest snapshot changed for {member['id']}")
@@ -210,8 +228,8 @@ def main() -> int:
         },
         "nonclaims": campaign["nonclaims"],
     }
-    output = ARTIFACT / "manager-prediction.json"
-    output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    with output.open("x") as stream:
+        stream.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(digest(output.read_bytes()))
     return 0 if matched else 2
 

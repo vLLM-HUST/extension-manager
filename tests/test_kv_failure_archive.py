@@ -12,8 +12,9 @@ from experiments.formal_campaign.verify_kv_failures import (
     sha,
     verify_archive,
 )
+from scripts.benchmark_inputs import resolve_original
 
-ARTIFACT = (
+ARTIFACT = resolve_original(
     Path(__file__).resolve().parents[1]
     / "experiments/formal_campaign/artifacts/kv-failures-20261014"
 )

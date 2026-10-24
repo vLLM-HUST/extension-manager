@@ -129,12 +129,12 @@ H1--H4 supply that evidence.
   PR #160 excludes the prediagnosed-report consumer; PR #192 corrects the stale
   five-case detection claim.
 - Selected tensor bytes: PR #193,
-  `experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014/`,
+  [experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/b3d2ed2692b5575b5ae77b93fc82e32c9119be8e/archive/mod-targeted-20261023/manager-formal/snapshot/experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014/),
   and `verify_kv_selected_tensor_observation.py`. The full receiver payloads and
   source-map replay support the finite claim; PR #194 binds the paper generator
   to those inputs.
 - Attention R4: PR #201 and
-  `experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/`;
+  [experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/b3d2ed2692b5575b5ae77b93fc82e32c9119be8e/archive/mod-targeted-20261023/manager-formal/snapshot/experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/);
   the isolated stdlib verifier replays the full 261-row prefix and original source
   closures. PR #202 derives paper counts from that frozen archive. Original R1–R3
   failures retain their independent classifications; source closure proves a

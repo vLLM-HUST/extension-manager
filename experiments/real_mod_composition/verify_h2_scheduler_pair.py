@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 from vllm_hust_ext.manifest import load_manifest
@@ -29,22 +30,33 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> int:
-    campaign = json.loads((ARTIFACT / "campaign.json").read_text())
-    oracle = json.loads((ARTIFACT / "oracle.json").read_text())
-    freeze = json.loads((ARTIFACT / "oracle-freeze-receipt.json").read_text())
-    prediction = json.loads((ARTIFACT / "manager-prediction.json").read_text())
+    artifact = ARTIFACT
+    # The copied portable verifier keeps caller-owned fixtures. In the source
+    # checkout, use hash-checked external originals, never an in-tree fallback.
+    repo = ROOT.parent.parent
+    if (repo / "BENCHMARK_ORIGINALS.json").is_file():
+        sys.path.insert(0, str(repo))
+        from scripts.benchmark_inputs import resolve_original
 
-    require(digest(ARTIFACT / "campaign.json") == CAMPAIGN_SHA256, "campaign digest")
-    require(digest(ARTIFACT / "oracle.json") == ORACLE_SHA256, "oracle digest")
+        artifact = resolve_original(artifact)
+    campaign = json.loads((artifact / "campaign.json").read_text())
+    oracle = json.loads((artifact / "oracle.json").read_text())
+    freeze = json.loads((artifact / "oracle-freeze-receipt.json").read_text())
+    prediction = json.loads((artifact / "manager-prediction.json").read_text())
+
+    require(digest(artifact / "campaign.json") == CAMPAIGN_SHA256, "campaign digest")
+    require(digest(artifact / "oracle.json") == ORACLE_SHA256, "oracle digest")
     require(freeze["campaign_sha256"] == CAMPAIGN_SHA256, "freeze campaign")
     require(freeze["oracle_sha256"] == ORACLE_SHA256, "freeze oracle")
     require(not freeze["manager_prediction_present_at_freeze"], "oracle ordering")
     for name, expected in freeze["snapshot_sha256"].items():
-        require(digest(ARTIFACT / "snapshots" / name) == expected, f"snapshot {name}")
+        require(digest(artifact / "snapshots" / name) == expected, f"snapshot {name}")
 
     manifests = {
         member["id"]: load_manifest(
-            Path(campaign["sources"][member["manifest_source"]]["snapshot"])
+            artifact
+            / "snapshots"
+            / Path(campaign["sources"][member["manifest_source"]]["snapshot"]).name
         )
         for member in campaign["members"]
     }
@@ -66,9 +78,9 @@ def main() -> int:
     )
     require(not pipeline.requires_services and not bidkv.requires_services, "services")
 
-    host_batch = (ARTIFACT / "snapshots/host-batch-admission.py.snapshot").read_text()
-    host_preempt = (ARTIFACT / "snapshots/host-preemption.py.snapshot").read_text()
-    host_config = (ARTIFACT / "snapshots/host-scheduler-config.py.snapshot").read_text()
+    host_batch = (artifact / "snapshots/host-batch-admission.py.snapshot").read_text()
+    host_preempt = (artifact / "snapshots/host-preemption.py.snapshot").read_text()
+    host_config = (artifact / "snapshots/host-scheduler-config.py.snapshot").read_text()
     require('BATCH_ADMISSION_POLICY_API_VERSION = "1.1"' in host_batch, "batch API")
     require('PREEMPTION_POLICY_API_VERSION = "1.0"' in host_preempt, "preempt API")
     require("batch_admission_policy:" in host_config, "batch config")

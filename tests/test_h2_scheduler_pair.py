@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.benchmark_inputs import resolve_original
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "experiments/real_mod_composition/verify_h2_scheduler_pair.py"
 ARTIFACT = Path(
@@ -35,7 +37,7 @@ def test_scheduler_pair_oracle_precedes_matching_prediction() -> None:
 def test_scheduler_pair_verifier_is_portable_without_git(tmp_path: Path) -> None:
     portable = tmp_path / "portable"
     shutil.copytree(ROOT / "src", portable / "src")
-    shutil.copytree(ROOT / ARTIFACT, portable / ARTIFACT)
+    shutil.copytree(resolve_original(ROOT / ARTIFACT), portable / ARTIFACT)
     target = portable / "experiments/real_mod_composition"
     target.mkdir(parents=True, exist_ok=True)
     shutil.copy2(SCRIPT, target / SCRIPT.name)
@@ -46,7 +48,7 @@ def test_scheduler_pair_verifier_is_portable_without_git(tmp_path: Path) -> None
 def test_scheduler_pair_verifier_rejects_oracle_rewrite(tmp_path: Path) -> None:
     portable = tmp_path / "portable"
     shutil.copytree(ROOT / "src", portable / "src")
-    shutil.copytree(ROOT / ARTIFACT, portable / ARTIFACT)
+    shutil.copytree(resolve_original(ROOT / ARTIFACT), portable / ARTIFACT)
     target = portable / "experiments/real_mod_composition"
     target.mkdir(parents=True, exist_ok=True)
     shutil.copy2(SCRIPT, target / SCRIPT.name)
@@ -57,3 +59,19 @@ def test_scheduler_pair_verifier_rejects_oracle_rewrite(tmp_path: Path) -> None:
     completed = run_verifier(portable, target / SCRIPT.name)
     assert completed.returncode != 0
     assert "oracle digest" in completed.stderr
+
+
+def test_collector_cannot_overwrite_source_or_originals(tmp_path, monkeypatch):
+    collector = SCRIPT.with_name("collect_h2_scheduler_pair_prediction.py")
+    monkeypatch.setenv("VLLM_HUST_BENCHMARK_ORIGINALS", str(tmp_path))
+    for output in (ROOT / "new-prediction.json", tmp_path / "new-prediction.json"):
+        completed = subprocess.run(
+            [sys.executable, str(collector), "--output", str(output)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode != 0
+        assert "outside source and original archives" in completed.stderr
+        assert not output.exists()

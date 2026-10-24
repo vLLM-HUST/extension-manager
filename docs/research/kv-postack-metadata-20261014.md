@@ -49,8 +49,8 @@ The outer archive manifest inventories all published member bytes.
 
 ```sh
 python -m experiments.formal_campaign.verify_kv_postack_metadata \
-  --manifest experiments/formal_campaign/artifacts/kv-postack-metadata-20261014/manifest.json \
-  --archive experiments/formal_campaign/artifacts/kv-postack-metadata-20261014/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-postack-metadata-20261014/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-postack-metadata-20261014/raw.tar.gz
 ```
 
 `CPU_REVIEW_CANDIDATE_ONLY` in producer preregistration records is the source

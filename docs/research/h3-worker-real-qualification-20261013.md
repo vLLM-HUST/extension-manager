@@ -70,8 +70,8 @@ remain intact; external native reserved-environment injection remains rejected.
 Run from the repository with a Python interpreter:
 
 ```sh
-python -m experiments.formal_campaign.verify_h3_worker_real experiments/formal_campaign/artifacts/h3-worker-real-20261013/r1-manifest.json
-python -m experiments.formal_campaign.verify_h3_worker_real experiments/formal_campaign/artifacts/h3-worker-real-20261013/r2-manifest.json
+python -m experiments.formal_campaign.verify_h3_worker_real ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/h3-worker-real-20261013/r1-manifest.json
+python -m experiments.formal_campaign.verify_h3_worker_real ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/h3-worker-real-20261013/r2-manifest.json
 ```
 
 The verifier reads actual final Host journals and original response bytes, rather

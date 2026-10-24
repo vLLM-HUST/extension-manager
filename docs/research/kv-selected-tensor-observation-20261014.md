@@ -56,8 +56,8 @@ Late independent kernel/source/terminal reports remain late observations.
 
 ```sh
 python -m experiments.formal_campaign.verify_kv_selected_tensor_observation \
-  --manifest experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014/manifest.json \
-  --archive-directory experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014/manifest.json \
+  --archive-directory ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014
 ```
 
 The original complete 76,364,712-byte `tar.xz` is published as thirteen ordered
