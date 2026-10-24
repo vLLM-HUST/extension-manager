@@ -30,6 +30,12 @@ ecpa-host-launch = "vllm_hust_ext.runtime_activation:main"
 [project.urls]
 Repository = "https://github.com/vLLM-HUST/extension-manager"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/vllm_hust_ext"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src/vllm_hust_ext", "/pyproject.toml", "/README.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

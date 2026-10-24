@@ -1,5 +1,34 @@
 # Benchmark originals
 
+## Published installation archives and source distributions
+
+The old v0.3.0 installation wheel and sdist remain published: direct installers,
+source builders and external consumers have not been proven absent. Do not
+overwrite their bytes or delete them as experimental duplicates.
+
+Historical evidence carried inside that sdist has a separate
+[member-by-member benchmark binding](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/51604897aabb9a856b311fa58fc6749938d0378e/archive/mod-targeted-20261023/installation-consumers-20261024.json).
+Release-specific versions are preserved in the
+[original member collection](https://github.com/vLLM-HUST/vllm-hust-benchmark/tree/51604897aabb9a856b311fa58fc6749938d0378e/archive/mod-targeted-20261023/manager-release-v030/snapshot).
+These are not interchangeable with newer Git-source originals. The review also
+distinguishes paper examples/schemas from observations and measured results.
+
+Future builds contain runtime sources, packaging metadata and the installation
+README only. Research tools, paper sources, fixtures and tests require a source
+checkout plus verified benchmark inputs; they are not the installed Manager CLI.
+The package's `manual_bootstrap` helper remains part of the runtime payload.
+
+```bash
+python -m build
+python scripts/check_distribution.py dist
+```
+
+Both normal CI and the existing release gate validate source/wheel/sdist byte
+parity and console-entry-point presence before clean-wheel installation. The
+guard does not execute archived evidence or qualify a host/device. It does not
+authorize publication: the existing release-readiness and tag/version checks
+remain mandatory. Package version and old Release assets are unchanged.
+
 ## Remaining composition consumers (2026-10-24)
 
 All 149 remaining tracked members under `real_mod_composition/artifacts` are
