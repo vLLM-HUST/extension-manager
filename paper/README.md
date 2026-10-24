@@ -52,7 +52,7 @@ Build:
 
 ```bash
 cd paper
-make
+make OUTPUT=/absolute/external/new-paper-build
 make validate-results
 make check-evidence-summary
 ```
@@ -63,7 +63,11 @@ All paper builds use Tectonic's XeTeX engine and integrated BibTeX pass;
 engine-supported `microtype`, `inputenc`, and `breakurl` behavior. Override the
 executable with `TECTONIC=/path` when needed. Set `PYTHON=/path/to/venv/bin/python`
 to run evidence validation and PDF auditing in a specific environment.
-`main.pdf` and intermediate files are ignored by Git.
+`main.pdf` and intermediate files are written only to that fresh external directory.
+First download originals as described in [benchmark custody](../docs/benchmark-originals.md)
+and set `VLLM_HUST_BENCHMARK_ORIGINALS`. Builds recompute both summaries and compare them
+with their hash-verified archived projections before compiling. Missing input is an error,
+not permission to skip replay or restore a source-tree copy.
 
 Evidence rules:
 
@@ -78,8 +82,11 @@ Evidence rules:
 - A figure/table generator must reject mixed identities and missing required
   provenance before producing a paper result.
 - Artifact-backed counts and metrics in `main.tex` come from the
-  checked-in `generated/evidence-summary.tex`. Regenerate it with `make
-  evidence-summary`; `make check-evidence-summary` fails if it is stale or if
+  archived `paper/generated/evidence-summary.tex`. Generate a separate candidate with
+  `make evidence-summary OUTPUT=/absolute/external/new-summary.tex`; for the R4 summary
+  and source binding, use `python scripts/generate_attention_source_summary.py
+  --output /absolute/external/new-r4-projection`. Neither command replaces the originals.
+  `make check-evidence-summary` fails if the archived projection is stale or if
   the corpus, planner, source-bound H2 subset, formal status, adapter registry,
   release-readiness, and native-qualification inputs disagree.
 - `../docs/research/claims-to-experiment-matrix.json` separates each paper

@@ -223,7 +223,9 @@ def test_checked_summary_matches_all_authoritative_inputs() -> None:
     }
     assert (
         generator.render(summary)
-        == (ROOT / "paper/generated/evidence-summary.tex").read_text()
+        == generator.resolve_original(
+            ROOT / "paper/generated/evidence-summary.tex"
+        ).read_text()
     )
 
 

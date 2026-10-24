@@ -16,6 +16,10 @@
     {
       "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/b3d2ed2692b5575b5ae77b93fc82e32c9119be8e/archive/mod-targeted-20261023/manager-formal/manifest.json",
       "manifest_sha256": "8f6b2d2f5bc894621d7e2a963034d94633512320ef8ef4ceb923dd677e1366c6"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/vLLM-HUST/vllm-hust-benchmark/5c970d6f36e42891d8365275fa6ec1b23333498b/archive/mod-targeted-20261023/manager-projections/manifest.json",
+      "manifest_sha256": "4c2c9e64e554f610a5f113f7b95d063da788ffa7d0f7b62236f6b1a0570218cb"
     }
   ],
   "migrated_paths": [
@@ -299,11 +303,14 @@
     "experiments/real_mod_composition/artifacts/kvcompress-knorm-install-order-preflight.json",
     "experiments/real_mod_composition/artifacts/kvcompress-knorm-legacy-0.23.0-runtime-preflight.json",
     "experiments/real_mod_composition/artifacts/lifecycle-profiler-kvcompress-host-contract-20261013.json",
+    "paper/artifacts/attention-source-drain-r4/source-binding.json",
     "paper/artifacts/h1-r5/formal-aggregate-summary.json",
     "paper/artifacts/h1-r5/formal-aggregate.json",
     "paper/artifacts/h1-r5/paper-results.jsonl",
     "paper/artifacts/h1-r5/paper-table.csv",
-    "paper/artifacts/h1-r5/source-binding.json"
+    "paper/artifacts/h1-r5/source-binding.json",
+    "paper/generated/attention-source-summary.tex",
+    "paper/generated/evidence-summary.tex"
   ],
   "migrated_sha256": {
     "experiments/contract_planner/results/decisions.jsonl": "d3c77c0aaf36f93f98e13de1b1d08c2d7aeb926a6be1b953018d9c642d5abef9",
@@ -584,10 +591,13 @@
     "experiments/real_mod_composition/artifacts/kvcompress-knorm-install-order-preflight.json": "2cdb6998555899ac01e71a1477e3fc93672a1159dac1f783211cf89a61aa5b9e",
     "experiments/real_mod_composition/artifacts/kvcompress-knorm-legacy-0.23.0-runtime-preflight.json": "b29ee6bc0760851acf424f2e321656dbb515d29e54ac106abbfd2e270a0a7bef",
     "experiments/real_mod_composition/artifacts/lifecycle-profiler-kvcompress-host-contract-20261013.json": "60af5fc2fab4dd68354da0c7b00ad810399c275195795e6b9f3fc726aab0f783",
+    "paper/artifacts/attention-source-drain-r4/source-binding.json": "a4cf65d55b025d2685f11e711c3c636b3b8b85dae4d8107d89bc938eebf0a7ff",
     "paper/artifacts/h1-r5/formal-aggregate-summary.json": "a4a7dc3506df54d4fd63edcb6f4687d2e3e43aff60b88e0c4cfc60d390934414",
     "paper/artifacts/h1-r5/formal-aggregate.json": "35fff94ee5d144126f89727026fd999ffb8e3bd40b6cd84b8858c196573d9778",
     "paper/artifacts/h1-r5/paper-results.jsonl": "bff7110da0cc2e1b876859adca50a857cd151e51ee694486ddb9e596aa74be54",
     "paper/artifacts/h1-r5/paper-table.csv": "3a3c59c5f0e26255fc252b9c17690608cc8e4b6d24867624e6a8a2c02887963f",
-    "paper/artifacts/h1-r5/source-binding.json": "7d059be9bd1bb52b1346156ea0f85d90df0bdadbc522baba898ee8755edd2a03"
+    "paper/artifacts/h1-r5/source-binding.json": "7d059be9bd1bb52b1346156ea0f85d90df0bdadbc522baba898ee8755edd2a03",
+    "paper/generated/attention-source-summary.tex": "450b2f8f3c8420ddaa716404281df692e2708885c9bc7b53a2c73eb93a5a8f96",
+    "paper/generated/evidence-summary.tex": "11930f299e1fe0cda74798ab4f99ed18070bce3afa6be247b2043390b03f8b43"
   }
 }

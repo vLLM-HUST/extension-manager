@@ -141,6 +141,16 @@ def test_main_reuses_current_python_for_validation_and_pdf_audit(
         text=True,
     )
     manifest = json.loads((output / "private-build-manifest.json").read_text())
+    assert calls[1] == call(
+        [
+            "make",
+            "-C",
+            str(renderer.PAPER),
+            f"PYTHON={sys.executable}",
+            "check-attention-source-summary",
+        ],
+        check=True,
+    )
     assert manifest["submission_file"] == "main.pdf"
     assert len(manifest["files"]["main.pdf"]) == 64
     assert manifest["compiler"] == "tectonic 0.15.0"

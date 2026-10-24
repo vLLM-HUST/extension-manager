@@ -4,12 +4,10 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
 import csv
 import hashlib
 import importlib.util
 import json
-import os
 import re
 import sys
 import tempfile
@@ -21,7 +19,7 @@ import jsonschema
 ROOT = Path(__file__).resolve().parents[2]
 # Support direct invocation from paper/ as well as installed-package CI.
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
-from scripts.benchmark_inputs import original_path, resolve_original  # noqa: E402
+from scripts.benchmark_inputs import new_output, original_path, resolve_original  # noqa: E402
 
 OUTPUT = ROOT / "paper/generated/evidence-summary.tex"
 WORKSHOP_SOURCE_IDENTITY = {
@@ -1005,7 +1003,8 @@ def validate_kv_metadata(root: Path) -> dict[str, int]:
         != "source-fact-in-http-final-prefix-ack-v1"
         or observed["ACK_time_contract"][
             "recorded_client_authentication_window_verified"
-        ] is not True
+        ]
+        is not True
         or observed["formal_result"] is not False
         or observed["performance_result"] is not False
         or observed["formal_H3_starts"] != 0
@@ -1085,11 +1084,17 @@ def validate_selected_kv_tensor(root: Path) -> dict[str, int]:
         or observed["formal_H4_starts"] != 0
         or observed["fresh_OS_peer_authentication_performed"] is not False
         or observed["late_observations_not_preregistration"] is not True
-        or any(observed[k] is not None for k in (
-            "all_physical_storage_equivalence", "attention_consumption",
-            "full_model_quality", "lost_requests", "duplicate_requests",
-            "full_objective_satisfied",
-        ))
+        or any(
+            observed[k] is not None
+            for k in (
+                "all_physical_storage_equivalence",
+                "attention_consumption",
+                "full_model_quality",
+                "lost_requests",
+                "duplicate_requests",
+                "full_objective_satisfied",
+            )
+        )
     ):
         raise ValueError("selected KV finite observation boundary changed")
     return {
@@ -1870,34 +1875,27 @@ def render(summary: dict[str, int | str]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_atomic(output: Path, content: str) -> None:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(prefix=".evidence-", dir=output.parent)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
-            stream.write(content)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, output)
-    finally:
-        with contextlib.suppress(FileNotFoundError):
-            os.unlink(temporary)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--check",
         action="store_true",
-        help="fail unless the checked-in summary equals the artifact-derived output",
+        help="fail unless the archived summary equals the artifact-derived output",
     )
+    parser.add_argument("--output", type=Path, help="fresh external output file")
     args = parser.parse_args()
+    if args.check == bool(args.output):
+        parser.error("choose --check or --output")
+    output = None if args.check else new_output(args.output)
     content = render(collect_summary())
     if args.check:
-        if not OUTPUT.is_file() or OUTPUT.read_text() != content:
+        archived = resolve_original(OUTPUT)
+        if not archived.is_file() or archived.read_text() != content:
             raise SystemExit("paper evidence summary is stale; regenerate it")
         return 0
-    write_atomic(OUTPUT, content)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("x", encoding="utf-8", newline="\n") as stream:
+        stream.write(content)
     return 0
 
 

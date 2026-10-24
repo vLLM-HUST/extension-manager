@@ -9,6 +9,10 @@ import json
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from scripts.benchmark_inputs import new_output, resolve_original  # noqa: E402
+
 
 def derive(root):
     sys.path.insert(0, str(root))
@@ -93,7 +97,11 @@ def render(summary):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--output", type=Path, help="fresh external output directory")
     args = parser.parse_args()
+    if args.check == bool(args.output):
+        parser.error("choose --check or --output")
+    output = None if args.check else new_output(args.output)
     root = Path(__file__).resolve().parents[2]
     summary = derive(root)
     outputs = {
@@ -106,11 +114,14 @@ def main():
     }
     for path, text in outputs.items():
         if args.check:
+            path = resolve_original(path)
             if not path.is_file() or path.read_text() != text:
                 raise ValueError("generated R4 paper output differs")
         else:
+            path = output / path.relative_to(root / "paper")
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text)
+            with path.open("x", encoding="utf-8") as stream:
+                stream.write(text)
     print(
         json.dumps(
             {
