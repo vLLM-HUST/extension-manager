@@ -1,5 +1,6 @@
 """Resolve migrated inputs externally; preserve isolated negative-test roots."""
 
+import argparse
 import hashlib
 import json
 import os
@@ -52,6 +53,38 @@ def resolve_original(path: Path) -> Path:
     if ROOT not in absolute.parents:
         return path
     return original_path(ROOT, absolute.relative_to(ROOT).as_posix())
+
+
+def new_output(path: Path) -> Path:
+    """Validate a fresh output outside source and immutable input trees."""
+    target = path.resolve()
+    roots = [ROOT]
+    external = os.environ.get("VLLM_HUST_BENCHMARK_ORIGINALS")
+    if external:
+        roots.append(Path(external).resolve())
+    if (
+        path.is_symlink()
+        or target.exists()
+        or any(
+            target == root or root in target.parents or target in root.parents
+            for root in roots
+        )
+    ):
+        raise ValueError("Output must be new and outside source and originals")
+    return target
+
+
+def output_argument(*, directory: bool = False) -> Path:
+    """Reserve a fresh explicit output before a builder/collector does work."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, required=True)
+    target = new_output(parser.parse_args().output)
+    if directory:
+        target.mkdir(parents=True, exist_ok=False)
+    else:
+        # The caller writes with exclusive creation after collection succeeds.
+        target.parent.mkdir(parents=True, exist_ok=True)
+    return target
 
 
 if __name__ == "__main__":

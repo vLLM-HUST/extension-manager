@@ -7,10 +7,21 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
 import jsonschema  # type: ignore[import-untyped]
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parents[2]
 EXP = ROOT / "experiments/real_mod_composition"
@@ -29,14 +40,14 @@ SOURCE_BOUND_CAMPAIGN_SCHEMA = "ecpa-h2-real-mod-runtime-campaign/v1"
 
 
 def _load(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text())
+    value = json.loads(resolve_original(path).read_text())
     if not isinstance(value, dict):
         raise ValueError(f"{path} must contain one JSON object")
     return value
 
 
 def _sha256(path: Path) -> str:
-    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    return "sha256:" + hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def _artifact(directory: Path, declared_path: str) -> Path:
@@ -45,7 +56,7 @@ def _artifact(directory: Path, declared_path: str) -> Path:
     if not name or name in {".", ".."}:
         raise ValueError(f"unsafe captured artifact path: {declared_path!r}")
     path = directory / name
-    if not path.is_file():
+    if not resolve_original(path).is_file():
         raise ValueError(f"captured artifact is missing: {path}")
     return path
 
@@ -56,7 +67,7 @@ def _bound_artifact(directory: Path, declared_path: str) -> Path:
     archive = directory / original.parent.name / original.name
     relocated = directory / original.name
     for candidate in (archive, relocated):
-        if candidate.is_file():
+        if resolve_original(candidate).is_file():
             return candidate
     raise ValueError(f"bound artifact is missing: {declared_path}")
 
@@ -149,7 +160,9 @@ def _validate_planner(
     ]
     if len(dry_runs) != 1:
         raise ValueError("planner receipt must contain exactly one dry run")
-    dry_run = json.loads(_artifact(path.parent, dry_runs[0]["stdout_path"]).read_text())
+    dry_run = json.loads(
+        resolve_original(_artifact(path.parent, dry_runs[0]["stdout_path"])).read_text()
+    )
     plugins = set(dry_run.get("environment", {}).get("VLLM_PLUGINS", "").split(","))
     if not {item["entry_point"] for item in campaign["members"]} <= plugins:
         raise ValueError("planner dry run does not activate every frozen member")
@@ -324,7 +337,7 @@ def _validate_manifest(run_dir: Path, receipt: dict[str, Any]) -> dict[str, str]
 
 def _jsonl(path: Path) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    for number, line in enumerate(path.read_text().splitlines(), 1):
+    for number, line in enumerate(resolve_original(path).read_text().splitlines(), 1):
         try:
             value = json.loads(line)
         except json.JSONDecodeError as exc:
@@ -464,7 +477,7 @@ def _validate_runtime(
     if not trace_valid:
         raise ValueError("profiler trace is not process-owned by the frozen EngineCore")
 
-    stdout = (run_dir / "stdout.bin").read_text(errors="replace")
+    stdout = (resolve_original(run_dir / "stdout.bin")).read_text(errors="replace")
     pattern = re.compile(
         rf"\(EngineCore pid={engine_pid}\).*Ascend KV compression scheduler bound"
     )
@@ -472,7 +485,9 @@ def _validate_runtime(
         stdout
     ):
         raise ValueError("KVCompress binding is not owned by the observed EngineCore")
-    npu_after = (run_dir / "npu-after.txt").read_text(errors="replace")
+    npu_after = (resolve_original(run_dir / "npu-after.txt")).read_text(
+        errors="replace"
+    )
     devices = campaign["host"].get("physical_devices", [])
     npu_clean = bool(devices) and all(
         f"No running processes found in NPU {device}" in npu_after for device in devices
@@ -663,6 +678,10 @@ def main() -> int:
     parser.add_argument("--receipt", type=Path, action="append", default=[])
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.output:
+        from scripts.benchmark_inputs import new_output
+
+        args.output = new_output(args.output)
     result = assess(
         args.campaign,
         tuple(args.preflight or DEFAULT_PREFLIGHTS),
@@ -674,7 +693,8 @@ def main() -> int:
     payload = json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(payload)
+        with args.output.open("x") as stream:
+            stream.write(payload)
     print(payload, end="")
     return 0 if result["score_eligible"] else 2
 

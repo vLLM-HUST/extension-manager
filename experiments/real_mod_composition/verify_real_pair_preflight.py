@@ -5,10 +5,21 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any, cast
 
 from jsonschema import Draft7Validator, FormatChecker
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 HERE = Path(__file__).resolve().parent
 ARTIFACT = HERE / "artifacts" / "h2-real-pair-tp2-preflight-20261013.json"
@@ -31,7 +42,7 @@ REQUIRED_FAILED_REASONS = {
 
 
 def load_object(path: Path) -> dict[str, Any]:
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(resolve_original(path).read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return cast(dict[str, Any], value)
@@ -76,7 +87,7 @@ def validate_payload(payload: dict[str, Any]) -> None:
 
 
 def verify(path: Path = ARTIFACT, *, require_canonical_bytes: bool = True) -> None:
-    data = path.read_bytes()
+    data = resolve_original(path).read_bytes()
     if require_canonical_bytes:
         observed = hashlib.sha256(data).hexdigest()
         if observed != ARTIFACT_SHA256:

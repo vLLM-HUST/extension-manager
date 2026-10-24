@@ -5,7 +5,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPERIMENT = ROOT / "experiments/real_mod_composition"
@@ -16,7 +27,7 @@ PREDICTIONS = ARTIFACT / "manager-predictions.json"
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def require(condition: bool, message: str) -> None:
@@ -25,9 +36,9 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> int:
-    oracle = json.loads(ORACLE.read_text(encoding="utf-8"))
-    receipt = json.loads(RECEIPT.read_text(encoding="utf-8"))
-    predictions = json.loads(PREDICTIONS.read_text(encoding="utf-8"))
+    oracle = json.loads(resolve_original(ORACLE).read_text(encoding="utf-8"))
+    receipt = json.loads(resolve_original(RECEIPT).read_text(encoding="utf-8"))
+    predictions = json.loads(resolve_original(PREDICTIONS).read_text(encoding="utf-8"))
     require(predictions["oracle"]["sha256"] == sha256(ORACLE), "oracle digest")
     require(
         predictions["oracle"]["receipt_sha256"] == sha256(RECEIPT),

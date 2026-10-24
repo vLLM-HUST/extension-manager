@@ -13,6 +13,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
+
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
 CORPUS = ROOT / "artifacts/h2-minimal-real-source-corpus-20261013"
@@ -73,7 +83,12 @@ def host_processes() -> list[dict[str, Any]]:
         if not item.name.isdigit():
             continue
         try:
-            cmdline = (item / "cmdline").read_bytes().replace(b"\0", b" ").decode()
+            cmdline = (
+                (resolve_original(item / "cmdline"))
+                .read_bytes()
+                .replace(b"\0", b" ")
+                .decode()
+            )
         except (OSError, UnicodeDecodeError):
             continue
         if any(marker in cmdline for marker in markers):
@@ -81,11 +96,19 @@ def host_processes() -> list[dict[str, Any]]:
     return sorted(found, key=lambda item: item["pid"])
 
 
+def write_new_output(path: Path, text: str, **kwargs) -> None:
+    with path.open("x", **kwargs) as stream:
+        stream.write(text)
+
+
 def main() -> int:
-    campaign_bytes = (CORPUS / "campaign.json").read_bytes()
-    oracle_bytes = (CORPUS / "oracle.json").read_bytes()
+    from scripts.benchmark_inputs import output_argument
+
+    OUTPUT = output_argument(directory=False)
+    campaign_bytes = (resolve_original(CORPUS / "campaign.json")).read_bytes()
+    oracle_bytes = (resolve_original(CORPUS / "oracle.json")).read_bytes()
     campaign = json.loads(campaign_bytes)
-    existing_bytes = EXISTING_REJECT.read_bytes()
+    existing_bytes = resolve_original(EXISTING_REJECT).read_bytes()
     existing = json.loads(existing_bytes)
     manager_commit = subprocess.check_output(
         ["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True
@@ -141,8 +164,10 @@ def main() -> int:
                 == 0
                 and blob["stdout"].strip() == member["manifest_blob"]
                 and manifest["stdout_sha256"] == member["manifest_sha256"]
-                and digest(snapshot.read_bytes()) == member["manifest_sha256"]
-                and snapshot.read_bytes() == manifest["stdout"].encode()
+                and digest(resolve_original(snapshot).read_bytes())
+                == member["manifest_sha256"]
+                and resolve_original(snapshot).read_bytes()
+                == manifest["stdout"].encode()
             )
             source_records[member_id] = {
                 "verified": verified,
@@ -151,7 +176,7 @@ def main() -> int:
                 "blob_lookup": blob,
                 "manifest_read": manifest,
                 "snapshot_path": str(snapshot.relative_to(REPO)),
-                "snapshot_sha256": digest(snapshot.read_bytes()),
+                "snapshot_sha256": digest(resolve_original(snapshot).read_bytes()),
             }
             if not verified:
                 raise ValueError(f"source verification failed for {member_id}")
@@ -295,8 +320,8 @@ def main() -> int:
             "no unavailable or host-range-mismatch case is forced into a binary label",
         ],
     }
-    OUTPUT.write_text(json.dumps(artifact, indent=2, sort_keys=True) + "\n")
-    print(digest(OUTPUT.read_bytes()))
+    write_new_output(OUTPUT, json.dumps(artifact, indent=2, sort_keys=True) + "\n")
+    print(digest(resolve_original(OUTPUT).read_bytes()))
     return 0
 
 

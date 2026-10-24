@@ -11,7 +11,7 @@ EVIDENCE_INPUTS := \
 	../experiments/formal_campaign/verify_native_interface.py \
 	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/native-interface-20261013 -type f | sort) \
 	../experiments/real_mod_composition/h2_scoring_input_audit.py \
-	$(shell find ../experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013 -type f | sort) \
 	../experiments/formal_campaign/h3_model_client_window.py \
 	../experiments/formal_campaign/h3_client_trace.py \
 	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/h3-model-client-window-20261013 -type f | sort) \
@@ -70,19 +70,19 @@ EVIDENCE_INPUTS := \
 	../experiments/false_effective/scenarios.json \
 	../experiments/false_effective/protocol.json \
 	../experiments/false_effective/verified-adapters.json \
-	../experiments/real_mod_composition/artifacts/h2-knorm-prelaunch-reject-20261013.json \
-	../experiments/real_mod_composition/artifacts/h2-source-corpus-manager-predictions-20261013.json \
-	../experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/score-admission.json \
-	../experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/planner/planner-receipt.json \
-	../experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/campaign.json \
-	../experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/oracle-index.json \
-	../experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/status.json \
-	../experiments/real_mod_composition/artifacts/h2-real-source-augmentation-20261013/augmentation.json \
-	../experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/oracle.json \
-	../experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/manager-predictions.json \
-	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/oracle.json \
-	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/review-receipt.json \
-	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/manager-prediction.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-knorm-prelaunch-reject-20261013.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-source-corpus-manager-predictions-20261013.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/score-admission.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/planner/planner-receipt.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/campaign.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/oracle-index.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-minimal-real-source-corpus-r2-20261013/status.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-real-source-augmentation-20261013/augmentation.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/oracle.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-process-carrier-oracle-20261013/manager-predictions.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/oracle.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/review-receipt.json \
+	$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/manager-prediction.json \
 	../experiments/real_mod_composition/verify_h2_scheduler_pair.py \
 	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013 -type f | sort) \
 	../experiments/real_mod_composition/verify_h2_compression_transaction.py \

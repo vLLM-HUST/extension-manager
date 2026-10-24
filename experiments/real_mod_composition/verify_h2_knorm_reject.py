@@ -5,7 +5,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parent
 ART = ROOT / "artifacts/h2-knorm-prelaunch-reject-20261013.json"
@@ -17,9 +28,9 @@ def digest_bytes(value: bytes) -> str:
 
 
 def main() -> int:
-    a = json.loads(ART.read_text())
-    campaign = json.loads((CORPUS / "campaign.json").read_text())
-    status = json.loads((CORPUS / "status.json").read_text())
+    a = json.loads(resolve_original(ART).read_text())
+    campaign = json.loads((resolve_original(CORPUS / "campaign.json")).read_text())
+    status = json.loads((resolve_original(CORPUS / "status.json")).read_text())
     assert a["source_review"]["decision"] == "reject"
     assert a["oracle"]["campaign_sha256"] == a["campaign_sha256"]
     assert a["formal_admission"]["status"] == "ADMITTED"
@@ -68,7 +79,7 @@ def main() -> int:
         for c in order["commands"]:
             assert digest_bytes(c["stdout"].encode()) == c["stdout_sha256"]
             assert digest_bytes(c["stderr"].encode()) == c["stderr_sha256"]
-    print(digest_bytes(ART.read_bytes()))
+    print(digest_bytes(resolve_original(ART).read_bytes()))
     return 0
 
 

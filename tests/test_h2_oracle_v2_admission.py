@@ -12,6 +12,7 @@ from experiments.real_mod_composition.score_admission import (
     _validate_oracle,
     assess,
 )
+from scripts.benchmark_inputs import resolve_original
 
 CHECKED_R2 = (
     ROOT
@@ -21,7 +22,7 @@ CHECKED_R2 = (
 
 
 def _bare(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def _write(path: Path, value: object) -> None:
@@ -141,7 +142,7 @@ def _fixture(
 
 def _reseal_current_receipt(oracle_path: Path) -> None:
     receipt_path = oracle_path.parent / "oracle-receipt.json"
-    receipt = json.loads(receipt_path.read_text())
+    receipt = json.loads(resolve_original(receipt_path).read_text())
     receipt["oracle_sha256"] = _bare(oracle_path)
     _write(receipt_path, receipt)
 
@@ -150,7 +151,7 @@ def test_checked_in_r2_real_pair_is_admitted_from_portable_copy(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "portable-r2"
-    shutil.copytree(CHECKED_R2, root)
+    shutil.copytree(resolve_original(CHECKED_R2), root)
     runs = (
         root / "profiler-then-kvcompress",
         root / "kvcompress-then-profiler",
@@ -206,7 +207,7 @@ def test_v2_oracle_tampering_fails_closed(
     tmp_path: Path, tamper: str, message: str
 ) -> None:
     campaign_path, oracle_path, campaign = _fixture(tmp_path / "case")
-    oracle = json.loads(oracle_path.read_text())
+    oracle = json.loads(resolve_original(oracle_path).read_text())
     if tamper == "campaign":
         oracle["campaign"]["sha256"] = "0" * 64
     elif tamper == "case":
@@ -217,7 +218,7 @@ def test_v2_oracle_tampering_fails_closed(
         oracle["sources"]["lifecycle_profiler"]["commit"] = "0" * 40
     else:
         receipt_path = oracle_path.parent / "oracle-receipt.json"
-        receipt = json.loads(receipt_path.read_text())
+        receipt = json.loads(resolve_original(receipt_path).read_text())
         receipt["oracle_sha256"] = "0" * 64
         _write(receipt_path, receipt)
     if tamper != "receipt":

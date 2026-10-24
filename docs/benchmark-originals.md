@@ -1,5 +1,38 @@
 # Benchmark originals
 
+## Remaining composition consumers (2026-10-24)
+
+All 149 remaining tracked members under `real_mod_composition/artifacts` are
+registered in `BENCHMARK_ORIGINALS.json`. They reuse the fixed
+[experiment manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/manifest.json);
+no original bytes or historical scores are rewritten. Paper generation, scoring,
+preflight checks, source-corpus evaluation and mutation tests read checked external
+inputs. Negative tests still mutate their own isolated copies.
+
+The two self-hashed oracle verifiers stay byte-for-byte unchanged. Run them via
+the exporter, which checks their receipt binding and copies checked inputs into
+a temporary portable tree:
+
+```bash
+python scripts/verify_composition_originals.py process-carrier
+python scripts/verify_composition_originals.py remaining-surfaces
+```
+
+The two `build_h2_*` scripts and three remaining `collect_h2_*` scripts now require
+`--output /absolute/external/new-output`. Builders create a fresh directory;
+collectors exclusively create a fresh file. Source checkout, original-input
+directory, existing destinations and symlink escapes are rejected before work.
+`score_admission.py` and `install_order_probe.py` also protect explicit outputs;
+their default stdout behavior is unchanged. Never use the original-input tree
+as a workspace for derived outputs.
+
+Builder outputs retain logical historical snapshot paths, allowing byte-identical
+reconstruction from the frozen source bytes. For portable replay, place the new
+package at that logical path in a separate export tree, not in the source checkout
+or originals. Historical collectors retain their exact-commit and oracle-freeze
+guards; a new output location does not authorize a new hardware run or relax those
+guards. This migration does not rerun collectors or claim new performance results.
+
 ## Planner and paper consumers
 
 [Planner/H1-r5 manifest](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/aa041953616fa170014a0c7f43fb06bf1c59b846/archive/mod-targeted-20261023/manager-paper/manifest.json)

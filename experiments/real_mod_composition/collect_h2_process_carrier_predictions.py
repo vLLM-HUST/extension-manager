@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,16 @@ from vllm_hust_ext.config import ExtensionConfig
 from vllm_hust_ext.core import plan_dict, plan_for, reject_conflicting_plans
 from vllm_hust_ext.discovery import InstalledBundle
 from vllm_hust_ext.manifest import activation_blocker, load_manifest
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPERIMENT = ROOT / "experiments/real_mod_composition"
@@ -29,7 +40,7 @@ ORACLE_COMMIT = "3ce23fafbe5164ec3ea557456f111a19687ec6bc"
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def command(argv: list[str]) -> dict[str, Any]:
@@ -55,7 +66,12 @@ def host_processes() -> list[dict[str, Any]]:
         if not item.name.isdigit():
             continue
         try:
-            cmdline = (item / "cmdline").read_bytes().replace(b"\0", b" ").decode()
+            cmdline = (
+                (resolve_original(item / "cmdline"))
+                .read_bytes()
+                .replace(b"\0", b" ")
+                .decode()
+            )
         except (OSError, UnicodeDecodeError):
             continue
         if any(marker in cmdline for marker in markers):
@@ -63,10 +79,20 @@ def host_processes() -> list[dict[str, Any]]:
     return sorted(found, key=lambda item: item["pid"])
 
 
+def write_new_output(path: Path, text: str, **kwargs) -> None:
+    with path.open("x", **kwargs) as stream:
+        stream.write(text)
+
+
 def main() -> int:
-    oracle = json.loads(ORACLE.read_text(encoding="utf-8"))
-    receipt = json.loads(RECEIPT.read_text(encoding="utf-8"))
-    augmentation = json.loads(AUGMENTATION.read_text(encoding="utf-8"))
+    from scripts.benchmark_inputs import output_argument
+
+    OUTPUT = output_argument(directory=False)
+    oracle = json.loads(resolve_original(ORACLE).read_text(encoding="utf-8"))
+    receipt = json.loads(resolve_original(RECEIPT).read_text(encoding="utf-8"))
+    augmentation = json.loads(
+        resolve_original(AUGMENTATION).read_text(encoding="utf-8")
+    )
     if receipt["oracle_sha256"] != sha256(ORACLE):
         raise ValueError("independent oracle digest mismatch")
     if receipt["isolation"]["planner_seen_or_run_before_oracle_freeze"]:
@@ -99,7 +125,7 @@ def main() -> int:
             snapshot = ROOT / source["snapshot_path"]
             if sha256(snapshot) != source["manifest_sha256"].removeprefix("sha256:"):
                 raise ValueError(f"snapshot digest mismatch: {member_id}")
-            manifest = load_manifest(snapshot)
+            manifest = load_manifest(resolve_original(snapshot))
             bundle = InstalledBundle(
                 manifest.bundle_id,
                 f"frozen-source:{source['repository']}",
@@ -207,7 +233,7 @@ def main() -> int:
             "import-only qualification rejection does not prove a resource conflict",
         ],
     }
-    OUTPUT.write_text(json.dumps(artifact, indent=2, sort_keys=True) + "\n")
+    write_new_output(OUTPUT, json.dumps(artifact, indent=2, sort_keys=True) + "\n")
     print(f"sha256:{sha256(OUTPUT)}")
     return 0
 

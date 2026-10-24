@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from dataclasses import asdict
 from pathlib import Path
 
@@ -13,6 +14,16 @@ from vllm_hust_ext.core import plan_dict, plan_for
 from vllm_hust_ext.discovery import InstalledBundle
 from vllm_hust_ext.manifest import load_manifest
 from vllm_hust_ext.providers.production_stack import ProductionStackProvider
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT = (
@@ -27,7 +38,7 @@ ORACLE_COMMIT = "dfc533d33582f80fae0ee172e17aa47406d98e48"
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def require(condition: bool, message: str) -> None:
@@ -36,8 +47,8 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> int:
-    receipt = json.loads(RECEIPT.read_text(encoding="utf-8"))
-    prediction = json.loads(PREDICTION.read_text(encoding="utf-8"))
+    receipt = json.loads(resolve_original(RECEIPT).read_text(encoding="utf-8"))
+    prediction = json.loads(resolve_original(PREDICTION).read_text(encoding="utf-8"))
     require(receipt["oracle_sha256"] == sha256(ORACLE), "oracle digest")
     require(
         prediction["oracle"]
@@ -51,14 +62,14 @@ def main() -> int:
     )
     require(prediction["manager"]["base_commit"] == MANAGER_BASE, "Manager base")
     provider_source = ROOT / prediction["manager"]["provider_source"]
-    require(provider_source.is_file(), "Manager provider source")
+    require(resolve_original(provider_source).is_file(), "Manager provider source")
     require(
         sha256(provider_source) == prediction["manager"]["provider_source_sha256"],
         "Manager provider source digest",
     )
 
     manifest_path = ARTIFACT / "snapshots/production-stack-provider-manifest.json"
-    manifest = load_manifest(manifest_path)
+    manifest = load_manifest(resolve_original(manifest_path))
     bundle = InstalledBundle(
         manifest.bundle_id,
         "frozen-source:vLLM-HUST/extension-manager",

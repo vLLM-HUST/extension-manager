@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from scripts.benchmark_inputs import resolve_original
+
 ROOT = Path(__file__).resolve().parents[1]
 EXPERIMENT = ROOT / "experiments/real_mod_composition"
 sys.path.insert(0, str(EXPERIMENT))
@@ -29,9 +31,9 @@ def test_checked_qualification_is_activation_ready_but_not_scoreable() -> None:
         "runtime_effective": "unmeasured",
         "score_eligible": False,
     }
-    assert hashlib.sha256(contract.ARTIFACT_PATH.read_bytes()).hexdigest() == (
-        contract.ARTIFACT_SHA256
-    )
+    assert hashlib.sha256(
+        resolve_original(contract.ARTIFACT_PATH).read_bytes()
+    ).hexdigest() == (contract.ARTIFACT_SHA256)
 
 
 @pytest.mark.parametrize(

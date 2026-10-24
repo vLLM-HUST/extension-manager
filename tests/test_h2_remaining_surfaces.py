@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.benchmark_inputs import resolve_original
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -17,8 +19,15 @@ def test_remaining_surface_oracle_and_prediction_are_portable() -> None:
         / "experiments/real_mod_composition/verify_h2_remaining_surface_prediction.py",
     )
     for script in scripts:
+        command = [sys.executable, str(script)]
+        if script.name == "verify_h2_remaining_surfaces_oracle.py":
+            command = [
+                sys.executable,
+                str(ROOT / "scripts/verify_composition_originals.py"),
+                "remaining-surfaces",
+            ]
         completed = subprocess.run(
-            [sys.executable, str(script)],
+            command,
             cwd=ROOT,
             check=False,
             capture_output=True,
@@ -40,11 +49,14 @@ def test_remaining_surface_verifiers_do_not_require_git(
         "verify_h2_remaining_surfaces_oracle.py",
         "verify_h2_remaining_surface_prediction.py",
     )
-    shutil.copytree(ROOT / "src", portable / "src")
-    shutil.copytree(ROOT / artifact_rel, portable / artifact_rel)
+    shutil.copytree(resolve_original(ROOT / "src"), portable / "src")
+    shutil.copytree(resolve_original(ROOT / artifact_rel), portable / artifact_rel)
     script_dir = portable / "experiments/real_mod_composition"
     for name in scripts:
-        shutil.copy2(ROOT / "experiments/real_mod_composition" / name, script_dir)
+        shutil.copy2(
+            resolve_original(ROOT / "experiments/real_mod_composition" / name),
+            script_dir,
+        )
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(portable / "src")

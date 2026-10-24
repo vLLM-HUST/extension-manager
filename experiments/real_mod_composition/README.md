@@ -45,7 +45,7 @@ owned execution evidence exist. The 31-case synthetic corpus remains separate.
 
 ## Current TP2 active-pair preflight
 
-`artifacts/active-mod-pair-preflight-20261013.json` binds Manager `58a2c32`,
+[artifacts/active-mod-pair-preflight-20261013.json](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/active-mod-pair-preflight-20261013.json) binds Manager `58a2c32`,
 the exact Qwen2.5-7B TP2 host wheels, three remotely reachable MOD commits,
 their manifest blobs, locally rebuilt wheel bytes, Manager compatibility
 checks, and both entry-point invocation orders for the two closest pairs.
@@ -62,7 +62,7 @@ reports zero H2-eligible pairs and zero H4-eligible pairs and contains no
 performance result.
 
 A later, separately pinned lifecycle-profiler port is recorded in
-`artifacts/lifecycle-profiler-kvcompress-host-contract-20261013.json`.  It
+[artifacts/lifecycle-profiler-kvcompress-host-contract-20261013.json](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/lifecycle-profiler-kvcompress-host-contract-20261013.json).  It
 widens the profiler source manifest to vLLM `>=0.31.1,<0.32` and verifies, in
 isolated processes for both installation and entry-point orders, that the
 profiler observes one synthetic typed lifecycle event while KVCompress patches
@@ -81,7 +81,7 @@ and those fail-closed boundaries.
 
 ## Real TP2 two-MOD activation preflight
 
-`artifacts/h2-real-pair-tp2-preflight-20261013.json` advances that exact
+[artifacts/h2-real-pair-tp2-preflight-20261013.json](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-real-pair-tp2-preflight-20261013.json) advances that exact
 KVCompress/lifecycle-profiler pair through real Qwen2.5-14B TP2 serving on two
 Ascend 910B2 devices. Both isolated installation orders reached health and a
 nonempty completion, the profiler observed `request_finished`, KVCompress
@@ -110,7 +110,7 @@ reinterpret any existing artifact.
 
 ## Formal compatible-pair runtime record
 
-`artifacts/h2-profiler-kvcompress-formal-20261013/` preserves a separately
+[artifacts/h2-profiler-kvcompress-formal-20261013/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/) preserves a separately
 frozen, source-bound campaign for the lifecycle-profiler/KVCompress pair and
 both real Qwen2.5-14B TP2 installation-order runs. The independent oracle and
 Manager planner receipt were frozen before launch. The score gate rehashes the
@@ -125,13 +125,13 @@ Run the checked-in case with:
 
 ```bash
 python experiments/real_mod_composition/score_admission.py \
-  --campaign experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/campaign.json \
-  --oracle experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/oracle.json \
-  --planner-receipt experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/planner/planner-receipt.json \
-  --record experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/profiler-then-kvcompress/formal-runtime-record.json \
-  --receipt experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/profiler-then-kvcompress/formal-runtime-receipt.json \
-  --record experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/kvcompress-then-profiler/formal-runtime-record.json \
-  --receipt experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/kvcompress-then-profiler/formal-runtime-receipt.json
+  --campaign ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/campaign.json \
+  --oracle ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/oracle.json \
+  --planner-receipt ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/planner/planner-receipt.json \
+  --record ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/profiler-then-kvcompress/formal-runtime-record.json \
+  --receipt ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/profiler-then-kvcompress/formal-runtime-receipt.json \
+  --record ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/kvcompress-then-profiler/formal-runtime-record.json \
+  --receipt ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-20261013/kvcompress-then-profiler/formal-runtime-receipt.json
 ```
 
 This command currently fails closed. The r1 planner receipt lacks an explicit
@@ -148,7 +148,7 @@ precision/recall; rejected real cases and the remaining corpus would still be
 required.
 
 The corrected revision-2 campaign and both reruns are retained under
-`artifacts/h2-profiler-kvcompress-formal-r2-20261013/`. Unlike the excluded r1
+[artifacts/h2-profiler-kvcompress-formal-r2-20261013/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-profiler-kvcompress-formal-r2-20261013/). Unlike the excluded r1
 attempts, the r2 Manager planner receipt binds the frozen campaign digest before
 launch, and both requests use the served name rendered from that campaign. The
 gate consumes the detailed `ecpa-h2-independent-source-oracle/v2` directly. It
@@ -221,7 +221,7 @@ emitted with `score_eligible: false`.
 
 ## Executed legacy 0.23.0 source-pair preflight
 
-`artifacts/kvcompress-knorm-legacy-0.23.0-runtime-preflight.json` records a
+[artifacts/kvcompress-knorm-legacy-0.23.0-runtime-preflight.json](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/kvcompress-knorm-legacy-0.23.0-runtime-preflight.json) records a
 separate, exact case for the legacy stack that was available on 2026-10-13:
 vLLM `0.23.0+empty` at `0fc695fc6d1d82e9a5ac6835ac8e4e1c83703665`
 and vLLM-Ascend `0.23.0.post1` at
@@ -242,7 +242,7 @@ semantic compatibility label, independent oracle, performance result, or H2
 score input.
 
 A second artifact,
-`artifacts/kvcompress-knorm-documented-legacy-source-pair-preflight.json`,
+[artifacts/kvcompress-knorm-documented-legacy-source-pair-preflight.json](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/kvcompress-knorm-documented-legacy-source-pair-preflight.json),
 repeats the import, entry-point call, wrapper-order, and Manager checks with
 Python modules loaded from KVCompress's documented legacy source commits
 `d0f22d2…` / `03766ac…`. Both orders again register both wrappers, while the
@@ -252,7 +252,7 @@ binaries, so it remains non-scoreable and carries no oracle label.
 
 ## Remaining H2 ownership surfaces
 
-`artifacts/h2-remaining-surfaces-oracle-20261013/` adds one independently
+[artifacts/h2-remaining-surfaces-oracle-20261013/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/140a046d34ecf50bb8de3d8b19a7d70a6b0490e0/archive/mod-targeted-20261023/manager-experiments/snapshot/experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/) adds one independently
 reviewed external-authority case. It binds the registered Production Stack
 single-writer rule, the upstream vLLM Production Stack `ScaledObject` targeting
 `Deployment/default/vllm-llama3-deployment-vllm`, and pinned KEDA controller
@@ -279,7 +279,7 @@ unresolved and H2 remains open.
 Run the portable checks with:
 
 ```bash
-python experiments/real_mod_composition/verify_h2_remaining_surfaces_oracle.py
+python scripts/verify_composition_originals.py remaining-surfaces
 python experiments/real_mod_composition/verify_h2_remaining_surface_prediction.py
 PYTHONPATH=src python experiments/real_mod_composition/h2_scoring_input_audit.py
 ```

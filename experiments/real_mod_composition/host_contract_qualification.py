@@ -5,10 +5,21 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any, cast
 
 from jsonschema import Draft7Validator
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 HERE = Path(__file__).resolve().parent
 ARTIFACT_PATH = (
@@ -19,14 +30,16 @@ ARTIFACT_SHA256 = "60af5fc2fab4dd68354da0c7b00ad810399c275195795e6b9f3fc726aab0f
 
 
 def load_qualification(path: Path = ARTIFACT_PATH) -> dict[str, Any]:
-    raw = path.read_bytes()
+    raw = resolve_original(path).read_bytes()
     if path == ARTIFACT_PATH and hashlib.sha256(raw).hexdigest() != ARTIFACT_SHA256:
         raise ValueError("checked Host contract qualification bytes drifted")
     value = json.loads(raw)
     if not isinstance(value, dict):
         raise ValueError("Host contract qualification must be a JSON object")
     qualification = cast(dict[str, Any], value)
-    Draft7Validator(json.loads(SCHEMA_PATH.read_text())).validate(qualification)
+    Draft7Validator(json.loads(resolve_original(SCHEMA_PATH).read_text())).validate(
+        qualification
+    )
     validate_qualification(qualification)
     return qualification
 
@@ -49,13 +62,11 @@ def validate_qualification(value: dict[str, Any]) -> None:
     host = value["host"]
     members = value["members"]
     if (
-        host["vllm_commit"]
-        != "973d9ef5acd2b9beb03e399dec1511a41fc941b5"
+        host["vllm_commit"] != "973d9ef5acd2b9beb03e399dec1511a41fc941b5"
         or host["vllm_ascend_commit"] != "873584026"
         or members["lifecycle_profiler"]["source_commit"]
         != "88ffdce5fc6639c0b7b86a54d197f7394705c54b"
-        or members["lifecycle_profiler"]["manifest_host_range"]
-        != ">=0.31.1,<0.32"
+        or members["lifecycle_profiler"]["manifest_host_range"] != ">=0.31.1,<0.32"
         or members["kvcompress"]["source_commit"]
         != "00cc78dc7f3491eecbc79c5068e29aed9f59afc3"
     ):

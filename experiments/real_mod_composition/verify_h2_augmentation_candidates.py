@@ -5,7 +5,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
+
+_CHECKOUT = Path(__file__).resolve().parents[2]
+if (_CHECKOUT / "BENCHMARK_ORIGINALS.json").is_file():
+    sys.path.insert(0, str(_CHECKOUT))
+    from scripts.benchmark_inputs import resolve_original
+else:
+
+    def resolve_original(path: Path) -> Path:
+        return path
+
 
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parent.parent
@@ -14,7 +25,7 @@ ARTIFACT = OUT / "augmentation.json"
 
 
 def sha256(path: Path) -> str:
-    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    return "sha256:" + hashlib.sha256(resolve_original(path).read_bytes()).hexdigest()
 
 
 def blob_id(value: bytes) -> str:
@@ -22,7 +33,7 @@ def blob_id(value: bytes) -> str:
 
 
 def main() -> int:
-    artifact = json.loads(ARTIFACT.read_text())
+    artifact = json.loads(resolve_original(ARTIFACT).read_text())
     authorities = artifact["source_authorities"]
     assert authorities["source_snapshots_sha256"] == sha256(
         REPO / "docs/corpus/source-snapshots.json"
@@ -42,7 +53,7 @@ def main() -> int:
     for source in artifact["sources"].values():
         assert not Path(source["snapshot_path"]).is_absolute()
         path = REPO / source["snapshot_path"]
-        raw = path.read_bytes()
+        raw = resolve_original(path).read_bytes()
         manifest = json.loads(raw)
         assert sha256(path) == source["manifest_sha256"]
         assert blob_id(raw) == source["manifest_blob"]
