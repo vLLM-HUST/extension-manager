@@ -1,7 +1,7 @@
 TECTONIC ?= tectonic
 PYTHON ?= python3
 .PHONY: all main.pdf clean evidence-summary check-evidence-summary check-attention-source-summary check-research-matrix tectonic audit-pdf validate-results
-all: tectonic
+all: main.pdf
 
 .PHONY: check-benchmark-originals
 check-benchmark-originals:
@@ -20,9 +20,11 @@ check-research-matrix:
 check-attention-source-summary:
 	$(PYTHON) scripts/generate_attention_source_summary.py --check
 
-main.pdf tectonic:
+main.pdf: main.tex references.bib
 	@test -n "$(OUTPUT)" || (echo 'Set OUTPUT to a fresh external build directory'; exit 1)
 	$(PYTHON) scripts/build_paper.py --output "$(OUTPUT)" --tectonic "$(TECTONIC)"
+
+tectonic: main.pdf
 
 audit-pdf:
 	@test -n "$(OUTPUT)" || (echo 'Set OUTPUT to an existing external build directory'; exit 1)

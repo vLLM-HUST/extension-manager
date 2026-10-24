@@ -21,7 +21,13 @@ def test_makefile_uses_tectonic_for_every_paper_build() -> None:
     assert "all: main.pdf" in makefile
     assert "main.pdf: main.tex references.bib" in makefile
     assert "tectonic: main.pdf" in makefile
-    assert "$(TECTONIC) --keep-logs main.tex" in makefile
+    assert ".PHONY: all main.pdf " in makefile
+    assert 'scripts/build_paper.py --output "$(OUTPUT)"' in makefile
+    assert '--tectonic "$(TECTONIC)"' in makefile
+    builder = (ROOT / "paper/scripts/build_paper.py").read_text()
+    assert '[args.tectonic, "--keep-logs", main_tex.name]' in builder
+    assert "cwd=main_tex.parent" in builder
+    assert "new_output(args.output)" in builder
     assert "LATEXMK" not in makefile
     assert "pdflatex" not in makefile.lower()
 
@@ -31,7 +37,13 @@ def test_makefile_uses_configurable_python_for_validation_and_audit() -> None:
 
     assert "PYTHON ?= python3" in makefile
     assert "\tpython3 " not in makefile
-    assert "\t$(PYTHON) scripts/audit_pdf.py main.pdf" in makefile
+    assert '\t$(PYTHON) scripts/audit_pdf.py "$(OUTPUT)/main.pdf"' in makefile
+    assert "\t$(PYTHON) scripts/build_paper.py" in makefile
+    builder = (ROOT / "paper/scripts/build_paper.py").read_text()
+    assert 'f"PYTHON={sys.executable}"' in builder
+    assert (
+        '[sys.executable, str(PAPER / "scripts/audit_pdf.py"), "main.pdf"]' in builder
+    )
     assert "\t$(PYTHON) scripts/generate_evidence_summary.py" in makefile
     assert "\t$(PYTHON) ../scripts/validate_research_matrix.py" in makefile
     assert "\t$(PYTHON) scripts/validate_results.py" in makefile
