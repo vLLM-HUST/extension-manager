@@ -61,7 +61,7 @@ To recompute from the retained archive:
 
 ```sh
 PYTHONPATH=src:. python -m experiments.formal_campaign.h3_model_qualification \
-  experiments/formal_campaign/artifacts/h3-model-qualification-20261013/raw.tar.gz
+  ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/h3-model-qualification-20261013/raw.tar.gz
 ```
 
 The verifier hashes frozen inputs, parses the retained Host event bytes and

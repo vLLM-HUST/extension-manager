@@ -9,8 +9,9 @@ from pathlib import Path
 import pytest
 
 from experiments.formal_campaign import verify_kv_postack_metadata as verifier
+from scripts.benchmark_inputs import resolve_original
 
-ROOT = (
+ROOT = resolve_original(
     Path(__file__).parents[1]
     / "experiments/formal_campaign/artifacts/kv-postack-metadata-20261014"
 )

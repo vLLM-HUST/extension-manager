@@ -8,8 +8,9 @@ from pathlib import Path
 import pytest
 
 from experiments.formal_campaign.h3_model_client_window import verify, verify_archive
+from scripts.benchmark_inputs import resolve_original
 
-ARCHIVE = (
+ARCHIVE = resolve_original(
     Path(__file__).resolve().parents[1]
     / "experiments/formal_campaign/artifacts/h3-model-client-window-20261013/raw.tar.gz"
 )

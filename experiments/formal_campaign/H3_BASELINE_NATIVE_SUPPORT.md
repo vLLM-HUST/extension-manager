@@ -1,6 +1,6 @@
 # H3 baseline native-phase audit
 
-The source-bound oracle in `artifacts/h3-baseline-native-oracle-20261013`
+The source-bound oracle in [artifacts/h3-baseline-native-oracle-20261013](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/b3d2ed2692b5575b5ae77b93fc82e32c9119be8e/archive/mod-targeted-20261023/manager-formal/snapshot/experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013)
 was frozen independently of planner and runner output. It retains exact Git
 source bytes, SHA-256, revisions, and the historical H1 baseline launch argv.
 Those historical commands identify activation semantics only; they are neither

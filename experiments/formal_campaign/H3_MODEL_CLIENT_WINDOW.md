@@ -56,7 +56,7 @@ Recompute the portable retained model evidence:
 
 ```sh
 PYTHONPATH=src:. python -m experiments.formal_campaign.h3_model_client_window \
-  experiments/formal_campaign/artifacts/h3-model-client-window-20261013/raw.tar.gz
+  ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/h3-model-client-window-20261013/raw.tar.gz
 ```
 
 The verifier checks frozen input/model/wheel/source bytes, both Host worker

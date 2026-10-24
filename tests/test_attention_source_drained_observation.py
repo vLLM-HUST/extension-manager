@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 
 from experiments.formal_campaign import verify_attention_source_drained_observation as v
+from scripts.benchmark_inputs import resolve_original
 
-ARCHIVE = (
+ARCHIVE = resolve_original(
     Path(__file__).parents[1]
     / "experiments/formal_campaign/artifacts"
     / "attention-source-drained-observation-20261014-r4"

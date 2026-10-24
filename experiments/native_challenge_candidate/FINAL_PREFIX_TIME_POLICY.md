@@ -56,7 +56,7 @@ phase, an unknown policy, and removal of opt-in to try the legacy policy.
 Neither these tests nor this change establish KV tensor equivalence, attention
 consumption, full generation quality, formal qualification, or H4 performance.
 
-`artifacts/final-prefix-cpu-20261014/` retains both actual CPU scheduling
+[artifacts/final-prefix-cpu-20261014/](https://github.com/vLLM-HUST/vllm-hust-benchmark/blob/b3d2ed2692b5575b5ae77b93fc82e32c9119be8e/archive/mod-targeted-20261023/manager-formal/snapshot/experiments/native_challenge_candidate/artifacts/final-prefix-cpu-20261014) retains both actual CPU scheduling
 attempts, their input/source snapshots, HTTP bytes, authenticated before/after
 status clocks, native fixture raw journals, and hash inventory. These are
 explicitly CPU_TIME_CONTRACT_FIXTURE_ONLY. The clocks and kernel transport are

@@ -38,8 +38,8 @@ Run from a checkout without the original machine paths:
 
 ```sh
 python -m experiments.formal_campaign.verify_kv_materialized_partial \
-  --manifest experiments/formal_campaign/artifacts/native-kv-materialized-partial-r1-20261014/manifest.json \
-  --archive experiments/formal_campaign/artifacts/native-kv-materialized-partial-r1-20261014/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/native-kv-materialized-partial-r1-20261014/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/native-kv-materialized-partial-r1-20261014/raw.tar.gz
 ```
 
 Negative tests alter actual CPU row, scheduler suffix, metadata row, effect clock,

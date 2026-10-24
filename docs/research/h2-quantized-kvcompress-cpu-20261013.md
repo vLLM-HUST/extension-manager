@@ -16,8 +16,8 @@ Reproduce from the repository root:
 
 ```sh
 python experiments/real_mod_composition/verify_h2_quantized_kvcompress_cpu.py \
-  --manifest experiments/real_mod_composition/artifacts/h2-quantized-kvcompress-cpu-20261013/manifest.json \
-  --archive experiments/real_mod_composition/artifacts/h2-quantized-kvcompress-cpu-20261013/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-quantized-kvcompress-cpu-20261013/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/real_mod_composition/artifacts/h2-quantized-kvcompress-cpu-20261013/raw.tar.gz
 ```
 
 The replay reads archived observations; it does not rerun the original environment or upgrade a source declaration to runtime effectiveness. Unknown oracle, not-scoreable status, retained failed attempt, partial preregistration, and existing n4 are checked explicitly.

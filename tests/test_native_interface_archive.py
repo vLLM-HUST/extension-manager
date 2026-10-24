@@ -11,8 +11,9 @@ from pathlib import Path
 import pytest
 
 from experiments.formal_campaign import verify_native_interface as verify
+from scripts.benchmark_inputs import resolve_original
 
-ARTIFACTS = (
+ARTIFACTS = resolve_original(
     Path(__file__).parents[1]
     / "experiments/formal_campaign/artifacts/native-interface-20261013"
 )

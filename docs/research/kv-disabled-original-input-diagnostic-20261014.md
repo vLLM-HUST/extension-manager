@@ -12,8 +12,8 @@ Run the CPU-only portable analysis from the repository:
 
 ```sh
 python -m experiments.formal_campaign.verify_kv_disabled_diagnostic \
-  --manifest experiments/formal_campaign/artifacts/kv-disabled-counterfactual-20261014/manifest.json \
-  --archive experiments/formal_campaign/artifacts/kv-disabled-counterfactual-20261014/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-disabled-counterfactual-20261014/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-disabled-counterfactual-20261014/raw.tar.gz
 ```
 
 The archive contains 173 regular files, original configuration and source snapshots, the validated 7B calibration input artifact and bounded late observations. It excludes every private Triton cache directory's contents, large original wheel files and fourteen model file byte streams. Their original full hashes and recorded prelaunch checks remain available, but this is not a complete cache or offline serving bundle. The portable command does not reexecute tokenization, model hashing, device execution or calibration validation. Clean allowlisted launch environments are included; opaque desktop session environments are omitted.

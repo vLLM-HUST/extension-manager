@@ -12,8 +12,9 @@ from pathlib import Path
 import pytest
 
 from experiments.formal_campaign import verify_kv_materialized_partial as verifier
+from scripts.benchmark_inputs import resolve_original
 
-ARTIFACT = (
+ARTIFACT = resolve_original(
     Path(__file__).parents[1]
     / "experiments/formal_campaign/artifacts/native-kv-materialized-partial-r1-20261014"
 )

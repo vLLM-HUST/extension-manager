@@ -3,21 +3,21 @@ PYTHON ?= python3
 EVIDENCE_SUMMARY := generated/evidence-summary.tex
 EVIDENCE_INPUTS := \
 	../experiments/formal_campaign/verify_kv_selected_tensor_observation.py \
-	$(shell find ../experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/kv-selected-tensor-observation-20261014 -type f | sort) \
 	../experiments/formal_campaign/verify_kv_postack_metadata.py \
 	../experiments/formal_campaign/verify_kv_strict_pair_partial.py \
 	../experiments/formal_campaign/verify_kv_disabled_diagnostic.py \
-	$(shell find ../experiments/formal_campaign/artifacts/kv-postack-metadata-20261014 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/kv-postack-metadata-20261014 -type f | sort) \
 	../experiments/formal_campaign/verify_native_interface.py \
-	$(shell find ../experiments/formal_campaign/artifacts/native-interface-20261013 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/native-interface-20261013 -type f | sort) \
 	../experiments/real_mod_composition/h2_scoring_input_audit.py \
 	$(shell find ../experiments/real_mod_composition/artifacts/h2-scoring-input-audit-20261013 -type f | sort) \
 	../experiments/formal_campaign/h3_model_client_window.py \
 	../experiments/formal_campaign/h3_client_trace.py \
-	$(shell find ../experiments/formal_campaign/artifacts/h3-model-client-window-20261013 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/h3-model-client-window-20261013 -type f | sort) \
 	../experiments/formal_campaign/h3_model_qualification.py \
-	$(shell find ../experiments/formal_campaign/artifacts/h3-model-qualification-20261013 -type f | sort) \
-	$(shell find ../experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/h3-model-qualification-20261013 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/h3-baseline-native-oracle-20261013 -type f | sort) \
 	../docs/corpus/plugin-workshop-metadata.snapshot.json \
 	../docs/corpus/workshop-mods.json \
 	../docs/corpus/workshop-mods.schema.json \
@@ -84,7 +84,7 @@ EVIDENCE_INPUTS := \
 	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/review-receipt.json \
 	../experiments/real_mod_composition/artifacts/h2-remaining-surfaces-oracle-20261013/manager-prediction.json \
 	../experiments/real_mod_composition/verify_h2_scheduler_pair.py \
-	$(shell find ../experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013 -type f | sort) \
+	$(shell find $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-pipeline-bidkv-oracle-20261013 -type f | sort) \
 	../experiments/real_mod_composition/verify_h2_compression_transaction.py \
 	$(shell find "$(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/real_mod_composition/artifacts/h2-compression-transaction-20261013" -type f | sort) \
 	../experiments/exposure_gate/qualification_verify.py \
@@ -121,7 +121,7 @@ check-research-matrix:
 
 ATTENTION_SUMMARY := generated/attention-source-summary.tex
 
-$(ATTENTION_SUMMARY): scripts/generate_attention_source_summary.py ../experiments/formal_campaign/verify_attention_source_drained_observation.py $(wildcard ../experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/*)
+$(ATTENTION_SUMMARY): scripts/generate_attention_source_summary.py ../experiments/formal_campaign/verify_attention_source_drained_observation.py $(wildcard $(VLLM_HUST_BENCHMARK_ORIGINALS)/experiments/formal_campaign/artifacts/attention-source-drained-observation-20261014-r4/*) check-benchmark-originals
 	$(PYTHON) scripts/generate_attention_source_summary.py
 
 check-attention-source-summary:

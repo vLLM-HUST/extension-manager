@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from jsonschema import ValidationError
 
-from scripts.benchmark_inputs import original_path
+from scripts.benchmark_inputs import original_path, resolve_original
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "paper/scripts/generate_evidence_summary.py"
@@ -785,7 +785,7 @@ def test_native_transport_paper_rejects_changed_source(tmp_path):
 def test_native_transport_paper_rejects_changed_archive(tmp_path):
     copy_inputs(tmp_path)
     root = tmp_path
-    path = (
+    path = resolve_original(
         root
         / "experiments/formal_campaign/artifacts/native-interface-20261013/raw.tar.gz"
     )

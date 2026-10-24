@@ -73,8 +73,8 @@ collector cleanup supplement; it is not the published archive.
 
 ```sh
 python -m experiments.formal_campaign.verify_kv_failures \
-  --manifest experiments/formal_campaign/artifacts/kv-failures-20261014/manifest.json \
-  --archive experiments/formal_campaign/artifacts/kv-failures-20261014/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-failures-20261014/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-failures-20261014/raw.tar.gz
 ```
 
 The default portable failure proof is standard-library-only and returns artifact
@@ -83,8 +83,8 @@ installed CPU-capable Torch runtime (no native device execution):
 
 ```sh
 TORCH_DEVICE_BACKEND_AUTOLOAD=0 python -m experiments.formal_campaign.verify_kv_failures \
-  --manifest experiments/formal_campaign/artifacts/kv-failures-20261014/manifest.json \
-  --archive experiments/formal_campaign/artifacts/kv-failures-20261014/raw.tar.gz \
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-failures-20261014/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/kv-failures-20261014/raw.tar.gz \
   --validate-stats
 ```
 

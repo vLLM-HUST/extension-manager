@@ -88,8 +88,8 @@ the generic helper returns unknown without raising.
 
 ```sh
 python -m experiments.formal_campaign.verify_native_interface \
-  --manifest experiments/formal_campaign/artifacts/native-interface-20261013/manifest.json \
-  --archive experiments/formal_campaign/artifacts/native-interface-20261013/raw.tar.gz
+  --manifest ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/native-interface-20261013/manifest.json \
+  --archive ${VLLM_HUST_BENCHMARK_ORIGINALS}/experiments/formal_campaign/artifacts/native-interface-20261013/raw.tar.gz
 ```
 
 The raw owned-channel observations remain subject to the source/launcher trust
