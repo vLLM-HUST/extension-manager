@@ -1014,6 +1014,11 @@ def _verify_h4_raw_artifact(
     if _digest_bytes(path) != binding["sha256"]:
         raise ValueError(f"{record['start_id']} raw H4 measurement digest differs")
     raw = _load_object(path)
+    if record.get("measurement_domain") == "ecpa-h4-conditional-source-owned/v1":
+        from experiments.formal_campaign.conditional_record_bridge import verify_record
+
+        verify_record(record, raw, root, campaign_spec)
+        return
     if (
         record.get("measurement_domain") == "ecpa-h4-sampled-native-record/v1"
         or raw.get("schema") == "ecpa-h4-sampled-formal-record-witness/v1"
