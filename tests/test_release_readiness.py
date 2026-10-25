@@ -66,8 +66,10 @@ def test_development_version_does_not_inherit_prior_release_authorization():
     payload = readiness()
     assert payload["package_version"] == "0.3.1.dev1"
     assert validate_readiness(ROOT, payload) == []
-    historical = json.loads(
-        (ROOT / "docs/evidence/release-readiness-v0.3.0.json").read_text()
+    assert payload["publication_authorized"] is False
+    assert (
+        "https://github.com/vLLM-HUST/extension-manager/blob/"
+        "d090b71b3fe4c1827ccaf6c20e593b63ac5a7dc6/docs/release-readiness.json"
+        in (ROOT / "README.md").read_text()
     )
-    assert historical["package_version"] == "0.3.0"
-    assert historical["publication_authorized"] is True
+    assert not (ROOT / "docs/evidence/release-readiness-v0.3.0.json").exists()
