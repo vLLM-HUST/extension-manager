@@ -30,13 +30,74 @@ from experiments.formal_campaign.h3_worker_recovery import (
     capture_parent_worker_ancestry,
 )
 from experiments.formal_campaign.h3_worker_relaunch import (
+    OwnershipCaptureOwnerUnavailable,
     cleanup,
     identity,
-    live,
     owned_sessions,
 )
 
 HERE = Path(__file__).resolve().parent
+
+
+def _optional_owner_exit(process, owner):
+    """Read a retained Popen epoch; never infer fresh descendant ownership."""
+    require(
+        process is not None and process.pid == owner["pid"],
+        "optional capture differs from actual owned Popen",
+    )
+    boot = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    require(boot == owner["boot_id"], "optional owner boot changed")
+    before_returncode = process.poll()
+    try:
+        raw = Path(f"/proc/{owner['pid']}/stat").read_text()
+    except (FileNotFoundError, ProcessLookupError):
+        raw, state = None, "ENOENT"
+    else:
+        fields = raw.rsplit(")", 1)[1].split()
+        actual = dict(
+            pid=owner["pid"],
+            start_ticks=int(fields[19]),
+            session=int(fields[3]),
+            boot_id=boot,
+        )
+        require(actual == owner, "optional owner epoch replaced")
+        state = fields[0]
+    if state not in ("ENOENT", "Z"):
+        require(before_returncode is None, "owned Popen is terminal but epoch is live")
+        return None
+    returncode = process.poll()
+    require(returncode is not None, "owner disappearance lacks actual Popen exit")
+    return dict(
+        kernel=owner,
+        state=state,
+        proc_stat_raw=raw,
+        popen_returncode=returncode,
+        observed_ns=time.monotonic_ns(),
+    )
+
+
+def _optional_owned_descendants(process, owner, exits):
+    """Skip only proven terminal owners during supplementary polling.
+
+    Initial phase/ancestry capture still calls the unchanged strict primitive.
+    Nested session, unknown error and changed/live owner errors always propagate.
+    Previously source-observed epochs remain in the caller's retained inventory.
+    """
+    exited = _optional_owner_exit(process, owner)
+    if exited is None:
+        try:
+            _, descendants = owned_sessions(owner)
+        except OwnershipCaptureOwnerUnavailable as error:
+            if type(error) is not OwnershipCaptureOwnerUnavailable:
+                raise
+            exited = _optional_owner_exit(process, owner)
+            if exited is None:
+                raise
+        else:
+            return descendants
+    if not any(row["kernel"] == owner for row in exits):
+        exits.append(exited)
+    return {}
 
 
 def observe_phase(phase, owner):
@@ -193,6 +254,7 @@ def execute(
     expected_hosts = None
     cleanup_owned = []
     observed_owned = {}
+    optional_owner_exits = []
     cleanup_policy = None
     cleanup_ports = []
     try:
@@ -371,9 +433,14 @@ def execute(
         )
         deadline = time.monotonic() + 2 * original["probe"]["ready_timeout_s"] + 60
         while time.monotonic() < deadline:
-            for owner in (authority_owner, carrier_owner):
-                if owner is not None and live(owner):
-                    _, actual_descendants = owned_sessions(owner)
+            for process, owner in (
+                (authority_process, authority_owner),
+                (carrier_process, carrier_owner),
+            ):
+                if owner is not None:
+                    actual_descendants = _optional_owned_descendants(
+                        process, owner, optional_owner_exits
+                    )
                     for kernel in actual_descendants.values():
                         observed_owned[
                             (kernel["pid"], kernel["start_ticks"], kernel["boot_id"])
@@ -571,10 +638,15 @@ def execute(
         errors = []
         if cleanup_policy is not None:
             cleanup_owned.extend(observed_owned.values())
-            for owner in (carrier_owner, authority_owner):
-                if owner is not None and live(owner):
+            for process, owner in (
+                (carrier_process, carrier_owner),
+                (authority_process, authority_owner),
+            ):
+                if owner is not None:
                     try:
-                        _, table = owned_sessions(owner)
+                        table = _optional_owned_descendants(
+                            process, owner, optional_owner_exits
+                        )
                         cleanup_owned.extend(table.values())
                     except Exception as exc:
                         errors.append("independent ownership capture: " + str(exc))
@@ -594,6 +666,7 @@ def execute(
             from experiments.formal_campaign.h3_observer_cleanup import ordered_kernels
 
             cleanup_owned = ordered_kernels(cleanup_owned)
+            save_new(output / "runner-optional-owner-exits.json", optional_owner_exits)
             save_new(
                 output / "runner-terminal.json",
                 {
