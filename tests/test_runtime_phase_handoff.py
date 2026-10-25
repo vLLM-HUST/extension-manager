@@ -24,6 +24,16 @@ ROOT = Path(__file__).resolve().parents[1]
 MANAGER = ROOT / "tests/fixtures/h3_native_manager_fixture.py"
 
 
+def test_legacy_entrypoint_environment_remains_exactly_five_fields():
+    assert _EVIDENCE_ENVIRONMENT == (
+        "VLLM_ECPA_EVIDENCE_SINK",
+        "VLLM_ECPA_EVIDENCE_STRICT",
+        "VLLM_ECPA_PLAN_ID",
+        "VLLM_ECPA_LAUNCH_ID",
+        "VLLM_HUST_EXT_EVIDENCE_PATH",
+    )
+
+
 def native_campaign(tmp_path):
     c = campaign(tmp_path)
     arm = c["arms"][2]

@@ -33,7 +33,7 @@ CONTRACTS = {
 
 @pytest.fixture
 def bundle(monkeypatch, tmp_path):
-    for key in evidence._EVIDENCE_ENVIRONMENT:
+    for key in evidence._OWNED_EVIDENCE_ENVIRONMENT:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(evidence, "config_path", lambda: tmp_path / "config.json")
     path = tmp_path / "manifest.json"
@@ -68,7 +68,7 @@ def bundle(monkeypatch, tmp_path):
 
 def launch(bundle, monkeypatch):
     # A new Manager launch owns a fresh environment, not one inherited from a child.
-    for key in evidence._EVIDENCE_ENVIRONMENT:
+    for key in evidence._OWNED_EVIDENCE_ENVIRONMENT:
         monkeypatch.delenv(key, raising=False)
     environment = evidence.launch_environment((bundle,))
     for key, value in environment.items():
@@ -199,6 +199,37 @@ def test_module_receipt_uses_actual_process_and_output_counts(bundle, monkeypatc
     assert event["process"]["start_identity"] == evidence._start_identity(os.getpid())
     assert event["request_count"] == event["output_token_count"] == 2
     assert event["component"]["role"] == "scheduler"
+
+
+def test_module_binding_remains_reserved_for_entrypoint_launches(bundle, monkeypatch):
+    monkeypatch.setenv(evidence._MODULE_BINDING_ENV, "caller-supplied")
+    with pytest.raises(ValueError, match="owns runtime evidence"):
+        evidence.launch_environment(())
+
+
+def test_module_launch_cannot_enter_legacy_phase_handoff(bundle, tmp_path):
+    from vllm_hust_ext.runtime_phase_handoff import (
+        bind_receiver,
+        publish_native_binding,
+    )
+
+    tmp_path.chmod(0o700)
+    path = tmp_path / "phase.sock"
+    listener = bind_receiver(path, 1)
+    environment = evidence.launch_environment((bundle,))
+    journal = evidence.evidence_path().read_bytes()
+    original_path = environment[evidence._PATH_ENV]
+    try:
+        with pytest.raises(
+            ValueError, match="native runtime evidence binding required"
+        ):
+            publish_native_binding(environment, path)
+        assert environment[evidence._PATH_ENV] == original_path
+        assert evidence.evidence_path().read_bytes() == journal
+        assert not list(tmp_path.glob("*.events.jsonl"))
+    finally:
+        listener.close()
+        path.unlink()
 
 
 def test_missing_or_reused_process_birth_cannot_be_current(bundle, monkeypatch):

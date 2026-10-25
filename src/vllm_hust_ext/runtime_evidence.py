@@ -33,8 +33,10 @@ _EVIDENCE_ENVIRONMENT = (
     "VLLM_ECPA_PLAN_ID",
     "VLLM_ECPA_LAUNCH_ID",
     _PATH_ENV,
-    _MODULE_BINDING_ENV,
 )
+# The formal phase-handoff protocol owns the original five-field entry-point
+# binding. Module launches additionally bind a journal that handoff cannot move.
+_OWNED_EVIDENCE_ENVIRONMENT = (*_EVIDENCE_ENVIRONMENT, _MODULE_BINDING_ENV)
 _MAX_READ_BYTES = 1024 * 1024
 
 
@@ -98,7 +100,7 @@ def launch_environment(
 ) -> dict[str, str]:
     """Create a fresh binding for one actual Manager-supervised launch."""
 
-    conflicts = [name for name in _EVIDENCE_ENVIRONMENT if name in os.environ]
+    conflicts = [name for name in _OWNED_EVIDENCE_ENVIRONMENT if name in os.environ]
     if conflicts:
         raise ValueError(
             "vllm-hust-ext owns runtime evidence environment variables: "
@@ -356,7 +358,7 @@ def _valid_binding(binding: dict[str, Any]) -> bool:
 
 
 def _bound_launch() -> dict[str, Any]:
-    if any(not os.environ.get(name) for name in _EVIDENCE_ENVIRONMENT):
+    if any(not os.environ.get(name) for name in _OWNED_EVIDENCE_ENVIRONMENT):
         raise ValueError("incomplete Manager module evidence environment")
     if (
         os.environ["VLLM_ECPA_EVIDENCE_SINK"] != _SINK

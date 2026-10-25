@@ -76,6 +76,9 @@ admission policy) from the latest launch and all observed process identities to
 remain live. A new launch, changed manifest or exited observed process revokes
 the match. This is trusted in-process reporting, not protection from malicious
 same-user journal writes, an independent accelerator trace or an all-rank check.
+The existing formal phase-handoff protocol retains its five-field entry-point
+binding contract. Combining direct module evidence with `--phase-binding-socket`
+is rejected; relocating a module journal requires a separately designed protocol.
 
 The current development release is intentionally `no-go` for stable publication.
 The published 0.3.0 release decision remains historical evidence, not qualification
