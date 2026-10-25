@@ -111,8 +111,13 @@ point rather than a general support claim.
 > Providers, external operator integrations, and individual MOD performance
 > claims are not promoted to universal stable support by this release.
 
-The source tree is ECPA `0.3.0`. The machine-readable decision in
-[`docs/release-readiness.json`](docs/release-readiness.json) is authoritative
+The source tree is ECPA `0.3.1.dev1`, an unqualified development build.
+**Compatibility freeze:** stable publication is not authorized for this build;
+the new scheduler carrier and owning-process evidence require their own gates.
+The historical `0.3.0` release decision remains available in
+[the immutable parent revision](https://github.com/vLLM-HUST/extension-manager/blob/d090b71b3fe4c1827ccaf6c20e593b63ac5a7dc6/docs/release-readiness.json).
+The machine-readable decision in
+[`spec/development-release-readiness.json`](spec/development-release-readiness.json) is authoritative
 for release automation and authorizes this release only while all required
 gates remain backed by checked-in evidence. CI rejects inconsistent versions,
 missing evidence, invalid inventory arithmetic, or a `go` decision while any
@@ -170,6 +175,12 @@ identical user value, and rejects a different value before launch. The Bundle
 must also claim its exclusive process-carrier resource. This projection does
 not install the Worker package or establish host, device, runtime-effect, or
 performance qualification.
+
+Development builds also project one `vllm.scheduler-class.v1` component to
+`--scheduler-cls`, with scheduler-plane ownership and an exclusive carrier claim.
+This is a Manager launch-selection contract, not a stable Scheduler ABI or a
+core-owned typed materializer. See [scheduler carriers](docs/scheduler-class-carrier.md)
+for the paired worker, qualification, conflict and rollback boundaries.
 
 ```bash
 vllm-hust-ext extension enable org.vllm-hust.bidkv

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1.dev1 - unreleased
+
+- Add explicit native `--scheduler-cls` projection for one trusted, vLLM-owned
+  scheduler carrier with an exclusive process-tree resource claim.
+- Validate every occurrence of managed scalar launch options, including mixed
+  `--name value` / `--name=value` duplicates, underscore aliases, and the
+  end-of-options boundary; reject abbreviated managed selectors.
+- Bind successful module-carrier work to the latest supervised launch and live
+  process identities, separately from entry-point observations and device proof.
+- Keep Manifest 0.3 unchanged and require separate host/accelerator qualification;
+  the development build does not inherit 0.3.0 stable publication authorization.
+
 ## 0.3.0 - 2026-10-11
 
 First formally published ECPA release.

@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "assessed_at": "2026-10-25",
+  "package_version": "0.3.1.dev1",
+  "manifest_api": "0.3",
+  "decision": "no-go",
+  "publication_authorized": false,
+  "inventory": {
+    "distributions": 0,
+    "registrations": 0,
+    "activation_intent": 0,
+    "inspect_only": 0
+  },
+  "gates": [
+    {
+      "id": "core-quality",
+      "title": "Python 3.10/3.12 tests, typing, lint, and clean wheel",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "ecosystem-composition",
+      "title": "Organization-wide Manifest 0.3 composition audit",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "real-plugin-lifecycle",
+      "title": "Clean-wheel plugin activation and reversible lifecycle",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "process-owned-runtime-evidence",
+      "title": "Runtime-effective state comes from a live owning process",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "stable-schema",
+      "title": "Manifest schema and compatibility policy are frozen",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "native-current-host-npu",
+      "title": "Current native host and NPU lifecycle qualification",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "failure-and-permission-matrix",
+      "title": "Failure degradation and permission denial are repeatable",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "upstream-host-contract",
+      "title": "Host contract has completed the required upstream review",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "performance-and-support-claims",
+      "title": "Performance evidence and support claims are bounded and complete",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    },
+    {
+      "id": "scheduler-carrier-qualification",
+      "title": "New scheduler class carrier and paired MOD qualification",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Requalify this gate for the development release. Historical 0.3.0 evidence does not authorize this build; no new release qualification is claimed by this policy scaffold."
+    }
+  ]
+}

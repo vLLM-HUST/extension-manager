@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator
 from packaging.version import InvalidVersion, Version
 
 ROOT = Path(__file__).resolve().parents[1]
-READINESS = ROOT / "docs/release-readiness.json"
+READINESS = ROOT / "spec/development-release-readiness.json"
 SCHEMA = ROOT / "docs/release-readiness.schema.json"
 
 
@@ -76,8 +76,12 @@ def validate_readiness(root: Path, payload: dict[str, Any]) -> list[str]:
         errors.append("an authorized publication cannot use a development version")
     if not authorized and not required_blockers:
         errors.append("a no-go decision must identify at least one required blocker")
-    if not authorized and not package_version.endswith(".dev0"):
-        errors.append("a frozen development line must retain a .dev0 package version")
+    if (
+        not authorized
+        and parsed_version is not None
+        and not parsed_version.is_devrelease
+    ):
+        errors.append("a frozen development line must retain a development version")
 
     inventory = payload["inventory"]
     if (
@@ -122,7 +126,9 @@ def main(argv: list[str] | None = None) -> int:
     if not schema_errors:
         errors.extend(validate_readiness(ROOT, payload))
     if args.require_authorized and not payload.get("publication_authorized", False):
-        errors.append("publication is not authorized by docs/release-readiness.json")
+        errors.append(
+            "publication is not authorized by spec/development-release-readiness.json"
+        )
     if errors:
         for error in errors:
             print(f"release-readiness: {error}")
