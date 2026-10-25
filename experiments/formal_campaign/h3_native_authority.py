@@ -362,6 +362,15 @@ class NativeAuthority(DynamicAuthority):
             "native start output differs from frozen paths",
         )
 
+    def _validate_epoch_selection(self, index):
+        require(
+            index in (0, 1)
+            and self.enrollment is not None
+            and self.enrollment["generation"] == index + 1
+            and self.route.generation is None,
+            "native prepare actual epoch differs",
+        )
+
     def _prepare_actual_epoch(self, index, handoff_ref):
         import os
 
@@ -371,13 +380,7 @@ class NativeAuthority(DynamicAuthority):
         )
         from experiments.formal_campaign.h3_worker_relaunch import identity
 
-        require(
-            index in (0, 1)
-            and self.enrollment is not None
-            and self.enrollment["generation"] == index + 1
-            and self.route.generation is None,
-            "native prepare actual epoch differs",
-        )
+        self._validate_epoch_selection(index)
         phase = self.recipe["arms"][self.start["arm"]]["phases"][index]
         expected = self.output / f"phase{index}.native-source-handoff.json"
         require(handoff_ref["path"] == str(expected), "native handoff path differs")
