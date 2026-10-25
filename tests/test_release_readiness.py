@@ -13,18 +13,20 @@ def readiness() -> dict[str, object]:
 
 def test_checked_in_release_decision_is_consistent(capsys) -> None:
     assert main([]) == 0
-    assert "release-readiness: go" in capsys.readouterr().out
+    assert "release-readiness: no-go" in capsys.readouterr().out
 
 
-def test_publication_gate_accepts_authorized_release(capsys) -> None:
-    assert main(["--require-authorized"]) == 0
-    assert "release-readiness: go" in capsys.readouterr().out
+def test_publication_gate_rejects_unqualified_development_release(capsys) -> None:
+    assert main(["--require-authorized"]) == 1
+    assert "publication is not authorized" in capsys.readouterr().out
 
 
 def test_go_decision_rejects_blocked_required_gate() -> None:
     payload = copy.deepcopy(readiness())
     payload["gates"][0]["status"] = "blocked"
     payload["gates"][0]["remaining_action"] = "repair the required gate"
+    payload["decision"] = "go"
+    payload["publication_authorized"] = True
 
     errors = validate_readiness(ROOT, payload)
 
@@ -56,4 +58,16 @@ def test_performance_policy_does_not_hide_runtime_release_blockers() -> None:
     assert gates["performance-and-support-claims"] == "passed"
     assert gates["native-current-host-npu"] == "passed"
     assert gates["upstream-host-contract"] == "passed"
-    assert payload["publication_authorized"] is True
+    assert gates["scheduler-carrier-qualification"] == "blocked"
+    assert payload["publication_authorized"] is False
+
+
+def test_development_version_does_not_inherit_prior_release_authorization():
+    payload = readiness()
+    assert payload["package_version"] == "0.3.1.dev1"
+    assert validate_readiness(ROOT, payload) == []
+    historical = json.loads(
+        (ROOT / "docs/evidence/release-readiness-v0.3.0.json").read_text()
+    )
+    assert historical["package_version"] == "0.3.0"
+    assert historical["publication_authorized"] is True

@@ -848,6 +848,7 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
         if option not in {
             "--batch-admission-policy",
             "--preemption-policy",
+            "--scheduler-cls",
             "--worker-cls",
         } or not isinstance(value, str):
             raise ValueError(f"unsupported provider option {option!r}")
@@ -874,18 +875,37 @@ def _merge_provider_plan(command: list[str], plan: ProviderPlan) -> list[str]:
 
 def _merge_scalar_option(command: list[str], option: str, generated: str) -> list[str]:
     result = list(command)
-    for index, argument in enumerate(result):
-        if argument == option:
-            if index + 1 >= len(result):
+    boundary = result.index("--") if "--" in result else len(result)
+    # vLLM accepts underscores and argparse abbreviations in option names.
+    # Normalize only the key, never a Python class value; incomplete keys cannot
+    # be safely attributed without importing the host parser, so reject them.
+    keys = [argument.partition("=")[0].replace("_", "-") for argument in result]
+    if any(
+        key.startswith("--")
+        and key != "--"
+        and key != option
+        and option.startswith(key)
+        for key in keys
+    ):
+        raise ValueError(f"abbreviated managed option {option} is not supported")
+    if any(key == option for key in keys[boundary + 1 :]):
+        raise ValueError(f"managed option {option} cannot follow the -- separator")
+    found = False
+    for index, argument in enumerate(result[:boundary]):
+        if keys[index] == option and "=" not in argument:
+            if index + 1 >= boundary or result[index + 1].startswith("--"):
                 raise ValueError(f"{option} requires a value")
             if result[index + 1] != generated:
                 raise ValueError(f"extension activation conflicts with {option}")
-            return result
-        if argument.startswith(f"{option}="):
+            found = True
+        if keys[index] == option and "=" in argument:
+            if not argument.partition("=")[2]:
+                raise ValueError(f"{option} requires a value")
             if argument.partition("=")[2] != generated:
                 raise ValueError(f"extension activation conflicts with {option}")
-            return result
-    result.extend((option, generated))
+            found = True
+    if not found:
+        result[boundary:boundary] = (option, generated)
     return result
 
 

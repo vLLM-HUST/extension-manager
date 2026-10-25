@@ -215,6 +215,40 @@ class VllmProvider:
                     admission_components[0].implementation_ref
                 )
             )
+        scheduler_components = [
+            component
+            for component in manifest.components
+            if "vllm.scheduler-class.v1" in component.contracts
+        ]
+        if scheduler_components:
+            if len(scheduler_components) != 1:
+                raise ValueError(
+                    "exactly one vllm.scheduler-class.v1 component is required"
+                )
+            scheduler = scheduler_components[0]
+            if scheduler.execution_planes != ("scheduler",):
+                raise ValueError("scheduler-class requires only the scheduler plane")
+            if (
+                scheduler.isolation != "trusted_in_process"
+                or manifest.runtime.isolation != "trusted_in_process"
+                or manifest.lifecycle_owner != "vllm"
+            ):
+                raise ValueError(
+                    "scheduler-class requires vLLM-owned trusted_in_process isolation"
+                )
+            if not any(
+                claim.resource == "vllm.process-carrier.scheduler"
+                and claim.scope == "vllm-process-tree"
+                and claim.mode == "exclusive"
+                for claim in manifest.resource_claims
+            ):
+                raise ValueError(
+                    "scheduler-class requires an exclusive "
+                    "vllm-process-tree:vllm.process-carrier.scheduler resource claim"
+                )
+            generated.setdefault("vllm_options", {})["--scheduler-cls"] = (
+                _qualname_from_implementation_ref(scheduler.implementation_ref)
+            )
         worker_components = [
             component
             for component in manifest.components

@@ -1,11 +1,11 @@
 {
   "$schema": "./release-readiness.schema.json",
   "schema_version": "1.0",
-  "assessed_at": "2026-10-11",
-  "package_version": "0.3.0",
+  "assessed_at": "2026-10-25",
+  "package_version": "0.3.1.dev1",
   "manifest_api": "0.3",
-  "decision": "go",
-  "publication_authorized": true,
+  "decision": "no-go",
+  "publication_authorized": false,
   "inventory": {
     "distributions": 36,
     "registrations": 39,
@@ -18,14 +18,18 @@
       "title": "Python 3.10/3.12 tests, typing, lint, and clean wheel",
       "required": true,
       "status": "passed",
-      "evidence": [".github/workflows/ci.yml"]
+      "evidence": [
+        ".github/workflows/ci.yml"
+      ]
     },
     {
       "id": "ecosystem-composition",
       "title": "Organization-wide Manifest 0.3 composition audit",
       "required": true,
       "status": "passed",
-      "evidence": ["docs/support-matrix.md"]
+      "evidence": [
+        "docs/support-matrix.md"
+      ]
     },
     {
       "id": "real-plugin-lifecycle",
@@ -103,6 +107,16 @@
         "src/vllm_hust_ext/catalog.py",
         "tests/test_catalog.py"
       ]
+    },
+    {
+      "id": "scheduler-carrier-qualification",
+      "title": "New scheduler class carrier and paired MOD qualification",
+      "required": true,
+      "status": "blocked",
+      "evidence": [
+        "docs/scheduler-class-carrier.md"
+      ],
+      "remaining_action": "Review and qualify the new installed carrier and its owning-process observations against pinned hosts; this development build is not an authorized stable release."
     }
   ]
 }

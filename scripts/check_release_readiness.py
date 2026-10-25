@@ -76,8 +76,12 @@ def validate_readiness(root: Path, payload: dict[str, Any]) -> list[str]:
         errors.append("an authorized publication cannot use a development version")
     if not authorized and not required_blockers:
         errors.append("a no-go decision must identify at least one required blocker")
-    if not authorized and not package_version.endswith(".dev0"):
-        errors.append("a frozen development line must retain a .dev0 package version")
+    if (
+        not authorized
+        and parsed_version is not None
+        and not parsed_version.is_devrelease
+    ):
+        errors.append("a frozen development line must retain a development version")
 
     inventory = payload["inventory"]
     if (
