@@ -989,6 +989,7 @@ def main():
         "no actual observer private-context restart/rebind contract exists",
     )
     launches, client_process, client_owner = [], None, None
+    prepared_operator = None
     failure = None
     cleanup_report = {
         "processes_reclaimed": False,
@@ -1007,12 +1008,26 @@ def main():
             require(
                 "ecpa-h3-observer-live-transport-control/v2" in capabilities["profiles"]
                 and capabilities.get("live_receipt") == live_scope.receipt_ref(),
-                'actual authority lacks this independently '
-                'issued v2 control permission',
+                "actual authority lacks this independently "
+                "issued v2 control permission",
             )
         save_new(output / "authority-capabilities.json", capabilities)
         current = authority.call("query")
         generation = current["generation"]
+        if (
+            live_scope is not None
+            and live_scope.value()["declaration"]["operator"]["kind"]
+            == "explicit-original-operator"
+        ):
+            from experiments.formal_campaign import h3_observer_live_operator
+
+            prepared_operator = h3_observer_live_operator.prepare(
+                live_scope,
+                recipe,
+                output,
+                timeout_s=campaign["probe"]["ready_timeout_s"],
+                cleanup=cleanup,
+            )
         for index, phase in enumerate(phase_definition["phases"]):
             if index:
                 raise ValueError(
@@ -1174,7 +1189,12 @@ def main():
                         invoke = h3_observer_live_operator.invoke
 
                         live_transport = invoke(
-                            live_scope, args, recipe, registration, output
+                            live_scope,
+                            args,
+                            recipe,
+                            registration,
+                            output,
+                            prepared=prepared_operator,
                         )
                         live_operator_actions = 1
                     save_new(
@@ -1270,6 +1290,11 @@ def main():
         failure = exc
     finally:
         errors = []
+        if prepared_operator is not None:
+            try:
+                prepared_operator.close(cleanup)
+            except Exception as exc:
+                errors.append("prearmed operator cleanup: " + str(exc))
         if client_process is not None:
             try:
                 client_process.wait(timeout=25)
