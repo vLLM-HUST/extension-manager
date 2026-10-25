@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator
 from packaging.version import InvalidVersion, Version
 
 ROOT = Path(__file__).resolve().parents[1]
-READINESS = ROOT / "docs/release-readiness.json"
+READINESS = ROOT / "spec/development-release-readiness.json"
 SCHEMA = ROOT / "docs/release-readiness.schema.json"
 
 
@@ -126,7 +126,9 @@ def main(argv: list[str] | None = None) -> int:
     if not schema_errors:
         errors.extend(validate_readiness(ROOT, payload))
     if args.require_authorized and not payload.get("publication_authorized", False):
-        errors.append("publication is not authorized by docs/release-readiness.json")
+        errors.append(
+            "publication is not authorized by spec/development-release-readiness.json"
+        )
     if errors:
         for error in errors:
             print(f"release-readiness: {error}")

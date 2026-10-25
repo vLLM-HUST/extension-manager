@@ -117,7 +117,7 @@ the new scheduler carrier and owning-process evidence require their own gates.
 The historical `0.3.0` release decision remains available in
 [the immutable parent revision](https://github.com/vLLM-HUST/extension-manager/blob/d090b71b3fe4c1827ccaf6c20e593b63ac5a7dc6/docs/release-readiness.json).
 The machine-readable decision in
-[`docs/release-readiness.json`](docs/release-readiness.json) is authoritative
+[`spec/development-release-readiness.json`](spec/development-release-readiness.json) is authoritative
 for release automation and authorizes this release only while all required
 gates remain backed by checked-in evidence. CI rejects inconsistent versions,
 missing evidence, invalid inventory arithmetic, or a `go` decision while any

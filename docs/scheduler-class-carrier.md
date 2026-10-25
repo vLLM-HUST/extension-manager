@@ -82,6 +82,8 @@ is rejected; relocating a module journal requires a separately designed protocol
 
 The current development release is intentionally `no-go` for stable publication.
 The published 0.3.0 release decision remains historical evidence, not qualification
-of this new carrier or any MOD using it. Previously passed gates retained in the
-development readiness record refer to that historical qualification; the new
-carrier qualification remains a separate required blocker.
+of this new carrier or any MOD using it. The executable development policy in
+`spec/development-release-readiness.json` starts with all gates blocked and a
+zero inventory: no organization inventory has been qualified for this version.
+It is a publication policy scaffold, not a new measurement receipt. The original
+`docs/release-readiness.json` remains byte-identical for published-paper consumers.
