@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=77.0.3,<81.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-kv-materialization"
+version = "0.1.0"
+description = "Standalone vLLM plugin for adaptive KV materialization studies"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+authors = [
+	{name = "Wei He"},
+]
+maintainers = [
+	{name = "Wei He"},
+]
+
+[project.urls]
+Repository = "https://github.com/vLLM-HUST/vllm-hust-kv-materialization-arrival-control"
+Issues = "https://github.com/vLLM-HUST/vllm-hust-kv-materialization-arrival-control/issues"
+
+[project.scripts]
+vllm-kv-materialization-serve = "vllm_kv_materialization.launcher:main"
+vllm-kv-materialization-offline = "vllm_kv_materialization.offline_experiment:main"
+
+[project.entry-points."vllm.general_plugins"]
+kv_materialization = "vllm_kv_materialization.plugin:register_plugin"
+
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.kv-materialization-arrival-control" = "vllm_kv_materialization"
+
+[project.optional-dependencies]
+experiments = [
+	"llm-serving-workloads @ git+https://github.com/vLLM-HUST/llm-serving-workloads.git@ceef92d52e0c49f26ba1efc6706edd1f6df5d913",
+]
+dev = [
+	"build>=1.2",
+	"llm-serving-workloads @ git+https://github.com/vLLM-HUST/llm-serving-workloads.git@ceef92d52e0c49f26ba1efc6706edd1f6df5d913",
+	"pytest>=8.0",
+	"ruff>=0.12",
+	"tomli>=2.0; python_version < '3.11'",
+	"vllm-hust-ext @ git+https://github.com/vLLM-HUST/extension-manager.git@7d29b4e9eb2e3d9e4b0b50d2da7c478c6e42d7d8",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+vllm_kv_materialization = ["vllm-hust-extension-v0.3.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "vendor/vllm"]

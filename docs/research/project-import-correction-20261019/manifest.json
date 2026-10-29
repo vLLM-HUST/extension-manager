@@ -1,0 +1,145 @@
+{
+  "schema": "ecpa-misplaced-project-materials-recovery/v1",
+  "created_at": "2026-10-19T10:53:38.714752+08:00",
+  "source_repository": "vLLM-HUST/inference-engine-project",
+  "source_commit": "364de23394ec9869f0b12c2a87f3e54a7424e5b0",
+  "reason": "User clarified that inference-engine-project performs pure inference optimization; ECPA research ledger, paper/submission state and H1/H3/H4 campaign materials belong here. Original bytes retained before removing inappropriate copies from optimization main.",
+  "archive_sha256": "6e1b6a88f2e82c7b434e319e675e61c5d428c41102d7ad06fdd52e7ae330e028",
+  "files": [
+    {
+      "path": "docs/research/ecpa-osdi.md",
+      "sha256": "1d656b97d2759ba83bf138549ef93fd79b006342fc03998f8b40e85b014984d8",
+      "bytes": 12908
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/README.md",
+      "sha256": "f998a8344c12805a5b5de46b8a3e1543d424167324af1ddc47dd57fdf92e1226",
+      "bytes": 3048
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/controlled-storage.json",
+      "sha256": "ebd23806e70509d97c50a85fc7e9cdd18a7b965046d6e34baa21d2502079df60",
+      "bytes": 3901
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/import-provenance.json",
+      "sha256": "4440ff029a1b9bfb8d19755e576a1bbdb7282e3d68b7dccb4d7cf84cf93b4432",
+      "bytes": 6440
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/checkpoint-20261019-1028/extension-manager-pr-258.json",
+      "sha256": "ae9d42e7e6cf585be14ab2cbe8637a8d8ab00c6ab00df1d69fbbb484dee6496f",
+      "bytes": 2668
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/checkpoint-20261019-1028/issue-63.json",
+      "sha256": "3392730d0e4f9c3e7c940e74b68fc7dee951b56c7da01231a37384c25057afcd",
+      "bytes": 6015
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/checkpoint-20261019-1028/issue-66.json",
+      "sha256": "08f40f1576917c4cb8bfb9a72581a113426a23ea20ca5a0047c2e83ecd52a9e9",
+      "bytes": 83658
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/extension-manager-pr-258.json",
+      "sha256": "2ba8feb84beb62f9c27b9757565db47037ebc1ad064660558ab28645f9ef1f8d",
+      "bytes": 2709
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/extension-manager-pr-259.json",
+      "sha256": "972e39430e7733a15cf65021a0ee1c88c8b84f9e43abe2925a916004adeb1f30",
+      "bytes": 1808
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-59.json",
+      "sha256": "83e1d14e01cf5b3d2d4f5f46767dfb02ca09a23e2e8504cc59eac479f0b1ef2a",
+      "bytes": 2973
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-60.json",
+      "sha256": "33c7cae1f342a83cdc2c6007b9ad2901b3a2758b1789463db62ae52b2e3031d5",
+      "bytes": 2315
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-61.json",
+      "sha256": "60666cd8466489db60a0fbb174679a4fe6553aa3449efda0b9200307b8dfbf4f",
+      "bytes": 2238
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-62.json",
+      "sha256": "01769e7c6bf02252b02f215cb43e2eb32eb025ce16d38269fb61ca51cc842b3e",
+      "bytes": 2215
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-63.json",
+      "sha256": "8ec9864c74ad31f59a1915f31c305564bdc7fbbb3c488f2ddcde4ff53356dde2",
+      "bytes": 5766
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-64.json",
+      "sha256": "a5381e5a1e0b5d1b58379e6fa4395b889a56ae1dcf26088a4894ea4a99ec6dc1",
+      "bytes": 2809
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-65.json",
+      "sha256": "7b8a6b2b434bab9979d7fce42d807b561e28efbbd9b45f56f8354940f68f626b",
+      "bytes": 2357
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/issue-66.json",
+      "sha256": "7df4895c6913add95dfa686e38012884b334e0da705c33c79f94ee4f6ccd5b93",
+      "bytes": 83385
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/vllm-ascend-hust-pr-50.json",
+      "sha256": "512942056dda3f4018a0c3da9597eb7088a526ccdfef78b0d7e2c795910a325d",
+      "bytes": 1852
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/vllm-hust-pr-67.json",
+      "sha256": "3e247ca2833432ecb8fdb7b3d0b10f52e9a097ad63e7039a1559acde273daae7",
+      "bytes": 2985
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/ledger/vllm-hust-request-lifecycle-profiler-pr-35.json",
+      "sha256": "b9a6d68c9d61807d254bb08d7266a4ed88883eca531ef688e434446982a251f2",
+      "bytes": 2720
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/publication-boundary-correction.json",
+      "sha256": "2256f2ebbb2f64b718228037742f4e6f2f00b6779518abdbc2b45f95399105ff",
+      "bytes": 587
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/registration-review.json",
+      "sha256": "c4bba0b488b0a7e3e72d5441892a74f6dd27611f30ba33f8330c91deb17f0ebb",
+      "bytes": 620
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/runs/h3-h4-retained-failures/archive-manifest.json",
+      "sha256": "20f5489677271b3f1e211b2283403ff917dc5b109896d9b3e72a0d3121e65de5",
+      "bytes": 15497
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/runs/h3-h4-retained-failures/controlled-original-inventory.json",
+      "sha256": "8864fd6c8591aaef868da1b27a7054cfb94dfdda57c294ed7209d27dfb2507e4",
+      "bytes": 353696
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/runs/h3-h4-retained-failures/originals.tgz",
+      "sha256": "ca78955d7b8e9114a835ef35b8e4d8826b4cec0717347affa965989b239c1267",
+      "bytes": 6287
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/runs/historical-result-evidence/archive-manifest.json",
+      "sha256": "618ba8ad1da96aceaf414bad2e20fb37458ec593450faf67e2304fa57f6e3f8f",
+      "bytes": 112129
+    },
+    {
+      "path": "results/campaigns/ecpa-osdi/runs/historical-result-evidence/originals.tgz",
+      "sha256": "a5e2ba4432a721ed9e411f83d375289cdabc4ef29227f02922938fb453bedda7",
+      "bytes": 785641
+    }
+  ]
+}

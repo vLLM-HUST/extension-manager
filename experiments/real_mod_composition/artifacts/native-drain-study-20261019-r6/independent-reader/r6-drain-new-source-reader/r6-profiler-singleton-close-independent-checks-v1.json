@@ -1,0 +1,123 @@
+{
+  "schema": "ecpa-H2-r6-independent-profiler-singleton-close-checks/v1",
+  "observed_wall_ns": 1792373561234728087,
+  "formal_result": false,
+  "originals_unmodified": true,
+  "new_source_tuple": {
+    "Host": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+    "profiler": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06"
+  },
+  "reader_projection": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-drain-new-source-reader/r6-profiler-raw-attempt-02.json",
+    "sha256": "44869635865605d18d57abb2a941c0273b10dc5f2348314d334912ab1a8715dd"
+  },
+  "shards": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.0cfbcb3331be4f4e98274abf74323129.jsonl",
+      "sha256": "0d3dd8b55d62f11a374a8ce11c4a176fad124fd062a019c5eef763ec450e599a",
+      "bytes": 1259,
+      "pid": 2047674,
+      "process_uuid": "0cfbcb3331be4f4e98274abf74323129",
+      "actual_Host_role_epoch": {
+        "pid": 2047674,
+        "start_ticks": 808905223,
+        "slot": "worker/1"
+      },
+      "scope_note": "actual Host four-role source epoch",
+      "canonical_bytes_and_4096_bound": true,
+      "content_SHA_matches_original_prefix": true,
+      "original_count_sequence_first_last_matches": true,
+      "CLOCK_MONOTONIC_domain_matches_original_boot": true,
+      "original_start_data_end_order": true,
+      "original_drained_no_declared_loss": true,
+      "original_event_count": 0,
+      "original_Host_event_RID_clock_metadata_joins": 0
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.4e72354f26df4c9e9b2c938d2a8f2ed7.jsonl",
+      "sha256": "d1ec5858591156f9af88305a8f641fb09d943c3ddf99cfc1f85b51373b77f785",
+      "bytes": 4692,
+      "pid": 2047373,
+      "process_uuid": "4e72354f26df4c9e9b2c938d2a8f2ed7",
+      "actual_Host_role_epoch": {
+        "pid": 2047373,
+        "start_ticks": 808900976,
+        "slot": "engine-core-scheduler/0"
+      },
+      "scope_note": "actual Host four-role source epoch",
+      "canonical_bytes_and_4096_bound": true,
+      "content_SHA_matches_original_prefix": true,
+      "original_count_sequence_first_last_matches": true,
+      "CLOCK_MONOTONIC_domain_matches_original_boot": true,
+      "original_start_data_end_order": true,
+      "original_drained_no_declared_loss": true,
+      "original_event_count": 4,
+      "original_Host_event_RID_clock_metadata_joins": 4
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.6c9cc3e6111a478099eed0b748a99c53.jsonl",
+      "sha256": "15a147611bd5fd533e4d09631df9f6da323f216c1891d868a35c8f7930d2d238",
+      "bytes": 1259,
+      "pid": 2047114,
+      "process_uuid": "6c9cc3e6111a478099eed0b748a99c53",
+      "actual_Host_role_epoch": null,
+      "scope_note": "extra empty process shard, not promoted to a fifth Host role",
+      "canonical_bytes_and_4096_bound": true,
+      "content_SHA_matches_original_prefix": true,
+      "original_count_sequence_first_last_matches": true,
+      "CLOCK_MONOTONIC_domain_matches_original_boot": true,
+      "original_start_data_end_order": true,
+      "original_drained_no_declared_loss": true,
+      "original_event_count": 0,
+      "original_Host_event_RID_clock_metadata_joins": 0
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.b9bb3d20be794bda898447bbb1b2ec2b.jsonl",
+      "sha256": "e0002560abff625ce2b957519634dccf3bd8e42b81c52335381be0a2f5d07b2f",
+      "bytes": 1259,
+      "pid": 2047673,
+      "process_uuid": "b9bb3d20be794bda898447bbb1b2ec2b",
+      "actual_Host_role_epoch": {
+        "pid": 2047673,
+        "start_ticks": 808905222,
+        "slot": "worker/0"
+      },
+      "scope_note": "actual Host four-role source epoch",
+      "canonical_bytes_and_4096_bound": true,
+      "content_SHA_matches_original_prefix": true,
+      "original_count_sequence_first_last_matches": true,
+      "CLOCK_MONOTONIC_domain_matches_original_boot": true,
+      "original_start_data_end_order": true,
+      "original_drained_no_declared_loss": true,
+      "original_event_count": 0,
+      "original_Host_event_RID_clock_metadata_joins": 0
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/profiler.jsonl.rlp.f1508433d7754fbb950b6cef2378d01d.jsonl",
+      "sha256": "f450f6ed29753ecf638ce8a8080dc1ea729c95182ff84337550ec6586a3002af",
+      "bytes": 1259,
+      "pid": 2046808,
+      "process_uuid": "f1508433d7754fbb950b6cef2378d01d",
+      "actual_Host_role_epoch": {
+        "pid": 2046808,
+        "start_ticks": 808890227,
+        "slot": "api-server/0"
+      },
+      "scope_note": "actual Host four-role source epoch",
+      "canonical_bytes_and_4096_bound": true,
+      "content_SHA_matches_original_prefix": true,
+      "original_count_sequence_first_last_matches": true,
+      "CLOCK_MONOTONIC_domain_matches_original_boot": true,
+      "original_start_data_end_order": true,
+      "original_drained_no_declared_loss": true,
+      "original_event_count": 0,
+      "original_Host_event_RID_clock_metadata_joins": 0
+    }
+  ],
+  "bounded_result": "All five actual process shards, including API/scheduler/TP0/TP1 and an extra empty helper shard, have original canonical terminal summaries with recomputed content SHA/count/sequence, drained and zero declared loss/error. Four genuine scheduler finished/reclaimed records exactly join original Host epoch/RID/clock/metadata and actual HTTP.",
+  "limits": [
+    "Finite observed window only, not universal no-loss or untriggered event coverage.",
+    "Whole5-group matched composition and independent terminal cleanup not yet concluded.",
+    "No full model-quality/performance/authenticated native scope promoted."
+  ]
+}

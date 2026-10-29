@@ -1,0 +1,40 @@
+{
+  "schema": "ecpa-H2-r6-paper-render-receipt/v1",
+  "base_commit": "e5ea24bbff16b37880b21e5da7976153e8732a9f",
+  "tectonic_argv": [
+    "/root/ecpa-workspace/evidence/ecpa-tools/tectonic",
+    "--keep-logs",
+    "main.tex"
+  ],
+  "cwd": "/root/ecpa-workspace/worktrees/ecpa-mod-interface-h2-paper/paper",
+  "tectonic_returncode": 0,
+  "PDF_audit_returncode": 0,
+  "scope": "r6 finite evidence archive; legacy four cases/31 modeled and existing result inventories unchanged",
+  "refs": {
+    "paper/main.tex": {
+      "sha256": "4b2024f8153c94dd698cc51f5b1d4e011b851f19f173406ccdf185fee545103e",
+      "bytes": 69596
+    },
+    "paper/main.pdf": {
+      "sha256": "f6a924b758a639a9ad3112f38b95005f8ed8e7da8a366df867316830ae388ef5",
+      "bytes": 108365
+    },
+    "paper/artifacts/h2-r6-publication/tectonic.stdout": {
+      "sha256": "35202985add8e07a445387d77acad5b0c06b24155680ee70674455b347ee97f5",
+      "bytes": 580
+    },
+    "paper/artifacts/h2-r6-publication/tectonic.stderr": {
+      "sha256": "0b4fc9030907e311f41e64065489f3697bb943efa3b1ab4cb1dcfb25bd9c1862",
+      "bytes": 490
+    },
+    "paper/artifacts/h2-r6-publication/pdf-audit.json": {
+      "sha256": "ee3ffc047558a48ae6ade28bdad544146af76aed92daa4e5207a8cf7544164d1",
+      "bytes": 388
+    },
+    "experiments/real_mod_composition/artifacts/native-drain-study-20261019-r6/manifest.json": {
+      "sha256": "4ca27437806b47d1547786431c081de3ba068e4c33299be93a29c99110545030",
+      "bytes": 54768
+    }
+  },
+  "prior_attempts": "Baseline compile ran before editorial change after a relative-cwd write error; original stdout retained. Longer r6 paragraph compiled but body13; attempt01 PDF audit retained, final concise paragraph restores body12 without format changes."
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "ecpa-H2-r6-public-archive-byte-and-count-check/v1",
+  "errors": [],
+  "original_files": 163,
+  "original_bytes": 5362699,
+  "original_manifest_sha256": "4ca27437806b47d1547786431c081de3ba068e4c33299be93a29c99110545030",
+  "all_archived_bytes_equal_original": true,
+  "family_count": 1,
+  "HTTP200_requests": 10,
+  "canonical_original_drained_shards": 15,
+  "actual_scheduler_events": 12,
+  "archived_result_reference_hash_joins": 48,
+  "referenced_unbundled_source_paths": [],
+  "scope": "archive/count/canonical-content verification; not new model execution, oracle label, formal/performance/quality qualification"
+}

@@ -1,0 +1,184 @@
+{
+  "schema": "ecpa-first-native-H2-study-block/v1",
+  "assembled_wall_ns": 1792371748761437537,
+  "cases": [
+    {
+      "case": "kv-only",
+      "cohort": "r3",
+      "health_status": 200,
+      "below": {
+        "http_status": 200,
+        "elapsed_ns": 14414157114,
+        "usage": {
+          "prompt_tokens": 4,
+          "total_tokens": 36,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-kv-only-below"
+      },
+      "above": {
+        "http_status": 200,
+        "elapsed_ns": 14615771336,
+        "usage": {
+          "prompt_tokens": 1201,
+          "total_tokens": 1233,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-kv-only-above"
+      },
+      "runner_error": null,
+      "owned_survivors": [],
+      "device_process_tables_empty": true,
+      "formal_qualified": false,
+      "performance_result": false
+    },
+    {
+      "case": "profiler-only",
+      "cohort": "r4",
+      "health_status": 200,
+      "below": {
+        "http_status": 200,
+        "elapsed_ns": 14352108358,
+        "usage": {
+          "prompt_tokens": 4,
+          "total_tokens": 36,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-profiler-only-below"
+      },
+      "above": {
+        "http_status": 200,
+        "elapsed_ns": 2455568246,
+        "usage": {
+          "prompt_tokens": 1201,
+          "total_tokens": 1233,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-profiler-only-above"
+      },
+      "runner_error": null,
+      "owned_survivors": [],
+      "device_process_tables_empty": true,
+      "formal_qualified": false,
+      "performance_result": false
+    },
+    {
+      "case": "kv-then-profiler",
+      "cohort": "r4",
+      "health_status": 200,
+      "below": {
+        "http_status": 200,
+        "elapsed_ns": 14475607331,
+        "usage": {
+          "prompt_tokens": 4,
+          "total_tokens": 36,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-kv-then-profiler-below"
+      },
+      "above": {
+        "http_status": 200,
+        "elapsed_ns": 14993709049,
+        "usage": {
+          "prompt_tokens": 1201,
+          "total_tokens": 1233,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-kv-then-profiler-above"
+      },
+      "runner_error": null,
+      "owned_survivors": [],
+      "device_process_tables_empty": true,
+      "formal_qualified": false,
+      "performance_result": false
+    },
+    {
+      "case": "profiler-then-kv",
+      "cohort": "r4",
+      "health_status": 200,
+      "below": {
+        "http_status": 200,
+        "elapsed_ns": 14182280872,
+        "usage": {
+          "prompt_tokens": 4,
+          "total_tokens": 36,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-profiler-then-kv-below"
+      },
+      "above": {
+        "http_status": 200,
+        "elapsed_ns": 14835867281,
+        "usage": {
+          "prompt_tokens": 1201,
+          "total_tokens": 1233,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-profiler-then-kv-above"
+      },
+      "runner_error": null,
+      "owned_survivors": [],
+      "device_process_tables_empty": true,
+      "formal_qualified": false,
+      "performance_result": false
+    },
+    {
+      "case": "host-only",
+      "cohort": "r4",
+      "health_status": 200,
+      "below": {
+        "http_status": 200,
+        "elapsed_ns": 14315924831,
+        "usage": {
+          "prompt_tokens": 4,
+          "total_tokens": 36,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-host-only-below"
+      },
+      "above": {
+        "http_status": 200,
+        "elapsed_ns": 2419996187,
+        "usage": {
+          "prompt_tokens": 1201,
+          "total_tokens": 1233,
+          "completion_tokens": 32,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "response_id": "cmpl-host-only-above"
+      },
+      "runner_error": null,
+      "owned_survivors": [],
+      "device_process_tables_empty": true,
+      "formal_qualified": false,
+      "performance_result": false
+    }
+  ],
+  "formal_qualified": false,
+  "performance_result": false,
+  "full_three_arm_three_repeat_comparison_complete": false,
+  "compatibility_verdict": "unknown: original profiler drain summaries and matched host-only observer coverage incomplete",
+  "heldout": false,
+  "reader_implementation_post_result_exposure_disclosed": true,
+  "original_attempts_retained": true,
+  "sources_and_device_identity_present_not_anonymous_submission": true
+}

@@ -1,0 +1,695 @@
+{
+  "schema": "ecpa-real-mod-interface-source-audit/v1",
+  "observed_UTC": "2026-10-18T14:14:07.228421+00:00",
+  "scope": "新源码深审，不是历史H2的24population oracle或新设备资格",
+  "method": "只读Git/source小文件和已有CPU失败原件；无imports/tests/build/model/wheel/device/network actions；仅写本报告两文件",
+  "repositories": {
+    "pipeline": {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source",
+      "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+      "tree": "fd47996dc758a6663e1d558541ab8d17993cf210",
+      "status_porcelain": ""
+    },
+    "bidkv": {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source",
+      "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+      "tree": "7ed5378ae6b2733cfb672f9ea61b50efe7925f62",
+      "status_porcelain": ""
+    },
+    "kv": {
+      "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source",
+      "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+      "tree": "56d840e87bed381fe0f219803f22c60048972530",
+      "status_porcelain": ""
+    },
+    "kv_sampled_future": {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-kv-h4-sampled-next",
+      "commit": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "tree": "465de228da600a3e03d8e9def440d24f679313b1",
+      "status_porcelain": ""
+    },
+    "ascend": {
+      "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/ascend-source",
+      "commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "tree": "2ec74dca6360f065454fc994149b725692aefabd",
+      "status_porcelain": ""
+    },
+    "profiler": {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-profiler-official-main",
+      "commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "tree": "b846c55b03ccf079c27d4d41ac25eeec7baf61b9",
+      "status_porcelain": ""
+    },
+    "manager": {
+      "path": "/root/ecpa-workspace/worktrees/ecpa-manager-h3-client-bound-combined-next",
+      "commit": "b83bb52328bced0cd356b9ab9e644324c307d6dd",
+      "tree": "df3712c1f59a0a6da1218c9a7e5cd29fd6ce08f6",
+      "status_porcelain": ""
+    }
+  },
+  "findings": [
+    {
+      "id": "MOD-01",
+      "title": "安装发现不等于可调用策略；Pipeline 原生于 HUST 定制 ABI，而非通用 vLLM 插件",
+      "evidence_class": "observed_source",
+      "observed_source": "Pipeline 主包仅导出 extension_bundles 与 from_config/admit_batch；读取 BatchAdmissionContext、max_concurrent_batches 和 PP 拓扑。没有 general_plugins 自动启用入口。 planner 的 predict 由 p0..p5、PP rank/layer_num、request_num 与 aggregated_ctx_length 计算 rank-local cost，再按 worst-rank min 选 batch；数值模型不是实际计时。",
+      "composition_implication": "加载 manifest 或安装 wheel 不能证明 Host 调度器构造并调用策略；必须绑定实际 factory、Host callsite 和返回后的验证。 另一 MOD 改变真实上下文/物理KV计算成本时，旧系数是否仍成立是待测校准假设，不可把纯预测结果作性能oracle。",
+      "provenance_and_our_adaptation": "当前 narrow dev19 声明及 _manager_runtime_qualification 是本次研究新增发布声明，policy/planner 算法没有因声明而新增。HUST batch-admission 不是这里证明的上游公共 API。",
+      "current_ECPA": {
+        "can_solve": "声明发现、版本/协议筛选、显式 activation artifact 绑定",
+        "needs_adapter": "Host 自有 factory/callsite 与实际 invocation 证据",
+        "unresolved": "当前审计没有新的 PP2TP1 功能/效果实测"
+      },
+      "evidence": [
+        {
+          "repository": "pipeline",
+          "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source/pyproject.toml",
+          "repository_relative_path": "pyproject.toml",
+          "line_start": 17,
+          "line_end": 21,
+          "code": "17: [project.entry-points.\"vllm_hust.extension_bundles\"]\n18: \"org.vllm-hust.pipeline-microbatch\" = \"vllm_hust_pipeline_microbatch\"\n19: \n20: [tool.hatch.build.targets.wheel]\n21: packages = [\"src/vllm_hust_pipeline_microbatch\"]",
+          "file_sha256": "eae2d31910e1f2875c81f083b775739bc521bd465c437855c5a54ba1bc6373db",
+          "git_blob": "0dda3c3ef5989215dc0b1e255ff5349176f90da3",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-pipeline/pyproject.toml.snapshot"
+        },
+        {
+          "repository": "pipeline",
+          "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source/src/vllm_hust_pipeline_microbatch/policy.py",
+          "repository_relative_path": "src/vllm_hust_pipeline_microbatch/policy.py",
+          "line_start": 43,
+          "line_end": 62,
+          "code": "43:     microbatch_count: int\n44:     cost_models: tuple[MicroBatchCostModel, ...] = ()\n45: \n46:     @classmethod\n47:     def from_config(\n48:         cls, raw: Mapping[str, Any], vllm_config: VllmConfig\n49:     ) -> PipelineMicrobatchConfig:\n50:         parallel = vllm_config.parallel_config\n51:         pp_size = parallel.pipeline_parallel_size\n52:         tp_size = parallel.tensor_parallel_size\n53:         if pp_size <= 1:\n54:             raise ValueError(\"pipeline microbatch requires pipeline_parallel_size > 1\")\n55: \n56:         expected_pp = _positive_int(raw, \"pipeline_parallel_size\")\n57:         expected_tp = _positive_int(raw, \"tensor_parallel_size\")\n58:         if (pp_size, tp_size) != (expected_pp, expected_tp):\n59:             raise ValueError(\n60:                 \"pipeline microbatch topology mismatch: \"\n61:                 f\"runtime PP{pp_size}xTP{tp_size}, \"\n62:                 f\"profile PP{expected_pp}xTP{expected_tp}\"",
+          "file_sha256": "194da88d7363a00daba25a3b3accc6aee89a96c14de56e1c7d7083d842822ebf",
+          "git_blob": "df8a9ba1f51aaa5629a82527406d8699a5f00340",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-pipeline/src/vllm_hust_pipeline_microbatch/policy.py.snapshot"
+        },
+        {
+          "repository": "pipeline",
+          "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source/src/vllm_hust_pipeline_microbatch/policy.py",
+          "repository_relative_path": "src/vllm_hust_pipeline_microbatch/policy.py",
+          "line_start": 83,
+          "line_end": 92,
+          "code": "83:             raise ValueError(\"pipeline_microbatch.mode must be balanced or calibrated\")\n84: \n85:         microbatch_count = int(\n86:             raw.get(\"microbatch_count\", vllm_config.max_concurrent_batches)\n87:         )\n88:         if not 1 < microbatch_count <= vllm_config.max_concurrent_batches:\n89:             raise ValueError(\n90:                 \"microbatch_count must be between 2 and max_concurrent_batches\"\n91:             )\n92: ",
+          "file_sha256": "194da88d7363a00daba25a3b3accc6aee89a96c14de56e1c7d7083d842822ebf",
+          "git_blob": "df8a9ba1f51aaa5629a82527406d8699a5f00340",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-pipeline/src/vllm_hust_pipeline_microbatch/policy.py.snapshot"
+        },
+        {
+          "repository": "pipeline",
+          "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source/docs/conditional-host031-unqualified-release.md",
+          "repository_relative_path": "docs/conditional-host031-unqualified-release.md",
+          "line_start": 1,
+          "line_end": 7,
+          "code": "1: # Unqualified exact-source conditional release candidate\n2: \n3: This release adds a new declaration for the Pipeline/BidKV scheduler pair on the future Host source f7bc2a5eebc505f28abfbf318734225e4c30c64c/tree9ee4ce4dbcb4f685df8713fb1c33a53d7221ba27. No policy algorithm changes. Host extension API is exactly1.0; policy protocol is the existing actual API. PP2TP1, maxseq1 and /models/Qwen2.5-7B-Instruct remain explicit runtime qualification requirements. Old PP2TP2/TP4 graph passed labels are removed from the active profile, not promoted to this tuple.\n4: \n5: The narrowly bounded public development family >=0.31.1.post1.dev19,<0.31.1.post1.dev20 is derived from the actual Host custom setup.py/upstream_version.json rules, actual parent772 official dev18 build, and the selected future commit's one new parent edge. This is a source declaration, not an assertion that a future wheel has already been built. The actual future official wheel METADATA/version, exact commit/tree and complete source/installed closure must independently match BEFORE any qualification; an unexpected public version must reject this candidate instead of widening it silently. Local PEP440 commit/platform suffixes do not supply source provenance.\n6: \n7: The required profile contains no status=passed or fake ready flag. Existing Manager admission still requires independently derived runtime qualification. Source-only/unregistered preparation does not authorize normal Manager launch. A future genuine functional run may qualify configured public outputs while keeping actual preemption coverage failed/unknown; formal sampled positive results still require exact32 native accepted batch/preemption effects. No request, budget, retry, traffic or preemption behavior is altered to force an effect.",
+          "file_sha256": "c6eededf4c1dd4f2ca18e6622e1533737c8252f111e53be274ac39ac00f2ed46",
+          "git_blob": "f8be2291341d82caa04b0378807314ce80e8cb03",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-pipeline/docs/conditional-host031-unqualified-release.md.snapshot"
+        },
+        {
+          "repository": "pipeline",
+          "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source/src/vllm_hust_pipeline_microbatch/planner.py",
+          "repository_relative_path": "src/vllm_hust_pipeline_microbatch/planner.py",
+          "line_start": 20,
+          "line_end": 34,
+          "code": "20:     def __post_init__(self) -> None:\n21:         if self.pp_rank < 0 or self.layer_num <= 0:\n22:             raise ValueError(\"invalid pipeline rank/layer count\")\n23: \n24:     def predict(self, request_num: int, aggregated_ctx_length: int) -> float:\n25:         if request_num < 0 or aggregated_ctx_length < 0:\n26:             raise ValueError(\"microbatch dimensions cannot be negative\")\n27:         return (\n28:             self.p0 * request_num * self.layer_num\n29:             + self.p1 * request_num\n30:             + self.p2 * aggregated_ctx_length * self.layer_num\n31:             + self.p3 * aggregated_ctx_length\n32:             + self.p4 * self.layer_num\n33:             + self.p5\n34:         )",
+          "file_sha256": "edc7b0ea1983865c12309d6a2d30d30dcb9083eee11af133f46e480c90710c54",
+          "git_blob": "aba2eb4ecfd1ddf450e764948a15397d64bac91f",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-pipeline/src/vllm_hust_pipeline_microbatch/planner.py.snapshot"
+        },
+        {
+          "repository": "pipeline",
+          "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source/src/vllm_hust_pipeline_microbatch/planner.py",
+          "repository_relative_path": "src/vllm_hust_pipeline_microbatch/planner.py",
+          "line_start": 61,
+          "line_end": 87,
+          "code": "61: def worst_rank_cost(\n62:     microbatch: MicroBatchSnapshot, models: tuple[MicroBatchCostModel, ...]\n63: ) -> float:\n64:     if not models:\n65:         raise ValueError(\"at least one rank-local cost model is required\")\n66:     return max(\n67:         model.predict(microbatch.request_num, microbatch.aggregated_ctx_length)\n68:         for model in models\n69:     )\n70: \n71: \n72: def assign_lowest_cost(\n73:     request: RequestWork,\n74:     microbatches: tuple[MicroBatchSnapshot, ...],\n75:     models: tuple[MicroBatchCostModel, ...],\n76: ) -> tuple[MicroBatchSnapshot, ...]:\n77:     if not microbatches:\n78:         raise ValueError(\"at least one microbatch is required\")\n79:     target = min(\n80:         microbatches,\n81:         key=lambda batch: (worst_rank_cost(batch, models), batch.microbatch_id),\n82:     )\n83:     return tuple(\n84:         MicroBatchSnapshot(batch.microbatch_id, (*batch.requests, request))\n85:         if batch.microbatch_id == target.microbatch_id\n86:         else batch\n87:         for batch in microbatches",
+          "file_sha256": "edc7b0ea1983865c12309d6a2d30d30dcb9083eee11af133f46e480c90710c54",
+          "git_blob": "aba2eb4ecfd1ddf450e764948a15397d64bac91f",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-pipeline/src/vllm_hust_pipeline_microbatch/planner.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-02",
+      "title": "Pipeline 与 KV compression 的 PP 约束明确不相交",
+      "evidence_class": "source_derived_incompatibility_not_runtime_oracle",
+      "observed_source": "Pipeline 要求 pipeline_parallel_size>1；当前 d409 KV stateful Host 验证要求 pipeline/data/prefill-context/decode-context parallel size 均为1。",
+      "composition_implication": "同一进程配置下二者的 PP 可行域为空。不能靠禁用其中一个仍称 pair compatible，也不能把 Pipeline+BidKV 候选混成 Pipeline+KVCompress。两者 manifest 的 host 身份不同，不能直接比较版本字符串得出此结论。",
+      "provenance_and_our_adaptation": "这是原策略/状态协调代码的约束，不是本次构造的 compatibility 标签。",
+      "current_ECPA": {
+        "can_solve": "将真实拓扑谓词纳入 adapter/contract 后在启动前拒绝该组合",
+        "needs_adapter": "从源提取并认证 PP/TP/并行模式约束",
+        "unresolved": "不应放宽 KV 算法的 PP 支持来获得一个正标签"
+      },
+      "evidence": [
+        {
+          "repository": "pipeline",
+          "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-pipeline-source/src/vllm_hust_pipeline_microbatch/policy.py",
+          "repository_relative_path": "src/vllm_hust_pipeline_microbatch/policy.py",
+          "line_start": 49,
+          "line_end": 62,
+          "code": "49:     ) -> PipelineMicrobatchConfig:\n50:         parallel = vllm_config.parallel_config\n51:         pp_size = parallel.pipeline_parallel_size\n52:         tp_size = parallel.tensor_parallel_size\n53:         if pp_size <= 1:\n54:             raise ValueError(\"pipeline microbatch requires pipeline_parallel_size > 1\")\n55: \n56:         expected_pp = _positive_int(raw, \"pipeline_parallel_size\")\n57:         expected_tp = _positive_int(raw, \"tensor_parallel_size\")\n58:         if (pp_size, tp_size) != (expected_pp, expected_tp):\n59:             raise ValueError(\n60:                 \"pipeline microbatch topology mismatch: \"\n61:                 f\"runtime PP{pp_size}xTP{tp_size}, \"\n62:                 f\"profile PP{expected_pp}xTP{expected_tp}\"",
+          "file_sha256": "194da88d7363a00daba25a3b3accc6aee89a96c14de56e1c7d7083d842822ebf",
+          "git_blob": "df8a9ba1f51aaa5629a82527406d8699a5f00340",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-pipeline/src/vllm_hust_pipeline_microbatch/policy.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/stateful.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/stateful.py",
+          "line_start": 221,
+          "line_end": 230,
+          "code": "221:         parallel = config.parallel_config\n222:         for name, attr in (\n223:             (\"pipeline parallel\", \"pipeline_parallel_size\"),\n224:             (\"data parallel\", \"data_parallel_size\"),\n225:             (\"prefill context parallel\", \"prefill_context_parallel_size\"),\n226:             (\"decode context parallel\", \"decode_context_parallel_size\"),\n227:         ):\n228:             value = int(getattr(parallel, attr, 1))\n229:             if value != 1:\n230:                 reasons.append(f\"{name} size must be one, got {value}\")",
+          "file_sha256": "2539041fb51c14ad86dd197d0e2ccd8b047dbff341ddbfd44d25e0c977731e44",
+          "git_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/stateful.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-03",
+      "title": "BidKV 功能调用与压力下产生 utility effect 是不同命题",
+      "evidence_class": "observed_source",
+      "observed_source": "原策略从 context.candidates/kv_cache_usage/now 选择 victim；running 为空拒绝，utility gate 会因 running 数、缺失/不足 KV utilization、cooldown 而返回 false；实例保留最近选择与 preemption 历史。",
+      "composition_implication": "正常 HTTP 输出、已构造策略或全候选 fallback 不证明发生 BidKV utility preemption。maxseq1/无压力下 effects 可缺失；缺失必须保留 unknown/negative，不能前置为插件未安装，也不能当32个效果通过。",
+      "provenance_and_our_adaptation": "这些 gate 与统计来自实际 BidKV 算法。研究的32选择/typed qualification/record bridge 是另外新增的测量与管理层。",
+      "current_ECPA": {
+        "can_solve": "绑定条件声明、原请求/策略调用、功能与 effect 两级结果",
+        "needs_adapter": "Host 验证后 accepted-victim 与原控制 query 的身份连接",
+        "unresolved": "无运行压力证据时不能证明 pair 的条件成立"
+      },
+      "evidence": [
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm_hust/selector.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm_hust/selector.py",
+          "line_start": 273,
+          "line_end": 295,
+          "code": "273:     vllm_preemption_policy_api_version = 1\n274: \n275:     def __init__(self, config: BidkvSelectorConfig) -> None:\n276:         self.config = config\n277:         self._last_utility_pick_ts = -math.inf\n278:         snapshot_size = max(1, int(self.config.utility_snapshot_history_size))\n279:         self._total_preemptions = 0\n280:         self._total_tokens_freed = 0\n281:         self._kv_pressure_events = 0\n282:         self._utility_strategy_hits = 0\n283:         self._default_strategy_hits = 0\n284:         self._liveness_fallback_hits = 0\n285:         self._liveness_epochs = 0\n286:         self._cascade_guard_hits = 0\n287:         self._policy_abstentions = 0\n288:         self._liveness_preemption_offsets: dict[str, int] = {}\n289:         self._consecutive_preemption_events = 0\n290:         self._consecutive_preemption_checks = 0\n291:         self._last_preempted_request_id: str | None = None\n292:         self._preemptions_per_request: dict[str, int] = defaultdict(int)\n293:         self._recent_preempted_req_ids: deque[str] = deque(maxlen=snapshot_size)\n294:         self._last_decision: dict[str, Any] | None = None\n295:         self._decision_snapshots: deque[dict[str, Any]] = deque(maxlen=snapshot_size)",
+          "file_sha256": "636fbbf87e81feeb837b3e577cbf05406dd8a363629a12870500c83a2cbe6135",
+          "git_blob": "2d79dd5a683414498df474e86f5c1598b2378ed1",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm_hust/selector.py.snapshot"
+        },
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm_hust/selector.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm_hust/selector.py",
+          "line_start": 318,
+          "line_end": 342,
+          "code": "318:     def select_victim(self, context: PreemptionContext) -> str | None:\n319:         running = context.candidates\n320:         if not running:\n321:             raise ValueError(\"running is empty, cannot pick victim\")\n322: \n323:         strategy = self.config.utility_strategy if self._utility_enabled else \"pe\"\n324:         now = self._resolve_now(context.now)\n325:         policy = context.scheduling_policy\n326:         kv_utilization = context.kv_cache_usage\n327: \n328:         if strategy == \"bidkv\":\n329:             victim = self._pick_bidkv_victim(\n330:                 running,\n331:                 policy,\n332:                 kv_utilization,\n333:                 now,\n334:                 getattr(context, \"requesting_request_id\", \"\"),\n335:             )\n336:         elif strategy == \"static-random\":\n337:             victim = self._pick_random_victim(running, policy, kv_utilization, now)\n338:         elif strategy == \"largest-first\":\n339:             victim = self._pick_largest_first_victim(running, policy, kv_utilization, now)\n340:         else:\n341:             victim = self._pick_pe_victim(running, policy, kv_utilization, now)\n342:         return None if victim is None else victim.request_id",
+          "file_sha256": "636fbbf87e81feeb837b3e577cbf05406dd8a363629a12870500c83a2cbe6135",
+          "git_blob": "2d79dd5a683414498df474e86f5c1598b2378ed1",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm_hust/selector.py.snapshot"
+        },
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm_hust/selector.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm_hust/selector.py",
+          "line_start": 682,
+          "line_end": 705,
+          "code": "682:     def _can_use_utility(\n683:         self,\n684:         *,\n685:         kv_utilization: float | None,\n686:         now_s: float | None,\n687:         running_size: int,\n688:     ) -> bool:\n689:         if running_size < self.config.utility_min_running:\n690:             return False\n691:         if self.config.utility_kv_gate > 0 and (\n692:             kv_utilization is None or kv_utilization < self.config.utility_kv_gate\n693:         ):\n694:             return False\n695:         if self.config.utility_cooldown_s > 0 and self._last_utility_pick_ts > -math.inf:\n696:             now = self._resolve_now(now_s)\n697:             if now - self._last_utility_pick_ts < self.config.utility_cooldown_s:\n698:                 return False\n699:         return True\n700: \n701:     @staticmethod\n702:     def _resolve_now(now_s: float | None) -> float:\n703:         if now_s is not None:\n704:             return float(now_s)\n705:         return time.monotonic()",
+          "file_sha256": "636fbbf87e81feeb837b3e577cbf05406dd8a363629a12870500c83a2cbe6135",
+          "git_blob": "2d79dd5a683414498df474e86f5c1598b2378ed1",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm_hust/selector.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-04",
+      "title": "BidKV legacy monkeypatch 与 KV 类级 hook 存在具体顺序敏感面",
+      "evidence_class": "source_derived_order_counterexample_not_executed",
+      "observed_source": "BidKV legacy 包单独提供 general plugin，主包不注册；legacy 模式包裹 Scheduler.__init__，再把 schedule/update_from_output/_free_request/_preempt_request 写到实例。KVCompress 则保存并替换 Scheduler 类的 __init__/schedule/update_from_output。",
+      "composition_implication": "若一个已被 BidKV 实例级覆盖的 Scheduler 之后才安装 KV 类级 schedule wrapper，Python 实例属性优先于类方法，已有实例仍可绕过新类 wrapper。相反，KV 类 hook 先装、BidKV 后从已包裹实例捕获原方法，是另一条组合链。这是可构造源级反例，不是本机已测冲突。",
+      "provenance_and_our_adaptation": "必须区分 BidKV 明确标注 legacy 实验路径与 native PreemptionPolicy 路径；不能用 legacy 的冲突证据给 native pair 自动贴标签。",
+      "current_ECPA": {
+        "can_solve": "若真实声明同一调度方法的 exclusive ownership，可拒绝；可固定激活顺序并记录 scope",
+        "needs_adapter": "实际 class/instance method owner、链头/原方法及卸载所有权检查",
+        "unresolved": "当前逻辑资源 URI 不自动发现 Python 属性别名/覆盖关系"
+      },
+      "evidence": [
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm/plugin.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm/plugin.py",
+          "line_start": 1,
+          "line_end": 17,
+          "code": "1: \"\"\"Legacy vLLM general plugin for experiment-only scheduler injection.\n2: \n3: The main ``bidkv`` wheel deliberately does not register this module. Archived\n4: experiment replay requires the separate ``bidkv-vllm-legacy`` distribution,\n5: whose ``vllm.general_plugins`` entry point executes inside every vLLM process,\n6: including the EngineCore subprocess spawned via ``multiprocessing.spawn``.\n7: \n8: Flow\n9: ----\n10: 1. ``EngineCore.__init__`` calls ``load_general_plugins()`` at startup.\n11: 2. This plugin reads ``BIDKV_STRATEGY`` from the environment.\n12: 3. Only an explicitly configured legacy experiment monkey-patches\n13:    ``Scheduler.__init__``. Installing BidKV by itself must not change vLLM.\n14: \n15: The old HUST fork used a separate ``vllm.victim_selector`` entry point. The\n16: main BidKV distribution no longer registers that non-upstream namespace; the\n17: adapter remains importable only for pinned legacy-fork replay.",
+          "file_sha256": "b586f8f96261a207043e21c8cd9272ed9fe71f2dcc79faaacd3e910a2c5f9258",
+          "git_blob": "d214a3629310976687e3b2d7a573c958684ec6e4",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm/plugin.py.snapshot"
+        },
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm/plugin.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm/plugin.py",
+          "line_start": 75,
+          "line_end": 100,
+          "code": "75: def _patch_scheduler_init(strategy_name: str) -> None:\n76:     \"\"\"Monkey-patch Scheduler.__init__ to install BidKV hooks post-init.\"\"\"\n77:     from vllm.v1.core.sched.scheduler import Scheduler\n78: \n79:     _original_init = Scheduler.__init__\n80: \n81:     def _bidkv_patched_init(self: Scheduler, *args: object, **kwargs: object) -> None:  # type: ignore[no-untyped-def]\n82:         _original_init(self, *args, **kwargs)  # type: ignore[misc]\n83:         _install_bidkv(self, strategy_name)\n84: \n85:     Scheduler.__init__ = _bidkv_patched_init  # type: ignore[method-assign]\n86:     logger.info(\"BidKV plugin: Scheduler.__init__ patched\")\n87: \n88: \n89: def _install_bidkv(scheduler: object, strategy_name: str) -> None:\n90:     \"\"\"Install BidKV adapter + hooks on a live Scheduler instance.\"\"\"\n91:     vllm_config = getattr(scheduler, \"vllm_config\", None)\n92:     additional_config = getattr(vllm_config, \"additional_config\", None) or {}\n93:     if (\n94:         additional_config.get(\"enable_utility_victim_selection\")\n95:         or additional_config.get(\"victim_selector_plugin\") == \"bidkv\"\n96:     ):\n97:         raise RuntimeError(\n98:             \"BIDKV_STRATEGY cannot be combined with the native BidKV victim \"\n99:             \"selector. Remove BIDKV_STRATEGY for serving, or remove the victim \"\n100:             \"selector configuration for legacy experiments.\"",
+          "file_sha256": "b586f8f96261a207043e21c8cd9272ed9fe71f2dcc79faaacd3e910a2c5f9258",
+          "git_blob": "d214a3629310976687e3b2d7a573c958684ec6e4",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm/plugin.py.snapshot"
+        },
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm/scheduler_hook.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm/scheduler_hook.py",
+          "line_start": 57,
+          "line_end": 77,
+          "code": "57:         vLLM v1 Scheduler 实例。\n58:     adapter:\n59:         VLLMAdapter 实例。\n60:     \"\"\"\n61:     # 保存原始方法\n62:     setattr(scheduler, f\"{_ORIG_PREFIX}schedule\", scheduler.schedule)\n63:     setattr(scheduler, f\"{_ORIG_PREFIX}update_from_output\", scheduler.update_from_output)\n64:     if hasattr(scheduler, \"_free_request\"):\n65:         setattr(scheduler, f\"{_ORIG_PREFIX}_free_request\", scheduler._free_request)\n66: \n67:     # Patch schedule()\n68:     scheduler.schedule = functools.partial(_patched_schedule, scheduler, adapter)\n69: \n70:     # Patch update_from_output()\n71:     scheduler.update_from_output = functools.partial(\n72:         _patched_update_from_output, scheduler, adapter\n73:     )\n74: \n75:     # Patch _free_request()\n76:     if hasattr(scheduler, f\"{_ORIG_PREFIX}_free_request\"):\n77:         scheduler._free_request = functools.partial(_patched_free_request, scheduler, adapter)",
+          "file_sha256": "f97383022dc2c8b650e538417849d156783243391d989985770383ba8bc92edc",
+          "git_blob": "dd3664f30722ce1bf7138be13df0e1ec17bb1b87",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm/scheduler_hook.py.snapshot"
+        },
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm/scheduler_hook.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm/scheduler_hook.py",
+          "line_start": 114,
+          "line_end": 134,
+          "code": "114:     # 恢复原始方法\n115:     orig_schedule = getattr(scheduler, f\"{_ORIG_PREFIX}schedule\", None)\n116:     if orig_schedule is not None:\n117:         scheduler.schedule = orig_schedule\n118: \n119:     orig_update = getattr(scheduler, f\"{_ORIG_PREFIX}update_from_output\", None)\n120:     if orig_update is not None:\n121:         scheduler.update_from_output = orig_update\n122: \n123:     orig_free = getattr(scheduler, f\"{_ORIG_PREFIX}_free_request\", None)\n124:     if orig_free is not None:\n125:         scheduler._free_request = orig_free\n126: \n127:     orig_preempt = getattr(scheduler, f\"{_ORIG_PREFIX}_preempt_request\", None)\n128:     if orig_preempt is not None:\n129:         scheduler._preempt_request = orig_preempt\n130: \n131:     # 清理属性\n132:     for attr in list(vars(scheduler)):\n133:         if attr.startswith(_ORIG_PREFIX) or attr == \"_bidkv_adapter\":\n134:             delattr(scheduler, attr)",
+          "file_sha256": "f97383022dc2c8b650e538417849d156783243391d989985770383ba8bc92edc",
+          "git_blob": "dd3664f30722ce1bf7138be13df0e1ec17bb1b87",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm/scheduler_hook.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/stateful.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/stateful.py",
+          "line_start": 580,
+          "line_end": 619,
+          "code": "580:     marker = f\"{_PATCH_MARKER}_scheduler\"\n581:     if scheduler_cls.__dict__.get(marker, False):\n582:         return\n583:     original_init = scheduler_cls.__init__\n584:     original_schedule = scheduler_cls.schedule\n585:     original_update_from_output = scheduler_cls.update_from_output\n586: \n587:     def initialize(scheduler: Any, *args: Any, **kwargs: Any) -> None:\n588:         original_init(scheduler, *args, **kwargs)\n589:         setattr(\n590:             scheduler, _STATE_ATTRIBUTE, SchedulerCompressionState(scheduler, selection)\n591:         )\n592: \n593:     def schedule(scheduler: Any, *args: Any, **kwargs: Any) -> Any:\n594:         state = getattr(scheduler, _STATE_ATTRIBUTE)\n595:         state.before_schedule()\n596:         output = original_schedule(scheduler, *args, **kwargs)\n597:         state.after_schedule(output)\n598:         return output\n599: \n600:     def update_from_output(\n601:         scheduler: Any, scheduler_output: Any, *args: Any, **kwargs: Any\n602:     ) -> Any:\n603:         result = original_update_from_output(\n604:             scheduler, scheduler_output, *args, **kwargs\n605:         )\n606:         getattr(scheduler, _STATE_ATTRIBUTE).after_output(scheduler_output)\n607:         return result\n608: \n609:     setattr(scheduler_cls, f\"{marker}_original_init\", original_init)\n610:     setattr(scheduler_cls, f\"{marker}_original_schedule\", original_schedule)\n611:     setattr(\n612:         scheduler_cls,\n613:         f\"{marker}_original_update_from_output\",\n614:         original_update_from_output,\n615:     )\n616:     scheduler_cls.__init__ = initialize\n617:     scheduler_cls.schedule = schedule\n618:     scheduler_cls.update_from_output = update_from_output\n619:     setattr(scheduler_cls, marker, True)",
+          "file_sha256": "2539041fb51c14ad86dd197d0e2ccd8b047dbff341ddbfd44d25e0c977731e44",
+          "git_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/stateful.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-05",
+      "title": "KVCompress 的真实 ABI 是私有 runner/cache 结构，不是版本范围一个字段",
+      "evidence_class": "observed_source",
+      "observed_source": "显式 register 后安装 meta_path finder 包裹 vllm_ascend.worker.model_runner_v1 loader；读取 NPUModelRunner 的 initialize_kv_cache/load_model/_update_states/_build_attention_metadata/sample_tokens。状态侧还验证 scheduler 类型、balance、speculative、KV transfer 和 APC 方法。",
+      "composition_implication": "即使 metadata 版本匹配，任一字段/签名/结构迁移仍会使 load 或执行失败。当前 narrow supported tuple 不能外推到所有0.31；同一 Host 名字也不保证实际 Ascend concrete BlockTable。",
+      "provenance_and_our_adaptation": "该插件自身已含 host_compat 兼容层；不能把它注入的旧字段和类型当成上游 Host 原有 API。",
+      "current_ECPA": {
+        "can_solve": "绑定真实版本/源/轮闭包及明确声明的需求",
+        "needs_adapter": "具体 ABI shape 与 source owner 校验、精确可维护的版本适配",
+        "unresolved": "不能仅凭 manifest 推导代码级接口兼容"
+      },
+      "evidence": [
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/plugin.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/plugin.py",
+          "line_start": 74,
+          "line_end": 112,
+          "code": "74:     def exec_module(self, module: ModuleType) -> None:\n75:         from .host_compat import install_removed_routed_experts_types\n76: \n77:         install_removed_routed_experts_types()\n78:         self.wrapped.exec_module(module)\n79:         _install_runner_hooks(module.NPUModelRunner, self.selection)\n80: \n81: \n82: class _RunnerPatchFinder(MetaPathFinder):\n83:     \"\"\"Wrap only the Ascend runner loader without importing it in API processes.\"\"\"\n84: \n85:     def __init__(self, selection: Any) -> None:\n86:         self.selection = selection\n87: \n88:     def find_spec(\n89:         self,\n90:         fullname: str,\n91:         path: Any = None,\n92:         target: ModuleType | None = None,\n93:     ) -> ModuleSpec | None:\n94:         del target\n95:         if fullname != _RUNNER_MODULE:\n96:             return None\n97:         spec = PathFinder.find_spec(fullname, path)\n98:         if spec is None or spec.loader is None:\n99:             return spec\n100:         spec.loader = _RunnerPatchLoader(spec.loader, self.selection)\n101:         return spec\n102: \n103: \n104: def _install_lazy_runner_hook(selection: Any) -> None:\n105:     global _runner_patch_finder\n106:     loaded = sys.modules.get(_RUNNER_MODULE)\n107:     if loaded is not None and hasattr(loaded, \"NPUModelRunner\"):\n108:         _install_runner_hooks(loaded.NPUModelRunner, selection)\n109:         return\n110:     if _runner_patch_finder is None:\n111:         _runner_patch_finder = _RunnerPatchFinder(selection)\n112:         sys.meta_path.insert(0, _runner_patch_finder)",
+          "file_sha256": "8011457f6ba6e580b8138ed32c3e5883d6993f2c92788906ead01cb17acb6517",
+          "git_blob": "53110d8570eed4d0cd438d9cf5a37e4bfba05d33",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/plugin.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/plugin.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/plugin.py",
+          "line_start": 115,
+          "line_end": 150,
+          "code": "115: def _install_runner_hooks(runner_cls: type[Any], selection: Any) -> None:\n116:     if runner_cls.__dict__.get(_PATCH_MARKER, False):\n117:         return\n118:     if (\n119:         runner_cls.__module__ == _RUNNER_MODULE\n120:         and runner_cls.__name__ == \"NPUModelRunner\"\n121:     ):\n122:         from .host_compat import (\n123:             install_dcp_length_alias,\n124:             install_removed_async_output_routing_field,\n125:             install_removed_output_routing_field,\n126:             install_step3p5_fp32_linear_alias,\n127:         )\n128: \n129:         install_step3p5_fp32_linear_alias()\n130:         install_dcp_length_alias()\n131:         install_removed_output_routing_field()\n132:         install_removed_async_output_routing_field()\n133:         _install_gdn_metadata_hook()\n134:     # Current vLLM folded the legacy ``xdrope_section`` check into\n135:     # ``uses_mrope`` while the aligned Ascend runner still reads this old\n136:     # attribute in three paths.  Supply the neutral legacy value only when the\n137:     # host no longer defines it; models using xdrope are already represented by\n138:     # ``uses_mrope`` on this validated vLLM line.\n139:     if not hasattr(runner_cls, \"uses_xdrope_dim\"):\n140:         runner_cls.uses_xdrope_dim = 0\n141:     # The current Ascend runner reads this flag even when routed-expert\n142:     # capture is disabled. Its initializer only sets the flag in the enabled\n143:     # branch, while this plugin explicitly rejects that optional output.\n144:     if not hasattr(runner_cls, \"routed_experts_initialized\"):\n145:         runner_cls.routed_experts_initialized = False\n146:     original_initialize = runner_cls.initialize_kv_cache\n147:     original_load_model = runner_cls.load_model\n148:     original_update = runner_cls._update_states\n149:     original_metadata = runner_cls._build_attention_metadata\n150:     original_sample = runner_cls.sample_tokens",
+          "file_sha256": "8011457f6ba6e580b8138ed32c3e5883d6993f2c92788906ead01cb17acb6517",
+          "git_blob": "53110d8570eed4d0cd438d9cf5a37e4bfba05d33",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/plugin.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/stateful.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/stateful.py",
+          "line_start": 193,
+          "line_end": 220,
+          "code": "193:     def _validate_host(self) -> None:\n194:         scheduler = self.scheduler\n195:         config = scheduler.vllm_config\n196:         reasons: list[str] = []\n197:         scheduler_type = type(scheduler)\n198:         scheduler_identity = (scheduler_type.__module__, scheduler_type.__name__)\n199:         if scheduler_identity not in _SUPPORTED_SCHEDULER_TYPES:\n200:             reasons.append(\n201:                 \"the upstream v1 Scheduler or the current Ascend \"\n202:                 \"BalanceScheduler wrapper is required\"\n203:             )\n204:         if bool(getattr(scheduler, \"_balance_enabled\", False)):\n205:             reasons.append(\"Ascend balance scheduling must be disabled\")\n206:         if config.speculative_config is not None and not _supports_mtp2(config):\n207:             reasons.append(\n208:                 \"speculative decoding is unqualified; experimental Qwen3.5 \"\n209:                 \"MTP2 requires mamba_cache_mode='align' and explicit opt-in\"\n210:             )\n211:         if config.kv_transfer_config is not None:\n212:             reasons.append(\"KV transfer is unsupported\")\n213:         if bool(getattr(config.cache_config, \"enable_prefix_caching\", False)):\n214:             cache_manager = scheduler.kv_cache_manager\n215:             if not callable(getattr(cache_manager, \"get_computed_blocks\", None)):\n216:                 reasons.append(\"APC requires KVCacheManager.get_computed_blocks\")\n217:             if not callable(\n218:                 getattr(cache_manager.coordinator, \"find_longest_cache_hit\", None)\n219:             ):\n220:                 reasons.append(\"APC requires KVCacheCoordinator.find_longest_cache_hit\")",
+          "file_sha256": "2539041fb51c14ad86dd197d0e2ccd8b047dbff341ddbfd44d25e0c977731e44",
+          "git_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/stateful.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-06",
+      "title": "KV compression 与 preemption/APC 共享的是物理缓存状态而非单个插件名称",
+      "evidence_class": "observed_source_with_unverified_pair_hypothesis",
+      "observed_source": "KV 状态协调持有 coordinator/single_type_managers/block_pool，提交 pending 压缩与延迟释放；manager.free wrapper 清理 offsets/pending 并归还 reserved blocks。runner 的 slot_mapping hook 在实际 Ascend table 上把 positions 转物理位置。",
+      "composition_implication": "BidKV 选择 victim 后由 Host 真正 preempt/free，因此潜在相互作用涉及 request ID、reserved blocks、semantic/physical lengths 和释放时序。仅不同 entrypoint/不同资源字符串不能证明二者互不干扰。",
+      "provenance_and_our_adaptation": "物理 slot/table 适配属于现有 KV 插件自己实现；研究 native tensor/OP/ACK 观察用于证明执行，不是该缓存语义的原始接口。",
+      "current_ECPA": {
+        "can_solve": "有同一 canonical resource 声明时进行所有权/排他裁决",
+        "needs_adapter": "把真实 block pool/request 生命周期依赖投影为可信共同资源与 obligations",
+        "unresolved": "尚无此 pair 的实际 preemption+compression 双顺序 native 反例或正例"
+      },
+      "evidence": [
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/stateful.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/stateful.py",
+          "line_start": 301,
+          "line_end": 335,
+          "code": "301:     def _commit_pending(self, *, defer_release_outputs: int) -> None:\n302:         scheduler = self.scheduler\n303:         manager = scheduler.kv_cache_manager\n304:         single_managers = manager.coordinator.single_type_managers\n305:         if self.attention_group_index >= len(single_managers):\n306:             raise RuntimeError(\"full-attention cache manager is unavailable\")\n307:         cache_manager = single_managers[self.attention_group_index]\n308:         for request_id, pending in tuple(self.pending.items()):\n309:             if not pending.ready:\n310:                 continue\n311:             if request_id not in scheduler.requests:\n312:                 self._discard_pending(request_id)\n313:                 continue\n314:             blocks = cache_manager.req_to_blocks.get(request_id)\n315:             if blocks is None:\n316:                 self._discard_pending(request_id)\n317:                 continue\n318:             plan = pending.plan\n319:             actual_source = tuple(block.block_id for block in blocks)\n320:             if actual_source != plan.source_block_ids:\n321:                 self._discard_pending(request_id)\n322:                 raise RuntimeError(\n323:                     f\"request {request_id!r} block table changed before \"\n324:                     \"compression commit\"\n325:                 )\n326:             source_blocks = tuple(blocks)\n327:             blocks[:] = pending.reserved_blocks\n328:             released = tuple(reversed(source_blocks))\n329:             if defer_release_outputs:\n330:                 self.deferred_releases.setdefault(request_id, []).append(\n331:                     SchedulerDeferredRelease(\n332:                         request_id=request_id,\n333:                         blocks=released,\n334:                         remaining_outputs=defer_release_outputs,\n335:                     )",
+          "file_sha256": "2539041fb51c14ad86dd197d0e2ccd8b047dbff341ddbfd44d25e0c977731e44",
+          "git_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/stateful.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/stateful.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/stateful.py",
+          "line_start": 622,
+          "line_end": 638,
+          "code": "622: def _install_manager_hooks(manager_cls: type[Any]) -> None:\n623:     if manager_cls.__dict__.get(_PATCH_MARKER, False):\n624:         return\n625:     original_free = manager_cls.free\n626:     original_get_computed_blocks = getattr(manager_cls, \"get_computed_blocks\", None)\n627: \n628:     def free(manager: Any, request: Any) -> Any:\n629:         getattr(manager, _OFFSETS_ATTRIBUTE, {}).pop(request.request_id, None)\n630:         pending = getattr(manager, _PENDING_ATTRIBUTE, {}).pop(request.request_id, None)\n631:         if pending is not None:\n632:             manager.block_pool.free_blocks(reversed(pending.reserved_blocks))\n633:             if pending.previous_eligible_step is not None:\n634:                 request.next_decode_eligible_step = pending.previous_eligible_step\n635:         releases = getattr(manager, _DEFERRED_RELEASES_ATTRIBUTE, {}).pop(\n636:             request.request_id, ()\n637:         )\n638:         for release in releases:",
+          "file_sha256": "2539041fb51c14ad86dd197d0e2ccd8b047dbff341ddbfd44d25e0c977731e44",
+          "git_blob": "3142c55ce11d0f0e01be8fbb02740d98aff3435f",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/stateful.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/plugin.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/plugin.py",
+          "line_start": 463,
+          "line_end": 505,
+          "code": "463: def _install_runtime_slot_mapping_hooks(\n464:     runner: Any, attention_group_index: int = 0\n465: ) -> None:\n466:     \"\"\"Patch the concrete tables allocated by the current Ascend runner.\n467: \n468:     vLLM-Ascend owns a device-specific BlockTable implementation.  Patching\n469:     vLLM's generic table is therefore neither sufficient nor a stable way to\n470:     locate the active slot-mapping seam.  Resolve it from the initialized\n471:     runner and fail closed if the expected single-group structure changes.\n472:     \"\"\"\n473:     group_table = getattr(getattr(runner, \"input_batch\", None), \"block_table\", None)\n474:     block_tables = getattr(group_table, \"block_tables\", None)\n475:     if (\n476:         not isinstance(block_tables, list)\n477:         or attention_group_index < 0\n478:         or attention_group_index >= len(block_tables)\n479:     ):\n480:         raise RuntimeError(\"Ascend full-attention block table is unavailable\")\n481:     block_table = block_tables[attention_group_index]\n482:     if not callable(getattr(block_table, \"compute_slot_mapping\", None)):\n483:         raise RuntimeError(\"Ascend block table does not expose compute_slot_mapping\")\n484:     _install_slot_mapping_hook(type(block_table))\n485: \n486: \n487: def _install_slot_mapping_hook(block_table_cls: type[Any]) -> None:\n488:     marker = f\"{_PATCH_MARKER}_slot_mapping\"\n489:     if block_table_cls.__dict__.get(marker, False):\n490:         return\n491:     original = block_table_cls.compute_slot_mapping\n492: \n493:     def compute_slot_mapping(\n494:         block_table: Any,\n495:         num_reqs: int,\n496:         query_start_loc: Any,\n497:         positions: Any,\n498:     ) -> None:\n499:         provider = getattr(block_table, RUNNER_PROVIDER_ATTRIBUTE, None)\n500:         if provider is not None:\n501:             positions = provider.physical_positions_for_slot_mapping(positions)\n502:         return original(block_table, num_reqs, query_start_loc, positions)\n503: \n504:     setattr(block_table_cls, f\"{marker}_original\", original)\n505:     block_table_cls.compute_slot_mapping = compute_slot_mapping",
+          "file_sha256": "8011457f6ba6e580b8138ed32c3e5883d6993f2c92788906ead01cb17acb6517",
+          "git_blob": "53110d8570eed4d0cd438d9cf5a37e4bfba05d33",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/plugin.py.snapshot"
+        },
+        {
+          "repository": "bidkv",
+          "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-conditional-bidkv-source/src/bidkv/adapters/vllm_hust/selector.py",
+          "repository_relative_path": "src/bidkv/adapters/vllm_hust/selector.py",
+          "line_start": 318,
+          "line_end": 342,
+          "code": "318:     def select_victim(self, context: PreemptionContext) -> str | None:\n319:         running = context.candidates\n320:         if not running:\n321:             raise ValueError(\"running is empty, cannot pick victim\")\n322: \n323:         strategy = self.config.utility_strategy if self._utility_enabled else \"pe\"\n324:         now = self._resolve_now(context.now)\n325:         policy = context.scheduling_policy\n326:         kv_utilization = context.kv_cache_usage\n327: \n328:         if strategy == \"bidkv\":\n329:             victim = self._pick_bidkv_victim(\n330:                 running,\n331:                 policy,\n332:                 kv_utilization,\n333:                 now,\n334:                 getattr(context, \"requesting_request_id\", \"\"),\n335:             )\n336:         elif strategy == \"static-random\":\n337:             victim = self._pick_random_victim(running, policy, kv_utilization, now)\n338:         elif strategy == \"largest-first\":\n339:             victim = self._pick_largest_first_victim(running, policy, kv_utilization, now)\n340:         else:\n341:             victim = self._pick_pe_victim(running, policy, kv_utilization, now)\n342:         return None if victim is None else victim.request_id",
+          "file_sha256": "636fbbf87e81feeb837b3e577cbf05406dd8a363629a12870500c83a2cbe6135",
+          "git_blob": "2d79dd5a683414498df474e86f5c1598b2378ed1",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-bidkv/src/bidkv/adapters/vllm_hust/selector.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": "preemption 与 pending compression 的交错可能造成错误释放/过期映射；本次未执行该交错，不能作为 oracle truth。",
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-07",
+      "title": "兼容 shim 会改变进程共享命名空间，幂等 marker 不等于可组合",
+      "evidence_class": "observed_source",
+      "observed_source": "KV 插件在 loader/runner 初始化时补缺失的 routed-experts/输出字段/DCP/FP32 alias；另按环境改写 MessageQueue.__init__.__defaults__ 的 chunk 大小，并用类 marker 跳过后续安装。",
+      "composition_implication": "另一个 MOD 若依赖相同类默认值或不同旧字段语义，安装顺序及第一配置会影响后续调用。marker 证明“装过”，不证明“当前拥有者/配置与请求一致”或可安全卸载。",
+      "provenance_and_our_adaptation": "这些均是插件仓里真实兼容代码，不能表述为 upstream 仍保证的稳定 API；源码具体 owner 必须包括这个适配层。",
+      "current_ECPA": {
+        "can_solve": "显式声明进程全局变更资源及互斥",
+        "needs_adapter": "默认值/类属性原像与后像、配置一致性、变更撤销所有权",
+        "unresolved": "没有自动发现和证明任意 monkeypatch 可交换的能力"
+      },
+      "evidence": [
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/plugin.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/plugin.py",
+          "line_start": 122,
+          "line_end": 145,
+          "code": "122:         from .host_compat import (\n123:             install_dcp_length_alias,\n124:             install_removed_async_output_routing_field,\n125:             install_removed_output_routing_field,\n126:             install_step3p5_fp32_linear_alias,\n127:         )\n128: \n129:         install_step3p5_fp32_linear_alias()\n130:         install_dcp_length_alias()\n131:         install_removed_output_routing_field()\n132:         install_removed_async_output_routing_field()\n133:         _install_gdn_metadata_hook()\n134:     # Current vLLM folded the legacy ``xdrope_section`` check into\n135:     # ``uses_mrope`` while the aligned Ascend runner still reads this old\n136:     # attribute in three paths.  Supply the neutral legacy value only when the\n137:     # host no longer defines it; models using xdrope are already represented by\n138:     # ``uses_mrope`` on this validated vLLM line.\n139:     if not hasattr(runner_cls, \"uses_xdrope_dim\"):\n140:         runner_cls.uses_xdrope_dim = 0\n141:     # The current Ascend runner reads this flag even when routed-expert\n142:     # capture is disabled. Its initializer only sets the flag in the enabled\n143:     # branch, while this plugin explicitly rejects that optional output.\n144:     if not hasattr(runner_cls, \"routed_experts_initialized\"):\n145:         runner_cls.routed_experts_initialized = False",
+          "file_sha256": "8011457f6ba6e580b8138ed32c3e5883d6993f2c92788906ead01cb17acb6517",
+          "git_blob": "53110d8570eed4d0cd438d9cf5a37e4bfba05d33",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/plugin.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/plugin.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/plugin.py",
+          "line_start": 438,
+          "line_end": 456,
+          "code": "438:     except ValueError as error:\n439:         raise RuntimeError(\"VLLM_MQ_MAX_CHUNK_BYTES_MB must be an integer\") from error\n440:     if chunk_mebibytes <= 0:\n441:         raise RuntimeError(\"VLLM_MQ_MAX_CHUNK_BYTES_MB must be positive\")\n442: \n443:     queue_cls = import_module(_MESSAGE_QUEUE_MODULE).MessageQueue\n444:     if queue_cls.__dict__.get(_MESSAGE_QUEUE_PATCH_MARKER, False):\n445:         return\n446:     initializer = queue_cls.__init__\n447:     defaults = initializer.__defaults__\n448:     # Current MessageQueue defaults are, in order: local_reader_ranks,\n449:     # max_chunk_bytes, max_chunks, connect_ip. Fail closed if the host seam\n450:     # changes instead of silently patching the wrong parameter.\n451:     if defaults is None or len(defaults) != 4 or defaults[2] != 10:\n452:         raise RuntimeError(\"unsupported vLLM MessageQueue constructor defaults\")\n453:     updated = list(defaults)\n454:     updated[1] = chunk_mebibytes * 1024 * 1024\n455:     initializer.__defaults__ = tuple(updated)\n456:     setattr(queue_cls, _MESSAGE_QUEUE_PATCH_MARKER, True)",
+          "file_sha256": "8011457f6ba6e580b8138ed32c3e5883d6993f2c92788906ead01cb17acb6517",
+          "git_blob": "53110d8570eed4d0cd438d9cf5a37e4bfba05d33",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/plugin.py.snapshot"
+        },
+        {
+          "repository": "kv",
+          "commit": "d4090a888f971ea50e874cdf86bf63a8e22e647f",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/kv-source/src/vllm_ascend_kvcompress/host_compat.py",
+          "repository_relative_path": "src/vllm_ascend_kvcompress/host_compat.py",
+          "line_start": 248,
+          "line_end": 274,
+          "code": "248: def install_removed_output_routing_field(outputs_module: Any | None = None) -> bool:\n249:     \"\"\"Accept Ascend's disabled routed-expert field on a newer vLLM output.\n250: \n251:     Ascend passes ``routed_experts=None`` unconditionally. The current vLLM\n252:     output removed that constructor argument. Reject non-None values rather\n253:     than silently discarding an enabled auxiliary output.\n254:     \"\"\"\n255:     if outputs_module is None:\n256:         from vllm.v1 import outputs as outputs_module\n257: \n258:     output_cls = outputs_module.ModelRunnerOutput\n259:     marker = \"_ascend_kvcompress_routing_field_compat_v1\"\n260:     if getattr(output_cls, marker, False):\n261:         return False\n262:     if \"routed_experts\" in inspect.signature(output_cls).parameters:\n263:         return False\n264: \n265:     original_init = output_cls.__init__\n266: \n267:     def init(self: Any, *args: Any, routed_experts: Any = None, **kwargs: Any) -> None:\n268:         if routed_experts is not None:\n269:             raise RuntimeError(\"routed-expert output requires an aligned vLLM host\")\n270:         original_init(self, *args, **kwargs)\n271:         self.routed_experts = None\n272: \n273:     output_cls.__init__ = init\n274:     setattr(output_cls, marker, True)",
+          "file_sha256": "d67bd9a7afe434a54a49784b4cf5faffe6fab39fc55346e0ebd03f231adf3060",
+          "git_blob": "bedda47252ea48ca9b0b49e644a42904dbce0695",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-kv/src/vllm_ascend_kvcompress/host_compat.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-08",
+      "title": "Ascend 到 Host 的隐式 import 边已经产生真实 CPU 反例",
+      "evidence_class": "actual_runtime_CPU_counterexample_not_NPU",
+      "observed_source": "Ascend153535 global patch 由 connector/model-loader entrypoints 触发；模型 runner 的 attention import 链到 DeepSeek compressor，并无条件 import Host DeepseekV4Config。",
+      "composition_implication": "新 Host66 dev414 的 metadata/已安装 manifest 范围能通过，但实际导入 Ascend model_runner_v1 因移除的 vllm.transformers_utils.configs.deepseek_v4 失败。老731确有此模块。这是一个无关当前Qwen模型也会触发的隐式 import 依赖，不能通过扩大版本声明修复。",
+      "provenance_and_our_adaptation": "Ascend _ensure_global_patch 和 plugin 中的补丁不是 Manager 原生生命周期接口；Host66 main55 演进与我们新增 H3 probe 叠加的源码应分别记账。",
+      "current_ECPA": {
+        "can_solve": "The management-only CPU ABI preflight actually caught this failure. This is not evidence that the ECPA compiler inferred or detected the hidden import dependency.",
+        "needs_adapter": "正确源码 backport 或严格 Host/Ascend API 迁移",
+        "unresolved": "版本范围/逻辑资源声明本身未发现这个 import graph 缺边"
+      },
+      "evidence": [
+        {
+          "repository": "ascend",
+          "commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/ascend-source/vllm_ascend/__init__.py",
+          "repository_relative_path": "vllm_ascend/__init__.py",
+          "line_start": 42,
+          "line_end": 62,
+          "code": "42: def _ensure_global_patch():\n43:     \"\"\"Apply process-wide vLLM patches before engine-core initialization.\n44: \n45:     vLLM loads general plugins in engine-core subprocesses. E2E test\n46:     conftest hooks do not run there, so global patches that affect scheduler\n47:     and engine code must also be applied through these plugin entry points.\n48:     \"\"\"\n49:     global _GLOBAL_PATCH_APPLIED\n50:     if _GLOBAL_PATCH_APPLIED:\n51:         return\n52: \n53:     from vllm_ascend.utils import adapt_patch\n54: \n55:     adapt_patch(is_global_patch=True)\n56:     _GLOBAL_PATCH_APPLIED = True\n57: \n58: \n59: def register():\n60:     \"\"\"Register the NPU platform.\"\"\"\n61: \n62:     return \"vllm_ascend.platform.NPUPlatform\"",
+          "file_sha256": "064c2d3dd0aad0fd8e4278b4b2d6c15c98a4352c8df3ba1bd9dc685eb320d47f",
+          "git_blob": "a00d44e437d1860b5e77cdd63474aff33909ab49",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-ascend/vllm_ascend/__init__.py.snapshot"
+        },
+        {
+          "repository": "ascend",
+          "commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/ascend-source/vllm_ascend/__init__.py",
+          "repository_relative_path": "vllm_ascend/__init__.py",
+          "line_start": 65,
+          "line_end": 82,
+          "code": "65: def register_connector():\n66:     _ensure_global_patch()\n67: \n68:     from vllm_ascend.distributed.kv_transfer import register_connector\n69:     from vllm_ascend.distributed.weight_transfer import register_engine\n70: \n71:     register_connector()\n72:     register_engine()\n73: \n74: \n75: def register_model_loader():\n76:     _ensure_global_patch()\n77: \n78:     from .model_loader.netloader import register_netloader\n79:     from .model_loader.rfork import register_rforkloader\n80: \n81:     register_netloader()\n82:     register_rforkloader()",
+          "file_sha256": "064c2d3dd0aad0fd8e4278b4b2d6c15c98a4352c8df3ba1bd9dc685eb320d47f",
+          "git_blob": "a00d44e437d1860b5e77cdd63474aff33909ab49",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-ascend/vllm_ascend/__init__.py.snapshot"
+        },
+        {
+          "repository": "ascend",
+          "commit": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+          "path": "/root/ecpa-workspace/builds/ecpa-live-semantic-runtime-20261015/ascend-source/vllm_ascend/models/deepseek_v4/compressor.py",
+          "repository_relative_path": "vllm_ascend/models/deepseek_v4/compressor.py",
+          "line_start": 31,
+          "line_end": 38,
+          "code": "31: from transformers import DeepseekV2Config, DeepseekV3Config\n32: from vllm.config import CacheConfig, VllmConfig\n33: from vllm.model_executor.layers.layernorm import RMSNorm\n34: from vllm.model_executor.layers.linear import ReplicatedLinear\n35: from vllm.model_executor.layers.quantization import QuantizationConfig\n36: from vllm.models.deepseek_v4.compressor import CompressorStateCache\n37: from vllm.transformers_utils.configs.deepseek_v4 import DeepseekV4Config\n38: from vllm.v1.kv_cache_interface import KVCacheSpec",
+          "file_sha256": "9d190ff5544423b41aaa976057e46ffdcb9ac3c87f5b5d7567565612be108523",
+          "git_blob": "0aec2bc8928f147804366d959a7ebe039faa1f63",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-ascend/vllm_ascend/models/deepseek_v4/compressor.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": {
+        "path": "/root/ecpa-workspace/management/h3-new-host66-private-runtime-next-20261018-r1/actual-CPU-ABI.json",
+        "sha256": "20f797b1a2e57ec926094cb77d60846008751e053328aac2111d5f754e5a079d",
+        "error": "ModuleNotFoundError: No module named 'vllm.transformers_utils.configs.deepseek_v4'",
+        "scope": "真实独立h3-r3 CPU import；未运行Host推理/故障，不是device qualification。",
+        "snapshot": "docs/corpus/interface-audit-20261018/cpu-counterexample.json"
+      }
+    },
+    {
+      "id": "MOD-09",
+      "title": "Profiler 依赖 HUST EventBus ABI 和逐进程注册，非标准 HTTP 日志采样",
+      "evidence_class": "observed_source",
+      "observed_source": "register_plugin 强要求 vllm.v1.events 的 EventBus、RequestFinished/Preempted/KvReclaimed 与 API_VERSION==1.0；以 PID 保护重复注册，fork 后注销继承 sink 再创建新 sink，run_id 可取真实 launch ID。",
+      "composition_implication": "一个进程注册成功不能覆盖 API/scheduler 其他进程；HTTP request ID 也不能代替 EventBus 原 runtimeID/epoch。组合证据必须绑定产生事件的具体进程与真实 request_finished。",
+      "provenance_and_our_adaptation": "request-lifecycle-events 明确是 vLLM-HUST 提供的 ABI。研究新 H4 opaque-ID/profiler join 是新增验收桥，不能称上游官方通用能力。",
+      "current_ECPA": {
+        "can_solve": "为已声明的 role/epoch 约束建立 evidence obligations",
+        "needs_adapter": "每进程 actual EventBus 注册与原事件身份联结",
+        "unresolved": "安装/entrypoint 发现不证明各实际进程有效订阅"
+      },
+      "evidence": [
+        {
+          "repository": "profiler",
+          "commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-profiler-official-main/src/vllm_request_lifecycle_profiler/plugin.py",
+          "repository_relative_path": "src/vllm_request_lifecycle_profiler/plugin.py",
+          "line_start": 23,
+          "line_end": 53,
+          "code": "23: def register_plugin() -> None:\n24:     \"\"\"Register the plugin.\n25: \n26:     This function must be re-entrant because vLLM can load general plugins in\n27:     multiple processes.\n28:     \"\"\"\n29: \n30:     global _LIFECYCLE_OBSERVER, _NATIVE_EVENT_BUS, _NATIVE_EVENT_SINK\n31:     global _OBSERVER_FACTORY, _REGISTERED_PID, _RUNTIME_BRIDGE, _RUNTIME_HOOKS\n32:     process_id = os.getpid()\n33:     if _REGISTERED_PID == process_id:\n34:         return\n35: \n36:     try:\n37:         from vllm.v1.events import (\n38:             REQUEST_LIFECYCLE_EVENTS_API_VERSION,\n39:             EventBus,\n40:             RequestFinished,\n41:             RequestKvReclaimed,\n42:             RequestPreempted,\n43:         )\n44:     except Exception as error:\n45:         raise RuntimeError(\n46:             \"request lifecycle profiler requires vLLM-HUST \"\n47:             \"request-lifecycle-events v1\"\n48:         ) from error\n49:     if REQUEST_LIFECYCLE_EVENTS_API_VERSION != \"1.0\":\n50:         raise RuntimeError(\n51:             \"unsupported vLLM-HUST request-lifecycle-events API: \"\n52:             f\"{REQUEST_LIFECYCLE_EVENTS_API_VERSION!r}; expected '1.0'\"\n53:         )",
+          "file_sha256": "eda572aad29bfbeb747e86896456c42e901be1b8355367c4429f85626acee043",
+          "git_blob": "aee8c1f52c5bdbcebf54f2b23851e75c1f26e478",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-profiler/src/vllm_request_lifecycle_profiler/plugin.py.snapshot"
+        },
+        {
+          "repository": "profiler",
+          "commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-profiler-official-main/src/vllm_request_lifecycle_profiler/plugin.py",
+          "repository_relative_path": "src/vllm_request_lifecycle_profiler/plugin.py",
+          "line_start": 61,
+          "line_end": 76,
+          "code": "61:     inherited_sink = _NATIVE_EVENT_SINK\n62:     inherited_bus = _NATIVE_EVENT_BUS\n63:     if inherited_sink is not None and inherited_bus is not None:\n64:         inherited_bus.unregister_sink(inherited_sink)\n65:     run_id = os.getenv(\"VLLM_ECPA_LAUNCH_ID\") or hooks.process_uuid or secrets.token_hex(16)\n66:     native_sink = NativeLifecycleEventSink(\n67:         hooks,\n68:         run_id,\n69:         finished_type=RequestFinished,\n70:         preempted_type=RequestPreempted,\n71:         reclaimed_type=RequestKvReclaimed,\n72:         evidence_emitter=native_evidence_emitter,\n73:     )\n74:     EventBus.register_sink(native_sink)\n75:     _NATIVE_EVENT_BUS = EventBus\n76:     _NATIVE_EVENT_SINK = native_sink",
+          "file_sha256": "eda572aad29bfbeb747e86896456c42e901be1b8355367c4429f85626acee043",
+          "git_blob": "aee8c1f52c5bdbcebf54f2b23851e75c1f26e478",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-profiler/src/vllm_request_lifecycle_profiler/plugin.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    },
+    {
+      "id": "MOD-10",
+      "title": "Profiler fail-open 与原完整性验收必须分开",
+      "evidence_class": "observed_source",
+      "observed_source": "runtime_hooks 在序列化失败/队列溢出时记 loss/drop 并返回None，使 serving fail-open；可选 KV recovery observer 注册失败仅记录 exception。",
+      "composition_implication": "服务200可以与缺失 profiler facts 共存，因此不能把200当完整观测，更不能把“shared observer resource”当零影响/无丢失证明。反之，observability 缺证不自动证明原模型功能失败，应分功能、完整性和统计可用性。",
+      "provenance_and_our_adaptation": "这是原 profiler 的故障语义；研究的强 evidence gate/failed-slot 分类与其 fail-open serving 行为不是同一协议。",
+      "current_ECPA": {
+        "can_solve": "明确 obligation 未满足/数据不可用，并保留功能结果与 loss facts",
+        "needs_adapter": "按原 loss intervals、producer sequence、terminal summary 验证完整性",
+        "unresolved": "Manager 不能以启动成功消除 bounded queue 的实际丢失风险"
+      },
+      "evidence": [
+        {
+          "repository": "profiler",
+          "commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-profiler-official-main/src/vllm_request_lifecycle_profiler/runtime_hooks.py",
+          "repository_relative_path": "src/vllm_request_lifecycle_profiler/runtime_hooks.py",
+          "line_start": 387,
+          "line_end": 411,
+          "code": "387:             except Exception:  # noqa: BLE001 - serving must remain fail-open.\n388:                 self._note_drop_locked(\n389:                     record_seq,\n390:                     \"event\",\n391:                     \"serialization_failure\",\n392:                     observed_ns,\n393:                 )\n394:                 return None\n395:             reserved = draft.event_name in TERMINAL_EVENTS\n396:             if not self._can_enqueue_locked(raw, reserved=reserved):\n397:                 self._note_drop_locked(\n398:                     record_seq,\n399:                     \"event\",\n400:                     \"queue_overflow\",\n401:                     observed_ns,\n402:                 )\n403:                 return None\n404:             self._seal_loss_locked()\n405:             if not self._enqueue_locked(\n406:                 _QueuedRecord(raw, \"event\", record_seq, reserved, observed_ns)\n407:             ):\n408:                 self._note_drop_locked(\n409:                     record_seq,\n410:                     \"event\",\n411:                     \"queue_overflow\",",
+          "file_sha256": "18ce2df8ef4f062b4b096af54a712e7834e896607513709bf1954830a883140f",
+          "git_blob": "0d1c67f1969f598442574c216958cf0b01445fb5",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-profiler/src/vllm_request_lifecycle_profiler/runtime_hooks.py.snapshot"
+        },
+        {
+          "repository": "profiler",
+          "commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+          "path": "/root/ecpa-workspace/worktrees/ecpa-profiler-official-main/src/vllm_request_lifecycle_profiler/plugin.py",
+          "repository_relative_path": "src/vllm_request_lifecycle_profiler/plugin.py",
+          "line_start": 94,
+          "line_end": 107,
+          "code": "94:             profile_config = hooks.config.kv_recovery_profile_config\n95:             bridge = RuntimeBaseLifecycleBridge(hooks)\n96:             factory = KVRecoveryObserverFactoryAdapter(\n97:                 profile_config.run_id,\n98:                 hooks,\n99:                 bridge,\n100:                 KVRecoveryRuntimeABI.load(),\n101:             )\n102:             register_kv_recovery_observer_factory(factory)\n103:             _RUNTIME_BRIDGE = bridge\n104:             _OBSERVER_FACTORY = factory\n105:             logger.info(\"Registered the optional KV-recovery profiler.\")\n106:         except Exception:\n107:             logger.exception(\"Failed to register the optional KV-recovery profiler.\")",
+          "file_sha256": "eda572aad29bfbeb747e86896456c42e901be1b8355367c4429f85626acee043",
+          "git_blob": "aee8c1f52c5bdbcebf54f2b23851e75c1f26e478",
+          "matches_exact_Git_object": true,
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/deep-profiler/src/vllm_request_lifecycle_profiler/plugin.py.snapshot"
+        }
+      ],
+      "unverified_hypothesis": null,
+      "actual_runtime_evidence": null
+    }
+  ],
+  "manager_capability_source": [
+    {
+      "repository": "manager",
+      "commit": "b83bb52328bced0cd356b9ab9e644324c307d6dd",
+      "path": "/root/ecpa-workspace/worktrees/ecpa-manager-h3-client-bound-combined-next/src/vllm_hust_ext/contract_compiler.py",
+      "repository_relative_path": "src/vllm_hust_ext/contract_compiler.py",
+      "line_start": 1003,
+      "line_end": 1014,
+      "code": "1003:     for contract in contracts:\n1004:         if contract.host_runtime != runtime or version not in SpecifierSet(\n1005:             contract.host_version_range\n1006:         ):\n1007:             raise ContractPlanningError(\n1008:                 PlanningErrorCode.INCOMPATIBLE_HOST,\n1009:                 f\"{contract.extension_id} requires \"\n1010:                 f\"{contract.host_runtime}{contract.host_version_range}\",\n1011:             )\n1012:     normalized = tuple(sorted(contracts, key=lambda item: item.extension_id))\n1013:     if resource_taxonomy is not None:\n1014:         normalized = _normalize_taxonomy_resources(normalized, resource_taxonomy)",
+      "file_sha256": "5f386fdd5cd10ec80dd4cab2a395f558c9ae55fbbb6bdfbf11f5e836ad01c386",
+      "git_blob": "38146c71fa2473ee18a7b3fd364b21cc3f816934",
+      "matches_exact_Git_object": true
+    },
+    {
+      "repository": "manager",
+      "commit": "b83bb52328bced0cd356b9ab9e644324c307d6dd",
+      "path": "/root/ecpa-workspace/worktrees/ecpa-manager-h3-client-bound-combined-next/src/vllm_hust_ext/ecpa_model.py",
+      "repository_relative_path": "src/vllm_hust_ext/ecpa_model.py",
+      "line_start": 207,
+      "line_end": 220,
+      "code": "207:         normalized: dict[str, ResourceClaim] = {}\n208:         for claim in claims:\n209:             uri = canonical_uri(claim.uri, \"resource\")\n210:             prior = normalized.get(uri)\n211:             if (\n212:                 prior\n213:                 and (prior.mode == \"exclusive\" or claim.mode == \"exclusive\")\n214:                 and prior.owner != claim.owner\n215:             ):\n216:                 raise ContractError(\n217:                     ErrorCode.RESOURCE_CONFLICT,\n218:                     f\"{uri}: {prior.owner} vs {claim.owner}\",\n219:                 )\n220:             normalized[uri] = claim",
+      "file_sha256": "e8d80650a0a66785a09aa0741a7d90b2be8a5f68b9545e26da561a7d9ea9dc92",
+      "git_blob": "b9e9bfd2d20d146b6945a5641ac2a7954c8fb660",
+      "matches_exact_Git_object": true
+    }
+  ],
+  "claim_limits": [
+    "源码可证约束不冒充运行oracle",
+    "source-only组合顺序反例与真实CPU counterexample分开",
+    "不把我们新增manifest/qualification/native测量契约冒充上游公共接口",
+    "不覆盖全24MOD population，不推断H2/H4假设结果"
+  ],
+  "scope_provenance": {
+    "original_plugin_implementations": "本报告的原指其精确插件Git源中既有算法/接口，不声称这是上游vLLM官方公共ABI。",
+    "research_additions": "本轮dev19新manifest/qualification/Host condition measurement/native evidence桥与既有算法分开；没有用我们生成的ready/合格字段证明接口。",
+    "explicit_nonclaim": "没有新组合oracle、NPU推理、性能采样或24population重判。",
+    "source_state": "7个本地repo快照均clean；每引证文件逐bytes匹配指定Git blob。"
+  }
+}

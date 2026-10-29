@@ -1,0 +1,121 @@
+{
+  "schema": "ecpa-real-H2-drain-official-two-source-builds/v1",
+  "roles": {
+    "Host": {
+      "publication": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-source-release/Host-published.json",
+        "sha256": "3c74ffb1a21ec64d607915615555549d16eccd9de4eefc16d0a270c99f982247"
+      },
+      "source_commit": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+      "source_tree": "9c0956bf64ce66686e61503f73a688cf07196dbf",
+      "source_parent": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "build_report": {
+        "path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/official-host-empty-build-report.json",
+        "sha256": "a6468ebef73e972a80cdf71289faa021691921732abb00f03eb259d7bf759c89"
+      },
+      "wheel_path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host/wheels/vllm-0.31.1.post1.dev19+gf67ad57c8.empty-cp312-cp312-linux_aarch64.whl",
+      "wheel_sha256": "a9e20a79c6b4b8695091efa90f8ecf6c486a524855b333e51442fcdfd9ddac07",
+      "version": "0.31.1.post1.dev19+gf67ad57c8.empty",
+      "actual_Popen": {
+        "role": "Host",
+        "cwd": "/root/ecpa-workspace/worktrees/ecpa-host-h2-profiler-drain-build",
+        "argv": [
+          "taskset",
+          "-c",
+          "4",
+          "/root/ecpa-workspace/environments/ecpa-dev-venv/bin/python",
+          "-B",
+          "/root/ecpa-workspace/management/h3-host-capacity-build-candidate-20261017/build-empty-host-exact.py",
+          "--host-worktree",
+          "/root/ecpa-workspace/worktrees/ecpa-host-h2-profiler-drain-build",
+          "--commit",
+          "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+          "--tree",
+          "9c0956bf64ce66686e61503f73a688cf07196dbf",
+          "--python",
+          "/root/ecpa-workspace/environments/ecpa-selected-kv-attention-candidate-venv-20261014-r4/bin/python",
+          "--uv",
+          "/root/ecpa-dev-venv/bin/uv",
+          "--recipe",
+          "/root/ecpa-workspace/builds/ecpa-attention-runtime-wheel-build-20261014-r4/host/build-inputs.json",
+          "--output",
+          "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Host"
+        ],
+        "kernel": {
+          "pid": 2035049,
+          "start_ticks": 808799229,
+          "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+        },
+        "start_wall_ns": 1792372288837245817
+      },
+      "terminal": {
+        "returncode": 0,
+        "end_wall_ns": 1792372331946979884,
+        "native_qualification": null
+      }
+    },
+    "Profiler": {
+      "publication": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-source-release/Profiler-published.json",
+        "sha256": "c77f4d08259ba09b7329c8a3986ef5723d10d0ae62ade5208b78d201fea3a98c"
+      },
+      "source_commit": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+      "source_tree": "f0b8cfd8f06072071b7f4e2b49d34f17df8c4981",
+      "source_parent": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "build_report": {
+        "path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Profiler/official-profiler-build-report.json",
+        "sha256": "f7a3074423d2254e6a42cb4c0defd31b95afaff6d39ee015784aa4e7ba7bd5fe"
+      },
+      "wheel_path": "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Profiler/dist/vllm_request_lifecycle_profiler_plugin-0.1.2-py3-none-any.whl",
+      "wheel_sha256": "daf5e870ce0ef17c8361a6f50711104bb6d08b8edbc3519ad27ba5e0aa3998cc",
+      "version": "0.1.2",
+      "actual_Popen": {
+        "role": "Profiler",
+        "cwd": "/root/ecpa-workspace/worktrees/ecpa-profiler-h2-drain-build",
+        "argv": [
+          "taskset",
+          "-c",
+          "4",
+          "/root/ecpa-workspace/environments/ecpa-dev-venv/bin/python",
+          "-B",
+          "-m",
+          "build",
+          "--outdir",
+          "/root/ecpa-workspace/builds/ecpa-h2-profiler-drain-official-20261019-r1/Profiler/dist"
+        ],
+        "kernel": {
+          "pid": 2038774,
+          "start_ticks": 808803540,
+          "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+        },
+        "start_wall_ns": 1792372331947542671
+      },
+      "terminal": {
+        "returncode": 0,
+        "end_wall_ns": 1792372345794470482,
+        "native_qualification": null
+      }
+    }
+  },
+  "original_source_candidate_manifest": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-candidate/manifest.json",
+    "sha256": "c32238534048c2fb02363f858924a2bb6ba800165efb8a2529bef5594cb195b9"
+  },
+  "worker_continuation_manifest": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/profiler-drain-candidate/worker-drain-v2/manifest.json",
+    "sha256": "1b42edba87829629d69c719e2bade0d0a8656488db191aa865f9a31b127582c6"
+  },
+  "actual_tests": {
+    "original_cases": 7,
+    "worker_cases": 2,
+    "scope": "tiny real files and actual source method bodies, no native device qualification"
+  },
+  "next_Host_argv_append": [
+    "--shutdown-timeout",
+    "5"
+  ],
+  "current_runtime_installed_by_this_agent": false,
+  "main_merged": false,
+  "native_qualification": null,
+  "full_profiler_loss_free_verdict": "requires actual new scheduler/API/TP original summaries and independent oracle; not established by build"
+}

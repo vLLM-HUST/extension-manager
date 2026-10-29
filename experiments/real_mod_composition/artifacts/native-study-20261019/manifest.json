@@ -1,0 +1,1069 @@
+{
+  "schema": "ecpa-native-H2-original-byte-packet/v1",
+  "files": [
+    {
+      "path": "raw/kv-only/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/stdout.log",
+      "sha256": "c79716900866631e9367c70618011822b76d0ab10c71a960a1d4a03a1be5cd66",
+      "bytes": 30394
+    },
+    {
+      "path": "raw/kv-only/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/npu-before.txt",
+      "sha256": "24aee9755b99017043dca68b83232a9d43fc954e1497f2d8bd17b938fcc05831",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-only/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/manager-config.json",
+      "sha256": "b6dd865dce2d241444a1516c4811e516f74199eeec88f4cd7cacf11990ec74ea",
+      "bytes": 588
+    },
+    {
+      "path": "raw/kv-only/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/Popen.json",
+      "sha256": "a867927cf0c075c30db0093491b0be6c84fa01ad97deef658efa1e202e302ad8",
+      "bytes": 140
+    },
+    {
+      "path": "raw/kv-only/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-request-clock.json",
+      "sha256": "f04ed938ed7245d489c02610c82088810fdfc7ab8c67451a7f64f3efd34de256",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-only/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-response-clock.json",
+      "sha256": "00bdb5fb375e0c896d2aecb0cbeb9fee7022da68d0c38bfcd5c93e4a37ff3c56",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-only/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-request-clock.json",
+      "sha256": "f43e891de4ae09b564bb6247c911aac30e513b458086820bbf2eaa1f14fe55ef",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-only/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/kv-only/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-response.json",
+      "sha256": "a0b67cea5d087068f33eb0983f4d0ef0271fa4de79fa3e88af63ab61d7e0063d",
+      "bytes": 692
+    },
+    {
+      "path": "raw/kv-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/attempt.json",
+      "sha256": "1dba815164508fe0dc4420fe2a47f3fd5d46ac29bac25a138c2342d6c118c143",
+      "bytes": 8609
+    },
+    {
+      "path": "raw/kv-only/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/npu-after.txt",
+      "sha256": "63aa4d8cb30b0257f01145ea23b66268cbc97d09988a5e6622f0ea6cfdfc47b0",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-only/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-response-clock.json",
+      "sha256": "e0e87ece2335f20810c49630352a05ebcacd7f078d07b1680eec0b76abe46431",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-only/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/stderr.log",
+      "sha256": "f2e1bf1696cddfede20c229f62e8313e8bf6bacd86e55239501cfa8da469403b",
+      "bytes": 52329
+    },
+    {
+      "path": "raw/kv-only/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/raw-files.json",
+      "sha256": "e00612c370cc9b2c4beac758215faab26c490ae7b9f966ee273fb8309a1cb562",
+      "bytes": 13731
+    },
+    {
+      "path": "raw/kv-only/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/kv-only/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/runtime-evidence.jsonl",
+      "sha256": "373a0e4afc77618c0aab9f167ad712fdd77fad95cbdaf42f57dbc4e2c5faed17",
+      "bytes": 106164
+    },
+    {
+      "path": "raw/kv-only/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-response.json",
+      "sha256": "483909551256e77be3940ef653e41ff8f1538586c53e36c5ee6394ce5f34a373",
+      "bytes": 682
+    },
+    {
+      "path": "raw/kv-only/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/study-events.jsonl",
+      "sha256": "0fa73710e3d5ba41b918482c31d833329048bc20b5f83e66e2fc5626bf320b9e",
+      "bytes": 157720
+    },
+    {
+      "path": "raw/profiler-only/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/stdout.log",
+      "sha256": "bb03fe7fed1820d90d435db36b16b5f73e7df761bcb0e200c9428b4756bf4855",
+      "bytes": 26564
+    },
+    {
+      "path": "raw/profiler-only/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/npu-before.txt",
+      "sha256": "6bda26ed1e85be68a626f4436f0e9f5847481307dae14af4753c635e4a56c145",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-only/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/manager-config.json",
+      "sha256": "89f521cc79c1d44c6213df5ecb0a94e5b06aa2d14dc501994e640bdf5627383a",
+      "bytes": 127
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.1c4bb6697d5f488aa73a89abb41bb8e7.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.1c4bb6697d5f488aa73a89abb41bb8e7.jsonl",
+      "sha256": "d1d01af91097f51ec90c14a8c2d0ba134456e6de39bb09154b0f83856b039bcf",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-only/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/Popen.json",
+      "sha256": "412d35167b7d13b03751ae4fadea0a45dfbe0c60908851cca2aad78f815e45df",
+      "bytes": 140
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.5e06bf4356fe4873b897be02d2fbe7f0.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.5e06bf4356fe4873b897be02d2fbe7f0.jsonl",
+      "sha256": "3908e9f84163af42ff4777689d5c5c772138ff007bf53dcb6339590c4accf254",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-only/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-request-clock.json",
+      "sha256": "ec4bbc131ce04e4798c76308be2e286de2dca22e3ef3928b2f6669066566f15b",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-only/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-response-clock.json",
+      "sha256": "1df7fd44371c5eb7a90e2918d8e68aba12689cbae357eabfffcc8eccfe3a6376",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.4cdbaa5d26d547d78acf3e4e010fb36b.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.4cdbaa5d26d547d78acf3e4e010fb36b.jsonl",
+      "sha256": "933b61d2c9cfd8a3bada35d67a08972222d095947d255b6ff2d2e8728039113c",
+      "bytes": 4193
+    },
+    {
+      "path": "raw/profiler-only/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-request-clock.json",
+      "sha256": "65aefa62755fa5967bd5599e9641f7bf52abf100e99aed181855a239963b025c",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-only/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.064733bedef44ec4bc84e98fbfc5ab1f.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.064733bedef44ec4bc84e98fbfc5ab1f.jsonl",
+      "sha256": "a83aaa4bd99d7c4b4921218d152c5f05d60d132eacab4256df8191fba365a465",
+      "bytes": 754
+    },
+    {
+      "path": "raw/profiler-only/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-response.json",
+      "sha256": "fc0ab8602aa1c1caaad86fee39d1ca65543613aba496721612d7b372295eefe8",
+      "bytes": 698
+    },
+    {
+      "path": "raw/profiler-only/profiler.jsonl.rlp.49a5e888f70e46b18a8be454f79e952d.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.49a5e888f70e46b18a8be454f79e952d.jsonl",
+      "sha256": "b278c16896bc2c3136213e6d5c59c37e20a1413b350fcf363f6cecb833a26163",
+      "bytes": 754
+    },
+    {
+      "path": "raw/profiler-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/attempt.json",
+      "sha256": "b36748410c7865e778983f63e34fb7ce8bb93431b9980c2f1054f5d02578a146",
+      "bytes": 8973
+    },
+    {
+      "path": "raw/profiler-only/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/npu-after.txt",
+      "sha256": "8235f7512327a53a5cd45f0fc1c611850c1f266dd34ac471c1fb7fa09944efb9",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-only/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-response-clock.json",
+      "sha256": "8aae7c40191659ea588945b51b7d0d29b517012376e571a3f445831ae6d7d597",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-only/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/stderr.log",
+      "sha256": "66405f32f84107a908ff637c0de0a081ebce6aef52d33977d8a8e46129f88c25",
+      "bytes": 51739
+    },
+    {
+      "path": "raw/profiler-only/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/raw-files.json",
+      "sha256": "9b7b0faf0fe9cf7421ce14f9ec84498927fcb24c54af3ef0bf097ff40c2c8108",
+      "bytes": 10882
+    },
+    {
+      "path": "raw/profiler-only/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/profiler-only/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/runtime-evidence.jsonl",
+      "sha256": "4c4ad01bc6a196c8f595d88076aa882da071110d3ae5101f1824b09a22a0f524",
+      "bytes": 110436
+    },
+    {
+      "path": "raw/profiler-only/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-response.json",
+      "sha256": "6296eb893cf844755373e94cb7386a5fbb1fa5cbc70e7a4abcae57318ab9e751",
+      "bytes": 688
+    },
+    {
+      "path": "raw/profiler-only/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/study-events.jsonl",
+      "sha256": "09d9b5c5e6a3edaed4731ccd647b4ac58312f289f21284e694e24ceec3904d50",
+      "bytes": 155390
+    },
+    {
+      "path": "raw/kv-then-profiler/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/stdout.log",
+      "sha256": "279bf4ac52c944dec154f52768f0b5ef25c096da5d03c75b5a4d88028fa76523",
+      "bytes": 30868
+    },
+    {
+      "path": "raw/kv-then-profiler/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/npu-before.txt",
+      "sha256": "68365d0abe3f18fc4703b2627d9a9a13b3a1b2135993d03220612cf758738f5e",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.9748bd8d1d8b4f1988e6d5a3a3925ac1.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.9748bd8d1d8b4f1988e6d5a3a3925ac1.jsonl",
+      "sha256": "49fbba7bec3d5effda74544e103669cbac2a581b56feeb362c8b6195380fb5ed",
+      "bytes": 754
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.77c116af3b8e4b23bb1e6c998f0371b8.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.77c116af3b8e4b23bb1e6c998f0371b8.jsonl",
+      "sha256": "5b39d0f4032cb7641890af5223d0f9e9cb93e603bbaca0b605b0a3420d4f70a1",
+      "bytes": 754
+    },
+    {
+      "path": "raw/kv-then-profiler/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/manager-config.json",
+      "sha256": "618830973608acd87424607056058d7e5e34c0b01981d67105af4efd41ad8756",
+      "bytes": 667
+    },
+    {
+      "path": "raw/kv-then-profiler/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/Popen.json",
+      "sha256": "5c1eb744abcd78d9dd415fa84f2d7b0c0a0f1b55fd14680aab10114e4344a82a",
+      "bytes": 140
+    },
+    {
+      "path": "raw/kv-then-profiler/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-request-clock.json",
+      "sha256": "5e8928efe95b59581749f4ca85c791b8d79f6408f82b3fbc9d07c3aeb597bb35",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-then-profiler/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-response-clock.json",
+      "sha256": "004db4dec61ccaf7c4f5dce9ef2202eeedd7db9788f0d1fbd222a6427ca1b178",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.e7183655a2854c9c9eb1229a2eded0eb.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.e7183655a2854c9c9eb1229a2eded0eb.jsonl",
+      "sha256": "571e0c8ee55f28eab25d7946da5d8476bc3ddff76b65e239f489a4680ff3f75c",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/kv-then-profiler/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-request-clock.json",
+      "sha256": "2e2dbabc0ed0d1836502a2041212c549581ed46e0efd4da5718a4a3d6d163b76",
+      "bytes": 85
+    },
+    {
+      "path": "raw/kv-then-profiler/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/kv-then-profiler/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-response.json",
+      "sha256": "a8345c87e11a21cd29ec031eb0a11226ee82c7b761a0bd9fbafe2121df3a2877",
+      "bytes": 701
+    },
+    {
+      "path": "raw/kv-then-profiler/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/attempt.json",
+      "sha256": "0640bb82c64c9bc7a37239d406db0b03a4b22c7cdb000c7c02c4accb066c32cc",
+      "bytes": 9346
+    },
+    {
+      "path": "raw/kv-then-profiler/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/npu-after.txt",
+      "sha256": "8235f7512327a53a5cd45f0fc1c611850c1f266dd34ac471c1fb7fa09944efb9",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/kv-then-profiler/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-response-clock.json",
+      "sha256": "1e1713e74dd3eb09f984554381045547c99c77f168b9dce786540a7a8cc39ef6",
+      "bytes": 103
+    },
+    {
+      "path": "raw/kv-then-profiler/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/stderr.log",
+      "sha256": "490c9ff3e217309e2cc935521feebef4936845ea51a5071fa8703db38632ad0a",
+      "bytes": 52329
+    },
+    {
+      "path": "raw/kv-then-profiler/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/raw-files.json",
+      "sha256": "ad0f6112fbca6e19f57b6752ae01c489e87f7a6539e379b934ac4d941e44806d",
+      "bytes": 14386
+    },
+    {
+      "path": "raw/kv-then-profiler/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/kv-then-profiler/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/runtime-evidence.jsonl",
+      "sha256": "c5d71b78773bd2dba824730bb590968403a0809b3b5bd021588ff13100daf818",
+      "bytes": 114960
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.b6c0dad2e1704987a7df8548265ca82f.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.b6c0dad2e1704987a7df8548265ca82f.jsonl",
+      "sha256": "715f6112a93fe38f3d1b4e54c6e33ee3552d6eecf891a66e2c916e8cdad4764d",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/kv-then-profiler/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-response.json",
+      "sha256": "1846fa6df92bbec7a1b6436721b9352bcc79d10da97c6aeddf3477db632aa5a4",
+      "bytes": 691
+    },
+    {
+      "path": "raw/kv-then-profiler/profiler.jsonl.rlp.ba277158065347409ba6a033ccfd93e7.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.ba277158065347409ba6a033ccfd93e7.jsonl",
+      "sha256": "73c366a7190d1345ec58a548549f3c79c333c0e5ce987434a2f8de3ada3903a4",
+      "bytes": 4203
+    },
+    {
+      "path": "raw/kv-then-profiler/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/study-events.jsonl",
+      "sha256": "aab0501a0ae3b27dd1fce4a702404d650d7811f914bf1f85a4f15b1e8d4b0b6b",
+      "bytes": 160963
+    },
+    {
+      "path": "raw/profiler-then-kv/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/stdout.log",
+      "sha256": "e932f1097a56753cc0bb2d9cdd78ebdfeb5584f16a7e43a9cb2c5e4032c4990b",
+      "bytes": 30868
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.7930c403fd694c24837758375c07f1b6.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.7930c403fd694c24837758375c07f1b6.jsonl",
+      "sha256": "8c507d22d0d73a536b392742327d0b24aecb6baf5a14814cc9085f9080eff099",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-then-kv/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/npu-before.txt",
+      "sha256": "8235f7512327a53a5cd45f0fc1c611850c1f266dd34ac471c1fb7fa09944efb9",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-then-kv/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/manager-config.json",
+      "sha256": "c26e54cfa5ce0eff60dbc8f8055813969bb8c2660e79faa3d2ad4b49f070c1e3",
+      "bytes": 667
+    },
+    {
+      "path": "raw/profiler-then-kv/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/Popen.json",
+      "sha256": "87626283e1b8888870209af5c05e70be474b903abdaab7edcee3437017d749d1",
+      "bytes": 140
+    },
+    {
+      "path": "raw/profiler-then-kv/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-request-clock.json",
+      "sha256": "b89edccaf6dc3090c46f872a97046d29eb865f6c16ceed2bf6c11fef57aeaeb3",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-then-kv/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-response-clock.json",
+      "sha256": "9fbe06fae39a0a664f6bdcdb612adb2386a905b4d7924f2f04c7e825f4f7c8cc",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-then-kv/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-request-clock.json",
+      "sha256": "d04ecdeeb509b859c9e726b6064b458ce694ca0718f99e5b1d158dd22db75033",
+      "bytes": 85
+    },
+    {
+      "path": "raw/profiler-then-kv/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.e352834164394823a85297c27e4fb771.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.e352834164394823a85297c27e4fb771.jsonl",
+      "sha256": "169924eb83305a981a52e3dce07d5517763ef27aeb364818842eed0762078361",
+      "bytes": 754
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.3ded3b09e8f3438ea210203bc97c3127.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.3ded3b09e8f3438ea210203bc97c3127.jsonl",
+      "sha256": "907890cff344819d157b03464c8ea728d6809a598c08129acdc48c8d43672736",
+      "bytes": 1259
+    },
+    {
+      "path": "raw/profiler-then-kv/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-response.json",
+      "sha256": "2ea293b83f06f13f3bf5e32c32ac61add90184659d0d93091b1b269fdf6aeb1c",
+      "bytes": 701
+    },
+    {
+      "path": "raw/profiler-then-kv/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/attempt.json",
+      "sha256": "4ba5b579dd4af90925c4c7009ede4d0fc5b0046648d00be7f7d261bffbe1164d",
+      "bytes": 8501
+    },
+    {
+      "path": "raw/profiler-then-kv/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/npu-after.txt",
+      "sha256": "46101057c511509ce26aada452273a87b96365d00877d1caab8d2e03d73538bf",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/profiler-then-kv/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-response-clock.json",
+      "sha256": "92500f08041503868f6628b48d04bae7b677f12a3f850754f9c866ff4a887696",
+      "bytes": 103
+    },
+    {
+      "path": "raw/profiler-then-kv/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/stderr.log",
+      "sha256": "72606d60a198908f10195ff21ac288e006154c687d354e9aff9ac07d7cbe5475",
+      "bytes": 52329
+    },
+    {
+      "path": "raw/profiler-then-kv/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/raw-files.json",
+      "sha256": "10fc4cfba78c72f0d1408b8d4f1b6c7dd542acc349853e89c0b04f3c9d114141",
+      "bytes": 14386
+    },
+    {
+      "path": "raw/profiler-then-kv/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/profiler-then-kv/runtime-evidence.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/runtime-evidence.jsonl",
+      "sha256": "9960a1921bb3ef63d1eba0cb8c38f76c7ae02e09d9da04fb5f5b52288c795e86",
+      "bytes": 114980
+    },
+    {
+      "path": "raw/profiler-then-kv/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-response.json",
+      "sha256": "3eec38ca0e4bbd9251506f94c041d6721f73c44cf4c30a03a5c8de1c451c3f54",
+      "bytes": 691
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.be23b86ba9814ed8a6c85fcd374cc3c5.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.be23b86ba9814ed8a6c85fcd374cc3c5.jsonl",
+      "sha256": "b51fc92d048bad2f5eea3dd38b697f52e07b4de39d864aaa7d304476e8b555ee",
+      "bytes": 4203
+    },
+    {
+      "path": "raw/profiler-then-kv/profiler.jsonl.rlp.f9c89962a5bd4e9784bac1d2fa85f5c6.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.f9c89962a5bd4e9784bac1d2fa85f5c6.jsonl",
+      "sha256": "6b9a909ee749ca7cb0f533102a2ffb7467b81e14e14105c4a939cb4edd095b8f",
+      "bytes": 754
+    },
+    {
+      "path": "raw/profiler-then-kv/study-events.jsonl",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/study-events.jsonl",
+      "sha256": "1e3b85850c201a83aa097f1da4c566b9c411d941b5e43e41090d19cbd76313f1",
+      "bytes": 161028
+    },
+    {
+      "path": "raw/host-only/stdout.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/stdout.log",
+      "sha256": "6d18f749e191e3707c555c9df644697c9040f65c4e9ee530b3aab22e56aa6360",
+      "bytes": 25049
+    },
+    {
+      "path": "raw/host-only/npu-before.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/npu-before.txt",
+      "sha256": "15a6b7cadb4afa5c3989930aea871ee68dbd599c103a7e7b3e54c91085127da4",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/host-only/manager-config.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/manager-config.json",
+      "sha256": "9cc72b65f5ec15056b1a0b2d7d89210a85f7b35cb1de948e9b1ce85540032455",
+      "bytes": 46
+    },
+    {
+      "path": "raw/host-only/Popen.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/Popen.json",
+      "sha256": "812da03b8d08dcf6a9a4cf4d2669804bb55ce7f95ee78688ae462c660fe92178",
+      "bytes": 140
+    },
+    {
+      "path": "raw/host-only/above-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-request-clock.json",
+      "sha256": "20849625d67751f5f5a2ffd3be4c76799d8b840fb518f0dbe41d0a86e958c124",
+      "bytes": 85
+    },
+    {
+      "path": "raw/host-only/below-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-response-clock.json",
+      "sha256": "72b3af7abd60531c8934185f881292df1e5df34073aa86a8c8e74d8652d53afe",
+      "bytes": 103
+    },
+    {
+      "path": "raw/host-only/below-request-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-request-clock.json",
+      "sha256": "9fa0589073b0019b02995cc72383755a6b6661aa7b6a211e34f3476d231be724",
+      "bytes": 85
+    },
+    {
+      "path": "raw/host-only/above-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-request.json",
+      "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+      "bytes": 9928
+    },
+    {
+      "path": "raw/host-only/below-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-response.json",
+      "sha256": "832c2cb49c81559255a451c1727b63f5d981996f5063fa328f96f21f7e664884",
+      "bytes": 694
+    },
+    {
+      "path": "raw/host-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/attempt.json",
+      "sha256": "c8c00d49061bdb1c0b2c7e7c037be46c1c03620ca36347be19e485b20fd3983e",
+      "bytes": 8756
+    },
+    {
+      "path": "raw/host-only/npu-after.txt",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/npu-after.txt",
+      "sha256": "99ca27be252d433c0b1b478c116f5dc3112273efe6792bd2fe5efe03fbeb840f",
+      "bytes": 2223
+    },
+    {
+      "path": "raw/host-only/above-response-clock.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-response-clock.json",
+      "sha256": "9ac1ff9481a23cc0e8e36dfaeb0b12394ad9caaffc0e07757aded5611aeccaff",
+      "bytes": 103
+    },
+    {
+      "path": "raw/host-only/stderr.log",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/stderr.log",
+      "sha256": "33e4c61d60b88d61ed9cd7a80eab0e32768242866716d911004a965738600f2c",
+      "bytes": 42068
+    },
+    {
+      "path": "raw/host-only/raw-files.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/raw-files.json",
+      "sha256": "b9ae2c69dba545c5aa4f77d4919cbd3fe1cc8a2197cff95c495541e0f2d0651a",
+      "bytes": 10039
+    },
+    {
+      "path": "raw/host-only/below-request.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-request.json",
+      "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+      "bytes": 141
+    },
+    {
+      "path": "raw/host-only/above-response.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-response.json",
+      "sha256": "6614d1964fc60583d9f75b870b271bc6bba36f0570f04b1012e7706f56292e73",
+      "bytes": 684
+    },
+    {
+      "path": "cohorts/r1/campaign.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/campaign.json",
+      "sha256": "d0ee3fb12285f9a9ec4782531a5699e1e82d85027ac3b4bc61b68a3182667097",
+      "bytes": 1304
+    },
+    {
+      "path": "cohorts/r1/outcome.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/outcome.json",
+      "sha256": "3e641de587ab02e615b2efdfc1c6b34757c4b8d24fb6c7012b0ed771a17457b3",
+      "bytes": 3147
+    },
+    {
+      "path": "prior-attempts/r1/kv-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/kv-only/attempt.json",
+      "sha256": "bd7f91169521dbd6a0274301f92d04d6430e9d2b29cf4720f374d4e878b4a5ae",
+      "bytes": 2923
+    },
+    {
+      "path": "prior-attempts/r1/profiler-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r1/profiler-only/attempt.json",
+      "sha256": "e70476c4229b72c6aa76736524b5f1589a1fd1fe89e4781e296978c3933d6b0d",
+      "bytes": 1375
+    },
+    {
+      "path": "cohorts/r2/campaign.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2/campaign.json",
+      "sha256": "999e40440469dd17630a73e98189eb008924510ee6addffd27af69fcddd4a810",
+      "bytes": 1396
+    },
+    {
+      "path": "cohorts/r2/outcome.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2/outcome.json",
+      "sha256": "4072e6b232bf4f4f41912ed20528daaae5f9ab7f2ca211cb2d2ec72fc2eca1ca",
+      "bytes": 3562
+    },
+    {
+      "path": "prior-attempts/r2/kv-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2/kv-only/attempt.json",
+      "sha256": "0e417572a5c0c416a811e95138ce2c0c2dd1c918b360d98f01f4bb4a2d7089e5",
+      "bytes": 3306
+    },
+    {
+      "path": "prior-attempts/r2/profiler-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r2/profiler-only/attempt.json",
+      "sha256": "cba7cf7c5c436e0f196792fef36a038148b84a786338a9541561b17677299ce7",
+      "bytes": 1420
+    },
+    {
+      "path": "cohorts/r3/campaign.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/campaign.json",
+      "sha256": "6d07b06d63d7ab858387bb17d46c807caa7945a88e5e5a27992d7487d6790014",
+      "bytes": 1479
+    },
+    {
+      "path": "cohorts/r3/outcome.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/outcome.json",
+      "sha256": "2a7f133b695bd1db0ad0cf991fbe28d475fcea64f8efca98dfaa4de53fbbcf44",
+      "bytes": 16119
+    },
+    {
+      "path": "prior-attempts/r3/kv-then-profiler/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-then-profiler/attempt.json",
+      "sha256": "c97db099846c390bddb13eb15a15e3a060a214775cdc7a28805d639a1e8a97a6",
+      "bytes": 1618
+    },
+    {
+      "path": "prior-attempts/r3/profiler-then-kv/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/profiler-then-kv/attempt.json",
+      "sha256": "be6c2d374c8fa0b1e9a8ed3860aa7fd634fc708dbbf17016114b5d57d41cd101",
+      "bytes": 1618
+    },
+    {
+      "path": "prior-attempts/r3/profiler-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/profiler-only/attempt.json",
+      "sha256": "bda2e1bc20fc5b9753c072e133c2c2a575532e42276608728c236be50087fa6e",
+      "bytes": 1590
+    },
+    {
+      "path": "prior-attempts/r3/host-only/attempt.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/host-only/attempt.json",
+      "sha256": "967bc6f48ecb91329aa1e7f932838216eca924e5bb06a9ad152bb795553afaaf",
+      "bytes": 1550
+    },
+    {
+      "path": "cohorts/r4/campaign.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/campaign.json",
+      "sha256": "91e83d64cc2dbe48d1f4e486e8d150f77021d4b5ac10b0ca96b227a455f63f2a",
+      "bytes": 1579
+    },
+    {
+      "path": "cohorts/r4/outcome.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/outcome.json",
+      "sha256": "516ba7089efec072a356c33482b343e61fc9231ee8d22ad38ac997cac01db3b9",
+      "bytes": 38443
+    },
+    {
+      "path": "provenance/compatible-oracle-rule.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/compatible-oracle-rule.json",
+      "sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+      "bytes": 6056
+    },
+    {
+      "path": "provenance/actual-installed-source-and-adaptation-cost.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-installed-source-and-adaptation-cost.json",
+      "sha256": "a62dd384f0c30575a9af3df8406a64cd06e0052b7114a230fe0f267a806ba0bc",
+      "bytes": 2900
+    },
+    {
+      "path": "provenance/actual-r3-r4-study-adaptation-cost.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-r3-r4-study-adaptation-cost.json",
+      "sha256": "90398332b948b029980ee739f758781d7bea037fb230146f5f2e099641bdde48",
+      "bytes": 4569
+    },
+    {
+      "path": "provenance/independent-inputs/actual-tokenizer-inputs.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-inputs/actual-tokenizer-inputs.json",
+      "sha256": "59337698f2fb6f5bc89bf4479f63030cf73e5cdc41a02463887a009f150a419e",
+      "bytes": 52461
+    },
+    {
+      "path": "provenance/independent-inputs/manifest.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-inputs/manifest.json",
+      "sha256": "75e4ff81405b94f06db8aeb8586e35d1f4bd4231258a31589690f4879f661274",
+      "bytes": 943
+    },
+    {
+      "path": "study-runner/sitecustomize.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/sitecustomize.py",
+      "sha256": "f74f28fd0c67b95961e76ef15bdcf9b2a5d43b2b3d109e4fdea3ea4a7b944c41",
+      "bytes": 3772
+    },
+    {
+      "path": "study-runner/run_native_h2.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/run_native_h2.py",
+      "sha256": "417eb9fa81669f423441701a429914b69590616a065155a75f43099b3454f7c8",
+      "bytes": 11554
+    },
+    {
+      "path": "independent-reader/r4-profiler-raw-projection-v3.3-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-raw-projection-v3.3-attempt-01.json",
+      "sha256": "c3f6f4e778e7e59272ce1f2dfe0961d6091a9c8a6f3c011b561fd34852297b4a",
+      "bytes": 62921
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-attempt-02.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-attempt-02.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/source-meaning-and-entry-bug.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/source-meaning-and-entry-bug.json",
+      "sha256": "e3304316e4b42e38f72b13919d61b538e4e717a6c98cef4aa198a46d97aa2f69",
+      "bytes": 4216
+    },
+    {
+      "path": "independent-reader/r3-reader-v3-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-reader-v3-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/reader-v3-freeze.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3-freeze.json",
+      "sha256": "1d7d12652ab64dca9bdcdd06839eb15a94b5ebacefb93a64f79482dfa5f648dd",
+      "bytes": 1245
+    },
+    {
+      "path": "independent-reader/reader-v3.3-freeze.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3.3-freeze.json",
+      "sha256": "cabd35e24b63533f1926117fd0f6b7b3a29c4751680c76b24012fb8e925cfdfe",
+      "bytes": 565
+    },
+    {
+      "path": "independent-reader/reader-v1-freeze.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v1-freeze.json",
+      "sha256": "a68b10411caddbfcc58829e7f98157d25f810456bb556f48982260d09292477b",
+      "bytes": 1312
+    },
+    {
+      "path": "independent-reader/r3-reader-v3.1-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-reader-v3.1-attempt-01.stderr",
+      "sha256": "444510fd1b6c43ef5791c8493a41129e0955f354b600a367a0e7a126683de00d",
+      "bytes": 676
+    },
+    {
+      "path": "independent-reader/r3-raw-projection-v3-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-raw-projection-v3-attempt-01.json",
+      "sha256": "84cfdc064d75c6d57d6f5d674860f3d2bc88755384c1439baf3bdd73ae717fae",
+      "bytes": 46371
+    },
+    {
+      "path": "independent-reader/r4-KV-then-profiler-reader-v3.2-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-KV-then-profiler-reader-v3.2-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/read_profiler_raw_v3_3.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_profiler_raw_v3_3.py",
+      "sha256": "bd42e4c3d2754468891eae3707d6f8315c798822863ed0c876e1b189337621ea",
+      "bytes": 8416
+    },
+    {
+      "path": "independent-reader/reader-v3.1-freeze.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3.1-freeze.json",
+      "sha256": "b5fb670a2c2d1cf49a5dc4e78950dbed2e2219bdd54377a6f24d55fbdd1906cb",
+      "bytes": 774
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-attempt-02.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-attempt-02.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r3-reader-v3.2-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-reader-v3.2-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r2-initial-raw-projection-v2.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r2-initial-raw-projection-v2.json",
+      "sha256": "66ec5cdf952b64b7772b6906d467e646f0abaf1707484c4338ac821c6863c7ab",
+      "bytes": 8618
+    },
+    {
+      "path": "independent-reader/r4-profiler-then-KV-reader-v3.2-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-then-KV-reader-v3.2-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/reader-v2-freeze.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v2-freeze.json",
+      "sha256": "3d2ac69030042c002f004218a89f94ae6afceb85866ae00580924e887dc808a6",
+      "bytes": 996
+    },
+    {
+      "path": "independent-reader/compare_kv_native_raw_v3_2.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_2.py",
+      "sha256": "71da64176c08a3c07acfa617a6c31968f8ede3a03812f509dbeb24d7758870d4",
+      "bytes": 10008
+    },
+    {
+      "path": "independent-reader/r4-KV-then-profiler-reader-v3.2-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-KV-then-profiler-reader-v3.2-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/compare_kv_native_raw_v3_1.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py",
+      "sha256": "fa101a746b310d8fe2fee8b497dd21c239bac0c03851bcab3b094fccd31fd1af",
+      "bytes": 10009
+    },
+    {
+      "path": "independent-reader/r4-host-only-common-observer-coverage-gap-v1.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-host-only-common-observer-coverage-gap-v1.json",
+      "sha256": "27f75c804bae5ea5859162182cee55aa4c00a222ab07f73182bb6815d84bc764",
+      "bytes": 2607
+    },
+    {
+      "path": "independent-reader/r3-reader-v3.1-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-reader-v3.1-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r4-profiler-then-KV-reader-v3.2-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-then-KV-reader-v3.2-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r4-profiler-then-KV-native-comparison-v3.2-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-then-KV-native-comparison-v3.2-attempt-01.json",
+      "sha256": "edcdd74c9d56dcce929f064a01fe85f635f1c3aa1a39e869ea441439cd5adecf",
+      "bytes": 46959
+    },
+    {
+      "path": "independent-reader/reader-v3.2-freeze.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/reader-v3.2-freeze.json",
+      "sha256": "fa8fecf9d3724956518fec87f1494f8a7e5ebf90cc5ee78a6fda911afb58418c",
+      "bytes": 893
+    },
+    {
+      "path": "independent-reader/r3-reader-v3.2-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-reader-v3.2-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/read_native_raw_v2.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v2.py",
+      "sha256": "d492f122bc1a09c79a375925a9cf23c1b8eeef163b791c4bb7ee79265ee9e8a5",
+      "bytes": 7180
+    },
+    {
+      "path": "independent-reader/read_native_raw_v3.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v3.py",
+      "sha256": "62b9bc66cffde32b2c46249cc94f73b99a36c4503ed6a72781320e42e40c0f17",
+      "bytes": 13822
+    },
+    {
+      "path": "independent-reader/r4-profiler-raw-projection-v3.3-attempt-03.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-raw-projection-v3.3-attempt-03.json",
+      "sha256": "39cdd8bceb03c425fff85e63e7fc708ac016a09281d68d365f2484b394d9ab08",
+      "bytes": 169373
+    },
+    {
+      "path": "independent-reader/read_native_raw_v1.py.snapshot",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/read_native_raw_v1.py",
+      "sha256": "44539d9e44d3006ff17e2568729e3dcc905c969a0a98b9185f5b0fb42f43cbd4",
+      "bytes": 10006
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-attempt-03.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-attempt-03.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r3-reader-v3-attempt-01.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-reader-v3-attempt-01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r3-KV-native-comparison-v3.2-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-KV-native-comparison-v3.2-attempt-01.json",
+      "sha256": "7902625318afdf7964ce5a12f338e65fae3f51253697d843ad0971b5ed167bba",
+      "bytes": 46302
+    },
+    {
+      "path": "independent-reader/first-native-block-independent-table-snapshot-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-table-snapshot-01.json",
+      "sha256": "ee585c28cbb2c58e76663d8ab68026b1f3df3e9382e03a80dede62585042eb7c",
+      "bytes": 30590
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-attempt-03.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-attempt-03.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r4-profiler-raw-projection-v3.3-attempt-02.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-raw-projection-v3.3-attempt-02.json",
+      "sha256": "828025426213542a147bb32a83df7acbf16562d2c323d3d23aedd7063e72558f",
+      "bytes": 113269
+    },
+    {
+      "path": "independent-reader/r2-first-KV-device-visibility-failure.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r2-first-KV-device-visibility-failure.json",
+      "sha256": "2638a303adbe48316240beff434b071d5e18c9c46e4e70ebdbf7b5998332dadf",
+      "bytes": 2080
+    },
+    {
+      "path": "independent-reader/first-block-raw-projection.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-block-raw-projection.json",
+      "sha256": "f37a308f364d6ebe7fde4685e858e22efc1f3f9c71312d678cf17a5a1f4bfe77",
+      "bytes": 5918
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-attempt-01.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-attempt-01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r4-KV-then-profiler-native-comparison-v3.2-attempt-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-KV-then-profiler-native-comparison-v3.2-attempt-01.json",
+      "sha256": "8fcde0af29e4402dc2d051111d4b5c3a72dd16e735f48f5264442cf4a1eefa90",
+      "bytes": 46951
+    },
+    {
+      "path": "independent-reader/r4-profiler-close-interface-analysis-v1.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-close-interface-analysis-v1.json",
+      "sha256": "5905c3d79546f999f36d945faa943049ff8b2aacdc8e72876cbc52afcce700da",
+      "bytes": 6343
+    },
+    {
+      "path": "independent-reader/v3-native-reader-increments-manifest-01.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/v3-native-reader-increments-manifest-01.json",
+      "sha256": "1e47e22303f72e89b0c38f0423b1aa7a76d1c4faacc53693cb13a6cf5a99d959",
+      "bytes": 4085
+    },
+    {
+      "path": "independent-reader/first-native-block-independent-final-npu.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-npu.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/first-native-block-independent-final-table-v1.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-table-v1.json",
+      "sha256": "8eca2414f4c01b45069b986393ecbdf3938bc7c9156e47a956de1aa1c9183dbc",
+      "bytes": 54456
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-final.stderr",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-final.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/r4-profiler-raw-projection-v3.3-final.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-raw-projection-v3.3-final.json",
+      "sha256": "865b35dc52ebefc05308bad4260227d32e019c494a62a07de9e97944f00c975d",
+      "bytes": 172868
+    },
+    {
+      "path": "independent-reader/first-native-block-independent-final-manifest-v1.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-manifest-v1.json",
+      "sha256": "df58702acb28e9fdcb92473e61cf8804e336eeb1f082039c401676d7cba67bd0",
+      "bytes": 2162
+    },
+    {
+      "path": "independent-reader/r4-reader-v3.3-final.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-reader-v3.3-final.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "independent-reader/first-native-block-independent-final-npu.stdout",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-npu.stdout",
+      "sha256": "6a481fe2473124c5d783d39f435ad1ce25a78cb06dfa9e7e340c289a727c4cb4",
+      "bytes": 2223
+    },
+    {
+      "path": "independent-reader/first-native-block-independent-final-ownership.json",
+      "source": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-ownership.json",
+      "sha256": "6e459156327b3dc70f7e964db0a977c693d6b187be7cf0a01732b3a50fc93534",
+      "bytes": 86025
+    }
+  ],
+  "all_raw_local_archives_retained": true,
+  "not_all_prior_failure_bytes_republished": true
+}

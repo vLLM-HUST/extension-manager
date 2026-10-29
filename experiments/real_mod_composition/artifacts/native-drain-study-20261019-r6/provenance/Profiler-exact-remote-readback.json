@@ -1,0 +1,46 @@
+{
+  "commit": {
+    "sha": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+    "node_id": "C_kwDOTUmGYtoAKGRhYjI2YmMxNmE0NDQ4NmFiMGRjMWI0ZjY5ZTgwYzAxYjhjM2NjMDY",
+    "url": "https://api.github.com/repos/vLLM-HUST/vllm-hust-request-lifecycle-profiler/git/commits/dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+    "html_url": "https://github.com/vLLM-HUST/vllm-hust-request-lifecycle-profiler/commit/dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+    "author": {
+      "name": "Shuhao Zhang (Tony)",
+      "email": "shuhao_zhang@hust.edu.cn",
+      "date": "2026-10-19T01:09:52Z"
+    },
+    "committer": {
+      "name": "Shuhao Zhang (Tony)",
+      "email": "shuhao_zhang@hust.edu.cn",
+      "date": "2026-10-19T01:09:52Z"
+    },
+    "tree": {
+      "sha": "f0b8cfd8f06072071b7f4e2b49d34f17df8c4981",
+      "url": "https://api.github.com/repos/vLLM-HUST/vllm-hust-request-lifecycle-profiler/git/trees/f0b8cfd8f06072071b7f4e2b49d34f17df8c4981"
+    },
+    "message": "fix: drain process-local lifecycle sinks during actual host shutdown",
+    "parents": [
+      {
+        "sha": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+        "url": "https://api.github.com/repos/vLLM-HUST/vllm-hust-request-lifecycle-profiler/git/commits/23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+        "html_url": "https://github.com/vLLM-HUST/vllm-hust-request-lifecycle-profiler/commit/23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f"
+      }
+    ],
+    "verification": {
+      "verified": false,
+      "reason": "unsigned",
+      "signature": null,
+      "payload": null,
+      "verified_at": null
+    }
+  },
+  "files": [
+    {
+      "path": "src/vllm_request_lifecycle_profiler/native_event_bus.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5ca7b2480eff411daa9ba0ab281c879eaa4811e6"
+    }
+  ],
+  "all_changed_bytes_match": true
+}

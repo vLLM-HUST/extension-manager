@@ -1,0 +1,144 @@
+{
+  "schema": "ecpa-real-H2-study-adaptation-cost/v1",
+  "measured_wall_ns": 1792370876528636640,
+  "scope": "actual r3 successful KV singleton and r4 continuation; historical source-port cost unknown",
+  "product_algorithm_edits_this_block": 0,
+  "new_product_wheel_builds_this_block": 0,
+  "historical_adapter_labor_hours": null,
+  "actual_human_hours": null,
+  "common_study_source": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/run_native_h2.py",
+      "sha256": "417eb9fa81669f423441701a429914b69590616a065155a75f43099b3454f7c8",
+      "physical_lines": 213
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/sitecustomize.py",
+      "sha256": "f74f28fd0c67b95961e76ef15bdcf9b2a5d43b2b3d109e4fdea3ea4a7b944c41",
+      "physical_lines": 105
+    }
+  ],
+  "earlier_attempts_and_fixes_retained": true,
+  "order_control": "common explicit metadata.entry_points study loader; not automatic production Manager ordering",
+  "native_observer": "existing public opt-in Host register_observer; local fact recording, no authenticated phase ACK",
+  "comparative_performance_claim": false,
+  "actual-first-native-block-20261019-r3_campaign": {
+    "schema": "ecpa-real-H2-first-native-cohort/v1",
+    "frozen_wall_ns": 1792370122266640061,
+    "frozen_monotonic_ns": 8085825724328482,
+    "cases": [
+      [
+        "kv-only",
+        [
+          "ascend_kvcompress"
+        ]
+      ],
+      [
+        "profiler-only",
+        [
+          "request_lifecycle_profiler"
+        ]
+      ],
+      [
+        "kv-then-profiler",
+        [
+          "ascend_kvcompress",
+          "request_lifecycle_profiler"
+        ]
+      ],
+      [
+        "profiler-then-kv",
+        [
+          "request_lifecycle_profiler",
+          "ascend_kvcompress"
+        ]
+      ],
+      [
+        "host-only",
+        []
+      ]
+    ],
+    "source_commits": {
+      "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+    },
+    "runner_sha256": "56182083885c7db80c9fb585bfba3674ae35bcb70451e72dbdf7ad2bdace547f",
+    "oracle_rule_sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+    "loader_sha256": "f74f28fd0c67b95961e76ef15bdcf9b2a5d43b2b3d109e4fdea3ea4a7b944c41",
+    "required_effects": "independent reader must check actual order/threshold/physical KV/Profiler integrity",
+    "physical_devices": [
+      0,
+      3
+    ],
+    "runtime_devices": [
+      0,
+      1
+    ],
+    "repeats_this_initial_block": 1,
+    "matched_three_arm_population_claim": false,
+    "native_result": null
+  },
+  "actual-first-native-block-20261019-r4_campaign": {
+    "schema": "ecpa-real-H2-first-native-cohort/v1",
+    "frozen_wall_ns": 1792370495306803866,
+    "frozen_monotonic_ns": 8086198764491656,
+    "cases": [
+      [
+        "profiler-only",
+        [
+          "request_lifecycle_profiler"
+        ]
+      ],
+      [
+        "kv-then-profiler",
+        [
+          "ascend_kvcompress",
+          "request_lifecycle_profiler"
+        ]
+      ],
+      [
+        "profiler-then-kv",
+        [
+          "request_lifecycle_profiler",
+          "ascend_kvcompress"
+        ]
+      ],
+      [
+        "host-only",
+        []
+      ]
+    ],
+    "source_commits": {
+      "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+    },
+    "runner_sha256": "417eb9fa81669f423441701a429914b69590616a065155a75f43099b3454f7c8",
+    "oracle_rule_sha256": "b44b71b98af2c0d2567dd606452847ea34b5c51c85538612c73a3ad886ee235a",
+    "loader_sha256": "f74f28fd0c67b95961e76ef15bdcf9b2a5d43b2b3d109e4fdea3ea4a7b944c41",
+    "required_effects": "independent reader must check actual order/threshold/physical KV/Profiler integrity",
+    "physical_devices": [
+      0,
+      3
+    ],
+    "runtime_devices": [
+      0,
+      1
+    ],
+    "ports": [
+      29881,
+      29882,
+      29883,
+      29884
+    ],
+    "continuation_of": "r3 KV-only succeeded; four admin prebind failures retained, no original rows overwritten",
+    "repeats_this_initial_block": 1,
+    "matched_three_arm_population_claim": false,
+    "native_result": null
+  }
+}

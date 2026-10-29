@@ -1,5 +1,17 @@
 # Falsifiable evaluation plan
 
+## Current research priority (2026-10-18)
+
+The primary study is now real MOD interfaces, implicit dependencies, and
+composition conflicts. See [the source audit](corpus/interface-audit-20261018/README.md)
+and [the prospective H2 redesign](research/h2-real-mod-redesign.md). The new
+plan is a draft, not a retroactive preregistration or a result. Historical H1–H4
+protocols, outcomes, and thresholds below remain unchanged. Current in-flight
+fault experiments retain their records; new fault cohorts are not the primary
+work queue. H1/H3/H4 support the composition argument through effect truth,
+failure behavior, and cost.
+
+
 Execution accountability belongs to `ShuhaoZhangTony` (张书豪). The plan is
 PI-led/self-driven; no student is required to execute or unblock a gate.
 

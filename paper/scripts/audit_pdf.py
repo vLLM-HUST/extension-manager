@@ -16,6 +16,7 @@ PUBLIC_IDENTIFIERS = (
     "intellistream",
     "ShuhaoZhangTony",
     "From Enabled to Effective",
+    "Making LLM Inference Extensions Compose",
     "extension-manager",
     "张书豪",
     "3e57b2f75cffffd26dda0df4d9bcac890cfe99fc",

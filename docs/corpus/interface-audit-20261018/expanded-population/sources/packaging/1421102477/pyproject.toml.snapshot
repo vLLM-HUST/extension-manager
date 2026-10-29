@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stateaxis-prefix-cache-policy"
+version = "0.1.1"
+description = "ECPA-owned vLLM prefix-cache activation policy for repeated-prefix workloads"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8", "vllm-hust-ext>=0.3,<0.4"]
+
+[project.entry-points."vllm_hust.extension_bundles"]
+"org.vllm-hust.stateaxis-prefix-cache-policy" = "stateaxis_prefix_cache_policy"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stateaxis_prefix_cache_policy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

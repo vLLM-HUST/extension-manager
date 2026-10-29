@@ -53,8 +53,8 @@ def test_title_states_the_problem_and_solution_without_relying_on_acronym() -> N
     paper = (ROOT / "paper/main.tex").read_text()
 
     assert (
-        "From Enabled to Effective: Evidence-Bound Activation for LLM Inference "
-        "Extensions" in paper
+        "Making LLM Inference Extensions Compose: Contracts for Interfaces, "
+        "Dependencies, and Runtime Effects" in paper
     )
     assert "\\title{\\Large \\bf ECPA:" not in paper
 

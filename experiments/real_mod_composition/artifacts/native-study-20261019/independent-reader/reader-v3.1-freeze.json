@@ -1,0 +1,14 @@
+{
+  "schema": "ecpa-independent-H2-reader-increment-freeze/v3.1",
+  "source_path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/compare_kv_native_raw_v3_1.py",
+  "sha256": "fa101a746b310d8fe2fee8b497dd21c239bac0c03851bcab3b094fccd31fd1af",
+  "bytes": 10009,
+  "frozen_wall_ns": 1792370742280187242,
+  "frozen_monotonic_ns": 8086445737875152,
+  "rule_unchanged": true,
+  "implementation_after_raw_results_seen": true,
+  "pre_result_implementation_freeze_claim": false,
+  "does_not_read_attempt_or_planner_verdict": true,
+  "v3_unchanged": "62b9bc66cffde32b2c46249cc94f73b99a36c4503ed6a72781320e42e40c0f17",
+  "scope": "Host7+Plan/launch bridge and independent scheduler/MOD TP logs vs NPU prefix transaction; complete rule stays unknown"
+}

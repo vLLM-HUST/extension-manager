@@ -1,0 +1,67 @@
+{
+  "schema": "ecpa-real-H2-first-native-cohort/v1",
+  "frozen_wall_ns": 1792372541203842032,
+  "frozen_monotonic_ns": 8088244661530182,
+  "cases": [
+    [
+      "host-only",
+      []
+    ],
+    [
+      "kv-only",
+      [
+        "ascend_kvcompress"
+      ]
+    ],
+    [
+      "profiler-only",
+      [
+        "request_lifecycle_profiler"
+      ]
+    ],
+    [
+      "kv-then-profiler",
+      [
+        "ascend_kvcompress",
+        "request_lifecycle_profiler"
+      ]
+    ],
+    [
+      "profiler-then-kv",
+      [
+        "request_lifecycle_profiler",
+        "ascend_kvcompress"
+      ]
+    ]
+  ],
+  "source_commits": {
+    "host": "f67ad57c854940a90ddfa82a4a984bb6ce2ff923",
+    "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+    "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+    "profiler": "dab26bc16a44486ab0dc1b4f69e80c01b8c3cc06",
+    "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+  },
+  "runner_sha256": "e51d24d7c5fe563ac79749ecadd884958f205afcd5818bbc34d426ea6709bea4",
+  "oracle_rule_sha256": "3be1ebfd612ae63879c1813ca707cfa17b3f0ef97e0ccfc67d737580833c0c14",
+  "loader_sha256": "8d5d14e04d0b54880d1429e493685ff967dedf2f4272ffb30e065108d5739ad7",
+  "required_effects": "independent reader must check actual order/threshold/physical KV/Profiler integrity",
+  "physical_devices": [
+    0,
+    3
+  ],
+  "runtime_devices": [
+    0,
+    1
+  ],
+  "ports": [
+    29901,
+    29902,
+    29903,
+    29904,
+    29905
+  ],
+  "continuation_of": "new exact drain source tuple and common bootstrap; r3/r4/r5 originals remain unchanged, not retroactive repair",
+  "repeats_this_initial_block": 1,
+  "matched_three_arm_population_claim": false,
+  "native_result": null
+}

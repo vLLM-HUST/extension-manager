@@ -1,0 +1,52 @@
+{
+  "schema": "ecpa-H2-host-only-common-observer-coverage-gap/v1",
+  "observed_wall_ns": 1792371681874241524,
+  "product_or_current_loader_changed": false,
+  "actual_group": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only",
+  "source_refs": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/sitecustomize.py",
+      "sha256": "f74f28fd0c67b95961e76ef15bdcf9b2a5d43b2b3d109e4fdea3ea4a7b944c41",
+      "bytes": 3772
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/runner/run_native_h2.py",
+      "sha256": "417eb9fa81669f423441701a429914b69590616a065155a75f43099b3454f7c8",
+      "bytes": 11554
+    },
+    {
+      "path": "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/lib/python3.12/site-packages/vllm_ascend-0.25.1rc2.dev869+hust.20260903.4.g153535b32.dist-info/entry_points.txt",
+      "sha256": "e65d9af560e6b915692eacde028678e1aadd15fe2bb2bf9c99ff8a4e46a26686",
+      "bytes": 386
+    }
+  ],
+  "actual_metadata": {
+    "platform_plugins": [
+      "ascend"
+    ],
+    "general_plugins": [
+      "ascend_kv_connector",
+      "ascend_model",
+      "ascend_model_loader",
+      "ascend_service_profiling"
+    ]
+  },
+  "actual_configuration": {
+    "VLLM_PLUGINS": "ascend",
+    "MOD_order": []
+  },
+  "source_call_chain": "ordered_entries only wraps general_plugins; original Host filters those by VLLM_PLUGINS membership. install_observer is called only by OrderedEntry callback after original function returns. The sole allowed name ascend is actually a platform entry and is not wrapped. Thus no selected general callback exists to trigger study observer in host-only.",
+  "observed_raw_presence": {
+    "study-events.jsonl": false,
+    "runtime-evidence.jsonl": false,
+    "Popen.json": true,
+    "stdout.log": true
+  },
+  "actual_product_seen_in_stdout": {
+    "API_pid": 2026923,
+    "scheduler_pid": 2027666
+  },
+  "inference": "Current host-only can produce real HTTP controls but does not provide same common-observer opaque-mapping/Host-counter coverage. Missing raw observations are unknown, not zero occupancy, no-effect, or MOD incompatibility.",
+  "future_minimal_collection_fix": "In a separately frozen cohort, install the same passive observer in every actual Host process via a real public/bootstrap call point reached even with no selected MODs, or after actual platform callback completion with import-order compatibility checked. Do not alter current cohort or fabricate historical observations.",
+  "formal_result": false
+}

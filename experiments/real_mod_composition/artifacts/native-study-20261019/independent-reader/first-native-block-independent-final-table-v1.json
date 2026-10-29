@@ -1,0 +1,1309 @@
+{
+  "schema": "ecpa-H2-independent-first-native-block-final-table/v1",
+  "observed_wall_ns": 1792371882131556618,
+  "frozen_oracle_unchanged": true,
+  "implementation_after_results_timing_disclosed": true,
+  "planner_or_attempt_verdict_consumed": false,
+  "snapshot_not_complete_population": false,
+  "source_projection_refs": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-KV-native-comparison-v3.2-attempt-01.json",
+      "sha256": "7902625318afdf7964ce5a12f338e65fae3f51253697d843ad0971b5ed167bba",
+      "bytes": 46302
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-raw-projection-v3.3-final.json",
+      "sha256": "865b35dc52ebefc05308bad4260227d32e019c494a62a07de9e97944f00c975d",
+      "bytes": 172868
+    }
+  ],
+  "rows": [
+    {
+      "group": "kv-only",
+      "raw_observation_status": "raw-observations-only",
+      "loading": {
+        "status": "supported",
+        "actual_slots": {
+          "api-server/0": {
+            "pid": 2013183,
+            "start_ticks": 808586332,
+            "order": [
+              "ascend_kvcompress"
+            ]
+          },
+          "engine-core-scheduler/0": {
+            "pid": 2013680,
+            "start_ticks": 808596991,
+            "order": [
+              "ascend_kvcompress"
+            ]
+          },
+          "worker/1": {
+            "pid": 2014005,
+            "start_ticks": 808601181,
+            "order": [
+              "ascend_kvcompress"
+            ]
+          },
+          "worker/0": {
+            "pid": 2014004,
+            "start_ticks": 808601181,
+            "order": [
+              "ascend_kvcompress"
+            ]
+          }
+        },
+        "pending_count": 0,
+        "failures": [],
+        "required_slots": [
+          "api-server/0",
+          "engine-core-scheduler/0",
+          "worker/0",
+          "worker/1"
+        ]
+      },
+      "formal_result": false,
+      "cleanup": "all193_original_retained_epochs_now_gone_and_fresh_NPU_tables_empty; independent administrative observation, not MOD effect",
+      "composition": "unknown",
+      "requests": [
+        {
+          "kind": "below",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-kv-only-below-0-97197b16",
+          "actual_input_tokens": 4,
+          "HTTP_usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 14413671029,
+          "original_Host_finished_kv_blocks": [
+            1
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            1
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed"
+        },
+        {
+          "kind": "above",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-kv-only-above-0-8dc273ea",
+          "actual_input_tokens": 1201,
+          "HTTP_usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 14615343081,
+          "original_Host_finished_kv_blocks": [
+            9
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            9
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed"
+        }
+      ],
+      "profiler_shards": [],
+      "independent_native_comparison": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r3-KV-native-comparison-v3.2-attempt-01.json",
+        "sha256": "7902625318afdf7964ce5a12f338e65fae3f51253697d843ad0971b5ed167bba",
+        "bytes": 46302
+      },
+      "transaction_evidence": [
+        {
+          "kind": "below",
+          "scope": "unknown",
+          "ranks": []
+        },
+        {
+          "kind": "above",
+          "scope": "supported-original-scheduler-and-two-rank-MOD-log-plus-independent-NPU-prefix-transition",
+          "ranks": [
+            {
+              "rank": 0,
+              "actual_kernel": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2014004,
+                "process_epoch": 172185229273360,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014004:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "rank_local_transaction_id": "95002dbf4aa5a87e44d3c632ed5052058f45747aeb4488fe0dedf6cb947ea43a",
+              "semantic_anchor": 1201,
+              "physical_anchor": 1024,
+              "destination_block_ids": [
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18
+              ],
+              "scheduled_appended_block_ids": [
+                19
+              ],
+              "last_pre_apply_width": 10,
+              "first_post_apply_width": 9,
+              "last_pre_apply_clock": 8086127121971404,
+              "metadata_effect_clock": 8086139225699846,
+              "first_post_apply_clock": 8086139229147486
+            },
+            {
+              "rank": 1,
+              "actual_kernel": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2014005,
+                "process_epoch": 238623601207874,
+                "role": "worker",
+                "session": 2013183,
+                "start_identity": "pid:2014005:start_ticks:808601181",
+                "start_ticks": 808601181
+              },
+              "rank_local_transaction_id": "6a5a637196cd9724266679937fd49551fa14c51eb4a92a8f94a5922b2d904f89",
+              "semantic_anchor": 1201,
+              "physical_anchor": 1024,
+              "destination_block_ids": [
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18
+              ],
+              "scheduled_appended_block_ids": [
+                19
+              ],
+              "last_pre_apply_width": 10,
+              "first_post_apply_width": 9,
+              "last_pre_apply_clock": 8086127121977034,
+              "metadata_effect_clock": 8086139227427236,
+              "first_post_apply_clock": 8086139230526042
+            }
+          ]
+        }
+      ],
+      "raw_HTTP": {
+        "below": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-request.json",
+              "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+              "bytes": 141
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-request-clock.json",
+              "sha256": "f43e891de4ae09b564bb6247c911aac30e513b458086820bbf2eaa1f14fe55ef",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-response.json",
+              "sha256": "a0b67cea5d087068f33eb0983f4d0ef0271fa4de79fa3e88af63ab61d7e0063d",
+              "bytes": 692
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/below-response-clock.json",
+              "sha256": "00bdb5fb375e0c896d2aecb0cbeb9fee7022da68d0c38bfcd5c93e4a37ff3c56",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14413671029,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        },
+        "above": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-request.json",
+              "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+              "bytes": 9928
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-request-clock.json",
+              "sha256": "f04ed938ed7245d489c02610c82088810fdfc7ab8c67451a7f64f3efd34de256",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-response.json",
+              "sha256": "483909551256e77be3940ef653e41ff8f1538586c53e36c5ee6394ce5f34a373",
+              "bytes": 682
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r3/kv-only/above-response-clock.json",
+              "sha256": "e0e87ece2335f20810c49630352a05ebcacd7f078d07b1680eec0b76abe46431",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14615343081,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        }
+      }
+    },
+    {
+      "group": "profiler-only",
+      "raw_observation_status": "raw-observations-only",
+      "loading": {
+        "status": "supported",
+        "actual_slots": {
+          "api-server/0": {
+            "pid": 2017177,
+            "start_ticks": 808623695,
+            "order": [
+              "request_lifecycle_profiler"
+            ]
+          },
+          "engine-core-scheduler/0": {
+            "pid": 2017776,
+            "start_ticks": 808634450,
+            "order": [
+              "request_lifecycle_profiler"
+            ]
+          },
+          "worker/1": {
+            "pid": 2017976,
+            "start_ticks": 808638674,
+            "order": [
+              "request_lifecycle_profiler"
+            ]
+          },
+          "worker/0": {
+            "pid": 2017975,
+            "start_ticks": 808638674,
+            "order": [
+              "request_lifecycle_profiler"
+            ]
+          }
+        },
+        "pending_count": 0,
+        "failures": [],
+        "required_slots": [
+          "api-server/0",
+          "engine-core-scheduler/0",
+          "worker/0",
+          "worker/1"
+        ]
+      },
+      "formal_result": false,
+      "cleanup": "all193_original_retained_epochs_now_gone_and_fresh_NPU_tables_empty; independent administrative observation, not MOD effect",
+      "composition": "unknown",
+      "requests": [
+        {
+          "kind": "below",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-profiler-only-below-0-96353ea6",
+          "actual_input_tokens": 4,
+          "HTTP_usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 14351679144,
+          "original_Host_finished_kv_blocks": [
+            1
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            1
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed",
+          "missing": null
+        },
+        {
+          "kind": "above",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-profiler-only-above-0-9ec63941",
+          "actual_input_tokens": 1201,
+          "HTTP_usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 2455131791,
+          "original_Host_finished_kv_blocks": [
+            10
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            10
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed",
+          "missing": null
+        }
+      ],
+      "profiler_shards": [
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.064733bedef44ec4bc84e98fbfc5ab1f.jsonl",
+          "sha256": "a83aaa4bd99d7c4b4921218d152c5f05d60d132eacab4256df8191fba365a465",
+          "pid": 2017976,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.1c4bb6697d5f488aa73a89abb41bb8e7.jsonl",
+          "sha256": "d1d01af91097f51ec90c14a8c2d0ba134456e6de39bb09154b0f83856b039bcf",
+          "pid": 2017559,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "drained-no-declared-loss-with-matching-original-content"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.49a5e888f70e46b18a8be454f79e952d.jsonl",
+          "sha256": "b278c16896bc2c3136213e6d5c59c37e20a1413b350fcf363f6cecb833a26163",
+          "pid": 2017975,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.4cdbaa5d26d547d78acf3e4e010fb36b.jsonl",
+          "sha256": "933b61d2c9cfd8a3bada35d67a08972222d095947d255b6ff2d2e8728039113c",
+          "pid": 2017776,
+          "Host_event_exact_joins": 4,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/profiler.jsonl.rlp.5e06bf4356fe4873b897be02d2fbe7f0.jsonl",
+          "sha256": "3908e9f84163af42ff4777689d5c5c772138ff007bf53dcb6339590c4accf254",
+          "pid": 2017177,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "drained-no-declared-loss-with-matching-original-content"
+        }
+      ],
+      "raw_HTTP": {
+        "below": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-request.json",
+              "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+              "bytes": 141
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-request-clock.json",
+              "sha256": "65aefa62755fa5967bd5599e9641f7bf52abf100e99aed181855a239963b025c",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-response.json",
+              "sha256": "fc0ab8602aa1c1caaad86fee39d1ca65543613aba496721612d7b372295eefe8",
+              "bytes": 698
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/below-response-clock.json",
+              "sha256": "1df7fd44371c5eb7a90e2918d8e68aba12689cbae357eabfffcc8eccfe3a6376",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14351679144,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        },
+        "above": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-request.json",
+              "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+              "bytes": 9928
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-request-clock.json",
+              "sha256": "ec4bbc131ce04e4798c76308be2e286de2dca22e3ef3928b2f6669066566f15b",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-response.json",
+              "sha256": "6296eb893cf844755373e94cb7386a5fbb1fa5cbc70e7a4abcae57318ab9e751",
+              "bytes": 688
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-only/above-response-clock.json",
+              "sha256": "8aae7c40191659ea588945b51b7d0d29b517012376e571a3f445831ae6d7d597",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 2455131791,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        }
+      }
+    },
+    {
+      "group": "kv-then-profiler",
+      "raw_observation_status": "raw-observations-only",
+      "loading": {
+        "status": "supported",
+        "actual_slots": {
+          "api-server/0": {
+            "pid": 2020163,
+            "start_ticks": 808654836,
+            "order": [
+              "ascend_kvcompress",
+              "request_lifecycle_profiler"
+            ]
+          },
+          "engine-core-scheduler/0": {
+            "pid": 2020785,
+            "start_ticks": 808665420,
+            "order": [
+              "ascend_kvcompress",
+              "request_lifecycle_profiler"
+            ]
+          },
+          "worker/1": {
+            "pid": 2021079,
+            "start_ticks": 808669609,
+            "order": [
+              "ascend_kvcompress",
+              "request_lifecycle_profiler"
+            ]
+          },
+          "worker/0": {
+            "pid": 2021078,
+            "start_ticks": 808669609,
+            "order": [
+              "ascend_kvcompress",
+              "request_lifecycle_profiler"
+            ]
+          }
+        },
+        "pending_count": 0,
+        "failures": [],
+        "required_slots": [
+          "api-server/0",
+          "engine-core-scheduler/0",
+          "worker/0",
+          "worker/1"
+        ]
+      },
+      "formal_result": false,
+      "cleanup": "all193_original_retained_epochs_now_gone_and_fresh_NPU_tables_empty; independent administrative observation, not MOD effect",
+      "composition": "unknown",
+      "requests": [
+        {
+          "kind": "below",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-kv-then-profiler-below-0-b62838d9",
+          "actual_input_tokens": 4,
+          "HTTP_usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 14475098475,
+          "original_Host_finished_kv_blocks": [
+            1
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            1
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed",
+          "missing": null
+        },
+        {
+          "kind": "above",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-kv-then-profiler-above-0-8f6e5aa1",
+          "actual_input_tokens": 1201,
+          "HTTP_usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 14993210693,
+          "original_Host_finished_kv_blocks": [
+            9
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            9
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed",
+          "missing": null
+        }
+      ],
+      "profiler_shards": [
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.77c116af3b8e4b23bb1e6c998f0371b8.jsonl",
+          "sha256": "5b39d0f4032cb7641890af5223d0f9e9cb93e603bbaca0b605b0a3420d4f70a1",
+          "pid": 2021079,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.9748bd8d1d8b4f1988e6d5a3a3925ac1.jsonl",
+          "sha256": "49fbba7bec3d5effda74544e103669cbac2a581b56feeb362c8b6195380fb5ed",
+          "pid": 2021078,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.b6c0dad2e1704987a7df8548265ca82f.jsonl",
+          "sha256": "715f6112a93fe38f3d1b4e54c6e33ee3552d6eecf891a66e2c916e8cdad4764d",
+          "pid": 2020548,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "drained-no-declared-loss-with-matching-original-content"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.ba277158065347409ba6a033ccfd93e7.jsonl",
+          "sha256": "73c366a7190d1345ec58a548549f3c79c333c0e5ce987434a2f8de3ada3903a4",
+          "pid": 2020785,
+          "Host_event_exact_joins": 4,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/profiler.jsonl.rlp.e7183655a2854c9c9eb1229a2eded0eb.jsonl",
+          "sha256": "571e0c8ee55f28eab25d7946da5d8476bc3ddff76b65e239f489a4680ff3f75c",
+          "pid": 2020163,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "drained-no-declared-loss-with-matching-original-content"
+        }
+      ],
+      "independent_native_comparison": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-KV-then-profiler-native-comparison-v3.2-attempt-01.json",
+        "sha256": "8fcde0af29e4402dc2d051111d4b5c3a72dd16e735f48f5264442cf4a1eefa90",
+        "bytes": 46951
+      },
+      "transaction_evidence": [
+        {
+          "kind": "below",
+          "scope": "unknown",
+          "ranks": []
+        },
+        {
+          "kind": "above",
+          "scope": "supported-original-scheduler-and-two-rank-MOD-log-plus-independent-NPU-prefix-transition",
+          "ranks": [
+            {
+              "rank": 0,
+              "actual_kernel": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2021078,
+                "process_epoch": 4914264190815,
+                "role": "worker",
+                "session": 2020163,
+                "start_identity": "pid:2021078:start_ticks:808669609",
+                "start_ticks": 808669609
+              },
+              "rank_local_transaction_id": "a2903cc566c4b8226289fe2dc0271fa40c6692a0bb7886c623a96953e6b013ac",
+              "semantic_anchor": 1201,
+              "physical_anchor": 1024,
+              "destination_block_ids": [
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18
+              ],
+              "scheduled_appended_block_ids": [
+                19
+              ],
+              "last_pre_apply_width": 10,
+              "first_post_apply_width": 9,
+              "last_pre_apply_clock": 8086812352133005,
+              "metadata_effect_clock": 8086824965490154,
+              "first_post_apply_clock": 8086824968832052
+            },
+            {
+              "rank": 1,
+              "actual_kernel": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2021079,
+                "process_epoch": 256004987415760,
+                "role": "worker",
+                "session": 2020163,
+                "start_identity": "pid:2021079:start_ticks:808669609",
+                "start_ticks": 808669609
+              },
+              "rank_local_transaction_id": "b516c3ea6d9506e2c18adc1e673049bf8aec9f24842cdd986dba3f94647a76b1",
+              "semantic_anchor": 1201,
+              "physical_anchor": 1024,
+              "destination_block_ids": [
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18
+              ],
+              "scheduled_appended_block_ids": [
+                19
+              ],
+              "last_pre_apply_width": 10,
+              "first_post_apply_width": 9,
+              "last_pre_apply_clock": 8086812351674590,
+              "metadata_effect_clock": 8086824962248276,
+              "first_post_apply_clock": 8086824965433633
+            }
+          ]
+        }
+      ],
+      "raw_HTTP": {
+        "below": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-request.json",
+              "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+              "bytes": 141
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-request-clock.json",
+              "sha256": "2e2dbabc0ed0d1836502a2041212c549581ed46e0efd4da5718a4a3d6d163b76",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-response.json",
+              "sha256": "a8345c87e11a21cd29ec031eb0a11226ee82c7b761a0bd9fbafe2121df3a2877",
+              "bytes": 701
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/below-response-clock.json",
+              "sha256": "004db4dec61ccaf7c4f5dce9ef2202eeedd7db9788f0d1fbd222a6427ca1b178",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14475098475,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        },
+        "above": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-request.json",
+              "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+              "bytes": 9928
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-request-clock.json",
+              "sha256": "5e8928efe95b59581749f4ca85c791b8d79f6408f82b3fbc9d07c3aeb597bb35",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-response.json",
+              "sha256": "1846fa6df92bbec7a1b6436721b9352bcc79d10da97c6aeddf3477db632aa5a4",
+              "bytes": 691
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/kv-then-profiler/above-response-clock.json",
+              "sha256": "1e1713e74dd3eb09f984554381045547c99c77f168b9dce786540a7a8cc39ef6",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14993210693,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        }
+      }
+    },
+    {
+      "group": "profiler-then-kv",
+      "raw_observation_status": "raw-observations-only",
+      "loading": {
+        "status": "supported",
+        "actual_slots": {
+          "api-server/0": {
+            "pid": 2023795,
+            "start_ticks": 808687815,
+            "order": [
+              "request_lifecycle_profiler",
+              "ascend_kvcompress"
+            ]
+          },
+          "engine-core-scheduler/0": {
+            "pid": 2024380,
+            "start_ticks": 808698426,
+            "order": [
+              "request_lifecycle_profiler",
+              "ascend_kvcompress"
+            ]
+          },
+          "worker/1": {
+            "pid": 2024588,
+            "start_ticks": 808702622,
+            "order": [
+              "request_lifecycle_profiler",
+              "ascend_kvcompress"
+            ]
+          },
+          "worker/0": {
+            "pid": 2024587,
+            "start_ticks": 808702622,
+            "order": [
+              "request_lifecycle_profiler",
+              "ascend_kvcompress"
+            ]
+          }
+        },
+        "pending_count": 0,
+        "failures": [],
+        "required_slots": [
+          "api-server/0",
+          "engine-core-scheduler/0",
+          "worker/0",
+          "worker/1"
+        ]
+      },
+      "formal_result": false,
+      "cleanup": "all193_original_retained_epochs_now_gone_and_fresh_NPU_tables_empty; independent administrative observation, not MOD effect",
+      "composition": "unknown",
+      "requests": [
+        {
+          "kind": "below",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-profiler-then-kv-below-0-9592e309",
+          "actual_input_tokens": 4,
+          "HTTP_usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 14181870827,
+          "original_Host_finished_kv_blocks": [
+            1
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            1
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed",
+          "missing": null
+        },
+        {
+          "kind": "above",
+          "functional_status": "supported",
+          "runtime_request_id": "cmpl-profiler-then-kv-above-0-b7e9d1d7",
+          "actual_input_tokens": 1201,
+          "HTTP_usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "raw_HTTP_elapsed_ns": 14835477286,
+          "original_Host_finished_kv_blocks": [
+            9
+          ],
+          "original_Host_reclaimed_kv_blocks": [
+            9
+          ],
+          "native_prefix_evidence": "bounded-two-rank-NPU-prefix-observed",
+          "missing": null
+        }
+      ],
+      "profiler_shards": [
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.3ded3b09e8f3438ea210203bc97c3127.jsonl",
+          "sha256": "907890cff344819d157b03464c8ea728d6809a598c08129acdc48c8d43672736",
+          "pid": 2023795,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "drained-no-declared-loss-with-matching-original-content"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.7930c403fd694c24837758375c07f1b6.jsonl",
+          "sha256": "8c507d22d0d73a536b392742327d0b24aecb6baf5a14814cc9085f9080eff099",
+          "pid": 2024176,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "drained-no-declared-loss-with-matching-original-content"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.be23b86ba9814ed8a6c85fcd374cc3c5.jsonl",
+          "sha256": "b51fc92d048bad2f5eea3dd38b697f52e07b4de39d864aaa7d304476e8b555ee",
+          "pid": 2024380,
+          "Host_event_exact_joins": 4,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.e352834164394823a85297c27e4fb771.jsonl",
+          "sha256": "169924eb83305a981a52e3dce07d5517763ef27aeb364818842eed0762078361",
+          "pid": 2024588,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        },
+        {
+          "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/profiler.jsonl.rlp.f9c89962a5bd4e9784bac1d2fa85f5c6.jsonl",
+          "sha256": "6b9a909ee749ca7cb0f533102a2ffb7467b81e14e14105c4a939cb4edd095b8f",
+          "pid": 2024587,
+          "Host_event_exact_joins": 0,
+          "original_close_status": "unknown-missing-terminal-process-summary"
+        }
+      ],
+      "independent_native_comparison": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-then-KV-native-comparison-v3.2-attempt-01.json",
+        "sha256": "edcdd74c9d56dcce929f064a01fe85f635f1c3aa1a39e869ea441439cd5adecf",
+        "bytes": 46959
+      },
+      "transaction_evidence": [
+        {
+          "kind": "below",
+          "scope": "unknown",
+          "ranks": []
+        },
+        {
+          "kind": "above",
+          "scope": "supported-original-scheduler-and-two-rank-MOD-log-plus-independent-NPU-prefix-transition",
+          "ranks": [
+            {
+              "rank": 0,
+              "actual_kernel": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 0,
+                "pid": 2024587,
+                "process_epoch": 209389453988231,
+                "role": "worker",
+                "session": 2023795,
+                "start_identity": "pid:2024587:start_ticks:808702622",
+                "start_ticks": 808702622
+              },
+              "rank_local_transaction_id": "9002b1b118a6d15ff972ae65f4d95194de89a9e889fcb1c2ea7090dcc446d94a",
+              "semantic_anchor": 1201,
+              "physical_anchor": 1024,
+              "destination_block_ids": [
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18
+              ],
+              "scheduled_appended_block_ids": [
+                19
+              ],
+              "last_pre_apply_width": 10,
+              "first_post_apply_width": 9,
+              "last_pre_apply_clock": 8087138377919081,
+              "metadata_effect_clock": 8087150682727875,
+              "first_post_apply_clock": 8087150686397278
+            },
+            {
+              "rank": 1,
+              "actual_kernel": {
+                "assignment_source": "host",
+                "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+                "host": "coder-admin-shuhao-ecpa-6d4bb57fc-6cxcj",
+                "ordinal": 1,
+                "pid": 2024588,
+                "process_epoch": 21257078856065,
+                "role": "worker",
+                "session": 2023795,
+                "start_identity": "pid:2024588:start_ticks:808702622",
+                "start_ticks": 808702622
+              },
+              "rank_local_transaction_id": "008c60188ce35d004f21c36a05ad85d49edcdb994e37e0655eddbe35d3cd7e17",
+              "semantic_anchor": 1201,
+              "physical_anchor": 1024,
+              "destination_block_ids": [
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18
+              ],
+              "scheduled_appended_block_ids": [
+                19
+              ],
+              "last_pre_apply_width": 10,
+              "first_post_apply_width": 9,
+              "last_pre_apply_clock": 8087138373651222,
+              "metadata_effect_clock": 8087150672262105,
+              "first_post_apply_clock": 8087150675844646
+            }
+          ]
+        }
+      ],
+      "raw_HTTP": {
+        "below": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-request.json",
+              "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+              "bytes": 141
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-request-clock.json",
+              "sha256": "d04ecdeeb509b859c9e726b6064b458ce694ca0718f99e5b1d158dd22db75033",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-response.json",
+              "sha256": "2ea293b83f06f13f3bf5e32c32ac61add90184659d0d93091b1b269fdf6aeb1c",
+              "bytes": 701
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/below-response-clock.json",
+              "sha256": "9fbe06fae39a0a664f6bdcdb612adb2386a905b4d7924f2f04c7e825f4f7c8cc",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14181870827,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        },
+        "above": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-request.json",
+              "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+              "bytes": 9928
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-request-clock.json",
+              "sha256": "b89edccaf6dc3090c46f872a97046d29eb865f6c16ceed2bf6c11fef57aeaeb3",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-response.json",
+              "sha256": "3eec38ca0e4bbd9251506f94c041d6721f73c44cf4c30a03a5c8de1c451c3f54",
+              "bytes": 691
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/profiler-then-kv/above-response-clock.json",
+              "sha256": "92500f08041503868f6628b48d04bae7b677f12a3f850754f9c866ff4a887696",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14835477286,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        }
+      }
+    },
+    {
+      "group": "host-only",
+      "raw_observation_status": "raw-observations-only",
+      "loading": {
+        "status": "unknown",
+        "actual_slots": {},
+        "pending_count": 0,
+        "failures": [],
+        "required_slots": [
+          "api-server/0",
+          "engine-core-scheduler/0",
+          "worker/0",
+          "worker/1"
+        ]
+      },
+      "formal_result": false,
+      "cleanup": "all193_original_retained_epochs_now_gone_and_fresh_NPU_tables_empty; independent administrative observation, not MOD effect",
+      "composition": "unknown",
+      "requests": [
+        {
+          "kind": "below",
+          "functional_status": "unknown",
+          "runtime_request_id": null,
+          "actual_input_tokens": null,
+          "HTTP_usage": null,
+          "raw_HTTP_elapsed_ns": null,
+          "original_Host_finished_kv_blocks": [],
+          "original_Host_reclaimed_kv_blocks": [],
+          "native_prefix_evidence": "unknown",
+          "missing": "original API actual mapping"
+        },
+        {
+          "kind": "above",
+          "functional_status": "unknown",
+          "runtime_request_id": null,
+          "actual_input_tokens": null,
+          "HTTP_usage": null,
+          "raw_HTTP_elapsed_ns": null,
+          "original_Host_finished_kv_blocks": [],
+          "original_Host_reclaimed_kv_blocks": [],
+          "native_prefix_evidence": "unknown",
+          "missing": "original API actual mapping"
+        }
+      ],
+      "profiler_shards": [],
+      "raw_HTTP": {
+        "below": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-request.json",
+              "sha256": "a408aef52265e37cff2d63af3bb219778a3b108a63c96e3108a9cb91603d8584",
+              "bytes": 141
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-request-clock.json",
+              "sha256": "9fa0589073b0019b02995cc72383755a6b6661aa7b6a211e34f3476d231be724",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-response.json",
+              "sha256": "832c2cb49c81559255a451c1727b63f5d981996f5063fa328f96f21f7e664884",
+              "bytes": 694
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/below-response-clock.json",
+              "sha256": "72b3af7abd60531c8934185f881292df1e5df34073aa86a8c8e74d8652d53afe",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 4,
+            "total_tokens": 36,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 14312854646,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        },
+        "above": {
+          "raw_refs": [
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-request.json",
+              "sha256": "fa9e17d4e88a08cc24e6ae7cf0f8804108c281068e56c048c3a03bff3600a548",
+              "bytes": 9928
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-request-clock.json",
+              "sha256": "20849625d67751f5f5a2ffd3be4c76799d8b840fb518f0dbe41d0a86e958c124",
+              "bytes": 85
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-response.json",
+              "sha256": "6614d1964fc60583d9f75b870b271bc6bba36f0570f04b1012e7706f56292e73",
+              "bytes": 684
+            },
+            {
+              "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-first-native-block-20261019-r4/host-only/above-response-clock.json",
+              "sha256": "9ac1ff9481a23cc0e8e36dfaeb0b12394ad9caaffc0e07757aded5611aeccaff",
+              "bytes": 103
+            }
+          ],
+          "checks": {
+            "actual_HTTP_status_200": true,
+            "original_response_id": true,
+            "same_model": true,
+            "same_prompt_bytes": true,
+            "observed_elapsed_le_240s": true,
+            "input_usage_matches_independent_count": true,
+            "actual_completion_tokens_32": true,
+            "usage_total_consistent": true,
+            "nonempty_text_and_no_body_error": true
+          },
+          "usage": {
+            "prompt_tokens": 1201,
+            "total_tokens": 1233,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null,
+            "completion_tokens_details": null
+          },
+          "elapsed_ns": 2419551362,
+          "scope": "actual raw HTTP evidence; does not replace missing Host opaque mapping/counters or claim actual token-ID equality when observer absent"
+        }
+      },
+      "coverage_gap": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-host-only-common-observer-coverage-gap-v1.json",
+        "sha256": "27f75c804bae5ea5859162182cee55aa4c00a222ab07f73182bb6815d84bc764",
+        "bytes": 2607
+      }
+    }
+  ],
+  "bounded_conclusion": "All five groups have two actual HTTP responses matching frozen prompt bytes, 4/1201 usage and 32 completion. KV singleton and both real load orders additionally have exact Host opaque mapping/physical counters and independent two-rank NPU prefix transition evidence; profiler singleton and both orders have four exact trace\u2194Host lifecycle joins. Host-only common observer never activated, so its Host/RID/counter control remains unknown. Scheduler/worker profiler summaries are absent after actual immediate Host forced shutdown, so full no-loss close and full composition qualification remain unknown.",
+  "remaining": [
+    "host-only no common observer/Host physical matched control",
+    "profiler full close/loss accounting incomplete",
+    "KV tensor/attention equivalence not observed by block-table prefix receiver",
+    "one matched block, no repeatability/performance/quality/general population claim"
+  ],
+  "independent_administrative_ownership": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/first-native-block-independent-final-ownership.json",
+    "sha256": "6e459156327b3dc70f7e964db0a977c693d6b187be7cf0a01732b3a50fc93534",
+    "bytes": 86025
+  },
+  "profiler_close_interface_analysis": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r4-profiler-close-interface-analysis-v1.json",
+    "sha256": "5905c3d79546f999f36d945faa943049ff8b2aacdc8e72876cbc52afcce700da",
+    "bytes": 6343
+  },
+  "future_studyloader_candidate": {
+    "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/study-loader-zero-mod-coverage-candidate-20261019-r1/manifest.json",
+    "sha256": "f72c9d9d1926a09d3151602f7092a6cd7f5e61f114b373f41b88309c64e8899c",
+    "bytes": 3570
+  }
+}

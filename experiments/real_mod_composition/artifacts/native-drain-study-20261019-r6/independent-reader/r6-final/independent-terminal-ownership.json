@@ -1,0 +1,2717 @@
+{
+  "schema": "ecpa-H2-r6-independent-terminal-ownership/v1",
+  "wall_ns": 1792374305639202536,
+  "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838",
+  "raw_subject_refs": [
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/attempt.json",
+      "sha256": "18d95ec6bcac1df825fd3a3899f72b3bdff6db6ebd2d0edb935dbc2b5e818484",
+      "bytes": 8608,
+      "consumed_fields": [
+        "retained_processes",
+        "manager"
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/host-only/study-events.jsonl",
+      "sha256": "c9bf64447b895125c8a175287d11632163d9a6b27ed3cb0452a48ddb319fdc20",
+      "bytes": 13201
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/attempt.json",
+      "sha256": "4b02d85ceb2f57dc803076c1da8ee5d51ffa7e451ec475ac977ca24b465eb733",
+      "bytes": 8799,
+      "consumed_fields": [
+        "retained_processes",
+        "manager"
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-only/study-events.jsonl",
+      "sha256": "5dbe3b26d7c2ca0592f0879fddfa071f58486408adb3ed80bd0af59049b21b49",
+      "bytes": 160756
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/attempt.json",
+      "sha256": "bb6a526f065ee651d997520ac2b9b05f55ab80dc742caddf315e29a4b6545d1f",
+      "bytes": 8994,
+      "consumed_fields": [
+        "retained_processes",
+        "manager"
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-only/study-events.jsonl",
+      "sha256": "69cfc93f74ce5d39c63cd8b215b37fae1b5b398119ad9d820d2e330219c4efb8",
+      "bytes": 158686
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/attempt.json",
+      "sha256": "29d989abd7d5a9cd48bd4b590495355d0b7434bf3fb65d7b1dc237a45e9dbd51",
+      "bytes": 9029,
+      "consumed_fields": [
+        "retained_processes",
+        "manager"
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/kv-then-profiler/study-events.jsonl",
+      "sha256": "3894f3fdd73c97ba1a724581735213c32be44fe94602bdc1f574ff0b29b6817c",
+      "bytes": 164196
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/attempt.json",
+      "sha256": "7e2c6eb1ab4227d957d70feadbb33a0e4d7990c3e9faf4491cc78191cd038dc6",
+      "bytes": 9874,
+      "consumed_fields": [
+        "retained_processes",
+        "manager"
+      ]
+    },
+    {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/actual-drain-five-group-20261019-r6/profiler-then-kv/study-events.jsonl",
+      "sha256": "a5493e38b3ef9d310e113ec7b9954012e94eaa023bec97555341c03efb9a5189",
+      "bytes": 164194
+    }
+  ],
+  "attempt_verdict_fields_consumed": false,
+  "observations": [
+    {
+      "expected": {
+        "pid": 2039976,
+        "start_ticks": 808824454,
+        "source": "root actual driver epoch message"
+      },
+      "begin_monotonic_ns": 8090008565324952,
+      "end_monotonic_ns": 8090008565391803,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2039993,
+        "start_ticks": 808824518,
+        "session": 2039993,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565396703,
+      "end_monotonic_ns": 8090008565436483,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2039995,
+        "start_ticks": 808824555,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565439803,
+      "end_monotonic_ns": 8090008565473534,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2040202,
+        "start_ticks": 808828944,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565476354,
+      "end_monotonic_ns": 8090008565507334,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2040203,
+        "start_ticks": 808828947,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565510064,
+      "end_monotonic_ns": 8090008565539824,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2040309,
+        "start_ticks": 808830889,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565542604,
+      "end_monotonic_ns": 8090008565572025,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2040564,
+        "start_ticks": 808835551,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565574535,
+      "end_monotonic_ns": 8090008565602665,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2040565,
+        "start_ticks": 808835551,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565605155,
+      "end_monotonic_ns": 8090008565633646,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2040774,
+        "start_ticks": 808839728,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565636046,
+      "end_monotonic_ns": 8090008565663746,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2040775,
+        "start_ticks": 808839729,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565666336,
+      "end_monotonic_ns": 8090008565693946,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041729,
+        "start_ticks": 808847444,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565696526,
+      "end_monotonic_ns": 8090008565724817,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041732,
+        "start_ticks": 808847449,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565727217,
+      "end_monotonic_ns": 8090008565755157,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041735,
+        "start_ticks": 808847457,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565757687,
+      "end_monotonic_ns": 8090008565784547,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041743,
+        "start_ticks": 808847468,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565786967,
+      "end_monotonic_ns": 8090008565883948,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041758,
+        "start_ticks": 808847478,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565887068,
+      "end_monotonic_ns": 8090008565923869,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041763,
+        "start_ticks": 808847482,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565926619,
+      "end_monotonic_ns": 8090008565958269,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041776,
+        "start_ticks": 808847491,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565960809,
+      "end_monotonic_ns": 8090008565989460,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041906,
+        "start_ticks": 808847782,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008565991980,
+      "end_monotonic_ns": 8090008566020790,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041939,
+        "start_ticks": 808847791,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566023230,
+      "end_monotonic_ns": 8090008566051610,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2041959,
+        "start_ticks": 808847946,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566053950,
+      "end_monotonic_ns": 8090008566081551,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042002,
+        "start_ticks": 808848238,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566083881,
+      "end_monotonic_ns": 8090008566112401,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042003,
+        "start_ticks": 808848239,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566114751,
+      "end_monotonic_ns": 8090008566142191,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042012,
+        "start_ticks": 808848253,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566144441,
+      "end_monotonic_ns": 8090008566171302,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042015,
+        "start_ticks": 808848254,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566173722,
+      "end_monotonic_ns": 8090008566200382,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042024,
+        "start_ticks": 808848256,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566202562,
+      "end_monotonic_ns": 8090008566229142,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042032,
+        "start_ticks": 808848258,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566231853,
+      "end_monotonic_ns": 8090008566259733,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042120,
+        "start_ticks": 808848484,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566262063,
+      "end_monotonic_ns": 8090008566289203,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042122,
+        "start_ticks": 808848488,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566291563,
+      "end_monotonic_ns": 8090008566318834,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042190,
+        "start_ticks": 808848678,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566321184,
+      "end_monotonic_ns": 8090008566347974,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042191,
+        "start_ticks": 808848679,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566350244,
+      "end_monotonic_ns": 8090008566378364,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042205,
+        "start_ticks": 808848702,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566380724,
+      "end_monotonic_ns": 8090008566407855,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042211,
+        "start_ticks": 808848703,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566410135,
+      "end_monotonic_ns": 8090008566442165,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042244,
+        "start_ticks": 808848708,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566444575,
+      "end_monotonic_ns": 8090008566473595,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042245,
+        "start_ticks": 808848710,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566476125,
+      "end_monotonic_ns": 8090008566504446,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042305,
+        "start_ticks": 808849009,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566506636,
+      "end_monotonic_ns": 8090008566535496,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042306,
+        "start_ticks": 808849012,
+        "session": 2039995,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566537826,
+      "end_monotonic_ns": 8090008566565016,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042419,
+        "start_ticks": 808849228,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566567226,
+      "end_monotonic_ns": 8090008566593457,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2042421,
+        "start_ticks": 808849229,
+        "session": 2039995,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566595777,
+      "end_monotonic_ns": 8090008566623817,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2043063,
+        "start_ticks": 808852878,
+        "session": 2043063,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566626127,
+      "end_monotonic_ns": 8090008566653597,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2043256,
+        "start_ticks": 808856615,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566655877,
+      "end_monotonic_ns": 8090008566681958,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2043489,
+        "start_ticks": 808860781,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566684368,
+      "end_monotonic_ns": 8090008566710188,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2043490,
+        "start_ticks": 808860785,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566712678,
+      "end_monotonic_ns": 8090008566740478,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2043578,
+        "start_ticks": 808862692,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566742688,
+      "end_monotonic_ns": 8090008566769949,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2043854,
+        "start_ticks": 808867350,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566772129,
+      "end_monotonic_ns": 8090008566798509,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2043855,
+        "start_ticks": 808867350,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566800669,
+      "end_monotonic_ns": 8090008566826779,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044082,
+        "start_ticks": 808871575,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566829099,
+      "end_monotonic_ns": 8090008566855790,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044083,
+        "start_ticks": 808871576,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566858150,
+      "end_monotonic_ns": 8090008566884650,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044907,
+        "start_ticks": 808879337,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566887070,
+      "end_monotonic_ns": 8090008566914140,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044919,
+        "start_ticks": 808879363,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566916680,
+      "end_monotonic_ns": 8090008566943721,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044930,
+        "start_ticks": 808879367,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566946081,
+      "end_monotonic_ns": 8090008566972611,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044937,
+        "start_ticks": 808879373,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008566974921,
+      "end_monotonic_ns": 8090008567002031,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044944,
+        "start_ticks": 808879392,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567004412,
+      "end_monotonic_ns": 8090008567030792,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2044960,
+        "start_ticks": 808879402,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567033042,
+      "end_monotonic_ns": 8090008567059522,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045045,
+        "start_ticks": 808879680,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567062012,
+      "end_monotonic_ns": 8090008567089862,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045046,
+        "start_ticks": 808879684,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567092083,
+      "end_monotonic_ns": 8090008567119513,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045152,
+        "start_ticks": 808880217,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567121793,
+      "end_monotonic_ns": 8090008567149893,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045157,
+        "start_ticks": 808880225,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567152163,
+      "end_monotonic_ns": 8090008567180134,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045160,
+        "start_ticks": 808880229,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567182674,
+      "end_monotonic_ns": 8090008567210834,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045168,
+        "start_ticks": 808880239,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567213284,
+      "end_monotonic_ns": 8090008567240144,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045177,
+        "start_ticks": 808880242,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567242404,
+      "end_monotonic_ns": 8090008567268625,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045180,
+        "start_ticks": 808880243,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567270935,
+      "end_monotonic_ns": 8090008567297205,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045189,
+        "start_ticks": 808880247,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567299375,
+      "end_monotonic_ns": 8090008567325635,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045274,
+        "start_ticks": 808880481,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567327955,
+      "end_monotonic_ns": 8090008567355326,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045307,
+        "start_ticks": 808880485,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567357576,
+      "end_monotonic_ns": 8090008567384126,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045340,
+        "start_ticks": 808880673,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567386356,
+      "end_monotonic_ns": 8090008567412966,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045342,
+        "start_ticks": 808880675,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567415476,
+      "end_monotonic_ns": 8090008567442997,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045353,
+        "start_ticks": 808880696,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567445407,
+      "end_monotonic_ns": 8090008567472457,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045368,
+        "start_ticks": 808880699,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567474657,
+      "end_monotonic_ns": 8090008567501977,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045389,
+        "start_ticks": 808880703,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567504247,
+      "end_monotonic_ns": 8090008567531078,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045395,
+        "start_ticks": 808880706,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567533268,
+      "end_monotonic_ns": 8090008567559908,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045456,
+        "start_ticks": 808881019,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567562178,
+      "end_monotonic_ns": 8090008567588958,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045457,
+        "start_ticks": 808881023,
+        "session": 2043256,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567596358,
+      "end_monotonic_ns": 8090008567624889,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045544,
+        "start_ticks": 808881197,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567627209,
+      "end_monotonic_ns": 8090008567653949,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045545,
+        "start_ticks": 808881198,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567656289,
+      "end_monotonic_ns": 8090008567683159,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045608,
+        "start_ticks": 808881304,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567685449,
+      "end_monotonic_ns": 8090008567712300,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2045624,
+        "start_ticks": 808881309,
+        "session": 2043256,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567714590,
+      "end_monotonic_ns": 8090008567744650,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2046655,
+        "start_ticks": 808886518,
+        "session": 2046655,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567746950,
+      "end_monotonic_ns": 8090008567773700,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2046808,
+        "start_ticks": 808890227,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567777411,
+      "end_monotonic_ns": 8090008567804301,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2047016,
+        "start_ticks": 808894403,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567806551,
+      "end_monotonic_ns": 8090008567833411,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2047017,
+        "start_ticks": 808894406,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567835571,
+      "end_monotonic_ns": 8090008567861951,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2047114,
+        "start_ticks": 808896318,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567864282,
+      "end_monotonic_ns": 8090008567890082,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2047372,
+        "start_ticks": 808900976,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567892362,
+      "end_monotonic_ns": 8090008567919452,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2047373,
+        "start_ticks": 808900976,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567921682,
+      "end_monotonic_ns": 8090008567949043,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2047673,
+        "start_ticks": 808905222,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567951203,
+      "end_monotonic_ns": 8090008567977793,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2047674,
+        "start_ticks": 808905223,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008567980013,
+      "end_monotonic_ns": 8090008568025383,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048418,
+        "start_ticks": 808912510,
+        "session": 2046808,
+        "state": "Z",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568027813,
+      "end_monotonic_ns": 8090008568056854,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048424,
+        "start_ticks": 808912523,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568059164,
+      "end_monotonic_ns": 8090008568087064,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048433,
+        "start_ticks": 808912536,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568089334,
+      "end_monotonic_ns": 8090008568115664,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048446,
+        "start_ticks": 808912545,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568117924,
+      "end_monotonic_ns": 8090008568144435,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048450,
+        "start_ticks": 808912547,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568146715,
+      "end_monotonic_ns": 8090008568173665,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048464,
+        "start_ticks": 808912556,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568175875,
+      "end_monotonic_ns": 8090008568202265,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048547,
+        "start_ticks": 808912847,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568204375,
+      "end_monotonic_ns": 8090008568231316,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048580,
+        "start_ticks": 808912850,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568233516,
+      "end_monotonic_ns": 8090008568259136,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048630,
+        "start_ticks": 808913296,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568262286,
+      "end_monotonic_ns": 8090008568289496,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048631,
+        "start_ticks": 808913297,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568291787,
+      "end_monotonic_ns": 8090008568318347,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048642,
+        "start_ticks": 808913311,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568320477,
+      "end_monotonic_ns": 8090008568346737,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048643,
+        "start_ticks": 808913311,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568348987,
+      "end_monotonic_ns": 8090008568375577,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048659,
+        "start_ticks": 808913314,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568377738,
+      "end_monotonic_ns": 8090008568404378,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048660,
+        "start_ticks": 808913314,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568406628,
+      "end_monotonic_ns": 8090008568433428,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048774,
+        "start_ticks": 808913547,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568435698,
+      "end_monotonic_ns": 8090008568463059,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048778,
+        "start_ticks": 808913550,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568465449,
+      "end_monotonic_ns": 8090008568492709,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048821,
+        "start_ticks": 808913740,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568494939,
+      "end_monotonic_ns": 8090008568521769,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048822,
+        "start_ticks": 808913740,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568528559,
+      "end_monotonic_ns": 8090008568557020,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048836,
+        "start_ticks": 808913763,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568559220,
+      "end_monotonic_ns": 8090008568585640,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048840,
+        "start_ticks": 808913764,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568587800,
+      "end_monotonic_ns": 8090008568614620,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048875,
+        "start_ticks": 808913769,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568617020,
+      "end_monotonic_ns": 8090008568643401,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048876,
+        "start_ticks": 808913771,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568645601,
+      "end_monotonic_ns": 8090008568671941,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048920,
+        "start_ticks": 808914053,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568674301,
+      "end_monotonic_ns": 8090008568702531,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048921,
+        "start_ticks": 808914055,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568704751,
+      "end_monotonic_ns": 8090008568735572,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2048978,
+        "start_ticks": 808914076,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568738932,
+      "end_monotonic_ns": 8090008568766802,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049013,
+        "start_ticks": 808914081,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568769122,
+      "end_monotonic_ns": 8090008568795342,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049018,
+        "start_ticks": 808914256,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568797512,
+      "end_monotonic_ns": 8090008568824113,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049019,
+        "start_ticks": 808914256,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568826263,
+      "end_monotonic_ns": 8090008568853793,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049051,
+        "start_ticks": 808914301,
+        "session": 2046808,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568856073,
+      "end_monotonic_ns": 8090008568882683,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049082,
+        "start_ticks": 808914356,
+        "session": 2046808,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568884923,
+      "end_monotonic_ns": 8090008568911844,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049738,
+        "start_ticks": 808918344,
+        "session": 2049738,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568914084,
+      "end_monotonic_ns": 8090008568940324,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049907,
+        "start_ticks": 808921745,
+        "session": 2049738,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568942484,
+      "end_monotonic_ns": 8090008568968414,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2049927,
+        "start_ticks": 808922141,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568970674,
+      "end_monotonic_ns": 8090008568997415,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2050143,
+        "start_ticks": 808926301,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008568999705,
+      "end_monotonic_ns": 8090008569026215,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2050144,
+        "start_ticks": 808926304,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569028535,
+      "end_monotonic_ns": 8090008569055185,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2050240,
+        "start_ticks": 808928210,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569057665,
+      "end_monotonic_ns": 8090008569084266,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2050501,
+        "start_ticks": 808932906,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569086406,
+      "end_monotonic_ns": 8090008569112636,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2050502,
+        "start_ticks": 808932906,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569114896,
+      "end_monotonic_ns": 8090008569140936,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2050777,
+        "start_ticks": 808937124,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569143246,
+      "end_monotonic_ns": 8090008569170017,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2050778,
+        "start_ticks": 808937124,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569172197,
+      "end_monotonic_ns": 8090008569198347,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051768,
+        "start_ticks": 808944842,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569200527,
+      "end_monotonic_ns": 8090008569226407,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051776,
+        "start_ticks": 808944857,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569228637,
+      "end_monotonic_ns": 8090008569256048,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051783,
+        "start_ticks": 808944868,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569258358,
+      "end_monotonic_ns": 8090008569285278,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051798,
+        "start_ticks": 808944877,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569287538,
+      "end_monotonic_ns": 8090008569315188,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051803,
+        "start_ticks": 808944881,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569318378,
+      "end_monotonic_ns": 8090008569347069,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051818,
+        "start_ticks": 808944890,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569349389,
+      "end_monotonic_ns": 8090008569376839,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051961,
+        "start_ticks": 808945174,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569379109,
+      "end_monotonic_ns": 8090008569406429,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2051962,
+        "start_ticks": 808945178,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569408610,
+      "end_monotonic_ns": 8090008569434930,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052037,
+        "start_ticks": 808945664,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569437350,
+      "end_monotonic_ns": 8090008569463070,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052038,
+        "start_ticks": 808945665,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569472750,
+      "end_monotonic_ns": 8090008569500361,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052048,
+        "start_ticks": 808945678,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569502511,
+      "end_monotonic_ns": 8090008569529121,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052050,
+        "start_ticks": 808945679,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569531371,
+      "end_monotonic_ns": 8090008569558221,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052066,
+        "start_ticks": 808945682,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569560351,
+      "end_monotonic_ns": 8090008569592182,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052067,
+        "start_ticks": 808945682,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569594532,
+      "end_monotonic_ns": 8090008569621922,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052129,
+        "start_ticks": 808945912,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569624132,
+      "end_monotonic_ns": 8090008569651792,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052130,
+        "start_ticks": 808945916,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569654102,
+      "end_monotonic_ns": 8090008569681443,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052206,
+        "start_ticks": 808946074,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569683753,
+      "end_monotonic_ns": 8090008569710213,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052215,
+        "start_ticks": 808946110,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569712313,
+      "end_monotonic_ns": 8090008569738653,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052216,
+        "start_ticks": 808946111,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569740933,
+      "end_monotonic_ns": 8090008569768454,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052228,
+        "start_ticks": 808946133,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569770694,
+      "end_monotonic_ns": 8090008569798924,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052234,
+        "start_ticks": 808946135,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569801184,
+      "end_monotonic_ns": 8090008569829464,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052269,
+        "start_ticks": 808946140,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569831614,
+      "end_monotonic_ns": 8090008569858355,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052270,
+        "start_ticks": 808946142,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569860565,
+      "end_monotonic_ns": 8090008569887055,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052344,
+        "start_ticks": 808946440,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569889325,
+      "end_monotonic_ns": 8090008569916635,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052345,
+        "start_ticks": 808946444,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569919915,
+      "end_monotonic_ns": 8090008569947036,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052368,
+        "start_ticks": 808946474,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569949416,
+      "end_monotonic_ns": 8090008569976676,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052370,
+        "start_ticks": 808946481,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008569978936,
+      "end_monotonic_ns": 8090008570005806,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052457,
+        "start_ticks": 808946659,
+        "session": 2049927,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570007997,
+      "end_monotonic_ns": 8090008570035477,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2052461,
+        "start_ticks": 808946661,
+        "session": 2049927,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570037697,
+      "end_monotonic_ns": 8090008570064547,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2053543,
+        "start_ticks": 808951958,
+        "session": 2053543,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570066817,
+      "end_monotonic_ns": 8090008570094108,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2053731,
+        "start_ticks": 808955771,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570096368,
+      "end_monotonic_ns": 8090008570124828,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2053958,
+        "start_ticks": 808959960,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570127018,
+      "end_monotonic_ns": 8090008570153838,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2053959,
+        "start_ticks": 808959963,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570156078,
+      "end_monotonic_ns": 8090008570183649,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2054036,
+        "start_ticks": 808961562,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570185859,
+      "end_monotonic_ns": 8090008570215599,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2054041,
+        "start_ticks": 808961869,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570217879,
+      "end_monotonic_ns": 8090008570246059,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2054340,
+        "start_ticks": 808966579,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570248279,
+      "end_monotonic_ns": 8090008570275030,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2054341,
+        "start_ticks": 808966579,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570277290,
+      "end_monotonic_ns": 8090008570305700,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2054694,
+        "start_ticks": 808970790,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570308010,
+      "end_monotonic_ns": 8090008570335410,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2054695,
+        "start_ticks": 808970790,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570337750,
+      "end_monotonic_ns": 8090008570364781,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055445,
+        "start_ticks": 808978706,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570367071,
+      "end_monotonic_ns": 8090008570393871,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055451,
+        "start_ticks": 808978719,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570396161,
+      "end_monotonic_ns": 8090008570423181,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055459,
+        "start_ticks": 808978730,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570429121,
+      "end_monotonic_ns": 8090008570456652,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055474,
+        "start_ticks": 808978739,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570458962,
+      "end_monotonic_ns": 8090008570485512,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055479,
+        "start_ticks": 808978743,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570487972,
+      "end_monotonic_ns": 8090008570514292,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055492,
+        "start_ticks": 808978753,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570516682,
+      "end_monotonic_ns": 8090008570544043,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055629,
+        "start_ticks": 808979048,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570546373,
+      "end_monotonic_ns": 8090008570573063,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055630,
+        "start_ticks": 808979051,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570575323,
+      "end_monotonic_ns": 8090008570602883,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055685,
+        "start_ticks": 808979495,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570605163,
+      "end_monotonic_ns": 8090008570631844,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055686,
+        "start_ticks": 808979495,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570635154,
+      "end_monotonic_ns": 8090008570667414,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055709,
+        "start_ticks": 808979506,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570669694,
+      "end_monotonic_ns": 8090008570697225,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055710,
+        "start_ticks": 808979506,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570699615,
+      "end_monotonic_ns": 8090008570727615,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055720,
+        "start_ticks": 808979520,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570730125,
+      "end_monotonic_ns": 8090008570757885,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055722,
+        "start_ticks": 808979520,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570760275,
+      "end_monotonic_ns": 8090008570787646,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055739,
+        "start_ticks": 808979524,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570790126,
+      "end_monotonic_ns": 8090008570817306,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055740,
+        "start_ticks": 808979524,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570819646,
+      "end_monotonic_ns": 8090008570846316,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055823,
+        "start_ticks": 808979754,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570848516,
+      "end_monotonic_ns": 8090008570876147,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055827,
+        "start_ticks": 808979757,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570878327,
+      "end_monotonic_ns": 8090008570905017,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055890,
+        "start_ticks": 808979949,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570907197,
+      "end_monotonic_ns": 8090008570934817,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055891,
+        "start_ticks": 808979949,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570937087,
+      "end_monotonic_ns": 8090008570965448,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055907,
+        "start_ticks": 808979972,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570967688,
+      "end_monotonic_ns": 8090008570994138,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055908,
+        "start_ticks": 808979972,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008570996308,
+      "end_monotonic_ns": 8090008571022818,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055943,
+        "start_ticks": 808979979,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571025028,
+      "end_monotonic_ns": 8090008571051069,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2055944,
+        "start_ticks": 808979979,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571053199,
+      "end_monotonic_ns": 8090008571080599,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056030,
+        "start_ticks": 808980319,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571082899,
+      "end_monotonic_ns": 8090008571110879,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056063,
+        "start_ticks": 808980323,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571113399,
+      "end_monotonic_ns": 8090008571140280,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056083,
+        "start_ticks": 808980497,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571142490,
+      "end_monotonic_ns": 8090008571169180,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056084,
+        "start_ticks": 808980497,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571171440,
+      "end_monotonic_ns": 8090008571197590,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056085,
+        "start_ticks": 808980498,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571199830,
+      "end_monotonic_ns": 8090008571226641,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056086,
+        "start_ticks": 808980498,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571232461,
+      "end_monotonic_ns": 8090008571261011,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056089,
+        "start_ticks": 808980498,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571263251,
+      "end_monotonic_ns": 8090008571290061,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056090,
+        "start_ticks": 808980498,
+        "session": 2053731,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571292341,
+      "end_monotonic_ns": 8090008571319782,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056116,
+        "start_ticks": 808980540,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571322142,
+      "end_monotonic_ns": 8090008571349062,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    },
+    {
+      "expected": {
+        "pid": 2056148,
+        "start_ticks": 808980594,
+        "session": 2053731,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      "begin_monotonic_ns": 8090008571351312,
+      "end_monotonic_ns": 8090008571379402,
+      "original_epoch_gone": true,
+      "reason": "actual /proc/PID/stat ENOENT"
+    }
+  ],
+  "original_epoch_count": 198,
+  "all_original_epochs_gone": true,
+  "original_port_rows": [],
+  "all_original_listeners_absent": true,
+  "actual_proc_net_snapshots": [
+    {
+      "path": "/proc/net/tcp",
+      "raw": "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode                                                     \n   0: 0100007F:BB19 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 2032998095 1 0000000000000000 100 0 0 10 0                \n   1: 00000000:0016 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 2033007186 1 0000000000000000 100 0 0 10 0                \n   2: 0100007F:17AC 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 2033100849 2 0000000000000000 100 0 0 10 0                \n   3: 0100007F:0841 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 2033082547 2 0000000000000000 100 0 0 10 0                \n   4: 0100007F:0840 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 2032946757 2 0000000000000000 100 0 0 10 0                \n   5: 0100007F:8524 0100007F:BB19 01 00000000:00000000 02:000004F3 00000000     0        0 2153631161 2 0000000000000000 20 4 10 10 -1               \n   6: 0100007F:BB19 0100007F:8400 01 00000000:00000000 00:00000000 00000000     0        0 2153493140 1 0000000000000000 20 4 28 10 -1               \n   7: 0100007F:860C 0100007F:BB19 01 00000000:00000000 02:000005BF 00000000     0        0 2153795308 2 0000000000000000 20 0 0 10 -1                \n   8: 5401F40A:0016 0000F40A:BEDC 01 000B7318:00000000 01:00000008 00000000     0        0 2033007196 4 0000000000000000 24 4 1 28 18                \n   9: 5401F40A:0016 0000F40A:9F82 09 00000001:00000000 01:0000077C 00000006     0        0 0 3 0000000000000000 7244 4 1 1 7                         \n  10: 0100007F:BB19 0100007F:860A 01 00000000:0000003B 00:00000000 00000000     0        0 2153789797 1 0000000000000000 20 4 30 10 -1               \n  11: 0100007F:85FA 0100007F:BB19 06 00000000:00000000 03:000016B5 00000000     0        0 0 3 0000000000000000                                      \n  12: 0100007F:BB19 0100007F:850C 01 00000000:00000000 00:00000000 00000000     0        0 2153575128 1 0000000000000000 20 4 0 10 -1                \n  13: 0100007F:85E6 0100007F:BB19 06 00000000:00000000 03:000008E0 00000000     0        0 0 3 0000000000000000                                      \n  14: 0100007F:BB19 0100007F:860C 01 00000000:0000003B 00:00000000 00000000     0        0 2153789798 1 0000000000000000 20 4 30 10 -1               \n  15: 0100007F:BB19 0100007F:860E 01 00000000:00000041 00:00000000 00000000     0        0 2153845973 1 0000000000000000 20 4 30 10 -1               \n  16: 0100007F:8606 0100007F:BB19 05 00000000:00000000 03:00001755 00000000     0        0 0 3 0000000000000000                                      \n  17: 0100007F:85F2 0100007F:BB19 06 00000000:00000000 03:00000EF7 00000000     0        0 0 3 0000000000000000                                      \n  18: 0100007F:85CC 0100007F:BB19 06 00000000:00000000 03:00000036 00000000     0        0 0 3 0000000000000000                                      \n  19: 0100007F:850C 0100007F:BB19 01 00000000:00000000 00:00000000 00000000     0        0 2153614739 1 0000000000000000 20 4 29 10 -1               \n  20: 5401F40A:E6C4 0600A8C0:24E3 01 00000000:00000000 02:0000068C 00000000     0        0 2033082550 2 0000000000000000 20 4 14 10 -1               \n  21: 0100007F:85FE 0100007F:BB19 01 00000000:00000000 02:00000500 00000000     0        0 2153787818 2 0000000000000000 20 4 0 10 -1                \n  22: 0100007F:85DA 0100007F:BB19 06 00000000:00000000 03:0000075D 00000000     0        0 0 3 0000000000000000                                      \n  23: 0100007F:8600 0100007F:BB19 06 00000000:00000000 03:000016E9 00000000     0        0 0 3 0000000000000000                                      \n  24: 0100007F:85E0 0100007F:BB19 06 00000000:00000000 03:00000558 00000000     0        0 0 3 0000000000000000                                      \n  25: 0100007F:85DC 0100007F:BB19 06 00000000:00000000 03:00000511 00000000     0        0 0 3 0000000000000000                                      \n  26: 0100007F:860A 0100007F:BB19 01 00000000:00000000 02:000005BF 00000000     0        0 2153795307 2 0000000000000000 20 0 0 10 -1                \n  27: 0100007F:BB19 0100007F:85E4 01 00000000:00000000 00:00000000 00000000     0        0 2153731579 2 0000000000000000 20 4 0 10 -1                \n  28: 0100007F:BB19 0100007F:8602 01 00000000:00000000 00:00000000 00000000     0        0 2153791086 1 0000000000000000 20 4 0 10 -1                \n  29: 0100007F:85EC 0100007F:BB19 06 00000000:00000000 03:00000A46 00000000     0        0 0 3 0000000000000000                                      \n  30: 0100007F:BB19 0100007F:8608 01 00000000:00000000 00:00000000 00000000     0        0 2153834823 1 0000000000000000 20 4 0 10 -1                \n  31: 0100007F:85EE 0100007F:BB19 06 00000000:00000000 03:00000EAD 00000000     0        0 0 3 0000000000000000                                      \n  32: 0100007F:BB19 0100007F:8606 08 00000000:00000000 00:00000000 00000000     0        0 2153834822 1 0000000000000000 20 4 22 10 -1               \n  33: 0100007F:85E4 0100007F:BB19 01 00000000:00000000 02:000000A2 00000000     0        0 2153764183 3 0000000000000000 20 4 0 18 18                \n  34: 0100007F:85EA 0100007F:BB19 06 00000000:00000000 03:000009FF 00000000     0        0 0 3 0000000000000000                                      \n  35: 0100007F:8602 0100007F:BB19 01 00000000:00000000 00:00000000 00000000     0        0 2153812381 1 0000000000000000 20 4 0 10 -1                \n  36: 0100007F:8400 0100007F:BB19 01 00000000:00000000 00:00000000 00000000     0        0 2153494814 1 0000000000000000 20 4 30 10 -1               \n  37: 5401F40A:E6C8 0600A8C0:24E3 01 00000000:00000000 02:00000359 00000000     0        0 2032961271 2 0000000000000000 20 4 28 10 -1               \n  38: 0100007F:BB19 0100007F:85FE 01 00000000:00000000 00:00000000 00000000     0        0 2153791082 1 0000000000000000 20 4 14 20 -1               \n  39: 0100007F:85D8 0100007F:BB19 06 00000000:00000000 03:0000010B 00000000     0        0 0 3 0000000000000000                                      \n  40: 0100007F:8608 0100007F:BB19 01 00000000:00000000 02:00000583 00000000     0        0 2153787820 2 0000000000000000 20 4 0 20 -1                \n  41: 0100007F:BB19 0100007F:8524 01 00000000:00000000 00:00000000 00000000     0        0 2153689568 1 0000000000000000 20 4 0 10 -1                \n  42: 0100007F:85E8 0100007F:BB19 06 00000000:00000000 03:00000D6E 00000000     0        0 0 3 0000000000000000                                      \n  43: 0100007F:860E 0100007F:BB19 01 00000000:00000000 00:00000000 00000000     0        0 2153797285 2 0000000000000000 20 0 0 10 -1                \n  44: 5401F40A:0016 0000F40A:4E64 01 00000000:00000000 02:0007ABA1 00000000     0        0 2033007293 4 0000000000000000 24 4 1 602 601              \n",
+      "sha256": "b0efd6370ef27ab347e367f3065d0a5744caecd1ec457d41cbc6f791d99e8d56"
+    },
+    {
+      "path": "/proc/net/tcp6",
+      "raw": "  sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n   0: 00000000000000000000000000000000:0016 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 2033007187 1 0000000000000000 100 0 0 10 0\n",
+      "sha256": "3aa50fcf198903cd60b77c9c8a1ee067d63d18173c9cdb5b3ddf6e213257e0a2"
+    }
+  ],
+  "actual_fresh_NPU": {
+    "argv": [
+      "npu-smi",
+      "info"
+    ],
+    "returncode": 0,
+    "start_wall_ns": 1792374305122973551,
+    "start_monotonic_ns": 8090008580655661,
+    "end_monotonic_ns": 8090009095885814,
+    "NPU0_empty_line": true,
+    "NPU3_empty_line": true,
+    "stdout_ref": {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/actual-final-npu.stdout",
+      "sha256": "ef78c77ab60cf8f3fc609bf186dd554b62bfff1120a6c0dc1b1b167e06b1bc72",
+      "bytes": 2223
+    },
+    "stderr_ref": {
+      "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/actual-final-npu.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "run_artifacts_preserved": [
+    {
+      "original_path": "/run/ecpa-h2-npu-0-3.lock",
+      "lstat": {
+        "dev": 93,
+        "ino": 109594628,
+        "mode": 33152,
+        "size": 0,
+        "mtime_ns": 1792369354923875263,
+        "ctime_ns": 1792369354923875263
+      },
+      "meaning": "administrative lock only; no runtime measurement or active lease is inferred from its existence",
+      "preserved": {
+        "path": "/root/ecpa-workspace/management/real-mod-H2-native-20261018/independent-reader/r6-final/preserved-run-ecpa-h2-npu-0-3.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "original_ref": {
+        "path": "/run/ecpa-h2-npu-0-3.lock",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    }
+  ],
+  "source_rule": "H2 runner/root artifacts are already under /root PVC; only known /run H2 artifact is the administrative lock. No /run H3/H4 artifacts are borrowed.",
+  "platform_quota_release_claim": false,
+  "limits": "Process disappearance and empty NPU tables are observed separately from Kubernetes/Coder quota deallocation; platform release is root-owned and not proven here."
+}

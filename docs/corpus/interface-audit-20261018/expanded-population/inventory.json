@@ -1,0 +1,633 @@
+{
+  "schema": "ecpa-public-expanded-mod-inventory/v1",
+  "acquisition_scope": "Existing actual API snapshots acquired 2026-10-18, analyzed on2026-10-19 without re-fetching completed captures. Latest means selected latest-main snapshot at acquisition, not a fresh-main claim for today.",
+  "counting_rule": "Independent repository numeric IDs with declared non-template/non-host extension/control entrypoints; not algorithms, successful imports or runtime-qualified MODs.",
+  "counts": {
+    "observed_org_repositories": 90,
+    "deduplicated_repository_identity_records": 101,
+    "repositories_with_README_project_capture": 100,
+    "declared_extension_or_control_packages": 49,
+    "public_declared_packages": 33,
+    "access_restricted_declared_packages": 16,
+    "old24_intersection": 21,
+    "old24_public_intersection": 19,
+    "old24_restricted_intersection": 2,
+    "outside_old24": 28,
+    "outside_old24_public": 14,
+    "outside_old24_restricted": 14,
+    "source_or_aggregate_candidates_separate": 7
+  },
+  "public_repositories": [
+    {
+      "repository_id": 1207997895,
+      "repository": "vLLM-HUST/vllm-hust-kv-materialization-arrival-control",
+      "commit": "e343fc5ce6b4c64611a79df5d797b3db12cd6dac",
+      "tree": "9c64ec82cbd8c1751433131bacbbe506101e8d42",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "kv_materialization": "vllm_kv_materialization.plugin:register_plugin"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.kv-materialization-arrival-control": "vllm_kv_materialization"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1207997895/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1240350965,
+      "repository": "vLLM-HUST/vllm-hust-bidkv",
+      "commit": "3d7fdc9f7e8ba6cb7076811b15065862d8675440",
+      "tree": "7ed5378ae6b2733cfb672f9ea61b50efe7925f62",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.bidkv": "bidkv.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1240350965/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1280285673,
+      "repository": "vLLM-HUST/vllm-ascend-hust-bidkv",
+      "commit": "5ee80256d263d58b1e512d9d436d47e9bac564ba",
+      "tree": "d60ae08c74ab1b70b8bfc611e91cd060f5dfffa3",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_ascend.victim_selector": {
+          "bidkv": "vllm_ascend_bidkv:BidkvVictimSelector"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1280285673/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1296664162,
+      "repository": "vLLM-HUST/vllm-hust-request-lifecycle-profiler",
+      "commit": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "tree": "b846c55b03ccf079c27d4d41ac25eeec7baf61b9",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "request_lifecycle_profiler": "vllm_request_lifecycle_profiler.plugin:register_plugin"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.request-lifecycle-profiler": "vllm_request_lifecycle_profiler.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1296664162/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1308319970,
+      "repository": "vLLM-HUST/vllm-ascend-hust-diffspec",
+      "commit": "9d9ddc9bfae2b93d03f9e66715e288b229c75e07",
+      "tree": "59faaf815e5d4d7a98a6e1743ee895a4b596f1fa",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "diffspec": "diffspec.plugin:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.diffspec": "diffspec.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1308319970/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1349304370,
+      "repository": "vLLM-HUST/vllm-ascend-kvcompress-hust",
+      "commit": "0dbc8c8137caa1d33fdacbc8d1763662fd73f479",
+      "tree": "669c128a6f58f71f22433e98301a1d2732f648ef",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "ascend_kvcompress": "vllm_ascend_kvcompress.plugin:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.ascend-kvcompress": "vllm_ascend_kvcompress.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1349304370/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1352499736,
+      "repository": "vLLM-HUST/vllm-ascend-adaptive-quantized-kv-hust",
+      "commit": "9f9844ec7d73bdd627edf3930f3ec6cb5ef5f325",
+      "tree": "a2add909ce1627eb0a412843707f0622a56e3c9c",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.ascend-adaptive-quantized-kv": "vllm_ascend_adaptive_quantized_kv"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1352499736/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353152986,
+      "repository": "vLLM-HUST/vllm-hust-prefix-router",
+      "commit": "04142b28e4962321c23b0228331745e3297a5378",
+      "tree": "65218cde7907e2632a42e6e83d55c46ddb3f90b6",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.prefix-router": "vllm_hust_prefix_router.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353152986/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353153014,
+      "repository": "vLLM-HUST/vllm-hust-kv-tiering",
+      "commit": "9c204c0dcb531fa36c1e01a495769c0a052f25fd",
+      "tree": "61bbeaf226a7b60c8039861410d37f6c2ae684ab",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_control_or_provider_extension",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "hust_kv_tiering": "vllm_hust_kv_tiering:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.kv-tiering": "vllm_hust_kv_tiering.manifests"
+        },
+        "vllm_hust_ext.providers": {
+          "hust-kv-tiering": "vllm_hust_kv_tiering.manager_provider:TieringProvider"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353153014/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353153054,
+      "repository": "vLLM-HUST/vllm-hust-knorm",
+      "commit": "c490cfbfd2372635e8e874c8d7ba866ca5c476fb",
+      "tree": "3cf0928f202a0d9c5111333fd7ad4be5f13d97aa",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "vllm-hust-knorm": "vllm_hust_knorm.bootstrap:register_plugins"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.knorm": "vllm_hust_knorm.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353153054/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353153104,
+      "repository": "vLLM-HUST/vllm-ascend-pyramidkv-hust",
+      "commit": "50a09697ddf6b510369588f3fd2d54b0dd214cee",
+      "tree": "08448a56275323d9a5a1cecad06478b340813d00",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.ascend-pyramidkv": "vllm_ascend_pyramidkv"
+        },
+        "vllm_ascend_kvcompress.methods": {
+          "pyramidkv": "vllm_ascend_pyramidkv.method:create_pyramidkv_method"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353153104/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353188555,
+      "repository": "vLLM-HUST/vllm-ascend-mapped-kv-offload-hust",
+      "commit": "ad14216f138b5409b19467011d585519747d6cd5",
+      "tree": "7dd2c239424be19f9a08c949b424e1dbe46dc91a",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.ascend-mapped-kv-offload": "vllm_ascend_mapped_kv_offload_hust"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353188555/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353209778,
+      "repository": "vLLM-HUST/vllm-ascend-quantized-kv-cache-hust",
+      "commit": "2f0b37b63dc1aba25f035a0dbf620f4abb73b2b3",
+      "tree": "3fe7bc8dd94d9a53b218897cf2d26188eed95f64",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "vllm-ascend-quantized-kv-cache": "vllm_ascend_quantized_kv_cache.bootstrap:register_plugins"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.ascend-quantized-kv-cache": "vllm_ascend_quantized_kv_cache.extension_manager_manifest"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353209778/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353209850,
+      "repository": "vLLM-HUST/vllm-ascend-simllm-hust",
+      "commit": "1069cbec6fbc199ab6e087dfa24d1c4a8e644765",
+      "tree": "c5f7426a3db12d80135730676a77009614505a07",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.simllm": "vllm_ascend_simllm"
+        },
+        "vllm.general_plugins": {
+          "simllm": "vllm_ascend_simllm.plugin:register"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353209850/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353209920,
+      "repository": "vLLM-HUST/vllm-hust-unified-comm",
+      "commit": "8015b3dd17d26fa4606911f53cd81efd469bedd0",
+      "tree": "8487aee6a38dcbd93aa05ae49fa2b052d4b34bb4",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.unified-communication": "vllm_hust_unified_comm"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353209920/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353209990,
+      "repository": "vLLM-HUST/vllm-ascend-split-batch-hust",
+      "commit": "183f98c360595f038611c455e4990a79d888e8d3",
+      "tree": "92f00a65047335c1dbc18bc5d6de66d7f5051de2",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.split-batch-full-graph": "vllm_ascend_split_batch",
+          "org.vllm-hust.fia-demask": "vllm_ascend_split_batch.fia_demask",
+          "org.vllm-hust.rope-fix": "vllm_ascend_split_batch.rope_fix",
+          "org.vllm-hust.zerocost-wiring": "vllm_ascend_split_batch.zerocost",
+          "org.vllm-hust.gate-fp32": "vllm_ascend_split_batch.gate_fp32"
+        },
+        "vllm.general_plugins": {
+          "cascade-attention": "vllm_ascend_split_batch.cascade_plugin:load",
+          "fi-sampling": "vllm_ascend_split_batch.fi_sampling_plugin:load",
+          "fi-gelu": "vllm_ascend_split_batch.fi_gelu_plugin:load",
+          "fia-demask": "vllm_ascend_split_batch.fia_demask_plugin:load",
+          "aot-cache-guard": "vllm_ascend_split_batch.aot_cache_guard_plugin:load",
+          "mlp-chunk": "vllm_ascend_split_batch.mlp_chunk_plugin:load",
+          "gate-fp32": "vllm_ascend_split_batch.gate_fp32_plugin:load",
+          "rope-fix": "vllm_ascend_split_batch.rope_fix_plugin:load",
+          "zerocost-wiring": "vllm_ascend_split_batch.zerocost_wiring:load"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353209990/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353210072,
+      "repository": "vLLM-HUST/vllm-hust-kv-transfer-observability",
+      "commit": "05fcf5cdd3a6b689e106ed3c2843d43dbcba7dc7",
+      "tree": "404107269aac865e94ac2ae89aaca3b4fd9f8435",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.kv-transfer-observability": "vllm_hust_kv_transfer_observability"
+        },
+        "vllm.general_plugins": {
+          "kv_transfer_observability": "vllm_hust_kv_transfer_observability.plugin:register_plugin"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353210072/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353210144,
+      "repository": "vLLM-HUST/vllm-ascend-layered-prefill-hust",
+      "commit": "9f3f3ec39ed17287dbdff49e8832a8f670011fde",
+      "tree": "d6133261178ab448e47dcc8deac5e63492f7575c",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.layered-prefill": "vllm_ascend_layered_prefill"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353210144/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353210213,
+      "repository": "vLLM-HUST/vllm-hust-activation-sparsity",
+      "commit": "c02a775062fa969245671730fbbc89e5c30e4af3",
+      "tree": "ba312287d6f4060a6369eb602ef0c327cc681e7d",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.activation-sparsity": "vllm_hust_activation_sparsity"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353210213/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353210272,
+      "repository": "vLLM-HUST/vllm-hust-pipeline-microbatch",
+      "commit": "4b8bafda91d2db6d8cf5f689a03eb13734bfa510",
+      "tree": "fd47996dc758a6663e1d558541ab8d17993cf210",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.pipeline-microbatch": "vllm_hust_pipeline_microbatch"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353210272/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353210361,
+      "repository": "vLLM-HUST/vllm-hust-qos-scheduler",
+      "commit": "5bc063db6d866b4d92f19436e76966dcae76e6e7",
+      "tree": "f80d32e2af4963a41226552728b8f53355dd78d1",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.qos-scheduler": "vllm_hust_qos_scheduler"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353210361/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1353210446,
+      "repository": "vLLM-HUST/vllm-hust-scheduler-policy-lab",
+      "commit": "215bdab44fb572f125e1426f78103e4d4ac7b833",
+      "tree": "8e658623137990b109315f9f9083151e6a60021e",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.scheduler-policy-lab": "vllm_hust_scheduler_policy_lab"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1353210446/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1369166618,
+      "repository": "vLLM-HUST/vllm-hust-vSpec",
+      "commit": "bdd919d24669f09e6eb1987157dfdb5561460f45",
+      "tree": "2fbdc00c87517334efe73c3b9f02bf35b0f56283",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": true,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "vspec": "vllm_hust_vspec:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.vspec": "vllm_hust_vspec.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1369166618/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1372804102,
+      "repository": "vLLM-HUST/vllm-hust-opset",
+      "commit": "e6f805044f13a1c059d08d6805829e3e322125c1",
+      "tree": "336a4c0eb1bf162ae01ca9fd5065bea37f8a8eae",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.operator-optimizations": "vllm_hust_operator_optimizations.manifests"
+        },
+        "vllm.general_plugins": {
+          "operator_optimizations": "vllm_hust_operator_optimizations.plugin:activate"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1372804102/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1385796124,
+      "repository": "vLLM-HUST/ascend-distributed-metadata",
+      "commit": "d474436327d0516a8809d12ceb971ebb0c7b05cd",
+      "tree": "4ac8f907e02be4897fc9a898e6f40e6e1e23b335",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "adm_packed_sync": "ascend_distributed_metadata.packed_sync:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.ascend-distributed-metadata": "ascend_distributed_metadata"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1385796124/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1400930349,
+      "repository": "xmdhb/vllm-hust-ascend-attention-boundary",
+      "commit": "3572713e7944ea877b22f2a8a6bb053f348bfd25",
+      "tree": "260c0d44cd5ca7c13b11692b96f0af725973abb2",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "ascend_attention_boundary": "vllm_hust_ascend_attention_boundary.plugin:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.ascend-attention-boundary": "vllm_hust_ascend_attention_boundary.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1400930349/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1400932770,
+      "repository": "xmdhb/vllm-hust-core-attention-boundary",
+      "commit": "b5bc92a513a4ad043e39c7e2e3d6c4f4351114ff",
+      "tree": "27df19f2eb4338ea39540587cb5fec53442106b4",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "core_attention_boundary": "vllm_hust_core_attention_boundary.plugin:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.core-attention-boundary": "vllm_hust_core_attention_boundary.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1400932770/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1409929452,
+      "repository": "vLLM-HUST/gdn-state-codec",
+      "commit": "a780bc678a5659b10a29348a6d3d376af4508852",
+      "tree": "397c59c23de1df174a1274fd045b0fce6b700b1b",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm.general_plugins": {
+          "gdn_state_codec": "gdn_state_codec.plugin:register"
+        },
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.gdn-state-codec": "gdn_state_codec.manifests"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1409929452/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1411784761,
+      "repository": "vLLM-HUST/stateaxis-automatic-prefix-cache",
+      "commit": "9b0962232c7601f66100c83a3394ad73a2113ce8",
+      "tree": "834c9c38139f2203b8bcc5a071b21fbd0dbebbc3",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.stateaxis-automatic-prefix-cache": "stateaxis_automatic_prefix_cache"
+        },
+        "stateaxis.mod_handlers": {
+          "automatic_prefix_cache": "stateaxis_automatic_prefix_cache:automatic_prefix_cache"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1411784761/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1411784879,
+      "repository": "vLLM-HUST/stateaxis-async-kv-transfer",
+      "commit": "d8d8dd6cbba8b60c1bdf2bcc70db898884e0ed38",
+      "tree": "e08edcacf7f7ba08c9f78c603ef39c320e51a9e1",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.stateaxis-async-kv-transfer": "stateaxis_async_kv_transfer"
+        },
+        "stateaxis.mod_handlers": {
+          "async_kv_transfer": "stateaxis_async_kv_transfer:async_kv_transfer"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1411784879/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1411784982,
+      "repository": "vLLM-HUST/stateaxis-pipelined-weight-loading",
+      "commit": "f5f4ffc30c9754d525017aa15191ca9fa3dc4c2e",
+      "tree": "a31c6fca55dca0bfd7fe7cdaee05bed87e6de58e",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.stateaxis-pipelined-weight-loading": "stateaxis_pipelined_weight_loading"
+        },
+        "stateaxis.mod_handlers": {
+          "pipelined_weight_loading": "stateaxis_pipelined_weight_loading:pipelined_weight_loading"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1411784982/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1421102477,
+      "repository": "vLLM-HUST/stateaxis-prefix-cache-policy",
+      "commit": "ed84fa14623d7eaa64f3ba59ade19cff49b50af7",
+      "tree": "4a9e9dcb34eb0abb1b59e0b07893c7c6b83208c6",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.stateaxis-prefix-cache-policy": "stateaxis_prefix_cache_policy"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1421102477/pyproject.toml.snapshot"
+    },
+    {
+      "repository_id": 1424125240,
+      "repository": "vLLM-HUST/vllm-hust-prefill-microflow",
+      "commit": "12ac7b9dc33bd3bf1095caeda725d99038332e3c",
+      "tree": "9c360af5721b2e70d690bf5636870d6123d98e55",
+      "fork": false,
+      "fork_parent": null,
+      "old24_repository_identity": false,
+      "classification": "declared_extension_package",
+      "entry_points": {
+        "vllm_hust.extension_bundles": {
+          "org.vllm-hust.prefill-microflow": "hust_prefill_microflow"
+        },
+        "vllm.general_plugins": {
+          "hust_prefill_microflow": "hust_prefill_microflow:register"
+        }
+      },
+      "packaging_snapshot": "sources/packaging/1424125240/pyproject.toml.snapshot"
+    }
+  ],
+  "restricted_source_policy": "Private repository identities/raw source are retained in local access-controlled evidence and not copied into this public packet. Their16 rows contribute only explicit aggregate counts; they are not publicly reproducible from this packet.",
+  "old24_boundary": "The remaining3 old24 identities are an offline toolkit, aggregate runtime stack and source-declared analysis candidate, not disproven MODs. Categories and revisions differ; no old labels or experiment denominators change.",
+  "discovery_method": "Cross-check90 organization repository records, website38 workshop entries/58 ecosystem components,19 DevHub catalog entries and historical ledger-derived aliases. Deduplicate numeric repository IDs; multiple components in one repo are not independent repositories.",
+  "legacy_ledger_limit": "The original llm-optimizations ledger was not located. Only its explicitly attributed historical paper snapshot was retained locally, not presented as a fresh ledger.",
+  "runtime_qualification_created": false
+}

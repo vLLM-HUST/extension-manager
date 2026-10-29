@@ -1,0 +1,8 @@
+{
+  "schema_version": 2,
+  "extensions": {
+    "org.vllm-hust.request-lifecycle-profiler": {
+      "enabled": true
+    }
+  }
+}

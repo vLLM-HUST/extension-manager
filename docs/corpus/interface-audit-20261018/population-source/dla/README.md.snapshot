@@ -1,0 +1,151 @@
+# vllm-hust-dla
+
+DLA（Decode-Length-Aware preemption & admission）——运行在 vLLM scheduler 进程内的
+**victim-selection / admission 调度策略**插件。
+
+> DLA 不是 KV store、KV connector 或独立 control plane。它改变一件事：**带预测输出长度
+> （`predicted_length`）的请求，在预占与准入时使用该预测**——池满踢人时保护快写完的短请求，
+> 预填准入时按"prompt + 预测输出"预留整段容量。无预测的请求行为与上游 vLLM 逐位一致；
+> **安装 DLA 本身不会改变任何调度行为**（Bundle 准入 + 组件选择都是显式动作）。
+
+## 概念速览
+
+| 概念 | DLA 中的值 | 作用 |
+|---|---|---|
+| Python 发行包 | `vllm-hust-dla` | pip/uv 安装的 wheel |
+| Bundle ID | `org.vllm-hust.dla` | 安装后的静态发现与启动准入单位 |
+| Component ID | `victim-selector` | Bundle 内的具体能力 |
+| 完整组件 ID | `org.vllm-hust.dla/victim-selector` | runtime 配置实际选择的组件 |
+| 领域契约 | `vllm.scheduler.policy.v1` | 组件实现的 host contract |
+| 执行平面 | `scheduler` | 只在 scheduler 进程物化 |
+| 隔离模式 | `trusted_in_process` | 与 scheduler 同 Python 进程 |
+| 权限 | `[]` | 不申请设备/网络/IPC/文件权限 |
+
+## 机制（为什么需要预测长度）
+
+vLLM 对输出长度不可见：池满必须踢人时"盲踢"（可能踢掉只剩 3 个 token 就完成、全部
+prefill 白算的请求）；预填准入只按 prompt 检查、不知道请求未来还要长多长，导致
+长输出请求超售 → preempt 风暴。离线价值验证（BurstGPT 1 万真实请求、块池模拟、
+vLLM LIFO 基线、3 seeds）：
+
+| 机制 | JCT p50 | preempt | 白算 token |
+|---|---|---|---|
+| 原生（无预测） | 基线 | 基线 | 基线 |
+| + 预测感知踢人 | −23% | −48% | −56% |
+| + 预填预留准入 | **−47%** | **−81%** | **−77%** |
+
+预测误差鲁棒：噪声 σ=1×L（≈输出本身量级）下收益仍 −34~−47%；系统性高估零影响。
+
+## 使用前提
+
+- Python ≥ 3.10
+- 含 **Extension Bundle v1** 的 vLLM-HUST（`vllm plugin --help` 存在）**且** core 含
+  `vllm.v1.core.sched.victim_selector` 与 `Request.predicted_length`
+  （对应 core PR：pluggable victim selector + prediction-aware admission reserve）
+- DLA 安装到运行 `vllm` 命令的同一个 Python 环境
+- 模型/设备/引擎本身可正常启动
+
+## 安装
+
+```bash
+python -m pip install --no-cache-dir "vllm-hust-dla==0.1.0"   # PyPI 发布后
+# 或源码/开发模式
+git clone https://github.com/VLLM-HUST/vllm-hust-dla.git
+python -m pip install --no-deps .     # 源码
+python -m pip install -e ".[test]"    # 开发模式
+```
+
+## 安装后验证
+
+```bash
+python -c 'from importlib.metadata import version; print(version("vllm-hust-dla"))'
+vllm plugin list                          # 预期出现 org.vllm-hust.dla
+vllm plugin inspect org.vllm-hust.dla     # bundle/component/contract/plane/permissions
+vllm plugin validate org.vllm-hust.dla
+```
+
+## 配置与启动
+
+预测值由请求方（客户端 extra 参数或上游预测器网关）经 `predicted_length` 提供，
+**建议值已含安全余量**（如 `ceil(predicted * 1.2)`），core 不做二次放大。
+
+```bash
+vllm serve MODEL \
+  --extension org.vllm-hust.dla \
+  --additional-config '{
+    "victim_selector_component": "org.vllm-hust.dla/victim-selector"
+  }'
+```
+
+启动日志应出现 `admitted_bundles=('org.vllm-hust.dla',)` 与
+`admitted_components=('org.vllm-hust.dla/victim-selector',)`。
+
+> 只传 `--extension` 而不设 `victim_selector_component` = 只准入 Bundle 未选择组件。
+> 两层选择缺一不可。
+
+### 紧急旁路（事故开关，非卸载流程）
+
+```json
+{ "victim_selector_plugin_disabled": true }
+```
+
+恢复与 upstream 一致的 no-op victim-selector policy。
+
+### 兼容旧 core（无 typed materializer）
+
+DLA 同时发布 legacy provider（`vllm.victim_selector` entry-point），旧 core 自动发现：
+
+```json
+{
+  "victim_selector_plugin": "dla",
+  "victim_selector_plugin_disabled": false
+}
+```
+
+不要把 typed component 与 legacy provider 同时启用；typed materializer 优先。
+
+## 停止 / 禁用 / 升级 / 卸载
+
+- **停止**：前台 Ctrl+C 优雅退出；服务管理器执行其 stop；不要 `pkill -f vllm`
+- **禁用**：新启动配置同时移除 `--extension org.vllm-hust.dla` 与
+  `victim_selector_component`
+- **升级/回滚**：先停实例 → `pip install --upgrade/--force-reinstall "vllm-hust-dla==版本"`
+  → `vllm plugin inspect/validate` → 新进程启动；不要在运行中覆盖 site-packages
+- **卸载**：停实例 → 移除配置 → `python -m pip uninstall vllm-hust-dla` →
+  `vllm plugin list --json` 确认消失
+
+## 测试
+
+```bash
+python -m pytest tests -q            # L1 纯单测 + L2 manifest/发行元数据（无 vllm 依赖）
+```
+
+## 仓库结构
+
+```
+├── pyproject.toml                # setuptools；双 entry point（静态 bundle + legacy provider）
+├── src/dla/
+│   ├── __init__.py               # 包说明（import 无副作用）
+│   ├── _version.py
+│   ├── selector.py               # DlaVictimSelector（policy v1；import 无副作用）
+│   └── manifests/
+│       ├── __init__.py
+│       └── vllm-hust-extension-v1.json   # Bundle v1 manifest（随 wheel 安装）
+└── tests/
+    ├── test_manifest.py          # L2：manifest/entry-point/implementation_ref 一致
+    └── test_selector.py          # L1：选择行为（stub，无 vllm 可跑）
+```
+
+## 相关 core PR（消费前置）
+
+- `feat(sched): pluggable victim selector + predicted_length passthrough`
+- `feat(sched): prediction-aware full-sequence admission reserve`
+
+## 验证状态
+
+- [x] SOTA 复现：EGTP（ICLR'26）Qwen2.5-7B × ForeLen 三场景 MAE 对表 ±5%（91-134 vs 论文）
+- [x] 离线价值验证：BurstGPT 真实 trace 模拟（JCT −47%、误差鲁棒）
+- [x] L1/L2 测试（16 passed，无 vllm 环境）
+- [ ] L5 真实服务（core PR 合入 + .87 910B 端到端对照）——进行中
+
+诚实分级：`maturity: incubating`，集群实测完成前不宣称性能已验证。

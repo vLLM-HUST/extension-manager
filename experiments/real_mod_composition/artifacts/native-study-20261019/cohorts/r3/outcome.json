@@ -1,0 +1,565 @@
+[
+  {
+    "schema": "ecpa-new-real-H2-attempt/v1",
+    "case": "kv-only",
+    "classification": "REAL_NATIVE_H2_CANDIDATE",
+    "formal_qualified": false,
+    "performance_result": false,
+    "expected_order": [
+      "ascend_kvcompress"
+    ],
+    "error": null,
+    "start_wall_ns": 1792370122817896425,
+    "start_monotonic_ns": 8085826275583625,
+    "argv": [
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm-hust-ext",
+      "run",
+      "--",
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/python",
+      "-m",
+      "vllm.entrypoints.cli.main",
+      "serve",
+      "/models/Qwen2.5-7B-Instruct",
+      "--served-model-name",
+      "ecpa-h2-real",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "29872",
+      "--tensor-parallel-size",
+      "2",
+      "--enforce-eager",
+      "--max-model-len",
+      "2048",
+      "--max-num-seqs",
+      "1",
+      "--gpu-memory-utilization",
+      "0.6",
+      "--block-size",
+      "128",
+      "--no-enable-prefix-caching",
+      "--enable-chunked-prefill"
+    ],
+    "source_commits": {
+      "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+    },
+    "campaign_sha256": "6d07b06d63d7ab858387bb17d46c807caa7945a88e5e5a27992d7487d6790014",
+    "manager": {
+      "pid": 2012896,
+      "start_ticks": 808582627,
+      "session": 2012896,
+      "state": "R",
+      "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+    },
+    "health_status": 200,
+    "below": {
+      "http_status": 200,
+      "elapsed_ns": 14414157114,
+      "usage": {
+        "prompt_tokens": 4,
+        "total_tokens": 36,
+        "completion_tokens": 32,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      },
+      "response_id": "cmpl-kv-only-below"
+    },
+    "above": {
+      "http_status": 200,
+      "elapsed_ns": 14615771336,
+      "usage": {
+        "prompt_tokens": 1201,
+        "total_tokens": 1233,
+        "completion_tokens": 32,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      },
+      "response_id": "cmpl-kv-only-above"
+    },
+    "manager_returncode": 130,
+    "retained_processes": [
+      {
+        "pid": 2012896,
+        "start_ticks": 808582627,
+        "session": 2012896,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2013183,
+        "start_ticks": 808586332,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2013389,
+        "start_ticks": 808590497,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2013390,
+        "start_ticks": 808590500,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2013479,
+        "start_ticks": 808592307,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2013679,
+        "start_ticks": 808596991,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2013680,
+        "start_ticks": 808596991,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014004,
+        "start_ticks": 808601181,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014005,
+        "start_ticks": 808601181,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014743,
+        "start_ticks": 808608921,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014759,
+        "start_ticks": 808608945,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014774,
+        "start_ticks": 808608954,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014748,
+        "start_ticks": 808608928,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014777,
+        "start_ticks": 808608955,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014790,
+        "start_ticks": 808608964,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014888,
+        "start_ticks": 808609242,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014889,
+        "start_ticks": 808609245,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014991,
+        "start_ticks": 808609700,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015004,
+        "start_ticks": 808609713,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015021,
+        "start_ticks": 808609716,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2014992,
+        "start_ticks": 808609700,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015002,
+        "start_ticks": 808609713,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015020,
+        "start_ticks": 808609716,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015147,
+        "start_ticks": 808609953,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015148,
+        "start_ticks": 808609957,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015162,
+        "start_ticks": 808610148,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015161,
+        "start_ticks": 808610148,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015182,
+        "start_ticks": 808610170,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015219,
+        "start_ticks": 808610177,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015181,
+        "start_ticks": 808610170,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015218,
+        "start_ticks": 808610177,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015349,
+        "start_ticks": 808610487,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015382,
+        "start_ticks": 808610490,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015386,
+        "start_ticks": 808610653,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015385,
+        "start_ticks": 808610652,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015465,
+        "start_ticks": 808610757,
+        "session": 2013183,
+        "state": "R",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      },
+      {
+        "pid": 2015449,
+        "start_ticks": 808610751,
+        "session": 2013183,
+        "state": "S",
+        "boot_id": "e056a75e-3ca5-4a07-9429-d2425e402838"
+      }
+    ],
+    "owned_survivors": [],
+    "finished_wall_ns": 1792370450045498521,
+    "device_process_tables_empty": true
+  },
+  {
+    "schema": "ecpa-new-real-H2-attempt/v1",
+    "case": "profiler-only",
+    "classification": "REAL_NATIVE_H2_CANDIDATE",
+    "formal_qualified": false,
+    "performance_result": false,
+    "expected_order": [
+      "request_lifecycle_profiler"
+    ],
+    "error": "OSError(98, 'Address already in use')",
+    "start_wall_ns": 1792370451129407123,
+    "start_monotonic_ns": 8086154587093973,
+    "argv": [
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm-hust-ext",
+      "run",
+      "--",
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/python",
+      "-m",
+      "vllm.entrypoints.cli.main",
+      "serve",
+      "/models/Qwen2.5-7B-Instruct",
+      "--served-model-name",
+      "ecpa-h2-real",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "29872",
+      "--tensor-parallel-size",
+      "2",
+      "--enforce-eager",
+      "--max-model-len",
+      "2048",
+      "--max-num-seqs",
+      "1",
+      "--gpu-memory-utilization",
+      "0.6",
+      "--block-size",
+      "128",
+      "--no-enable-prefix-caching",
+      "--enable-chunked-prefill"
+    ],
+    "source_commits": {
+      "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+    },
+    "campaign_sha256": "6d07b06d63d7ab858387bb17d46c807caa7945a88e5e5a27992d7487d6790014",
+    "retained_processes": [],
+    "owned_survivors": [],
+    "finished_wall_ns": 1792370451131297695,
+    "device_process_tables_empty": true
+  },
+  {
+    "schema": "ecpa-new-real-H2-attempt/v1",
+    "case": "kv-then-profiler",
+    "classification": "REAL_NATIVE_H2_CANDIDATE",
+    "formal_qualified": false,
+    "performance_result": false,
+    "expected_order": [
+      "ascend_kvcompress",
+      "request_lifecycle_profiler"
+    ],
+    "error": "OSError(98, 'Address already in use')",
+    "start_wall_ns": 1792370452189872924,
+    "start_monotonic_ns": 8086155647559244,
+    "argv": [
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm-hust-ext",
+      "run",
+      "--",
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/python",
+      "-m",
+      "vllm.entrypoints.cli.main",
+      "serve",
+      "/models/Qwen2.5-7B-Instruct",
+      "--served-model-name",
+      "ecpa-h2-real",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "29872",
+      "--tensor-parallel-size",
+      "2",
+      "--enforce-eager",
+      "--max-model-len",
+      "2048",
+      "--max-num-seqs",
+      "1",
+      "--gpu-memory-utilization",
+      "0.6",
+      "--block-size",
+      "128",
+      "--no-enable-prefix-caching",
+      "--enable-chunked-prefill"
+    ],
+    "source_commits": {
+      "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+    },
+    "campaign_sha256": "6d07b06d63d7ab858387bb17d46c807caa7945a88e5e5a27992d7487d6790014",
+    "retained_processes": [],
+    "owned_survivors": [],
+    "finished_wall_ns": 1792370452191691425,
+    "device_process_tables_empty": true
+  },
+  {
+    "schema": "ecpa-new-real-H2-attempt/v1",
+    "case": "profiler-then-kv",
+    "classification": "REAL_NATIVE_H2_CANDIDATE",
+    "formal_qualified": false,
+    "performance_result": false,
+    "expected_order": [
+      "request_lifecycle_profiler",
+      "ascend_kvcompress"
+    ],
+    "error": "OSError(98, 'Address already in use')",
+    "start_wall_ns": 1792370453251370277,
+    "start_monotonic_ns": 8086156709056707,
+    "argv": [
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm-hust-ext",
+      "run",
+      "--",
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/python",
+      "-m",
+      "vllm.entrypoints.cli.main",
+      "serve",
+      "/models/Qwen2.5-7B-Instruct",
+      "--served-model-name",
+      "ecpa-h2-real",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "29872",
+      "--tensor-parallel-size",
+      "2",
+      "--enforce-eager",
+      "--max-model-len",
+      "2048",
+      "--max-num-seqs",
+      "1",
+      "--gpu-memory-utilization",
+      "0.6",
+      "--block-size",
+      "128",
+      "--no-enable-prefix-caching",
+      "--enable-chunked-prefill"
+    ],
+    "source_commits": {
+      "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+    },
+    "campaign_sha256": "6d07b06d63d7ab858387bb17d46c807caa7945a88e5e5a27992d7487d6790014",
+    "retained_processes": [],
+    "owned_survivors": [],
+    "finished_wall_ns": 1792370453253139927,
+    "device_process_tables_empty": true
+  },
+  {
+    "schema": "ecpa-new-real-H2-attempt/v1",
+    "case": "host-only",
+    "classification": "REAL_NATIVE_H2_CANDIDATE",
+    "formal_qualified": false,
+    "performance_result": false,
+    "expected_order": [],
+    "error": "OSError(98, 'Address already in use')",
+    "start_wall_ns": 1792370454317984379,
+    "start_monotonic_ns": 8086157775670789,
+    "argv": [
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/vllm-hust-ext",
+      "run",
+      "--",
+      "/root/ecpa-workspace/environments/ecpa-h4-full-sampled-20261018-r1/bin/python",
+      "-m",
+      "vllm.entrypoints.cli.main",
+      "serve",
+      "/models/Qwen2.5-7B-Instruct",
+      "--served-model-name",
+      "ecpa-h2-real",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "29872",
+      "--tensor-parallel-size",
+      "2",
+      "--enforce-eager",
+      "--max-model-len",
+      "2048",
+      "--max-num-seqs",
+      "1",
+      "--gpu-memory-utilization",
+      "0.6",
+      "--block-size",
+      "128",
+      "--no-enable-prefix-caching",
+      "--enable-chunked-prefill"
+    ],
+    "source_commits": {
+      "host": "772b34583c640f94ebdec7067ed89f08e2db848b",
+      "ascend": "153535b32417b3ad8fb10dad2f564ddf4dcab1ef",
+      "kv": "2f49051b101adf63db7e9079fee276451e7a5678",
+      "profiler": "23caefeaf2e61f3f0f9f8d3599314b6732eb2a8f",
+      "manager": "05357d6a9c84399785cb47d1d2a1ac5cda10f181"
+    },
+    "campaign_sha256": "6d07b06d63d7ab858387bb17d46c807caa7945a88e5e5a27992d7487d6790014",
+    "retained_processes": [],
+    "owned_survivors": [],
+    "finished_wall_ns": 1792370454319842370,
+    "device_process_tables_empty": true
+  }
+]

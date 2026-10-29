@@ -1,0 +1,360 @@
+{
+  "schema": "ecpa-real-mod-interface-source-audit/v1",
+  "classification": "SOURCE_AUDIT_NOT_NATIVE_OR_FORMAL_H2_RESULT",
+  "sources": [
+    {
+      "id": "knorm",
+      "origin": "https://github.com/vLLM-HUST/vllm-hust-knorm.git",
+      "commit": "4d88fcb422b02cabd70d711e4ce952040624a969",
+      "files": [
+        {
+          "path": "pyproject.toml",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/knorm/pyproject.toml.snapshot",
+          "sha256": "c0d31fb8767f6fc3d581041222ec0aebb84337e95eabcdafda6bbde7655be6e3",
+          "git_blob": "eef55f902d003e214347932902c8f6b243848f1e",
+          "excerpts": [
+            {
+              "line_start": 5,
+              "line_end": 13,
+              "text": "[project]\nname = \"vllm-hust-knorm\"\ndescription = \"KNorm key-L2-norm KV-cache compression for vLLM-HUST, as a runtime-loadable extension bundle\"\nreadme = \"README.md\"\nrequires-python = \">=3.10\"\nlicense = \"Apache-2.0\"\nauthors = [{ name = \"vLLM-HUST KNorm maintainers\" }]\ndependencies = []\ndynamic = [\"version\"]"
+            },
+            {
+              "line_start": 36,
+              "line_end": 46,
+              "text": "# Runtime plugin hook. vLLM calls it in every process during plugin\n# loading; registration installs the patches, VLLM_KNORM_ENABLED=1 is\n# the explicit activation switch.\n[project.entry-points.\"vllm.general_plugins\"]\n\"vllm-hust-knorm\" = \"vllm_hust_knorm.bootstrap:register_plugins\"\n\n# Extension Manager discovery (static manifest locator; the manager\n# reads the JSON next to this package without importing any\n# implementation). Registration name must equal the extension_id.\n[project.entry-points.\"vllm_hust.extension_bundles\"]\n\"org.vllm-hust.knorm\" = \"vllm_hust_knorm.manifests\""
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_hust_knorm/bootstrap.py",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/knorm/src/vllm_hust_knorm/bootstrap.py.snapshot",
+          "sha256": "af33a8789753620a762c2f231af56661ff88eff1cabda12faef259e8aca094a4",
+          "git_blob": "be61760a0dd1cd159394dcb8d549e0c6cd6fe518",
+          "excerpts": [
+            {
+              "line_start": 4,
+              "line_end": 15,
+              "text": "\"\"\"``vllm.general_plugins`` dynamic-load entry point.\n\nAfter installation, vLLM imports this entry point in every process\n(process 0, engine core and workers) during plugin loading, and calls\n``register_plugins()``. Registration installs the runtime patches but\ndoes not enable compression: only ``VLLM_KNORM_ENABLED=1`` (plus\nprefix caching disabled) activates Knorm.\n\nFailure mode: when this process is not a vllm host the hook is a no-op;\nwhen the host conflicts with an in-tree ``vllm.knorm`` or lacks the\nrequired surfaces, activation raises and vLLM logs the exception —\nfail closed, never a silent half-install."
+            },
+            {
+              "line_start": 25,
+              "line_end": 38,
+              "text": "def register_plugins() -> list[str]:\n    \"\"\"Register Knorm in vLLM hosts; no-op elsewhere.\"\"\"\n    if detect_host() is None:\n        return []\n\n    from .core.activation import activate\n\n    info = activate()\n    print(\n        \"[vllm-hust-knorm] runtime patches registered; activate with \"\n        \"VLLM_KNORM_ENABLED=1 and --no-enable-prefix-caching \"\n        f\"(status={info.get('status')})\",\n        flush=True,\n    )"
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_hust_knorm/core/hosts.py",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/knorm/src/vllm_hust_knorm/core/hosts.py.snapshot",
+          "sha256": "f383bf7d737f1778c94188174413b1a7ce8c6821d4990f721cc1ac26841a6922",
+          "git_blob": "94a676ea2d8e2106f8fbcf5c594431a555419f19",
+          "excerpts": [
+            {
+              "line_start": 18,
+              "line_end": 30,
+              "text": "# Host surfaces the runtime patches bind to. Kept in one place so the\n# contract tests and HOST_CONTRACT.md stay in sync with the adapter.\n# An \"attr1|attr2\" entry means any one of the alternatives satisfies\n# the contract (host generations renamed the free-block queue class).\nREQUIRED_SURFACES = (\n    \"vllm.v1.core.single_type_kv_cache_manager:register_all_kvcache_specs\",\n    \"vllm.v1.core.single_type_kv_cache_manager:FullAttentionManager\",\n    \"vllm.v1.kv_cache_spec_registry:KVCacheSpecRegistry\",\n    \"vllm.v1.core.kv_cache_utils:FreeKVCacheBlockQueue|FreeQueue\",\n    \"vllm.v1.core.block_pool:BlockPool\",\n    \"vllm.v1.core.sched.scheduler:Scheduler\",\n    \"vllm.v1.worker.gpu_model_runner:GPUModelRunner\",\n)"
+            },
+            {
+              "line_start": 63,
+              "line_end": 100,
+              "text": "def require_no_in_tree_knorm() -> None:\n    \"\"\"Fail closed when the host already ships an in-tree ``vllm.knorm``.\n\n    vLLM-HUST builds of the 0.23 seam era embed the legacy in-tree Knorm\n    module behind try-imports. Installing this plugin next to them would\n    double-provide the feature; the guide forbids silently ignoring the\n    conflict, so activation refuses with instructions. A stale directory\n    without ``__init__.py`` (namespace-only) is not a conflict.\n    \"\"\"\n    if real_module_present(\"vllm.knorm\"):\n        raise RuntimeError(\n            \"vllm-hust-knorm refuses to activate: this vLLM install \"\n            \"already ships an in-tree 'vllm.knorm' module. Remove the \"\n            \"in-tree module (use a knorm-free vLLM-HUST build) or \"\n            \"uninstall one of the two implementations; running both is \"\n            \"unsupported.\"\n        )\n\n\ndef require_host_surfaces() -> None:\n    \"\"\"Fail closed when any host surface required by the patches is\n    missing, naming every missing symbol.\"\"\"\n    missing: list[str] = []\n    for surface in REQUIRED_SURFACES:\n        module_name, _, attr = surface.partition(\":\")\n        try:\n            spec = importlib.util.find_spec(module_name)\n        except (ImportError, ValueError):\n            spec = None\n        if spec is None:\n            missing.append(surface)\n    if missing:\n        raise RuntimeError(\n            \"vllm-hust-knorm requires host surfaces that are not \"\n            \"importable in this process: \"\n            + \", \".join(missing)\n            + \". See HOST_CONTRACT.md for the verified host baselines; \"\n            \"compatibility must not be assumed for other builds.\""
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_hust_knorm/adapters/vllm_hust/patches.py",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/knorm/src/vllm_hust_knorm/adapters/vllm_hust/patches.py.snapshot",
+          "sha256": "d0ec45fca93f64ea6084f8b6b402e4fe90f5a8de3565914eb293f705b5e40b7e",
+          "git_blob": "3c5808bb2551f562baafa37bbc10a73247051c31",
+          "excerpts": [
+            {
+              "line_start": 281,
+              "line_end": 310,
+              "text": "    applied = _wrap(single_type_module, \"register_all_kvcache_specs\", build)\n    # Binding sites that already did ``from … import register_all_kvcache_specs``\n    # before the plugin loaded (e.g. ``vllm.v1.engine.core`` at EngineCore\n    # construction) hold their own reference and bypass the module-attribute\n    # wrap above — rebind every already-imported site too.\n    for module_name, module in list(sys.modules.items()):\n        if module is single_type_module or not module_name.startswith(\"vllm.\"):\n            continue\n        if getattr(module, \"register_all_kvcache_specs\", None) is not None:\n            _wrap(module, \"register_all_kvcache_specs\", build)\n    return applied\n\n\ndef _install_scheduler_score_routing(scheduler_cls: type) -> bool:\n    \"\"\"P4: route ``knorm_block_scores`` into the manager bridge.\"\"\"\n    from ...knorm.manager import submit_block_scores\n\n    def build(original: Callable[..., Any]) -> Callable[..., Any]:\n        @functools.wraps(original)\n        def update_from_output(\n            self: Any, scheduler_output: Any, model_runner_output: Any\n        ) -> Any:\n            knorm_scores = getattr(model_runner_output, \"knorm_block_scores\", None)\n            if knorm_scores:\n                submit_block_scores(knorm_scores)\n            return original(self, scheduler_output, model_runner_output)\n\n        return update_from_output\n\n    return _wrap(scheduler_cls, \"update_from_output\", build)"
+            },
+            {
+              "line_start": 313,
+              "line_end": 336,
+              "text": "def _install_runner_init_patch(runner_cls: type) -> bool:\n    \"\"\"P5: compute ``_knorm_active`` once and install the wrapper early.\"\"\"\n\n    def build(original: Callable[..., Any]) -> Callable[..., Any]:\n        from ...knorm.attention_backend import install_attention_wrapper\n\n        @functools.wraps(original)\n        def __init__(self: Any, *args: Any, **kwargs: Any) -> None:\n            original(self, *args, **kwargs)\n            self._knorm_scores = None\n            self._knorm_wrapper_installed = False\n            # self.cache_config is a CacheConfig (not a VllmConfig), so\n            # read the flag directly instead of _prefix_caching_enabled.\n            prefix_caching = bool(\n                getattr(\n                    getattr(self, \"cache_config\", None),\n                    \"enable_prefix_caching\",\n                    False,\n                )\n            )\n            self._knorm_active = should_activate(prefix_caching)\n            if self._knorm_active:\n                impl = install_attention_wrapper()\n                self._knorm_wrapper_installed = True"
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_hust_knorm/knorm/config.py",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/knorm/src/vllm_hust_knorm/knorm/config.py.snapshot",
+          "sha256": "1906cc8bf2df30d07354be2b83eb21fb2df180332e252987fc926696cbc8e7dd",
+          "git_blob": "7de3d1658cda1c0a1d3872213571a7318d859eeb",
+          "excerpts": [
+            {
+              "line_start": 131,
+              "line_end": 144,
+              "text": "def should_activate(enable_prefix_caching: bool) -> bool:\n    \"\"\"Single source of truth for Knorm activation.\n\n    Migrated verbatim in rule from the in-tree fix for legacy issue #163\n    (PR #214): manager registration and the runner-side attention wrapper\n    must consult the same predicate, otherwise a half-enabled state adds\n    per-forward norm overhead with no consumer. Knorm is active only when\n    ALL of:\n\n    - ``VLLM_KNORM_ENABLED`` is true;\n    - ``compression_ratio < 1.0`` (matches :attr:`KnormConfig.is_active`);\n    - prefix caching is disabled (mutually exclusive; PR #134).\n    \"\"\"\n    return env_enabled() and env_compression_ratio() < 1.0 and not enable_prefix_caching"
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_hust_knorm/manifests/vllm-hust-extension-v0.3.json",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/knorm/src/vllm_hust_knorm/manifests/vllm-hust-extension-v0.3.json.snapshot",
+          "sha256": "272aece6dcb74a48f38cb0f9598b7ce81fe729d49d22494d68c7181e7f16afd8",
+          "git_blob": "9dd3b208f4de382e1c8c451174ae461afeef7cff",
+          "excerpts": [
+            {
+              "line_start": 6,
+              "line_end": 15,
+              "text": "  \"host\": {\n    \"provider\": \"vllm\",\n    \"name\": \"vllm\",\n    \"version_range\": \">=0.23\",\n    \"api_range\": \">=1,<2\"\n  },\n  \"runtime\": {\n    \"type\": \"python\",\n    \"process_scope\": \"scheduler\",\n    \"isolation\": \"trusted_in_process\""
+            },
+            {
+              "line_start": 40,
+              "line_end": 48,
+              "text": "  \"requires_services\": [],\n  \"requires_extensions\": [],\n  \"resource_claims\": [\n    {\n      \"resource\": \"vllm.kv-cache.compression-policy\",\n      \"scope\": \"vllm-process\",\n      \"mode\": \"exclusive\"\n    }\n  ],"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qos",
+      "origin": "https://github.com/vLLM-HUST/vllm-hust-qos-scheduler.git",
+      "commit": "13d376a7d8990c4dcf5c0903cb6fbf2398ef0fb0",
+      "files": [
+        {
+          "path": "pyproject.toml",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/qos/pyproject.toml.snapshot",
+          "sha256": "1c0639ebcff9ebe4533f810e1406d5802243e7c5c149b39201887890917df71a",
+          "git_blob": "9addb9f999e8d4af4df007cb232931a712ba82bb",
+          "excerpts": [
+            {
+              "line_start": 5,
+              "line_end": 21,
+              "text": "[project]\nname = \"vllm-hust-qos-scheduler\"\nversion = \"0.1.0.dev0\"\ndescription = \"vllm-hust-qos-scheduler inert vLLM-HUST contract descriptor\"\nreadme = \"README.md\"\nrequires-python = \">=3.10\"\nlicense = \"Apache-2.0\"\ndependencies = []\n\n[project.optional-dependencies]\ntest = [\"pytest>=8\", \"ruff>=0.12\", \"vllm-hust-ext==0.2.0.dev0\"]\n\n[project.entry-points.\"vllm_hust.extension_bundles\"]\n\"org.vllm-hust.qos-scheduler\" = \"vllm_hust_qos_scheduler\"\n\n[tool.hatch.build.targets.wheel]\npackages = [\"src/vllm_hust_qos_scheduler\"]"
+            }
+          ]
+        },
+        {
+          "path": "HOST_CONTRACT.md",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/qos/HOST_CONTRACT.md.snapshot",
+          "sha256": "03ad81ec1a76cb94e3f6777065689717f44c678bccea04eba397ed1802741191",
+          "git_blob": "71bc48d5f8a9d94b2ce5fd96eff208eccb6dfbc3",
+          "excerpts": [
+            {
+              "line_start": 1,
+              "line_end": 18,
+              "text": "# QoS scheduler host contract proposal\n\nThe extracted request model and ordering policy are independent of vLLM API and\nscheduler classes. Runtime activation requires:\n\n1. `vllm.request.qos-metadata.v1`: parse bounded TTFT/TBT/TTLT SLO fields at the\n   API boundary and attach immutable metadata to the engine request.\n2. `vllm.scheduler.request-snapshot.v1`: expose token counters, priority, arrival\n   time, and local monotonic QoS state without exposing a mutable Request object.\n3. `vllm.scheduler.ordering-policy.v1`: register waiting/running ordering keys;\n   the extension may reorder but must not create a separate token budget.\n4. `vllm.scheduler.output-observer.v1`: report generated-token and completion\n   timestamps for SLO accounting.\n\nPhase-one activation must fail closed for pipeline/data/context/expert parallel,\nspeculative decoding, KV disaggregation, LoRA, and other combinations not covered\nby hardware and correctness tests. The API remains backward-compatible because\nrequests without QoS metadata retain native scheduling."
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_hust_qos_scheduler/vllm-hust-extension-v0.2.json",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/qos/src/vllm_hust_qos_scheduler/vllm-hust-extension-v0.2.json.snapshot",
+          "sha256": "1bf6b9f5f792f05a7ab268874f2cae6130ae3df6eec77570852ce55a0ecd27db",
+          "git_blob": "7bbf6144566fcb4b020f90b79b3786475efa55eb",
+          "excerpts": [
+            {
+              "line_start": 1,
+              "line_end": 47,
+              "text": "{\n  \"schema_version\": \"0.2-experimental\",\n  \"extension_id\": \"org.vllm-hust.qos-scheduler\",\n  \"extension_version\": \"0.1.0.dev0\",\n  \"kind\": \"in_process_plugin\",\n  \"host\": {\n    \"provider\": \"vllm\",\n    \"name\": \"vllm\",\n    \"version_range\": \">=0\"\n  },\n  \"runtime\": {\n    \"type\": \"python\",\n    \"process_scope\": \"vllm-processes\",\n    \"isolation\": \"trusted_in_process\"\n  },\n  \"lifecycle_owner\": \"vllm\",\n  \"protocols\": [\n    {\"name\": \"vllm.request.qos-metadata\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.scheduler.request-snapshot\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.scheduler.ordering-policy\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.scheduler.output-observer\", \"version_range\": \">=1,<2\"}\n  ],\n  \"components\": [\n    {\n      \"component_id\": \"qos-ordering-policy\",\n      \"implementation_ref\": \"vllm_hust_qos_scheduler.policy:QoSOrderingPolicy\",\n      \"contracts\": [\"vllm.scheduler.request-snapshot.v1\", \"vllm.scheduler.ordering-policy.v1\"],\n      \"execution_planes\": [\"scheduler\"],\n      \"isolation\": \"trusted_in_process\",\n      \"permissions\": []\n    }\n  ],\n  \"implementation\": [\n    {\n      \"type\": \"python_module\",\n      \"module\": \"vllm_hust_qos_scheduler.policy\",\n      \"object\": \"QoSOrderingPolicy\",\n      \"status\": \"import_only\"\n    }\n  ],\n  \"requires_services\": [],\n  \"activation\": {\n    \"entry_points\": [],\n    \"environment\": {},\n    \"additional_config\": {}\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "split",
+      "origin": "https://github.com/vLLM-HUST/vllm-ascend-split-batch-hust.git",
+      "commit": "b46de46e90204a0a7636a1dbc952f73178859ada",
+      "files": [
+        {
+          "path": "pyproject.toml",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/split/pyproject.toml.snapshot",
+          "sha256": "100caa508cc562425cefb978106f41493e3bc6083c40572b7c32c4d0ad62fd35",
+          "git_blob": "e1548045251560f3a62773ad19347ebf140fa878",
+          "excerpts": [
+            {
+              "line_start": 5,
+              "line_end": 21,
+              "text": "[project]\nname = \"vllm-ascend-split-batch\"\nversion = \"0.1.0.dev0\"\ndescription = \"vllm-ascend-split-batch inert vLLM-HUST contract descriptor\"\nreadme = \"README.md\"\nrequires-python = \">=3.10\"\nlicense = \"Apache-2.0\"\ndependencies = []\n\n[project.optional-dependencies]\ntest = [\"pytest>=8\", \"ruff>=0.12\", \"vllm-hust-ext==0.2.0.dev0\"]\n\n[project.entry-points.\"vllm_hust.extension_bundles\"]\n\"org.vllm-hust.split-batch-full-graph\" = \"vllm_ascend_split_batch\"\n\n[tool.hatch.build.targets.wheel]\npackages = [\"src/vllm_ascend_split_batch\"]"
+            }
+          ]
+        },
+        {
+          "path": "HOST_CONTRACT.md",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/split/HOST_CONTRACT.md.snapshot",
+          "sha256": "6283b9b6a7b13c1bc2990b87316698d6a42e8b735061e713ad0664b236fe1e38",
+          "git_blob": "8fba46723ecc116b1f10f529b4144df9cfde92ac",
+          "excerpts": [
+            {
+              "line_start": 1,
+              "line_end": 14,
+              "text": "# Split-batch host contract proposal\n\nThe extracted planner is pure and default-off. Runtime activation requires:\n\n1. `vllm.graph.runtime-key.v1`: validated, bounded opaque graph metadata;\n2. `vllm.forward.split-context.v1`: per-forward split mode and stream identity;\n3. `vllm.ascend.graph-pool.v1`: separately owned main/parallel graph pools;\n4. `vllm.worker.split-executor.v1`: execute a committed plan and restore all\n   buffers/context on success, error, or cancellation.\n\nThe provider must reject speculative decoding, LoRA, MLA, M-RoPE, non-uniform\ndecode, unsupported graph modes, and unknown capture sizes. It must never lazily\ncapture an unbounded key set or modify global forward context outside a scoped\ncontext manager."
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_ascend_split_batch/vllm-hust-extension-v0.2.json",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/split/src/vllm_ascend_split_batch/vllm-hust-extension-v0.2.json.snapshot",
+          "sha256": "f58e7425bea31719a3a771fcab4a3f0a614049488341b6479dcb76a710eae614",
+          "git_blob": "104007c8c7d3ae0c0b47486505a761200641efe7",
+          "excerpts": [
+            {
+              "line_start": 1,
+              "line_end": 47,
+              "text": "{\n  \"schema_version\": \"0.2-experimental\",\n  \"extension_id\": \"org.vllm-hust.split-batch-full-graph\",\n  \"extension_version\": \"0.1.0.dev0\",\n  \"kind\": \"in_process_plugin\",\n  \"host\": {\n    \"provider\": \"vllm\",\n    \"name\": \"vllm-ascend\",\n    \"version_range\": \">=0\"\n  },\n  \"runtime\": {\n    \"type\": \"python\",\n    \"process_scope\": \"vllm-processes\",\n    \"isolation\": \"trusted_in_process\"\n  },\n  \"lifecycle_owner\": \"vllm\",\n  \"protocols\": [\n    {\"name\": \"vllm.graph.runtime-key\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.forward.split-context\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.ascend.graph-pool\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.worker.split-executor\", \"version_range\": \">=1,<2\"}\n  ],\n  \"components\": [\n    {\n      \"component_id\": \"dual-pad-planner\",\n      \"implementation_ref\": \"vllm_ascend_split_batch.planner:plan_dual_pad\",\n      \"contracts\": [\"vllm.graph.runtime-key.v1\", \"vllm.forward.split-context.v1\", \"vllm.worker.split-executor.v1\"],\n      \"execution_planes\": [\"worker\", \"device\"],\n      \"isolation\": \"trusted_in_process\",\n      \"permissions\": [\"device_access\"]\n    }\n  ],\n  \"implementation\": [\n    {\n      \"type\": \"python_module\",\n      \"module\": \"vllm_ascend_split_batch.planner\",\n      \"object\": \"plan_dual_pad\",\n      \"status\": \"import_only\"\n    }\n  ],\n  \"requires_services\": [],\n  \"activation\": {\n    \"entry_points\": [],\n    \"environment\": {},\n    \"additional_config\": {}\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unified",
+      "origin": "https://github.com/vLLM-HUST/vllm-hust-unified-comm.git",
+      "commit": "f00d1ef4c19a992d67ef8012952a9405d52dd447",
+      "files": [
+        {
+          "path": "pyproject.toml",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/unified/pyproject.toml.snapshot",
+          "sha256": "73c7e27ea353f8e4ca6d2ea4498a5be6476363fba723ac5de1874b4a38f6be63",
+          "git_blob": "360d3ebd733799d3fb77a2b5d8567c2378116885",
+          "excerpts": [
+            {
+              "line_start": 5,
+              "line_end": 21,
+              "text": "[project]\nname = \"vllm-hust-unified-comm\"\nversion = \"0.1.0.dev0\"\ndescription = \"vllm-hust-unified-comm inert vLLM-HUST contract descriptor\"\nreadme = \"README.md\"\nrequires-python = \">=3.10\"\nlicense = \"Apache-2.0\"\ndependencies = []\n\n[project.optional-dependencies]\ntest = [\"pytest>=8\", \"ruff>=0.12\", \"vllm-hust-ext==0.2.0.dev0\"]\n\n[project.entry-points.\"vllm_hust.extension_bundles\"]\n\"org.vllm-hust.unified-communication\" = \"vllm_hust_unified_comm\"\n\n[tool.hatch.build.targets.wheel]\npackages = [\"src/vllm_hust_unified_comm\"]"
+            }
+          ]
+        },
+        {
+          "path": "HOST_CONTRACT.md",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/unified/HOST_CONTRACT.md.snapshot",
+          "sha256": "5b762945248c95fe81636686e692e27ca7a4b196d4c7cd1689863e4e5333d621",
+          "git_blob": "3baa621e163be1bf03b20e3b0d3360fd9e534002",
+          "excerpts": [
+            {
+              "line_start": 1,
+              "line_end": 18,
+              "text": "# Unified communication host contract proposal\n\nThe extracted registry and decision policies are independent of torch, NCCL,\nHCCL, and vLLM. Runtime activation requires a vLLM provider implementing:\n\n1. `vllm.communication.backend.v1`: register a backend factory by unique name and\n   device type; registration must reject collisions.\n2. `vllm.communication.group.v1`: provide immutable ranks, local rank, world size,\n   device identity, and existing process-group handles.\n3. `vllm.communication.collectives.v1`: delegate individual collectives with an\n   explicit failure result so the host can use its native fallback.\n4. `vllm.communication.topology.v1`: provide topology facts used for decisions;\n   the extension must not probe or reconfigure NICs and drivers itself.\n\nGroupCoordinator remains lifecycle owner. The extension must not create a second\ndefault process group, destroy host-owned communicators, or silently replace an\nexisting backend. Direct NCCL/HCCL C-API implementations require separate native\npackages and hardware-specific validation."
+            }
+          ]
+        },
+        {
+          "path": "src/vllm_hust_unified_comm/vllm-hust-extension-v0.2.json",
+          "snapshot": "docs/corpus/interface-audit-20261018/sources/unified/src/vllm_hust_unified_comm/vllm-hust-extension-v0.2.json.snapshot",
+          "sha256": "913b8a2df5c5fff5bd8f9ed52070f624132a7482f41f27cfa6b04fdd956c9a53",
+          "git_blob": "0f836829e706830f6bbcb6cc0768f6878928be2d",
+          "excerpts": [
+            {
+              "line_start": 1,
+              "line_end": 61,
+              "text": "{\n  \"schema_version\": \"0.2-experimental\",\n  \"extension_id\": \"org.vllm-hust.unified-communication\",\n  \"extension_version\": \"0.1.0.dev0\",\n  \"kind\": \"in_process_plugin\",\n  \"host\": {\n    \"provider\": \"vllm\",\n    \"name\": \"vllm\",\n    \"version_range\": \">=0\"\n  },\n  \"runtime\": {\n    \"type\": \"python\",\n    \"process_scope\": \"vllm-processes\",\n    \"isolation\": \"trusted_in_process\"\n  },\n  \"lifecycle_owner\": \"vllm\",\n  \"protocols\": [\n    {\"name\": \"vllm.communication.backend\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.communication.group\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.communication.collectives\", \"version_range\": \">=1,<2\"},\n    {\"name\": \"vllm.communication.topology\", \"version_range\": \">=1,<2\"}\n  ],\n  \"components\": [\n    {\n      \"component_id\": \"communication-backend-registry\",\n      \"implementation_ref\": \"vllm_hust_unified_comm.contracts:CommBackendRegistry\",\n      \"contracts\": [\"vllm.communication.backend.v1\"],\n      \"execution_planes\": [\"worker\"],\n      \"isolation\": \"trusted_in_process\",\n      \"permissions\": []\n    },\n    {\n      \"component_id\": \"communication-strategy\",\n      \"implementation_ref\": \"vllm_hust_unified_comm.strategy:DefaultStrategy\",\n      \"contracts\": [\"vllm.communication.topology.v1\", \"vllm.communication.collectives.v1\"],\n      \"execution_planes\": [\"worker\"],\n      \"isolation\": \"trusted_in_process\",\n      \"permissions\": []\n    }\n  ],\n  \"implementation\": [\n    {\n      \"type\": \"python_module\",\n      \"module\": \"vllm_hust_unified_comm.contracts\",\n      \"object\": \"CommBackendRegistry\",\n      \"status\": \"import_only\"\n    },\n    {\n      \"type\": \"python_module\",\n      \"module\": \"vllm_hust_unified_comm.strategy\",\n      \"object\": \"DefaultStrategy\",\n      \"status\": \"import_only\"\n    }\n  ],\n  \"requires_services\": [],\n  \"activation\": {\n    \"entry_points\": [],\n    \"environment\": {},\n    \"additional_config\": {}\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "I01",
+      "mods": [
+        "knorm"
+      ],
+      "category": "undeclared-package-dependency",
+      "fact": "Package dependencies are empty, but activation requires seven vLLM module/class surfaces and guards against an in-tree duplicate.",
+      "anchors": [
+        "knorm:pyproject.toml:12",
+        "knorm:src/vllm_hust_knorm/core/hosts.py:22",
+        "knorm:src/vllm_hust_knorm/core/hosts.py:63"
+      ],
+      "ecpa_existing": "Explicit host/protocol requirements and version checks can represent known prerequisites.",
+      "ecpa_gap": "No automatic private-symbol dependency discovery; declared version ranges do not prove symbols or ABI. Guard currently checks module specs, not every named attribute.",
+      "experiment": "Compare package resolution with exact-module/symbol preflight, then actual activation. Missing/renamed symbols stay an independently observed negative; do not infer runtime support from version.",
+      "ground_truth": "source-observed-requirement; new tuple outcome unmeasured"
+    },
+    {
+      "id": "I02",
+      "mods": [
+        "knorm"
+      ],
+      "category": "configuration-dependent-effect",
+      "fact": "Registration installs patches, while compression requires env enabled, ratio<1, and prefix caching off. Runner freezes that predicate during initialization.",
+      "anchors": [
+        "knorm:src/vllm_hust_knorm/bootstrap.py:8",
+        "knorm:src/vllm_hust_knorm/knorm/config.py:131",
+        "knorm:src/vllm_hust_knorm/adapters/vllm_hust/patches.py:320"
+      ],
+      "ecpa_existing": "Separate discovered/loaded/invoked/effective states and bind effects to execution obligations.",
+      "ecpa_gap": "The current vocabulary alone does not prove compression, representation correctness, or equivalence across configurations.",
+      "experiment": "Freeze enabled/disabled and prefix-cache configurations before each independent start; measure real cache effect above the compression threshold, not only HTTP200.",
+      "ground_truth": "source-observed-predicate; native effect comparison planned"
+    },
+    {
+      "id": "I03",
+      "mods": [
+        "knorm"
+      ],
+      "category": "shared-hook-and-import-order",
+      "fact": "KNorm wraps Scheduler.update_from_output and explicitly rebinds already-imported registration aliases from sys.modules.",
+      "anchors": [
+        "knorm:src/vllm_hust_knorm/adapters/vllm_hust/patches.py:281",
+        "knorm:src/vllm_hust_knorm/adapters/vllm_hust/patches.py:294"
+      ],
+      "ecpa_existing": "Canonical resource ownership and explicit ordering can reject declared double ownership.",
+      "ecpa_gap": "The planner does not infer hidden wrappers or prove wrapper commutativity; overlapping symbols alone do not prove incompatibility.",
+      "experiment": "Cross both MOD registration orders and early/late host import. Trace original-call chain, per-MOD invocation, and shared KV state; use singleton controls.",
+      "ground_truth": "source-observed-overlap-surface; composition label unknown"
+    },
+    {
+      "id": "I04",
+      "mods": [
+        "qos"
+      ],
+      "category": "descriptor-versus-host-integration",
+      "fact": "The frozen package describes itself as inert, exposes an import_only policy, has no activation entry points, and proposes four host protocols.",
+      "anchors": [
+        "qos:pyproject.toml:8",
+        "qos:src/vllm_hust_qos_scheduler/vllm-hust-extension-v0.2.json:33",
+        "qos:HOST_CONTRACT.md:3"
+      ],
+      "ecpa_existing": "An inspect-only outcome can avoid promoting a descriptor to runtime effectiveness.",
+      "ecpa_gap": "A manifest cannot supply the missing API-boundary metadata and scheduler binding.",
+      "experiment": "Report discoverability separately from host-executable eligibility. QoS+BidKV is a candidate until both effects and the common scheduler authority are bound.",
+      "ground_truth": "source-observed-inert-descriptor; not a native compatible pair"
+    },
+    {
+      "id": "I05",
+      "mods": [
+        "split"
+      ],
+      "category": "cross-feature-preconditions",
+      "fact": "The pure split planner requires scoped forward context, separate graph pools and a worker executor; its contract excludes speculative decoding and other unsupported graph modes.",
+      "anchors": [
+        "split:HOST_CONTRACT.md:3",
+        "split:HOST_CONTRACT.md:11",
+        "split:src/vllm_ascend_split_batch/vllm-hust-extension-v0.2.json:33"
+      ],
+      "ecpa_existing": "Host capabilities and resource ownership can encode known requirements and exclusions.",
+      "ecpa_gap": "No demonstrated native provider for this frozen descriptor; no automatic proof of buffer restoration or graph safety.",
+      "experiment": "Keep split+speculative as a source-restriction candidate; demand a real executor before any positive composition or graph-performance cell.",
+      "ground_truth": "source-observed-restriction, not an injected native failure"
+    },
+    {
+      "id": "I06",
+      "mods": [
+        "unified"
+      ],
+      "category": "external-native-ownership",
+      "fact": "Unified communication exports an import_only registry/strategy. Its proposed provider must preserve GroupCoordinator ownership and must not create a second default process group.",
+      "anchors": [
+        "unified:src/vllm_hust_unified_comm/vllm-hust-extension-v0.2.json:41",
+        "unified:HOST_CONTRACT.md:3",
+        "unified:HOST_CONTRACT.md:15"
+      ],
+      "ecpa_existing": "Capability, lifecycle authority and resource owner declarations express the intended boundary.",
+      "ecpa_gap": "A Python registry cannot attest HCCL collective behavior or communicator lifetime.",
+      "experiment": "Classify missing provider/native backend as unsupported or unknown; do not turn a successful pure-policy import into composition success.",
+      "ground_truth": "source-observed-descriptor; native validation absent"
+    }
+  ],
+  "automatic_semantic_extraction_implemented": false,
+  "native_experiments_added": 0,
+  "historical_results_modified": false
+}
