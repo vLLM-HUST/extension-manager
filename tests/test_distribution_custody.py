@@ -3,24 +3,41 @@
 import io
 import tarfile
 import zipfile
+from pathlib import Path
 
 import pytest
 
 from scripts.check_distribution import CONSOLE, check
 
 
-def artifacts(tmp_path, *, extra=None, missing=False, changed=False, symlink=False):
+def artifacts(
+    tmp_path,
+    *,
+    extra=None,
+    missing=False,
+    changed=False,
+    symlink=False,
+    license_fault=None,
+):
     root = tmp_path / "source"
     package = root / "src/vllm_hust_ext"
     package.mkdir(parents=True)
     (package / "__init__.py").write_bytes(b"# runtime\n")
+    license_bytes = (Path(__file__).resolve().parents[1] / "LICENSE").read_bytes()
+    (root / "LICENSE").write_bytes(license_bytes)
+    metadata = (
+        b"Version: 0.3.0\nLicense-Expression: Apache-2.0\nLicense-File: LICENSE\n"
+    )
+    if license_fault == "metadata":
+        metadata = metadata.replace(b"License-File: LICENSE\n", b"")
     (root / "README.md").write_bytes(b"# install\n")
     (root / "pyproject.toml").write_bytes(b"# packaging\n")
     dist = tmp_path / "dist"
     dist.mkdir()
     members = {
         "vllm_hust_ext/__init__.py": b"# runtime\n",
-        "vllm_hust_ext-0.3.0.dist-info/METADATA": b"Version: 0.3.0\n",
+        "vllm_hust_ext-0.3.0.dist-info/METADATA": metadata,
+        "vllm_hust_ext-0.3.0.dist-info/licenses/LICENSE": license_bytes,
         "vllm_hust_ext-0.3.0.dist-info/WHEEL": b"Wheel-Version: 1.0\n",
         "vllm_hust_ext-0.3.0.dist-info/RECORD": b"",
         "vllm_hust_ext-0.3.0.dist-info/entry_points.txt": (
@@ -28,6 +45,10 @@ def artifacts(tmp_path, *, extra=None, missing=False, changed=False, symlink=Fal
             + "".join(f"{n} = vllm_hust_ext:main\n" for n in CONSOLE)
         ).encode(),
     }
+    if license_fault == "wheel-missing":
+        del members["vllm_hust_ext-0.3.0.dist-info/licenses/LICENSE"]
+    if license_fault == "wheel-changed":
+        members["vllm_hust_ext-0.3.0.dist-info/licenses/LICENSE"] = b"changed"
     if missing:
         del members["vllm_hust_ext/__init__.py"]
     with zipfile.ZipFile(dist / "manager.whl", "w") as archive:
@@ -37,8 +58,13 @@ def artifacts(tmp_path, *, extra=None, missing=False, changed=False, symlink=Fal
         "src/vllm_hust_ext/__init__.py": b"changed" if changed else b"# runtime\n",
         "README.md": b"# install\n",
         "pyproject.toml": b"# packaging\n",
-        "PKG-INFO": b"metadata",
+        "PKG-INFO": metadata,
+        "LICENSE": license_bytes,
     }
+    if license_fault == "sdist-missing":
+        del source["LICENSE"]
+    if license_fault == "sdist-changed":
+        source["LICENSE"] = b"changed"
     if extra:
         source[extra] = b"payload"
     with tarfile.open(dist / "manager.tar.gz", "w:gz") as archive:
@@ -91,3 +117,12 @@ def test_ci_and_release_gate_check_both_distributions():
             < workflow.index("python scripts/check_distribution.py dist")
             < workflow.index("Verify clean wheel installation")
         )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["wheel-missing", "wheel-changed", "sdist-missing", "sdist-changed", "metadata"],
+)
+def test_reject_missing_changed_or_undeclared_license(tmp_path, fault):
+    with pytest.raises(ValueError, match="LICENSE|License-File"):
+        check(*artifacts(tmp_path, license_fault=fault))
