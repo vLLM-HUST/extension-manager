@@ -6,6 +6,7 @@ import argparse
 import configparser
 import tarfile
 import zipfile
+from email.parser import BytesParser
 from pathlib import Path, PurePosixPath
 
 PACKAGE = "vllm_hust_ext"
@@ -70,10 +71,10 @@ def check(directory: Path, source_root: Path) -> None:
         p: b for p, b in source.items() if p.startswith("src/")
     }:
         raise ValueError("sdist runtime differs from wheel")
-    allowed = {"README.md", "pyproject.toml", "PKG-INFO", ".gitignore"}
+    allowed = {"README.md", "pyproject.toml", "PKG-INFO", ".gitignore", "LICENSE"}
     if any(not p.startswith("src/") and p not in allowed for p in source):
         raise ValueError("Unexpected sdist payload")
-    for name in ("README.md", "pyproject.toml"):
+    for name in ("README.md", "pyproject.toml", "LICENSE"):
         if source.get(name) != (source_root / name).read_bytes():
             raise ValueError(f"Missing or changed {name}")
     metadata = {p.split("/", 1)[0] for p in wheel if ".dist-info/" in p}
@@ -88,10 +89,25 @@ def check(directory: Path, source_root: Path) -> None:
     if any(
         p.startswith(dist + "/")
         and p[len(dist) + 1 :]
-        not in {"METADATA", "WHEEL", "RECORD", "entry_points.txt"}
+        not in {"METADATA", "WHEEL", "RECORD", "entry_points.txt", "licenses/LICENSE"}
         for p in wheel
     ):
         raise ValueError("Unexpected wheel metadata payload")
+    license_bytes = (source_root / "LICENSE").read_bytes()
+    if (
+        not license_bytes.strip()
+        or wheel.get(dist + "/licenses/LICENSE") != license_bytes
+    ):
+        raise ValueError("Missing or changed wheel LICENSE")
+    for name, payload in (
+        ("wheel", wheel[dist + "/METADATA"]),
+        ("sdist", source.get("PKG-INFO", b"")),
+    ):
+        headers = BytesParser().parsebytes(payload, headersonly=True)
+        if headers.get("License-Expression") != "Apache-2.0":
+            raise ValueError(f"Missing or incorrect {name} License-Expression")
+        if headers.get_all("License-File") != ["LICENSE"]:
+            raise ValueError(f"Missing or incorrect {name} License-File")
     entries = configparser.ConfigParser()
     entries.read_string(wheel[dist + "/entry_points.txt"].decode())
     if set(entries["console_scripts"]) != CONSOLE:
