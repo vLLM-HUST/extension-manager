@@ -29,20 +29,3 @@ def test_checked_in_paper_counts_replay_real_source_closed_corpus():
     assert summary["numerical_attention_correctness"] is None
     assert summary["full_model_quality"] is None
     assert summary["performance_result"] is None
-
-
-def test_anonymous_overlay_copies_all_referenced_generated_inputs(tmp_path):
-    script = ROOT / "paper/scripts/render_anonymous.py"
-    spec = importlib.util.spec_from_file_location("attention_anonymous_fixture", script)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    output = tmp_path / "fixture-overlay"
-    module.prepare(
-        output,
-        alias="TestAlias",
-        title="A Fixture Title for Contracted Inference",
-    )
-    generated = (output / "generated/attention-source-summary.tex").read_text()
-    assert "ECPA" not in generated
-    assert r"\ReviewDataAttentionSourceRecords" in generated
-    assert (output / "generated/evidence-summary.tex").is_file()

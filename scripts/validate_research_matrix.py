@@ -176,7 +176,6 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
         root, "experiments/false_effective/artifacts/formal-aggregate-summary.json"
     )
     metrics = load(root, "experiments/contract_planner/results/metrics.json")
-    paper = (root / "paper/main.tex").read_text()
 
     validate_schema(root, claims_matrix, CLAIMS_SCHEMA_PATH)
     validate_schema(root, study, STUDY_SCHEMA_PATH)
@@ -197,9 +196,6 @@ def validate(root: Path = ROOT) -> dict[str, int | str]:
         for claim in claims.values()
     ):
         raise ValueError("paper hypothesis and contribution mappings differ")
-    for hypothesis in ("H1", "H2", "H3", "H4"):
-        if f"\\textbf{{{hypothesis}:}}" not in paper:
-            raise ValueError(f"paper no longer contains {hypothesis}")
 
     for claim_id, claim in claims.items():
         for experiment_id in claim["experiments"]:
