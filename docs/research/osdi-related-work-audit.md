@@ -2,7 +2,7 @@
 
 Status: superseded short-form inventory. The source-checked mechanism matrix,
 hostile review, and current evidence ledger live in
-[`paper/related-work-audit.md`](../../paper/related-work-audit.md). One H1
+[`paper/related-work-audit.md`](https://github.com/vLLM-HUST/extension-manager/blob/6a26ae88acc14591817df9069b7c884dd1a4f86d/paper/related-work-audit.md). One H1
 formal-real cell is now complete and falsifies the tested prevention property;
 H2--H4 remain incomplete.
 

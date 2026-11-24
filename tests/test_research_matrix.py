@@ -32,7 +32,6 @@ INPUTS = (
     "experiments/formal_campaign/protocol.schema.json",
     "experiments/formal_campaign/record.schema.json",
     "experiments/formal_campaign/analyze.py",
-    "paper/main.tex",
     "paper/artifacts/h1-r5/formal-aggregate.json",
     "paper/artifacts/h1-r5/formal-aggregate-summary.json",
     "paper/artifacts/h1-r5/paper-results.jsonl",
